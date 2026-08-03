@@ -395,9 +395,16 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
       activity: "Waiting at the return aperture after three sleepless days.",
     },
     {
-      whenAllFlags: [CH1_FLAGS.jackieReported],
+      whenAllFlags: [CH1_FLAGS.jackieExpelled],
       place: { kind: "anchor", anchor: "grove_watch_house" },
-      activity: "Sitting in the watch-house without offering a defence.",
+      activity:
+        "Sitting in the watch-house without offering a defence, held on Teak's evidence whether or not the player adds an accusation.",
+    },
+    {
+      whenActiveStepIds: ["report_or_not"],
+      place: { kind: "anchor", anchor: "grove_watch_house" },
+      activity:
+        "Waiting in the watch-house while Holt takes the player's statement.",
     },
     {
       whenActiveStepIds: [
@@ -436,7 +443,8 @@ export interface Ch1StagingInput {
 }
 
 export interface Ch1StagedNpc {
-  key: Ch1NpcKey;
+  /** Chapter cast key or a stable returning-NPC key. */
+  key: string;
   entityId: number;
   /** Name to show this player right now. */
   displayName: string;

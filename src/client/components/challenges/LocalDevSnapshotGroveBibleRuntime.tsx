@@ -21,6 +21,10 @@ import {
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { addToast } from "@/client/components/toast/helpers";
+import {
+  HarthmereQuestActionError,
+  harthmereQuestRejectionWarningsFromResponse,
+} from "@/client/components/challenges/questActionError";
 import type { GardenHoseEvent } from "@/client/events/api";
 import { JACKIE_ID } from "@/client/util/nux/state_machines";
 import type { BiomesId } from "@/shared/ids";
@@ -472,57 +476,67 @@ async function submitSnapshotGroveQuestStateToCloudSave(
   const requestId = `snapshot_grove_quest_${quest.id}_${
     completed ? "complete" : "progress"
   }_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  const response = await defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      requestId,
-      idempotencyKey: requestId,
-      clientSentAtMs: Date.now(),
-      actionKind: "request_quest_state_update",
-      subsystem: "quest",
-      actorEntityVersion: 1,
-      zoneId: "the_grove",
-      payload: {
-        questId: quest.id,
-        source: "snapshot_grove",
-        title: quest.title,
-        completed,
-        stepId: `${quest.id}:${objectiveIndex}:${
-          quest.triggers[objectiveIndex] ?? "step"
-        }`,
-        progress: completed ? quest.objectives.length : objectiveIndex + 1,
-        objectiveIndex: completedObjectiveIndex,
-        objectiveProgress:
-          partialProgress?.objectiveIndex === objectiveIndex
-            ? {
-                objectiveIndex,
-                count: partialProgress.count,
-                evidenceKeys: partialProgress.evidenceKeys,
-              }
-            : undefined,
-        reason,
-      },
-      clientClaims: {},
-    }),
-  });
+  const errorContext = {
+    action: reason === "accepted" ? ("accept" as const) : ("update" as const),
+    questTitle: quest.title,
+  };
+  let response: Response;
+  try {
+    response = await defaultHarthmereLiveFetch(
+      "/api/harthmere/live_mode",
+      {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId,
+          idempotencyKey: requestId,
+          clientSentAtMs: Date.now(),
+          actionKind: "request_quest_state_update",
+          subsystem: "quest",
+          actorEntityVersion: 1,
+          zoneId: "the_grove",
+          payload: {
+            questId: quest.id,
+            source: "snapshot_grove",
+            title: quest.title,
+            completed,
+            stepId: `${quest.id}:${objectiveIndex}:${
+              quest.triggers[objectiveIndex] ?? "step"
+            }`,
+            progress: completed ? quest.objectives.length : objectiveIndex + 1,
+            objectiveIndex: completedObjectiveIndex,
+            objectiveProgress:
+              partialProgress?.objectiveIndex === objectiveIndex
+                ? {
+                    objectiveIndex,
+                    count: partialProgress.count,
+                    evidenceKeys: partialProgress.evidenceKeys,
+                  }
+                : undefined,
+            reason,
+          },
+          clientClaims: {},
+        }),
+      }
+    );
+  } catch {
+    throw new HarthmereQuestActionError(
+      ["snapshot_grove_quest_rejected:network_error"],
+      errorContext
+    );
+  }
   const body = await response.json().catch(() => undefined);
   // HTTP 200 means the transport completed; gameplay warnings still mean the
   // server rejected the transition and local state must not advance.
-  const backendWarnings = Array.isArray(body?.backendMutation?.warnings)
-    ? body.backendMutation.warnings.map(String)
-    : [];
-  if (
-    !response.ok ||
-    body?.ok === false ||
-    backendWarnings.some(
-      (warning: string) =>
-        warning.startsWith("quest_rejected:") ||
-        warning.startsWith("snapshot_grove_quest_rejected:")
-    )
-  ) {
-    throw new Error(`snapshot_grove_quest_sync_failed:${quest.id}`);
+  const rejectionWarnings = harthmereQuestRejectionWarningsFromResponse(body);
+  if (!body || !response.ok || body?.ok === false || rejectionWarnings.length) {
+    throw new HarthmereQuestActionError(
+      rejectionWarnings.length
+        ? rejectionWarnings
+        : ["snapshot_grove_quest_rejected:request_failed"],
+      errorContext
+    );
   }
   if (body?.questState) {
     window.dispatchEvent(
@@ -1039,7 +1053,7 @@ async function acceptSnapshotGroveQuest(
     );
   } catch (error) {
     console.warn(error);
-    return;
+    throw error;
   } finally {
     snapshotGroveQuestMutationsInFlight.delete(mutationKey);
   }

@@ -202,6 +202,11 @@ export class HarthmereBusinessBoardMarkerRenderer implements Renderer {
     this.root.name = `harthmere-business-board-markers root ${HARTHMERE_BUSINESS_BOARD_PROCEDURAL_MARKER_VERSION}`;
     for (const location of HARTHMERE_BUSINESS_BOARD_MARKER_LOCATIONS) {
       const marker = createHarthmereBusinessBoardMarkerMesh(location);
+      // The combined interior already renders the physical counter/dashboard.
+      // This hierarchy remains as a non-rendering interaction/debug anchor so
+      // the counter is not duplicated by a large procedural board.
+      marker.visible = false;
+      marker.userData.harthmereBusinessInteractionAnchorOnly = true;
       this.root.add(marker);
     }
     this.publishDebugBridge();

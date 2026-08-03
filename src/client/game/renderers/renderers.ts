@@ -19,6 +19,7 @@ import { GroupsRenderer } from "@/client/game/renderers/groups";
 import { makeHarthmereRuntimeAssetsRenderer } from "@/client/game/renderers/local_dev/harthmere_assets";
 import { makeHarthmereBusinessBoardMarkerRenderer } from "@/client/game/renderers/local_dev/harthmere_business_board_marker";
 import { makeHarthmereBusinessOutpostBuildingsRenderer } from "@/client/game/renderers/local_dev/harthmere_business_outpost_buildings";
+import { makeHarthmereBusinessInteriorsRenderer } from "@/client/game/renderers/local_dev/harthmere_business_interiors";
 import { makeHarthmereJobsBoardMarkerRenderer } from "@/client/game/renderers/local_dev/harthmere_jobs_board_marker";
 import { makeHarthmereQuestObjectMarkersRenderer } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers";
 import { makeHarthmereGatheringNodeMarkersRenderer } from "@/client/game/renderers/local_dev/harthmere_gathering_node_markers";
@@ -106,19 +107,19 @@ export async function buildRenderers(loader: RegistryLoader<ClientContext>) {
     makeNpcsRenderer(clientConfig, table, resources),
     makePlaceablesRenderer(clientConfig, audioManager, table, resources),
     makeHarthmereRuntimeAssetsRenderer(resources),
+    makeHarthmereBusinessInteriorsRenderer(resources),
     makeHarthmereBusinessOutpostBuildingsRenderer(),
     makeHarthmereBusinessBoardMarkerRenderer(),
-    // HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER: bulletproof procedural
-    // kiosks for the two Harthmere jobs boards. Runs alongside the OBJ-based
-    // assets above; if the snapshot policy filters the OBJ kiosk out, this
-    // dedicated renderer still draws a big visible board the player can find.
-    makeHarthmereJobsBoardMarkerRenderer(),
+    // Optimized Blender-authored landmark jobs boards with distance LOD and a
+    // cheap load-failure fallback. The renderer shares five material-batched
+    // variants across all physical board locations.
+    makeHarthmereJobsBoardMarkerRenderer(resources),
     // HARTHMERE_QUEST_OBJECT_MARKERS: small procedural stand-ins for
     // quest-linked Grove props so map objectives do not point at invisible
     // filtered/asset-dependent objects.
     makeHarthmereQuestObjectMarkersRenderer(resources),
-    // HARTHMERE_GATHERING_NODE_MARKERS: visible, terrain-grounded resource
-    // nodes at every gathering position so harvest targets exist in the world
+    // Blender-authored, terrain-grounded gathering graphics at every authored
+    // position; authority and F interaction remain in their existing systems.
     // (with an F-prompt) instead of only inside the HUD menu.
     makeHarthmereGatheringNodeMarkersRenderer(resources),
     // HARTHMERE_LOOT_DROP_MARKERS (audit fix, 2026-07-13): visible, grounded

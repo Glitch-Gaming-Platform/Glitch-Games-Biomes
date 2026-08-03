@@ -1,0 +1,7613 @@
+{
+  "version": "harthmere-business-interiors-blender-v1",
+  "generatorVersion": 1,
+  "generatedWith": "5.2.0 LTS",
+  "coordinateConvention": {
+    "units": "meters",
+    "origin": "first-floor southwest floor origin",
+    "blenderX": "world X",
+    "blenderY": "world Z from entrance toward back wall",
+    "blenderZ": "world height",
+    "worldConversion": "world=(originX+localX, originY+1+localZ, originZ+localY)"
+  },
+  "performanceContract": {
+    "textures": "none; compact PBR material colors only",
+    "geometryCompression": "EXT_meshopt_compression via gltfpack 1.2 -cc",
+    "maximumMaterialBatchesPerInterior": 9,
+    "nearInteriorDistanceMeters": 16,
+    "lod1DistanceMeters": 28,
+    "hiddenBeyondMeters": 28,
+    "collision": "manifest box proxies; render meshes are not collision meshes",
+    "smallClutter": "merged into parent material batches"
+  },
+  "businesses": [
+    {
+      "slug": "ashline_containment_works",
+      "outpostId": "outpost_refinery_ashline",
+      "displayName": "Ashline Containment Works",
+      "businessType": "exotic_matter_refinery",
+      "footprint": {
+        "width": 28,
+        "depth": 22,
+        "floors": 1
+      },
+      "expandedFromCurrent": false,
+      "shellOrigin": [
+        660,
+        66,
+        -55
+      ],
+      "assetWorldAnchor": [
+        660,
+        67,
+        -55
+      ],
+      "deskWorldPivot": [
+        674.5,
+        67,
+        -38.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/ashline_containment_works/ashline_containment_works.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/ashline_containment_works/ashline_containment_works.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          14.5,
+          15.1,
+          0.0
+        ],
+        "staff": [
+          14.5,
+          18.0,
+          0.0
+        ],
+        "queueStart": [
+          14.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          14.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 12.5,
+        "xMax": 16.5,
+        "yMin": -0.5,
+        "yMax": 14.4
+      },
+      "stairKeepClear": null,
+      "collisionBoxes": [
+        {
+          "label": "Containment desk",
+          "role": "service_counter",
+          "center": [
+            14.5,
+            16.5,
+            0.525
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Thermoblaster",
+          "role": "primary_station",
+          "center": [
+            23.5,
+            19.2,
+            1.1
+          ],
+          "size": [
+            3.0,
+            1.8,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Stabilizer chamber bank",
+          "role": "workstation",
+          "center": [
+            23.0,
+            11.5,
+            1.0
+          ],
+          "size": [
+            3.2,
+            1.5,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Quarantine cage",
+          "role": "stock_storage",
+          "center": [
+            8.0,
+            19.4,
+            1.15
+          ],
+          "size": [
+            4.0,
+            1.2,
+            2.3
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Spent filter shelving",
+          "role": "stock_storage",
+          "center": [
+            1.45,
+            9.0,
+            1.05
+          ],
+          "size": [
+            0.6,
+            3.0,
+            2.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Coolant tank bank",
+          "role": "stock_storage",
+          "center": [
+            26.55,
+            8.0,
+            1.25
+          ],
+          "size": [
+            0.9,
+            4.0,
+            2.5
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "PPE bench and lockers",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.9
+          ],
+          "size": [
+            0.75,
+            2.4,
+            1.8
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Sample conveyor",
+          "role": "workstation",
+          "center": [
+            7.0,
+            12.0,
+            0.55
+          ],
+          "size": [
+            4.0,
+            1.3,
+            1.1
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Containment desk",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            14.5,
+            16.5,
+            0.0
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Thermoblaster",
+          "kind": "reactor",
+          "role": "primary_station",
+          "location": [
+            23.5,
+            19.2,
+            0.0
+          ],
+          "size": [
+            3.0,
+            1.8,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Stabilizer chamber bank",
+          "kind": "machine",
+          "role": "workstation",
+          "location": [
+            23.0,
+            11.5,
+            0.0
+          ],
+          "size": [
+            3.2,
+            1.5,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Quarantine cage",
+          "kind": "cage",
+          "role": "stock_storage",
+          "location": [
+            8.0,
+            19.4,
+            0.0
+          ],
+          "size": [
+            4.0,
+            1.2,
+            2.3
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Spent filter shelving",
+          "kind": "shelf",
+          "role": "stock_storage",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.6,
+            3.0,
+            2.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Coolant tank bank",
+          "kind": "tank",
+          "role": "stock_storage",
+          "location": [
+            26.55,
+            8.0,
+            0.0
+          ],
+          "size": [
+            0.9,
+            4.0,
+            2.5
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "PPE bench and lockers",
+          "kind": "locker_bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            2.4,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Sample conveyor",
+          "kind": "conveyor",
+          "role": "workstation",
+          "location": [
+            7.0,
+            12.0,
+            0.0
+          ],
+          "size": [
+            4.0,
+            1.3,
+            1.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Contamination meter",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            14.5,
+            20.4,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        }
+      ]
+    },
+    {
+      "slug": "north_anchor_repair_shed",
+      "outpostId": "outpost_biome_repair_north",
+      "displayName": "North Anchor Repair Shed",
+      "businessType": "biome_maintenance_repair",
+      "footprint": {
+        "width": 28,
+        "depth": 22,
+        "floors": 1
+      },
+      "expandedFromCurrent": true,
+      "shellOrigin": [
+        752,
+        62,
+        27
+      ],
+      "assetWorldAnchor": [
+        752,
+        63,
+        27
+      ],
+      "deskWorldPivot": [
+        766.5,
+        63,
+        43.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/north_anchor_repair_shed/north_anchor_repair_shed.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/north_anchor_repair_shed/north_anchor_repair_shed.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          14.5,
+          15.1,
+          0.0
+        ],
+        "staff": [
+          14.5,
+          18.0,
+          0.0
+        ],
+        "queueStart": [
+          14.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          14.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 12.5,
+        "xMax": 16.5,
+        "yMin": -0.5,
+        "yMax": 14.4
+      },
+      "stairKeepClear": null,
+      "collisionBoxes": [
+        {
+          "label": "Anchor repair desk",
+          "role": "service_counter",
+          "center": [
+            14.5,
+            16.5,
+            0.525
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Anchor calibration rig",
+          "role": "primary_station",
+          "center": [
+            23.5,
+            19.2,
+            1.1
+          ],
+          "size": [
+            3.0,
+            1.6,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Repair workbench",
+          "role": "workstation",
+          "center": [
+            23.0,
+            11.5,
+            0.5
+          ],
+          "size": [
+            3.2,
+            1.3,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Spare parts shelves",
+          "role": "stock_storage",
+          "center": [
+            8.0,
+            19.4,
+            1.1
+          ],
+          "size": [
+            4.0,
+            0.65,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Tool cabinets",
+          "role": "stock_storage",
+          "center": [
+            26.55,
+            8.0,
+            1.05
+          ],
+          "size": [
+            0.7,
+            3.0,
+            2.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Repair waiting bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.475
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Parts preview table",
+          "role": "service_table",
+          "center": [
+            7.0,
+            12.0,
+            0.475
+          ],
+          "size": [
+            2.6,
+            1.2,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Anchor repair desk",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            14.5,
+            16.5,
+            0.0
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Anchor calibration rig",
+          "kind": "machine",
+          "role": "primary_station",
+          "location": [
+            23.5,
+            19.2,
+            0.0
+          ],
+          "size": [
+            3.0,
+            1.6,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Repair workbench",
+          "kind": "workbench",
+          "role": "workstation",
+          "location": [
+            23.0,
+            11.5,
+            0.0
+          ],
+          "size": [
+            3.2,
+            1.3,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Spare parts shelves",
+          "kind": "shelf",
+          "role": "stock_storage",
+          "location": [
+            8.0,
+            19.4,
+            0.0
+          ],
+          "size": [
+            4.0,
+            0.65,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Diagnostic tree panel",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.35,
+            3.5,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Tool cabinets",
+          "kind": "cabinet",
+          "role": "stock_storage",
+          "location": [
+            26.55,
+            8.0,
+            0.0
+          ],
+          "size": [
+            0.7,
+            3.0,
+            2.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Repair waiting bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Parts preview table",
+          "kind": "table",
+          "role": "service_table",
+          "location": [
+            7.0,
+            12.0,
+            0.0
+          ],
+          "size": [
+            2.6,
+            1.2,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Emergency board",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            14.5,
+            20.4,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        }
+      ]
+    },
+    {
+      "slug": "glassyard_biome_studio",
+      "outpostId": "outpost_design_glassyard",
+      "displayName": "Glassyard Biome Studio",
+      "businessType": "biome_design_studio",
+      "footprint": {
+        "width": 24,
+        "depth": 20,
+        "floors": 1
+      },
+      "expandedFromCurrent": false,
+      "shellOrigin": [
+        1171,
+        45,
+        128
+      ],
+      "assetWorldAnchor": [
+        1171,
+        46,
+        128
+      ],
+      "deskWorldPivot": [
+        1183.5,
+        46,
+        142.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/glassyard_biome_studio/glassyard_biome_studio.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/glassyard_biome_studio/glassyard_biome_studio.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          12.5,
+          13.1,
+          0.0
+        ],
+        "staff": [
+          12.5,
+          16.1,
+          0.0
+        ],
+        "queueStart": [
+          12.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          12.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 10.5,
+        "xMax": 14.5,
+        "yMin": -0.5,
+        "yMax": 12.4
+      },
+      "stairKeepClear": null,
+      "collisionBoxes": [
+        {
+          "label": "Mood board counter",
+          "role": "service_counter",
+          "center": [
+            12.5,
+            14.5,
+            0.525
+          ],
+          "size": [
+            6.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Dye-O-Matic",
+          "role": "primary_station",
+          "center": [
+            19.5,
+            17.6,
+            1.0
+          ],
+          "size": [
+            2.5,
+            1.5,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Palette table",
+          "role": "workstation",
+          "center": [
+            19.2,
+            10.5,
+            0.475
+          ],
+          "size": [
+            2.6,
+            1.3,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Sample cabinet",
+          "role": "stock_storage",
+          "center": [
+            6.0,
+            18.0,
+            1.05
+          ],
+          "size": [
+            4.0,
+            0.6,
+            2.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Lighting sample rack",
+          "role": "stock_storage",
+          "center": [
+            22.55,
+            7.5,
+            1.0
+          ],
+          "size": [
+            0.6,
+            3.0,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Client lounge bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.475
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Drafting table",
+          "role": "workstation",
+          "center": [
+            6.0,
+            10.5,
+            0.5
+          ],
+          "size": [
+            3.0,
+            1.4,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Showroom plinth",
+          "role": "decor",
+          "center": [
+            6.0,
+            6.0,
+            0.55
+          ],
+          "size": [
+            1.2,
+            1.2,
+            1.1
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Mood board counter",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            12.5,
+            14.5,
+            0.0
+          ],
+          "size": [
+            6.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Dye-O-Matic",
+          "kind": "dye_machine",
+          "role": "primary_station",
+          "location": [
+            19.5,
+            17.6,
+            0.0
+          ],
+          "size": [
+            2.5,
+            1.5,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Palette table",
+          "kind": "table",
+          "role": "workstation",
+          "location": [
+            19.2,
+            10.5,
+            0.0
+          ],
+          "size": [
+            2.6,
+            1.3,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Sample cabinet",
+          "kind": "cabinet",
+          "role": "stock_storage",
+          "location": [
+            6.0,
+            18.0,
+            0.0
+          ],
+          "size": [
+            4.0,
+            0.6,
+            2.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Material swatch wall",
+          "kind": "swatch_board",
+          "role": "decor",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.3,
+            4.0,
+            2.3
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Lighting sample rack",
+          "kind": "rack",
+          "role": "stock_storage",
+          "location": [
+            22.55,
+            7.5,
+            0.0
+          ],
+          "size": [
+            0.6,
+            3.0,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Client lounge bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Drafting table",
+          "kind": "drafting",
+          "role": "workstation",
+          "location": [
+            6.0,
+            10.5,
+            0.0
+          ],
+          "size": [
+            3.0,
+            1.4,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Trend panel",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            12.5,
+            18.6,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Showroom plinth",
+          "kind": "plinth",
+          "role": "decor",
+          "location": [
+            6.0,
+            6.0,
+            0.0
+          ],
+          "size": [
+            1.2,
+            1.2,
+            1.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        }
+      ]
+    },
+    {
+      "slug": "redoubt_contract_yard",
+      "outpostId": "outpost_security_redoubt",
+      "displayName": "Redoubt Contract Yard",
+      "businessType": "security_defense_contractor",
+      "footprint": {
+        "width": 28,
+        "depth": 22,
+        "floors": 2
+      },
+      "expandedFromCurrent": false,
+      "shellOrigin": [
+        1438,
+        46,
+        66
+      ],
+      "assetWorldAnchor": [
+        1438,
+        47,
+        66
+      ],
+      "deskWorldPivot": [
+        1452.5,
+        47,
+        82.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/redoubt_contract_yard/redoubt_contract_yard.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/redoubt_contract_yard/redoubt_contract_yard.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          14.5,
+          15.1,
+          0.0
+        ],
+        "staff": [
+          14.5,
+          18.0,
+          0.0
+        ],
+        "queueStart": [
+          14.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          14.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 12.5,
+        "xMax": 16.5,
+        "yMin": -0.5,
+        "yMax": 14.4
+      },
+      "stairKeepClear": {
+        "xMin": 2.0,
+        "xMax": 5.5,
+        "yMin": 12.0,
+        "yMax": 19.0
+      },
+      "collisionBoxes": [
+        {
+          "label": "Fortified contract desk",
+          "role": "service_counter",
+          "center": [
+            14.5,
+            16.5,
+            0.525
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Perimeter planning rig",
+          "role": "primary_station",
+          "center": [
+            23.5,
+            19.2,
+            1.05
+          ],
+          "size": [
+            3.0,
+            1.5,
+            2.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Threat card table",
+          "role": "workstation",
+          "center": [
+            23.0,
+            11.5,
+            0.5
+          ],
+          "size": [
+            3.0,
+            1.5,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Armory cabinets",
+          "role": "stock_storage",
+          "center": [
+            8.0,
+            19.4,
+            1.15
+          ],
+          "size": [
+            4.5,
+            0.7,
+            2.3
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Guard lockers",
+          "role": "stock_storage",
+          "center": [
+            26.55,
+            8.0,
+            1.1
+          ],
+          "size": [
+            0.7,
+            3.5,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Patrol bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.5
+          ],
+          "size": [
+            0.75,
+            2.8,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Armor stand",
+          "role": "decor",
+          "center": [
+            7.0,
+            12.0,
+            1.0
+          ],
+          "size": [
+            1.2,
+            1.2,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Commander desk",
+          "role": "workstation",
+          "center": [
+            15.0,
+            18.8,
+            4.5
+          ],
+          "size": [
+            3.0,
+            1.2,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "War table",
+          "role": "workstation",
+          "center": [
+            15.0,
+            10.5,
+            4.5
+          ],
+          "size": [
+            4.0,
+            2.0,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Archive wall",
+          "role": "stock_storage",
+          "center": [
+            26.5,
+            13.0,
+            5.1
+          ],
+          "size": [
+            0.7,
+            4.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Squad bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            7.0,
+            4.5
+          ],
+          "size": [
+            0.8,
+            3.0,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Reserve armory",
+          "role": "stock_storage",
+          "center": [
+            23.0,
+            19.4,
+            5.1
+          ],
+          "size": [
+            3.5,
+            0.7,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Fortified contract desk",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            14.5,
+            16.5,
+            0.0
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Perimeter planning rig",
+          "kind": "machine",
+          "role": "primary_station",
+          "location": [
+            23.5,
+            19.2,
+            0.0
+          ],
+          "size": [
+            3.0,
+            1.5,
+            2.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Threat card table",
+          "kind": "table",
+          "role": "workstation",
+          "location": [
+            23.0,
+            11.5,
+            0.0
+          ],
+          "size": [
+            3.0,
+            1.5,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Armory cabinets",
+          "kind": "armory",
+          "role": "stock_storage",
+          "location": [
+            8.0,
+            19.4,
+            0.0
+          ],
+          "size": [
+            4.5,
+            0.7,
+            2.3
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Threat wall",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.3,
+            4.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Guard lockers",
+          "kind": "locker",
+          "role": "stock_storage",
+          "location": [
+            26.55,
+            8.0,
+            0.0
+          ],
+          "size": [
+            0.7,
+            3.5,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Patrol bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            2.8,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Armor stand",
+          "kind": "armor_stand",
+          "role": "decor",
+          "location": [
+            7.0,
+            12.0,
+            0.0
+          ],
+          "size": [
+            1.2,
+            1.2,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Panic and flare panel",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            14.5,
+            20.4,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Commander desk",
+          "kind": "desk",
+          "role": "workstation",
+          "location": [
+            15.0,
+            18.8,
+            4.0
+          ],
+          "size": [
+            3.0,
+            1.2,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "War table",
+          "kind": "table",
+          "role": "workstation",
+          "location": [
+            15.0,
+            10.5,
+            4.0
+          ],
+          "size": [
+            4.0,
+            2.0,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Archive wall",
+          "kind": "shelf",
+          "role": "stock_storage",
+          "location": [
+            26.5,
+            13.0,
+            4.0
+          ],
+          "size": [
+            0.7,
+            4.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Squad bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            7.0,
+            4.0
+          ],
+          "size": [
+            0.8,
+            3.0,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Reserve armory",
+          "kind": "armory",
+          "role": "stock_storage",
+          "location": [
+            23.0,
+            19.4,
+            4.0
+          ],
+          "size": [
+            3.5,
+            0.7,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        }
+      ]
+    },
+    {
+      "slug": "eastgate_portal_office",
+      "outpostId": "outpost_portal_eastgate",
+      "displayName": "Eastgate Portal Office",
+      "businessType": "portal_transit_company",
+      "footprint": {
+        "width": 28,
+        "depth": 22,
+        "floors": 2
+      },
+      "expandedFromCurrent": false,
+      "shellOrigin": [
+        1564,
+        65,
+        -147
+      ],
+      "assetWorldAnchor": [
+        1564,
+        66,
+        -147
+      ],
+      "deskWorldPivot": [
+        1578.5,
+        66,
+        -130.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/eastgate_portal_office/eastgate_portal_office.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/eastgate_portal_office/eastgate_portal_office.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          14.5,
+          15.1,
+          0.0
+        ],
+        "staff": [
+          14.5,
+          18.0,
+          0.0
+        ],
+        "queueStart": [
+          14.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          14.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 12.5,
+        "xMax": 16.5,
+        "yMin": -0.5,
+        "yMax": 14.4
+      },
+      "stairKeepClear": {
+        "xMin": 2.0,
+        "xMax": 5.5,
+        "yMin": 12.0,
+        "yMax": 19.0
+      },
+      "collisionBoxes": [
+        {
+          "label": "Route fare terminal",
+          "role": "service_counter",
+          "center": [
+            14.5,
+            16.5,
+            0.525
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Gate control console",
+          "role": "primary_station",
+          "center": [
+            23.5,
+            19.2,
+            1.0
+          ],
+          "size": [
+            3.0,
+            1.5,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Fuel inspection table",
+          "role": "workstation",
+          "center": [
+            23.0,
+            11.5,
+            0.5
+          ],
+          "size": [
+            3.0,
+            1.4,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Fuel canister rack",
+          "role": "stock_storage",
+          "center": [
+            8.0,
+            19.4,
+            1.1
+          ],
+          "size": [
+            4.0,
+            0.8,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Cargo assignment rail",
+          "role": "stock_storage",
+          "center": [
+            26.55,
+            8.0,
+            1.1
+          ],
+          "size": [
+            0.6,
+            4.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Passenger bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.475
+          ],
+          "size": [
+            0.75,
+            3.0,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Safety hold console",
+          "role": "workstation",
+          "center": [
+            7.0,
+            12.0,
+            0.7
+          ],
+          "size": [
+            2.5,
+            1.3,
+            1.4
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Route operator desk",
+          "role": "workstation",
+          "center": [
+            15.0,
+            18.8,
+            4.5
+          ],
+          "size": [
+            3.2,
+            1.4,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Regional route table",
+          "role": "workstation",
+          "center": [
+            15.0,
+            10.5,
+            4.5
+          ],
+          "size": [
+            4.0,
+            2.0,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Ticket records wall",
+          "role": "stock_storage",
+          "center": [
+            26.5,
+            13.0,
+            5.1
+          ],
+          "size": [
+            0.7,
+            4.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Overflow bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            7.0,
+            4.475
+          ],
+          "size": [
+            0.8,
+            3.0,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Power control cabinet",
+          "role": "workstation",
+          "center": [
+            23.0,
+            19.4,
+            5.0
+          ],
+          "size": [
+            3.0,
+            0.7,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Route fare terminal",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            14.5,
+            16.5,
+            0.0
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Gate control console",
+          "kind": "portal_console",
+          "role": "primary_station",
+          "location": [
+            23.5,
+            19.2,
+            0.0
+          ],
+          "size": [
+            3.0,
+            1.5,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Fuel inspection table",
+          "kind": "table",
+          "role": "workstation",
+          "location": [
+            23.0,
+            11.5,
+            0.0
+          ],
+          "size": [
+            3.0,
+            1.4,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Fuel canister rack",
+          "kind": "tank",
+          "role": "stock_storage",
+          "location": [
+            8.0,
+            19.4,
+            0.0
+          ],
+          "size": [
+            4.0,
+            0.8,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Route board",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.3,
+            4.0,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Cargo assignment rail",
+          "kind": "rack",
+          "role": "stock_storage",
+          "location": [
+            26.55,
+            8.0,
+            0.0
+          ],
+          "size": [
+            0.6,
+            4.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Passenger bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            3.0,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Safety hold console",
+          "kind": "machine",
+          "role": "workstation",
+          "location": [
+            7.0,
+            12.0,
+            0.0
+          ],
+          "size": [
+            2.5,
+            1.3,
+            1.4
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Portal status panel",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            14.5,
+            20.4,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Decorative portal arch",
+          "kind": "arch",
+          "role": "decor",
+          "location": [
+            7.0,
+            6.0,
+            0.0
+          ],
+          "size": [
+            3.0,
+            0.6,
+            2.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Route operator desk",
+          "kind": "desk",
+          "role": "workstation",
+          "location": [
+            15.0,
+            18.8,
+            4.0
+          ],
+          "size": [
+            3.2,
+            1.4,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Regional route table",
+          "kind": "table",
+          "role": "workstation",
+          "location": [
+            15.0,
+            10.5,
+            4.0
+          ],
+          "size": [
+            4.0,
+            2.0,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Ticket records wall",
+          "kind": "shelf",
+          "role": "stock_storage",
+          "location": [
+            26.5,
+            13.0,
+            4.0
+          ],
+          "size": [
+            0.7,
+            4.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Overflow bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            7.0,
+            4.0
+          ],
+          "size": [
+            0.8,
+            3.0,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Power control cabinet",
+          "kind": "machine",
+          "role": "workstation",
+          "location": [
+            23.0,
+            19.4,
+            4.0
+          ],
+          "size": [
+            3.0,
+            0.7,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        }
+      ]
+    },
+    {
+      "slug": "southplot_rare_foods",
+      "outpostId": "outpost_rare_foods_southplot",
+      "displayName": "Southplot Rare Foods",
+      "businessType": "biome_farming_rare_foods",
+      "footprint": {
+        "width": 24,
+        "depth": 20,
+        "floors": 1
+      },
+      "expandedFromCurrent": false,
+      "shellOrigin": [
+        1711,
+        49,
+        -598
+      ],
+      "assetWorldAnchor": [
+        1711,
+        50,
+        -598
+      ],
+      "deskWorldPivot": [
+        1723.5,
+        50,
+        -583.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/southplot_rare_foods/southplot_rare_foods.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/southplot_rare_foods/southplot_rare_foods.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          12.5,
+          13.1,
+          0.0
+        ],
+        "staff": [
+          12.5,
+          16.1,
+          0.0
+        ],
+        "queueStart": [
+          12.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          12.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 10.5,
+        "xMax": 14.5,
+        "yMin": -0.5,
+        "yMax": 12.4
+      },
+      "stairKeepClear": null,
+      "collisionBoxes": [
+        {
+          "label": "Harvest scale counter",
+          "role": "service_counter",
+          "center": [
+            12.5,
+            14.5,
+            0.525
+          ],
+          "size": [
+            6.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Seed mill",
+          "role": "primary_station",
+          "center": [
+            19.5,
+            17.6,
+            0.9
+          ],
+          "size": [
+            2.5,
+            1.5,
+            1.8
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Freshness grading table",
+          "role": "workstation",
+          "center": [
+            19.2,
+            10.5,
+            0.5
+          ],
+          "size": [
+            2.8,
+            1.4,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Cold larder cabinet",
+          "role": "stock_storage",
+          "center": [
+            6.0,
+            18.0,
+            1.15
+          ],
+          "size": [
+            4.0,
+            0.8,
+            2.3
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Herb drying rack",
+          "role": "stock_storage",
+          "center": [
+            1.45,
+            9.0,
+            1.0
+          ],
+          "size": [
+            0.6,
+            3.5,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Produce bins",
+          "role": "stock_storage",
+          "center": [
+            22.55,
+            7.5,
+            0.6
+          ],
+          "size": [
+            0.9,
+            3.0,
+            1.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Basket bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.475
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Seedling planter",
+          "role": "decor",
+          "center": [
+            6.0,
+            10.5,
+            0.3
+          ],
+          "size": [
+            2.6,
+            1.2,
+            0.6
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Spoilage bin",
+          "role": "stock_storage",
+          "center": [
+            6.0,
+            6.0,
+            0.6
+          ],
+          "size": [
+            1.2,
+            1.2,
+            1.2
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Harvest scale counter",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            12.5,
+            14.5,
+            0.0
+          ],
+          "size": [
+            6.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Seed mill",
+          "kind": "seed_mill",
+          "role": "primary_station",
+          "location": [
+            19.5,
+            17.6,
+            0.0
+          ],
+          "size": [
+            2.5,
+            1.5,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Freshness grading table",
+          "kind": "table",
+          "role": "workstation",
+          "location": [
+            19.2,
+            10.5,
+            0.0
+          ],
+          "size": [
+            2.8,
+            1.4,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Cold larder cabinet",
+          "kind": "cold_larder",
+          "role": "stock_storage",
+          "location": [
+            6.0,
+            18.0,
+            0.0
+          ],
+          "size": [
+            4.0,
+            0.8,
+            2.3
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Herb drying rack",
+          "kind": "rack",
+          "role": "stock_storage",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.6,
+            3.5,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Produce bins",
+          "kind": "produce_bins",
+          "role": "stock_storage",
+          "location": [
+            22.55,
+            7.5,
+            0.0
+          ],
+          "size": [
+            0.9,
+            3.0,
+            1.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Basket bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Seedling planter",
+          "kind": "planter",
+          "role": "decor",
+          "location": [
+            6.0,
+            10.5,
+            0.0
+          ],
+          "size": [
+            2.6,
+            1.2,
+            0.6
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Freshness board",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            12.5,
+            18.6,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Spoilage bin",
+          "kind": "crate",
+          "role": "stock_storage",
+          "location": [
+            6.0,
+            6.0,
+            0.0
+          ],
+          "size": [
+            1.2,
+            1.2,
+            1.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        }
+      ]
+    },
+    {
+      "slug": "cinderlane_tool_forge",
+      "outpostId": "outpost_tools_cinderlane",
+      "displayName": "Cinderlane Tool Forge",
+      "businessType": "weapons_tools",
+      "footprint": {
+        "width": 28,
+        "depth": 22,
+        "floors": 2
+      },
+      "expandedFromCurrent": false,
+      "shellOrigin": [
+        1616,
+        42,
+        -791
+      ],
+      "assetWorldAnchor": [
+        1616,
+        43,
+        -791
+      ],
+      "deskWorldPivot": [
+        1630.5,
+        43,
+        -774.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/cinderlane_tool_forge/cinderlane_tool_forge.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/cinderlane_tool_forge/cinderlane_tool_forge.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          14.5,
+          15.1,
+          0.0
+        ],
+        "staff": [
+          14.5,
+          18.0,
+          0.0
+        ],
+        "queueStart": [
+          14.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          14.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 12.5,
+        "xMax": 16.5,
+        "yMin": -0.5,
+        "yMax": 14.4
+      },
+      "stairKeepClear": {
+        "xMin": 2.0,
+        "xMax": 5.5,
+        "yMin": 12.0,
+        "yMax": 19.0
+      },
+      "collisionBoxes": [
+        {
+          "label": "Iron and oak repair desk",
+          "role": "service_counter",
+          "center": [
+            14.5,
+            16.5,
+            0.525
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Forge hearth",
+          "role": "primary_station",
+          "center": [
+            23.5,
+            19.2,
+            1.25
+          ],
+          "size": [
+            3.5,
+            2.0,
+            2.5
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Anvil island",
+          "role": "workstation",
+          "center": [
+            23.0,
+            11.5,
+            0.55
+          ],
+          "size": [
+            1.4,
+            1.0,
+            1.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Finished blade rack",
+          "role": "stock_storage",
+          "center": [
+            8.0,
+            19.4,
+            1.1
+          ],
+          "size": [
+            4.0,
+            0.6,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Material rack",
+          "role": "stock_storage",
+          "center": [
+            1.45,
+            9.0,
+            1.1
+          ],
+          "size": [
+            0.7,
+            3.5,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Quench trough",
+          "role": "workstation",
+          "center": [
+            26.55,
+            8.0,
+            0.5
+          ],
+          "size": [
+            0.9,
+            2.5,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Repair intake bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.5
+          ],
+          "size": [
+            0.75,
+            2.4,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Drawers workbench",
+          "role": "workstation",
+          "center": [
+            7.4,
+            12.0,
+            0.5
+          ],
+          "size": [
+            3.2,
+            1.3,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Work order desk",
+          "role": "workstation",
+          "center": [
+            15.0,
+            18.8,
+            4.5
+          ],
+          "size": [
+            3.0,
+            1.2,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Apprentice assembly bench",
+          "role": "workstation",
+          "center": [
+            15.0,
+            10.5,
+            4.5
+          ],
+          "size": [
+            4.0,
+            1.6,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Tool pattern wall",
+          "role": "stock_storage",
+          "center": [
+            26.5,
+            13.0,
+            5.1
+          ],
+          "size": [
+            0.7,
+            4.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Gear inspection bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            7.0,
+            4.475
+          ],
+          "size": [
+            0.8,
+            3.0,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Metal stock cabinet",
+          "role": "stock_storage",
+          "center": [
+            23.0,
+            19.4,
+            5.1
+          ],
+          "size": [
+            3.5,
+            0.8,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Iron and oak repair desk",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            14.5,
+            16.5,
+            0.0
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Forge hearth",
+          "kind": "hearth",
+          "role": "primary_station",
+          "location": [
+            23.5,
+            19.2,
+            0.0
+          ],
+          "size": [
+            3.5,
+            2.0,
+            2.5
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Anvil island",
+          "kind": "anvil",
+          "role": "workstation",
+          "location": [
+            23.0,
+            11.5,
+            0.0
+          ],
+          "size": [
+            1.4,
+            1.0,
+            1.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Finished blade rack",
+          "kind": "armory",
+          "role": "stock_storage",
+          "location": [
+            8.0,
+            19.4,
+            0.0
+          ],
+          "size": [
+            4.0,
+            0.6,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Material rack",
+          "kind": "rack",
+          "role": "stock_storage",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.7,
+            3.5,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Quench trough",
+          "kind": "trough",
+          "role": "workstation",
+          "location": [
+            26.55,
+            8.0,
+            0.0
+          ],
+          "size": [
+            0.9,
+            2.5,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Repair intake bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            2.4,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Drawers workbench",
+          "kind": "workbench",
+          "role": "workstation",
+          "location": [
+            7.4,
+            12.0,
+            0.0
+          ],
+          "size": [
+            3.2,
+            1.3,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Quality and horseshoe wall",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            14.5,
+            20.4,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Work order desk",
+          "kind": "desk",
+          "role": "workstation",
+          "location": [
+            15.0,
+            18.8,
+            4.0
+          ],
+          "size": [
+            3.0,
+            1.2,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Apprentice assembly bench",
+          "kind": "workbench",
+          "role": "workstation",
+          "location": [
+            15.0,
+            10.5,
+            4.0
+          ],
+          "size": [
+            4.0,
+            1.6,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Tool pattern wall",
+          "kind": "armory",
+          "role": "stock_storage",
+          "location": [
+            26.5,
+            13.0,
+            4.0
+          ],
+          "size": [
+            0.7,
+            4.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Gear inspection bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            7.0,
+            4.0
+          ],
+          "size": [
+            0.8,
+            3.0,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Metal stock cabinet",
+          "kind": "cabinet",
+          "role": "stock_storage",
+          "location": [
+            23.0,
+            19.4,
+            4.0
+          ],
+          "size": [
+            3.5,
+            0.8,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        }
+      ]
+    },
+    {
+      "slug": "moonstall_ward_shop",
+      "outpostId": "outpost_magic_moonstall",
+      "displayName": "Moonstall Ward Shop",
+      "businessType": "magic_goods",
+      "footprint": {
+        "width": 24,
+        "depth": 20,
+        "floors": 1
+      },
+      "expandedFromCurrent": false,
+      "shellOrigin": [
+        1715,
+        26,
+        -916
+      ],
+      "assetWorldAnchor": [
+        1715,
+        27,
+        -916
+      ],
+      "deskWorldPivot": [
+        1727.5,
+        27,
+        -901.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/moonstall_ward_shop/moonstall_ward_shop.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/moonstall_ward_shop/moonstall_ward_shop.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          12.5,
+          13.1,
+          0.0
+        ],
+        "staff": [
+          12.5,
+          16.1,
+          0.0
+        ],
+        "queueStart": [
+          12.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          12.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 10.5,
+        "xMax": 14.5,
+        "yMin": -0.5,
+        "yMax": 12.4
+      },
+      "stairKeepClear": null,
+      "collisionBoxes": [
+        {
+          "label": "Ward tray counter",
+          "role": "service_counter",
+          "center": [
+            12.5,
+            14.5,
+            0.525
+          ],
+          "size": [
+            6.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Thermolite",
+          "role": "primary_station",
+          "center": [
+            19.5,
+            17.6,
+            1.0
+          ],
+          "size": [
+            2.0,
+            1.5,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Brewing cauldron",
+          "role": "workstation",
+          "center": [
+            19.2,
+            10.5,
+            0.65
+          ],
+          "size": [
+            1.5,
+            1.5,
+            1.3
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Potion and charm shelves",
+          "role": "stock_storage",
+          "center": [
+            6.0,
+            18.0,
+            1.1
+          ],
+          "size": [
+            4.0,
+            0.6,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Charm wall",
+          "role": "stock_storage",
+          "center": [
+            1.45,
+            9.0,
+            1.05
+          ],
+          "size": [
+            0.6,
+            3.5,
+            2.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Rare component cabinet",
+          "role": "stock_storage",
+          "center": [
+            22.55,
+            7.5,
+            1.1
+          ],
+          "size": [
+            0.7,
+            3.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Arcane reading bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.475
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Ward tray counter",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            12.5,
+            14.5,
+            0.0
+          ],
+          "size": [
+            6.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Thermolite",
+          "kind": "crystal_machine",
+          "role": "primary_station",
+          "location": [
+            19.5,
+            17.6,
+            0.0
+          ],
+          "size": [
+            2.0,
+            1.5,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Brewing cauldron",
+          "kind": "cauldron",
+          "role": "workstation",
+          "location": [
+            19.2,
+            10.5,
+            0.0
+          ],
+          "size": [
+            1.5,
+            1.5,
+            1.3
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Potion and charm shelves",
+          "kind": "potion_shelf",
+          "role": "stock_storage",
+          "location": [
+            6.0,
+            18.0,
+            0.0
+          ],
+          "size": [
+            4.0,
+            0.6,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Charm wall",
+          "kind": "potion_shelf",
+          "role": "stock_storage",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.6,
+            3.5,
+            2.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Rare component cabinet",
+          "kind": "cabinet",
+          "role": "stock_storage",
+          "location": [
+            22.55,
+            7.5,
+            0.0
+          ],
+          "size": [
+            0.7,
+            3.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Arcane reading bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Ward circle plinth",
+          "kind": "ward_plinth",
+          "role": "decor",
+          "location": [
+            6.0,
+            10.5,
+            0.0
+          ],
+          "size": [
+            2.0,
+            2.0,
+            0.15
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Anomaly warning panel",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            12.5,
+            18.6,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Rune lantern",
+          "kind": "lantern",
+          "role": "decor",
+          "location": [
+            6.0,
+            6.0,
+            0.0
+          ],
+          "size": [
+            0.5,
+            0.5,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        }
+      ]
+    },
+    {
+      "slug": "westtrail_guide_table",
+      "outpostId": "outpost_exploration_westtrail",
+      "displayName": "Westtrail Guide Table",
+      "businessType": "exploration_guide",
+      "footprint": {
+        "width": 24,
+        "depth": 20,
+        "floors": 1
+      },
+      "expandedFromCurrent": false,
+      "shellOrigin": [
+        1529,
+        51,
+        -705
+      ],
+      "assetWorldAnchor": [
+        1529,
+        52,
+        -705
+      ],
+      "deskWorldPivot": [
+        1541.5,
+        52,
+        -690.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/westtrail_guide_table/westtrail_guide_table.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/westtrail_guide_table/westtrail_guide_table.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          12.5,
+          13.1,
+          0.0
+        ],
+        "staff": [
+          12.5,
+          16.1,
+          0.0
+        ],
+        "queueStart": [
+          12.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          12.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 10.5,
+        "xMax": 14.5,
+        "yMin": -0.5,
+        "yMax": 12.4
+      },
+      "stairKeepClear": null,
+      "collisionBoxes": [
+        {
+          "label": "Map table customer desk",
+          "role": "service_counter",
+          "center": [
+            12.5,
+            14.5,
+            0.525
+          ],
+          "size": [
+            6.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Survey camera station",
+          "role": "primary_station",
+          "center": [
+            19.5,
+            17.6,
+            0.85
+          ],
+          "size": [
+            2.2,
+            1.4,
+            1.7
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Expedition planning table",
+          "role": "workstation",
+          "center": [
+            19.2,
+            10.5,
+            0.5
+          ],
+          "size": [
+            3.0,
+            1.5,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Trail supply rack",
+          "role": "stock_storage",
+          "center": [
+            6.0,
+            18.0,
+            1.05
+          ],
+          "size": [
+            4.0,
+            0.7,
+            2.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Lantern and gear rack",
+          "role": "stock_storage",
+          "center": [
+            22.55,
+            7.5,
+            1.05
+          ],
+          "size": [
+            0.6,
+            3.0,
+            2.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Customer bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.475
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Field kit display",
+          "role": "decor",
+          "center": [
+            6.0,
+            10.5,
+            0.55
+          ],
+          "size": [
+            2.0,
+            1.2,
+            1.1
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Map table customer desk",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            12.5,
+            14.5,
+            0.0
+          ],
+          "size": [
+            6.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Survey camera station",
+          "kind": "camera_tripod",
+          "role": "primary_station",
+          "location": [
+            19.5,
+            17.6,
+            0.0
+          ],
+          "size": [
+            2.2,
+            1.4,
+            1.7
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Expedition planning table",
+          "kind": "table",
+          "role": "workstation",
+          "location": [
+            19.2,
+            10.5,
+            0.0
+          ],
+          "size": [
+            3.0,
+            1.5,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Trail supply rack",
+          "kind": "rack",
+          "role": "stock_storage",
+          "location": [
+            6.0,
+            18.0,
+            0.0
+          ],
+          "size": [
+            4.0,
+            0.7,
+            2.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Route wall map",
+          "kind": "map_board",
+          "role": "dashboard",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.25,
+            4.0,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Lantern and gear rack",
+          "kind": "rack",
+          "role": "stock_storage",
+          "location": [
+            22.55,
+            7.5,
+            0.0
+          ],
+          "size": [
+            0.6,
+            3.0,
+            2.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Customer bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Field kit display",
+          "kind": "plinth",
+          "role": "decor",
+          "location": [
+            6.0,
+            10.5,
+            0.0
+          ],
+          "size": [
+            2.0,
+            1.2,
+            1.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Hazard pin board",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            12.5,
+            18.6,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        }
+      ]
+    },
+    {
+      "slug": "keylot_property_office",
+      "outpostId": "outpost_property_keylot",
+      "displayName": "Keylot Property Office",
+      "businessType": "custom_home_property_development",
+      "footprint": {
+        "width": 24,
+        "depth": 20,
+        "floors": 1
+      },
+      "expandedFromCurrent": false,
+      "shellOrigin": [
+        1217,
+        53,
+        -799
+      ],
+      "assetWorldAnchor": [
+        1217,
+        54,
+        -799
+      ],
+      "deskWorldPivot": [
+        1229.5,
+        54,
+        -784.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/keylot_property_office/keylot_property_office.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/keylot_property_office/keylot_property_office.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          12.5,
+          13.1,
+          0.0
+        ],
+        "staff": [
+          12.5,
+          16.1,
+          0.0
+        ],
+        "queueStart": [
+          12.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          12.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 10.5,
+        "xMax": 14.5,
+        "yMin": -0.5,
+        "yMax": 12.4
+      },
+      "stairKeepClear": null,
+      "collisionBoxes": [
+        {
+          "label": "Blueprint desk",
+          "role": "service_counter",
+          "center": [
+            12.5,
+            14.5,
+            0.525
+          ],
+          "size": [
+            6.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Model home display",
+          "role": "primary_station",
+          "center": [
+            19.5,
+            17.6,
+            0.6
+          ],
+          "size": [
+            2.0,
+            1.5,
+            1.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Drafting table",
+          "role": "workstation",
+          "center": [
+            19.2,
+            10.5,
+            0.6
+          ],
+          "size": [
+            3.0,
+            1.5,
+            1.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Deed and permit cabinet",
+          "role": "stock_storage",
+          "center": [
+            6.0,
+            18.0,
+            1.1
+          ],
+          "size": [
+            4.0,
+            0.6,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Material rack",
+          "role": "stock_storage",
+          "center": [
+            22.55,
+            7.5,
+            1.1
+          ],
+          "size": [
+            0.7,
+            3.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Signing bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.475
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Sample table",
+          "role": "service_table",
+          "center": [
+            6.0,
+            10.5,
+            0.475
+          ],
+          "size": [
+            2.4,
+            1.2,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Survey tool stand",
+          "role": "decor",
+          "center": [
+            6.0,
+            6.0,
+            0.9
+          ],
+          "size": [
+            1.2,
+            1.2,
+            1.8
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Blueprint desk",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            12.5,
+            14.5,
+            0.0
+          ],
+          "size": [
+            6.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Model home display",
+          "kind": "model_home",
+          "role": "primary_station",
+          "location": [
+            19.5,
+            17.6,
+            0.0
+          ],
+          "size": [
+            2.0,
+            1.5,
+            1.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Drafting table",
+          "kind": "drafting",
+          "role": "workstation",
+          "location": [
+            19.2,
+            10.5,
+            0.0
+          ],
+          "size": [
+            3.0,
+            1.5,
+            1.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Deed and permit cabinet",
+          "kind": "cabinet",
+          "role": "stock_storage",
+          "location": [
+            6.0,
+            18.0,
+            0.0
+          ],
+          "size": [
+            4.0,
+            0.6,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Finish sample wall",
+          "kind": "swatch_board",
+          "role": "decor",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.4,
+            4.0,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Material rack",
+          "kind": "rack",
+          "role": "stock_storage",
+          "location": [
+            22.55,
+            7.5,
+            0.0
+          ],
+          "size": [
+            0.7,
+            3.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Signing bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Sample table",
+          "kind": "table",
+          "role": "service_table",
+          "location": [
+            6.0,
+            10.5,
+            0.0
+          ],
+          "size": [
+            2.4,
+            1.2,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Permit stage board",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            12.5,
+            18.6,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Survey tool stand",
+          "kind": "rack",
+          "role": "decor",
+          "location": [
+            6.0,
+            6.0,
+            0.0
+          ],
+          "size": [
+            1.2,
+            1.2,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        }
+      ]
+    },
+    {
+      "slug": "brightcart_general_house",
+      "outpostId": "outpost_trader_brightcart",
+      "displayName": "Brightcart General House",
+      "businessType": "general_trader",
+      "footprint": {
+        "width": 24,
+        "depth": 20,
+        "floors": 1
+      },
+      "expandedFromCurrent": false,
+      "shellOrigin": [
+        974,
+        52,
+        -944
+      ],
+      "assetWorldAnchor": [
+        974,
+        53,
+        -944
+      ],
+      "deskWorldPivot": [
+        986.5,
+        53,
+        -929.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/brightcart_general_house/brightcart_general_house.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/brightcart_general_house/brightcart_general_house.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          12.5,
+          13.1,
+          0.0
+        ],
+        "staff": [
+          12.5,
+          16.1,
+          0.0
+        ],
+        "queueStart": [
+          12.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          12.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 10.5,
+        "xMax": 14.5,
+        "yMin": -0.5,
+        "yMax": 12.4
+      },
+      "stairKeepClear": null,
+      "collisionBoxes": [
+        {
+          "label": "Stock ledger counter",
+          "role": "service_counter",
+          "center": [
+            12.5,
+            14.5,
+            0.525
+          ],
+          "size": [
+            6.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Parcel and trade scale",
+          "role": "primary_station",
+          "center": [
+            19.5,
+            17.6,
+            0.6
+          ],
+          "size": [
+            2.2,
+            1.4,
+            1.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "General prep table",
+          "role": "workstation",
+          "center": [
+            19.2,
+            10.5,
+            0.5
+          ],
+          "size": [
+            2.6,
+            1.3,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Ready order shelves",
+          "role": "stock_storage",
+          "center": [
+            6.0,
+            18.0,
+            1.05
+          ],
+          "size": [
+            4.0,
+            0.7,
+            2.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Dry goods shelves",
+          "role": "stock_storage",
+          "center": [
+            1.45,
+            9.0,
+            1.1
+          ],
+          "size": [
+            0.7,
+            4.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Tool cabinets",
+          "role": "stock_storage",
+          "center": [
+            22.55,
+            7.5,
+            1.1
+          ],
+          "size": [
+            0.7,
+            3.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Customer basket bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.475
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Produce display",
+          "role": "stock_storage",
+          "center": [
+            6.0,
+            10.5,
+            0.55
+          ],
+          "size": [
+            2.8,
+            1.3,
+            1.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Barrel and crate cluster",
+          "role": "stock_storage",
+          "center": [
+            6.0,
+            6.0,
+            0.65
+          ],
+          "size": [
+            1.8,
+            1.5,
+            1.3
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Stock ledger counter",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            12.5,
+            14.5,
+            0.0
+          ],
+          "size": [
+            6.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Parcel and trade scale",
+          "kind": "scale_table",
+          "role": "primary_station",
+          "location": [
+            19.5,
+            17.6,
+            0.0
+          ],
+          "size": [
+            2.2,
+            1.4,
+            1.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "General prep table",
+          "kind": "table",
+          "role": "workstation",
+          "location": [
+            19.2,
+            10.5,
+            0.0
+          ],
+          "size": [
+            2.6,
+            1.3,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Ready order shelves",
+          "kind": "shelf",
+          "role": "stock_storage",
+          "location": [
+            6.0,
+            18.0,
+            0.0
+          ],
+          "size": [
+            4.0,
+            0.7,
+            2.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Dry goods shelves",
+          "kind": "shelf",
+          "role": "stock_storage",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.7,
+            4.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Tool cabinets",
+          "kind": "cabinet",
+          "role": "stock_storage",
+          "location": [
+            22.55,
+            7.5,
+            0.0
+          ],
+          "size": [
+            0.7,
+            3.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Customer basket bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Produce display",
+          "kind": "produce_bins",
+          "role": "stock_storage",
+          "location": [
+            6.0,
+            10.5,
+            0.0
+          ],
+          "size": [
+            2.8,
+            1.3,
+            1.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Price chalkboard",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            12.5,
+            18.6,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Barrel and crate cluster",
+          "kind": "crate_cluster",
+          "role": "stock_storage",
+          "location": [
+            6.0,
+            6.0,
+            0.0
+          ],
+          "size": [
+            1.8,
+            1.5,
+            1.3
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        }
+      ]
+    },
+    {
+      "slug": "ridgecooler_larder",
+      "outpostId": "outpost_hunter_ridgecooler",
+      "displayName": "Ridgecooler Larder",
+      "businessType": "hunter_wild_meat",
+      "footprint": {
+        "width": 28,
+        "depth": 22,
+        "floors": 1
+      },
+      "expandedFromCurrent": false,
+      "shellOrigin": [
+        762,
+        36,
+        -678
+      ],
+      "assetWorldAnchor": [
+        762,
+        37,
+        -678
+      ],
+      "deskWorldPivot": [
+        776.5,
+        37,
+        -661.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/ridgecooler_larder/ridgecooler_larder.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/ridgecooler_larder/ridgecooler_larder.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          14.5,
+          15.1,
+          0.0
+        ],
+        "staff": [
+          14.5,
+          18.0,
+          0.0
+        ],
+        "queueStart": [
+          14.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          14.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 12.5,
+        "xMax": 16.5,
+        "yMin": -0.5,
+        "yMax": 14.4
+      },
+      "stairKeepClear": null,
+      "collisionBoxes": [
+        {
+          "label": "Stone top cold counter",
+          "role": "service_counter",
+          "center": [
+            14.5,
+            16.5,
+            0.525
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Cold prep table",
+          "role": "primary_station",
+          "center": [
+            23.5,
+            19.2,
+            0.5
+          ],
+          "size": [
+            3.2,
+            1.5,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Ice display trough",
+          "role": "stock_storage",
+          "center": [
+            23.0,
+            11.5,
+            0.5
+          ],
+          "size": [
+            3.0,
+            1.4,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Walk-in larder face",
+          "role": "stock_storage",
+          "center": [
+            8.0,
+            19.4,
+            1.2
+          ],
+          "size": [
+            5.0,
+            1.2,
+            2.4
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Hanging cuts rack",
+          "role": "stock_storage",
+          "center": [
+            1.45,
+            9.0,
+            1.15
+          ],
+          "size": [
+            0.8,
+            4.0,
+            2.3
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Wrapped meat shelving",
+          "role": "stock_storage",
+          "center": [
+            26.55,
+            8.0,
+            1.1
+          ],
+          "size": [
+            0.7,
+            4.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Packing bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.475
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Wash table",
+          "role": "workstation",
+          "center": [
+            7.0,
+            12.0,
+            0.5
+          ],
+          "size": [
+            2.4,
+            1.2,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Stone top cold counter",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            14.5,
+            16.5,
+            0.0
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Cold prep table",
+          "kind": "cold_table",
+          "role": "primary_station",
+          "location": [
+            23.5,
+            19.2,
+            0.0
+          ],
+          "size": [
+            3.2,
+            1.5,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Ice display trough",
+          "kind": "ice_trough",
+          "role": "stock_storage",
+          "location": [
+            23.0,
+            11.5,
+            0.0
+          ],
+          "size": [
+            3.0,
+            1.4,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Walk-in larder face",
+          "kind": "cold_larder",
+          "role": "stock_storage",
+          "location": [
+            8.0,
+            19.4,
+            0.0
+          ],
+          "size": [
+            5.0,
+            1.2,
+            2.4
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Hanging cuts rack",
+          "kind": "meat_rack",
+          "role": "stock_storage",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.8,
+            4.0,
+            2.3
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Wrapped meat shelving",
+          "kind": "meat_shelf",
+          "role": "stock_storage",
+          "location": [
+            26.55,
+            8.0,
+            0.0
+          ],
+          "size": [
+            0.7,
+            4.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Packing bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Wash table",
+          "kind": "wash_table",
+          "role": "workstation",
+          "location": [
+            7.0,
+            12.0,
+            0.0
+          ],
+          "size": [
+            2.4,
+            1.2,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Ecology and freshness board",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            14.5,
+            20.4,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        }
+      ]
+    },
+    {
+      "slug": "greenlamp_walk_in_clinic",
+      "outpostId": "outpost_clinic_greenlamp",
+      "displayName": "Greenlamp Walk-In Clinic",
+      "businessType": "medical_doctor",
+      "footprint": {
+        "width": 28,
+        "depth": 22,
+        "floors": 1
+      },
+      "expandedFromCurrent": true,
+      "shellOrigin": [
+        642,
+        64,
+        -193
+      ],
+      "assetWorldAnchor": [
+        642,
+        65,
+        -193
+      ],
+      "deskWorldPivot": [
+        656.5,
+        65,
+        -176.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/greenlamp_walk_in_clinic/greenlamp_walk_in_clinic.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/greenlamp_walk_in_clinic/greenlamp_walk_in_clinic.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          14.5,
+          15.1,
+          0.0
+        ],
+        "staff": [
+          14.5,
+          18.0,
+          0.0
+        ],
+        "queueStart": [
+          14.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          14.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 12.5,
+        "xMax": 16.5,
+        "yMin": -0.5,
+        "yMax": 14.4
+      },
+      "stairKeepClear": null,
+      "collisionBoxes": [
+        {
+          "label": "Triage desk",
+          "role": "service_counter",
+          "center": [
+            14.5,
+            16.5,
+            0.525
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Treatment cot",
+          "role": "primary_station",
+          "center": [
+            23.5,
+            19.2,
+            0.375
+          ],
+          "size": [
+            1.2,
+            2.2,
+            0.75
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Diagnostic Thermolite",
+          "role": "workstation",
+          "center": [
+            23.0,
+            11.5,
+            0.9
+          ],
+          "size": [
+            2.0,
+            1.4,
+            1.8
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Medicine cabinet",
+          "role": "stock_storage",
+          "center": [
+            8.0,
+            19.4,
+            1.1
+          ],
+          "size": [
+            4.0,
+            0.6,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Patient record shelf",
+          "role": "stock_storage",
+          "center": [
+            1.45,
+            9.0,
+            1.0
+          ],
+          "size": [
+            0.6,
+            3.0,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Wash station",
+          "role": "workstation",
+          "center": [
+            26.55,
+            8.0,
+            0.6
+          ],
+          "size": [
+            0.8,
+            2.5,
+            1.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Clinic waiting bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.475
+          ],
+          "size": [
+            0.75,
+            3.0,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Second treatment cot",
+          "role": "workstation",
+          "center": [
+            7.0,
+            12.0,
+            0.375
+          ],
+          "size": [
+            1.2,
+            2.2,
+            0.75
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Triage desk",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            14.5,
+            16.5,
+            0.0
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Treatment cot",
+          "kind": "bed",
+          "role": "primary_station",
+          "location": [
+            23.5,
+            19.2,
+            0.0
+          ],
+          "size": [
+            1.2,
+            2.2,
+            0.75
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Diagnostic Thermolite",
+          "kind": "crystal_machine",
+          "role": "workstation",
+          "location": [
+            23.0,
+            11.5,
+            0.0
+          ],
+          "size": [
+            2.0,
+            1.4,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Medicine cabinet",
+          "kind": "potion_shelf",
+          "role": "stock_storage",
+          "location": [
+            8.0,
+            19.4,
+            0.0
+          ],
+          "size": [
+            4.0,
+            0.6,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Patient record shelf",
+          "kind": "shelf",
+          "role": "stock_storage",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.6,
+            3.0,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Wash station",
+          "kind": "wash_table",
+          "role": "workstation",
+          "location": [
+            26.55,
+            8.0,
+            0.0
+          ],
+          "size": [
+            0.8,
+            2.5,
+            1.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Clinic waiting bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            3.0,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Second treatment cot",
+          "kind": "bed_screen",
+          "role": "workstation",
+          "location": [
+            7.0,
+            12.0,
+            0.0
+          ],
+          "size": [
+            1.2,
+            2.2,
+            0.75
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Severity triage board",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            14.5,
+            20.4,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        }
+      ]
+    },
+    {
+      "slug": "returnstone_pad_office",
+      "outpostId": "outpost_teleport_returnstone",
+      "displayName": "Returnstone Pad Office",
+      "businessType": "teleport_owner",
+      "footprint": {
+        "width": 24,
+        "depth": 20,
+        "floors": 1
+      },
+      "expandedFromCurrent": false,
+      "shellOrigin": [
+        30,
+        40,
+        -40
+      ],
+      "assetWorldAnchor": [
+        30,
+        41,
+        -40
+      ],
+      "deskWorldPivot": [
+        42.5,
+        41,
+        -25.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/returnstone_pad_office/returnstone_pad_office.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/returnstone_pad_office/returnstone_pad_office.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          12.5,
+          13.1,
+          0.0
+        ],
+        "staff": [
+          12.5,
+          16.1,
+          0.0
+        ],
+        "queueStart": [
+          12.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          12.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 10.5,
+        "xMax": 14.5,
+        "yMin": -0.5,
+        "yMax": 12.4
+      },
+      "stairKeepClear": null,
+      "collisionBoxes": [
+        {
+          "label": "Pad terminal",
+          "role": "service_counter",
+          "center": [
+            12.5,
+            14.5,
+            0.525
+          ],
+          "size": [
+            6.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Homestone console",
+          "role": "primary_station",
+          "center": [
+            19.5,
+            17.6,
+            0.9
+          ],
+          "size": [
+            2.2,
+            1.6,
+            1.8
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Calibration table",
+          "role": "workstation",
+          "center": [
+            19.2,
+            10.5,
+            0.5
+          ],
+          "size": [
+            2.4,
+            1.3,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Access token cabinet",
+          "role": "stock_storage",
+          "center": [
+            6.0,
+            18.0,
+            1.05
+          ],
+          "size": [
+            4.0,
+            0.6,
+            2.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Fuel cell rack",
+          "role": "stock_storage",
+          "center": [
+            22.55,
+            7.5,
+            1.05
+          ],
+          "size": [
+            0.7,
+            3.0,
+            2.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Access waiting bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.475
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Pad terminal",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            12.5,
+            14.5,
+            0.0
+          ],
+          "size": [
+            6.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Homestone console",
+          "kind": "crystal_machine",
+          "role": "primary_station",
+          "location": [
+            19.5,
+            17.6,
+            0.0
+          ],
+          "size": [
+            2.2,
+            1.6,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Calibration table",
+          "kind": "table",
+          "role": "workstation",
+          "location": [
+            19.2,
+            10.5,
+            0.0
+          ],
+          "size": [
+            2.4,
+            1.3,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Access token cabinet",
+          "kind": "cabinet",
+          "role": "stock_storage",
+          "location": [
+            6.0,
+            18.0,
+            0.0
+          ],
+          "size": [
+            4.0,
+            0.6,
+            2.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Link stability panel",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.3,
+            3.5,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Fuel cell rack",
+          "kind": "tank",
+          "role": "stock_storage",
+          "location": [
+            22.55,
+            7.5,
+            0.0
+          ],
+          "size": [
+            0.7,
+            3.0,
+            2.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Access waiting bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Return pad plinth",
+          "kind": "ward_plinth",
+          "role": "decor",
+          "location": [
+            6.0,
+            10.5,
+            0.0
+          ],
+          "size": [
+            2.8,
+            2.8,
+            0.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Private route ledger",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            12.5,
+            18.6,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Calibration lantern",
+          "kind": "lantern",
+          "role": "decor",
+          "location": [
+            6.0,
+            6.0,
+            0.0
+          ],
+          "size": [
+            0.5,
+            0.5,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        }
+      ]
+    },
+    {
+      "slug": "clearbarrel_cleanup_yard",
+      "outpostId": "outpost_sanitation_clearbarrel",
+      "displayName": "Clearbarrel Cleanup Yard",
+      "businessType": "waste_sanitation_cleanup",
+      "footprint": {
+        "width": 24,
+        "depth": 20,
+        "floors": 1
+      },
+      "expandedFromCurrent": false,
+      "shellOrigin": [
+        423,
+        44,
+        -357
+      ],
+      "assetWorldAnchor": [
+        423,
+        45,
+        -357
+      ],
+      "deskWorldPivot": [
+        435.5,
+        45,
+        -342.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/clearbarrel_cleanup_yard/clearbarrel_cleanup_yard.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/clearbarrel_cleanup_yard/clearbarrel_cleanup_yard.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          12.5,
+          13.1,
+          0.0
+        ],
+        "staff": [
+          12.5,
+          16.1,
+          0.0
+        ],
+        "queueStart": [
+          12.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          12.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 10.5,
+        "xMax": 14.5,
+        "yMin": -0.5,
+        "yMax": 12.4
+      },
+      "stairKeepClear": null,
+      "collisionBoxes": [
+        {
+          "label": "Cleanup dispatch desk",
+          "role": "service_counter",
+          "center": [
+            12.5,
+            14.5,
+            0.525
+          ],
+          "size": [
+            6.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Composter",
+          "role": "primary_station",
+          "center": [
+            19.5,
+            17.6,
+            1.0
+          ],
+          "size": [
+            2.2,
+            1.6,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Decontamination spray station",
+          "role": "workstation",
+          "center": [
+            19.2,
+            10.5,
+            0.9
+          ],
+          "size": [
+            2.2,
+            1.4,
+            1.8
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Reagent and PPE cabinet",
+          "role": "stock_storage",
+          "center": [
+            6.0,
+            18.0,
+            1.1
+          ],
+          "size": [
+            4.0,
+            0.6,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Waste sorting rack",
+          "role": "stock_storage",
+          "center": [
+            1.45,
+            9.0,
+            1.0
+          ],
+          "size": [
+            0.8,
+            4.0,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Sealed barrel rack",
+          "role": "stock_storage",
+          "center": [
+            22.55,
+            7.5,
+            1.0
+          ],
+          "size": [
+            0.9,
+            3.5,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Cleanup gear bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.475
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Wash trough",
+          "role": "workstation",
+          "center": [
+            6.0,
+            10.5,
+            0.55
+          ],
+          "size": [
+            2.8,
+            1.3,
+            1.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Spill kit cabinet",
+          "role": "stock_storage",
+          "center": [
+            6.0,
+            6.0,
+            0.7
+          ],
+          "size": [
+            1.2,
+            0.8,
+            1.4
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Cleanup dispatch desk",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            12.5,
+            14.5,
+            0.0
+          ],
+          "size": [
+            6.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Composter",
+          "kind": "composter",
+          "role": "primary_station",
+          "location": [
+            19.5,
+            17.6,
+            0.0
+          ],
+          "size": [
+            2.2,
+            1.6,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Decontamination spray station",
+          "kind": "wash_machine",
+          "role": "workstation",
+          "location": [
+            19.2,
+            10.5,
+            0.0
+          ],
+          "size": [
+            2.2,
+            1.4,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Reagent and PPE cabinet",
+          "kind": "cabinet",
+          "role": "stock_storage",
+          "location": [
+            6.0,
+            18.0,
+            0.0
+          ],
+          "size": [
+            4.0,
+            0.6,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Waste sorting rack",
+          "kind": "rack",
+          "role": "stock_storage",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.8,
+            4.0,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Sealed barrel rack",
+          "kind": "tank",
+          "role": "stock_storage",
+          "location": [
+            22.55,
+            7.5,
+            0.0
+          ],
+          "size": [
+            0.9,
+            3.5,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Cleanup gear bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            2.4,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Wash trough",
+          "kind": "trough",
+          "role": "workstation",
+          "location": [
+            6.0,
+            10.5,
+            0.0
+          ],
+          "size": [
+            2.8,
+            1.3,
+            1.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Classification board",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            12.5,
+            18.6,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Spill kit cabinet",
+          "kind": "cabinet",
+          "role": "stock_storage",
+          "location": [
+            6.0,
+            6.0,
+            0.0
+          ],
+          "size": [
+            1.2,
+            0.8,
+            1.4
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        }
+      ]
+    },
+    {
+      "slug": "hingehall_repair_shop",
+      "outpostId": "outpost_repair_hingehall",
+      "displayName": "Hingehall Repair Shop",
+      "businessType": "repair_maintenance_person",
+      "footprint": {
+        "width": 28,
+        "depth": 22,
+        "floors": 1
+      },
+      "expandedFromCurrent": true,
+      "shellOrigin": [
+        415,
+        45,
+        -328
+      ],
+      "assetWorldAnchor": [
+        415,
+        46,
+        -328
+      ],
+      "deskWorldPivot": [
+        429.5,
+        46,
+        -311.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/hingehall_repair_shop/hingehall_repair_shop.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/hingehall_repair_shop/hingehall_repair_shop.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          14.5,
+          15.1,
+          0.0
+        ],
+        "staff": [
+          14.5,
+          18.0,
+          0.0
+        ],
+        "queueStart": [
+          14.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          14.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 12.5,
+        "xMax": 16.5,
+        "yMin": -0.5,
+        "yMax": 14.4
+      },
+      "stairKeepClear": null,
+      "collisionBoxes": [
+        {
+          "label": "Fix-it customer desk",
+          "role": "service_counter",
+          "center": [
+            14.5,
+            16.5,
+            0.525
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Main repair workbench",
+          "role": "primary_station",
+          "center": [
+            23.5,
+            19.2,
+            0.55
+          ],
+          "size": [
+            3.2,
+            1.4,
+            1.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Vise bench",
+          "role": "workstation",
+          "center": [
+            23.0,
+            11.5,
+            0.5
+          ],
+          "size": [
+            2.5,
+            1.2,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Parts cabinet",
+          "role": "stock_storage",
+          "center": [
+            8.0,
+            19.4,
+            1.1
+          ],
+          "size": [
+            4.5,
+            0.7,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Broken object rack",
+          "role": "stock_storage",
+          "center": [
+            26.55,
+            8.0,
+            1.1
+          ],
+          "size": [
+            0.8,
+            4.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Waiting and intake bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.475
+          ],
+          "size": [
+            0.75,
+            3.0,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Repair intake table",
+          "role": "service_table",
+          "center": [
+            7.0,
+            12.0,
+            0.5
+          ],
+          "size": [
+            2.8,
+            1.3,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Parts cart",
+          "role": "stock_storage",
+          "center": [
+            7.0,
+            6.0,
+            0.5
+          ],
+          "size": [
+            1.2,
+            0.9,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Fix-it customer desk",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            14.5,
+            16.5,
+            0.0
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Main repair workbench",
+          "kind": "workbench",
+          "role": "primary_station",
+          "location": [
+            23.5,
+            19.2,
+            0.0
+          ],
+          "size": [
+            3.2,
+            1.4,
+            1.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Vise bench",
+          "kind": "workbench",
+          "role": "workstation",
+          "location": [
+            23.0,
+            11.5,
+            0.0
+          ],
+          "size": [
+            2.5,
+            1.2,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Parts cabinet",
+          "kind": "cabinet",
+          "role": "stock_storage",
+          "location": [
+            8.0,
+            19.4,
+            0.0
+          ],
+          "size": [
+            4.5,
+            0.7,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Tool pegboard",
+          "kind": "tool_board",
+          "role": "decor",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.4,
+            4.0,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Broken object rack",
+          "kind": "rack",
+          "role": "stock_storage",
+          "location": [
+            26.55,
+            8.0,
+            0.0
+          ],
+          "size": [
+            0.8,
+            4.0,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Waiting and intake bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            3.0,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Repair intake table",
+          "kind": "table",
+          "role": "service_table",
+          "location": [
+            7.0,
+            12.0,
+            0.0
+          ],
+          "size": [
+            2.8,
+            1.3,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Work order board",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            14.5,
+            20.4,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Parts cart",
+          "kind": "cart",
+          "role": "stock_storage",
+          "location": [
+            7.0,
+            6.0,
+            0.0
+          ],
+          "size": [
+            1.2,
+            0.9,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        }
+      ]
+    },
+    {
+      "slug": "redpot_service_kitchen",
+      "outpostId": "outpost_restaurant_redpot",
+      "displayName": "Redpot Service Kitchen",
+      "businessType": "food_service_restaurant",
+      "footprint": {
+        "width": 28,
+        "depth": 22,
+        "floors": 1
+      },
+      "expandedFromCurrent": true,
+      "shellOrigin": [
+        411,
+        43,
+        -393
+      ],
+      "assetWorldAnchor": [
+        411,
+        44,
+        -393
+      ],
+      "deskWorldPivot": [
+        425.5,
+        44,
+        -376.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/redpot_service_kitchen/redpot_service_kitchen.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/redpot_service_kitchen/redpot_service_kitchen.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          14.5,
+          15.1,
+          0.0
+        ],
+        "staff": [
+          14.5,
+          18.0,
+          0.0
+        ],
+        "queueStart": [
+          14.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          14.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 12.5,
+        "xMax": 16.5,
+        "yMin": -0.5,
+        "yMax": 14.4
+      },
+      "stairKeepClear": null,
+      "collisionBoxes": [
+        {
+          "label": "Pass window service counter",
+          "role": "service_counter",
+          "center": [
+            14.5,
+            16.5,
+            0.55
+          ],
+          "size": [
+            7.0,
+            1.3,
+            1.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Cooking range and hearth",
+          "role": "primary_station",
+          "center": [
+            23.5,
+            19.2,
+            1.2
+          ],
+          "size": [
+            4.0,
+            1.8,
+            2.4
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Prep island",
+          "role": "workstation",
+          "center": [
+            23.0,
+            11.5,
+            0.5
+          ],
+          "size": [
+            3.2,
+            1.5,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Ingredient pantry",
+          "role": "stock_storage",
+          "center": [
+            8.0,
+            19.4,
+            1.15
+          ],
+          "size": [
+            4.5,
+            0.8,
+            2.3
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Spice and dry goods shelf",
+          "role": "stock_storage",
+          "center": [
+            1.45,
+            9.0,
+            1.05
+          ],
+          "size": [
+            0.7,
+            3.5,
+            2.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Dish wash station",
+          "role": "workstation",
+          "center": [
+            26.55,
+            8.0,
+            0.6
+          ],
+          "size": [
+            0.9,
+            2.8,
+            1.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Wall dining bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.5
+          ],
+          "size": [
+            0.75,
+            3.0,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Cold prep table",
+          "role": "workstation",
+          "center": [
+            7.0,
+            12.0,
+            0.5
+          ],
+          "size": [
+            2.8,
+            1.3,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Two seat dining cluster",
+          "role": "seating",
+          "center": [
+            7.0,
+            6.0,
+            0.5
+          ],
+          "size": [
+            3.8,
+            2.4,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Pass window service counter",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            14.5,
+            16.5,
+            0.0
+          ],
+          "size": [
+            7.0,
+            1.3,
+            1.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Cooking range and hearth",
+          "kind": "kitchen_range",
+          "role": "primary_station",
+          "location": [
+            23.5,
+            19.2,
+            0.0
+          ],
+          "size": [
+            4.0,
+            1.8,
+            2.4
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Prep island",
+          "kind": "table",
+          "role": "workstation",
+          "location": [
+            23.0,
+            11.5,
+            0.0
+          ],
+          "size": [
+            3.2,
+            1.5,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Ingredient pantry",
+          "kind": "food_shelf",
+          "role": "stock_storage",
+          "location": [
+            8.0,
+            19.4,
+            0.0
+          ],
+          "size": [
+            4.5,
+            0.8,
+            2.3
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Spice and dry goods shelf",
+          "kind": "food_shelf",
+          "role": "stock_storage",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.7,
+            3.5,
+            2.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Dish wash station",
+          "kind": "wash_table",
+          "role": "workstation",
+          "location": [
+            26.55,
+            8.0,
+            0.0
+          ],
+          "size": [
+            0.9,
+            2.8,
+            1.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Wall dining bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            3.0,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Cold prep table",
+          "kind": "cold_table",
+          "role": "workstation",
+          "location": [
+            7.0,
+            12.0,
+            0.0
+          ],
+          "size": [
+            2.8,
+            1.3,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Menu and sanitation board",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            14.5,
+            20.4,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Two seat dining cluster",
+          "kind": "dining",
+          "role": "seating",
+          "location": [
+            7.0,
+            6.0,
+            0.0
+          ],
+          "size": [
+            3.8,
+            2.4,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        }
+      ]
+    },
+    {
+      "slug": "stampspur_courier_office",
+      "outpostId": "outpost_courier_stampspur",
+      "displayName": "Stampspur Courier Office",
+      "businessType": "courier",
+      "footprint": {
+        "width": 28,
+        "depth": 22,
+        "floors": 1
+      },
+      "expandedFromCurrent": true,
+      "shellOrigin": [
+        737,
+        46,
+        -562
+      ],
+      "assetWorldAnchor": [
+        737,
+        47,
+        -562
+      ],
+      "deskWorldPivot": [
+        751.5,
+        47,
+        -545.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/stampspur_courier_office/stampspur_courier_office.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/stampspur_courier_office/stampspur_courier_office.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          14.5,
+          15.1,
+          0.0
+        ],
+        "staff": [
+          14.5,
+          18.0,
+          0.0
+        ],
+        "queueStart": [
+          14.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          14.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 12.5,
+        "xMax": 16.5,
+        "yMin": -0.5,
+        "yMax": 14.4
+      },
+      "stairKeepClear": null,
+      "collisionBoxes": [
+        {
+          "label": "Parcel scale desk",
+          "role": "service_counter",
+          "center": [
+            14.5,
+            16.5,
+            0.525
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Parcel sorting table",
+          "role": "primary_station",
+          "center": [
+            23.5,
+            19.2,
+            0.5
+          ],
+          "size": [
+            3.2,
+            1.6,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Lockbox inspection table",
+          "role": "workstation",
+          "center": [
+            23.0,
+            11.5,
+            0.5
+          ],
+          "size": [
+            2.6,
+            1.3,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Parcel shelving",
+          "role": "stock_storage",
+          "center": [
+            8.0,
+            19.4,
+            1.1
+          ],
+          "size": [
+            5.0,
+            0.8,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Outgoing bin rack",
+          "role": "stock_storage",
+          "center": [
+            26.55,
+            8.0,
+            1.05
+          ],
+          "size": [
+            0.8,
+            4.0,
+            2.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Dispatch waiting bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.475
+          ],
+          "size": [
+            0.75,
+            3.0,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Incoming parcel cage",
+          "role": "stock_storage",
+          "center": [
+            7.0,
+            12.0,
+            1.0
+          ],
+          "size": [
+            3.0,
+            1.3,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Satchel rack",
+          "role": "stock_storage",
+          "center": [
+            7.0,
+            6.0,
+            0.9
+          ],
+          "size": [
+            1.4,
+            0.8,
+            1.8
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Parcel scale desk",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            14.5,
+            16.5,
+            0.0
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.05
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Parcel sorting table",
+          "kind": "sorting_table",
+          "role": "primary_station",
+          "location": [
+            23.5,
+            19.2,
+            0.0
+          ],
+          "size": [
+            3.2,
+            1.6,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Lockbox inspection table",
+          "kind": "table",
+          "role": "workstation",
+          "location": [
+            23.0,
+            11.5,
+            0.0
+          ],
+          "size": [
+            2.6,
+            1.3,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Parcel shelving",
+          "kind": "parcel_shelf",
+          "role": "stock_storage",
+          "location": [
+            8.0,
+            19.4,
+            0.0
+          ],
+          "size": [
+            5.0,
+            0.8,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Route and proof wall",
+          "kind": "map_board",
+          "role": "dashboard",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.3,
+            4.0,
+            2.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Outgoing bin rack",
+          "kind": "parcel_shelf",
+          "role": "stock_storage",
+          "location": [
+            26.55,
+            8.0,
+            0.0
+          ],
+          "size": [
+            0.8,
+            4.0,
+            2.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Dispatch waiting bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            3.0,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Incoming parcel cage",
+          "kind": "cage",
+          "role": "stock_storage",
+          "location": [
+            7.0,
+            12.0,
+            0.0
+          ],
+          "size": [
+            3.0,
+            1.3,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Trust and medicine timer",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            14.5,
+            20.4,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Satchel rack",
+          "kind": "rack",
+          "role": "stock_storage",
+          "location": [
+            7.0,
+            6.0,
+            0.0
+          ],
+          "size": [
+            1.4,
+            0.8,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        }
+      ]
+    },
+    {
+      "slug": "lanternrest_road_inn",
+      "outpostId": "outpost_hospitality_lanternrest",
+      "displayName": "Lanternrest Road Inn",
+      "businessType": "hospitality_inn_hotel_shelter",
+      "footprint": {
+        "width": 28,
+        "depth": 22,
+        "floors": 2
+      },
+      "expandedFromCurrent": false,
+      "shellOrigin": [
+        592,
+        47,
+        -495
+      ],
+      "assetWorldAnchor": [
+        592,
+        48,
+        -495
+      ],
+      "deskWorldPivot": [
+        606.5,
+        48,
+        -478.5
+      ],
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_interiors/lanternrest_road_inn/lanternrest_road_inn.glb",
+        "lod1": "/assets/harthmere/glb/business_interiors/lanternrest_road_inn/lanternrest_road_inn.lod1.glb"
+      },
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28,
+        "hiddenBeyondMeters": 28
+      },
+      "interactionPoints": {
+        "customer": [
+          14.5,
+          15.1,
+          0.0
+        ],
+        "staff": [
+          14.5,
+          18.0,
+          0.0
+        ],
+        "queueStart": [
+          14.5,
+          3.5,
+          0.0
+        ],
+        "entrance": [
+          14.5,
+          -0.5,
+          0.0
+        ]
+      },
+      "protectedAisle": {
+        "xMin": 12.5,
+        "xMax": 16.5,
+        "yMin": -0.5,
+        "yMax": 14.4
+      },
+      "stairKeepClear": {
+        "xMin": 2.0,
+        "xMax": 5.5,
+        "yMin": 12.0,
+        "yMax": 19.0
+      },
+      "collisionBoxes": [
+        {
+          "label": "Reception desk",
+          "role": "service_counter",
+          "center": [
+            14.5,
+            16.5,
+            0.55
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.1
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Kitchen service sideboard",
+          "role": "primary_station",
+          "center": [
+            23.5,
+            19.2,
+            0.5
+          ],
+          "size": [
+            3.0,
+            1.4,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Hearth and bard nook",
+          "role": "decor",
+          "center": [
+            23.0,
+            11.5,
+            1.0
+          ],
+          "size": [
+            2.8,
+            1.6,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Linen cabinet",
+          "role": "stock_storage",
+          "center": [
+            8.0,
+            19.4,
+            1.1
+          ],
+          "size": [
+            4.0,
+            0.7,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Luggage rack",
+          "role": "stock_storage",
+          "center": [
+            1.45,
+            9.0,
+            1.0
+          ],
+          "size": [
+            0.7,
+            3.5,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Key and guest cubby wall",
+          "role": "stock_storage",
+          "center": [
+            26.55,
+            8.0,
+            1.1
+          ],
+          "size": [
+            0.7,
+            3.5,
+            2.2
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Common bench",
+          "role": "seating",
+          "center": [
+            1.75,
+            5.5,
+            0.5
+          ],
+          "size": [
+            0.75,
+            3.0,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Common table",
+          "role": "seating",
+          "center": [
+            7.0,
+            12.0,
+            0.475
+          ],
+          "size": [
+            3.0,
+            1.5,
+            0.95
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Hearth lounge cluster",
+          "role": "seating",
+          "center": [
+            7.0,
+            6.0,
+            0.5
+          ],
+          "size": [
+            3.0,
+            2.5,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Guest bed northwest",
+          "role": "seating",
+          "center": [
+            8.5,
+            6.5,
+            4.375
+          ],
+          "size": [
+            1.2,
+            2.2,
+            0.75
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Guest nightstand northwest",
+          "role": "decor",
+          "center": [
+            10.0,
+            6.5,
+            4.375
+          ],
+          "size": [
+            0.65,
+            0.55,
+            0.75
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Guest wardrobe northwest",
+          "role": "stock_storage",
+          "center": [
+            1.5,
+            6.5,
+            5.0
+          ],
+          "size": [
+            1.2,
+            0.6,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Guest bed northeast",
+          "role": "seating",
+          "center": [
+            20.5,
+            6.5,
+            4.375
+          ],
+          "size": [
+            1.2,
+            2.2,
+            0.75
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Guest nightstand northeast",
+          "role": "decor",
+          "center": [
+            22.0,
+            6.5,
+            4.375
+          ],
+          "size": [
+            0.65,
+            0.55,
+            0.75
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Guest wardrobe northeast",
+          "role": "stock_storage",
+          "center": [
+            26.5,
+            6.5,
+            5.0
+          ],
+          "size": [
+            1.2,
+            0.6,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Guest bed southwest",
+          "role": "seating",
+          "center": [
+            9.5,
+            15.0,
+            4.375
+          ],
+          "size": [
+            1.2,
+            2.2,
+            0.75
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Guest nightstand southwest",
+          "role": "decor",
+          "center": [
+            11.0,
+            15.0,
+            4.375
+          ],
+          "size": [
+            0.65,
+            0.55,
+            0.75
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Guest wardrobe southwest",
+          "role": "stock_storage",
+          "center": [
+            8.5,
+            20.2,
+            5.0
+          ],
+          "size": [
+            1.2,
+            0.6,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Guest bed southeast",
+          "role": "seating",
+          "center": [
+            20.5,
+            15.0,
+            4.375
+          ],
+          "size": [
+            1.2,
+            2.2,
+            0.75
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Guest nightstand southeast",
+          "role": "decor",
+          "center": [
+            22.0,
+            15.0,
+            4.375
+          ],
+          "size": [
+            0.65,
+            0.55,
+            0.75
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Guest wardrobe southeast",
+          "role": "stock_storage",
+          "center": [
+            20.5,
+            20.2,
+            5.0
+          ],
+          "size": [
+            1.2,
+            0.6,
+            2.0
+          ],
+          "rotationDegrees": 0.0
+        },
+        {
+          "label": "Corridor linen cart",
+          "role": "stock_storage",
+          "center": [
+            14.5,
+            11.5,
+            4.5
+          ],
+          "size": [
+            1.2,
+            0.8,
+            1.0
+          ],
+          "rotationDegrees": 0.0
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Reception desk",
+          "kind": "counter",
+          "role": "service_counter",
+          "location": [
+            14.5,
+            16.5,
+            0.0
+          ],
+          "size": [
+            7.0,
+            1.2,
+            1.1
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Kitchen service sideboard",
+          "kind": "food_shelf",
+          "role": "primary_station",
+          "location": [
+            23.5,
+            19.2,
+            0.0
+          ],
+          "size": [
+            3.0,
+            1.4,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Hearth and bard nook",
+          "kind": "hearth",
+          "role": "decor",
+          "location": [
+            23.0,
+            11.5,
+            0.0
+          ],
+          "size": [
+            2.8,
+            1.6,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Linen cabinet",
+          "kind": "cabinet",
+          "role": "stock_storage",
+          "location": [
+            8.0,
+            19.4,
+            0.0
+          ],
+          "size": [
+            4.0,
+            0.7,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Luggage rack",
+          "kind": "rack",
+          "role": "stock_storage",
+          "location": [
+            1.45,
+            9.0,
+            0.0
+          ],
+          "size": [
+            0.7,
+            3.5,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Key and guest cubby wall",
+          "kind": "key_cubby",
+          "role": "stock_storage",
+          "location": [
+            26.55,
+            8.0,
+            0.0
+          ],
+          "size": [
+            0.7,
+            3.5,
+            2.2
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Common bench",
+          "kind": "bench",
+          "role": "seating",
+          "location": [
+            1.75,
+            5.5,
+            0.0
+          ],
+          "size": [
+            0.75,
+            3.0,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Common table",
+          "kind": "dining",
+          "role": "seating",
+          "location": [
+            7.0,
+            12.0,
+            0.0
+          ],
+          "size": [
+            3.0,
+            1.5,
+            0.95
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Room board",
+          "kind": "board",
+          "role": "dashboard",
+          "location": [
+            14.5,
+            20.4,
+            0.9
+          ],
+          "size": [
+            4.0,
+            0.25,
+            1.8
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": false
+        },
+        {
+          "label": "Hearth lounge cluster",
+          "kind": "lounge",
+          "role": "seating",
+          "location": [
+            7.0,
+            6.0,
+            0.0
+          ],
+          "size": [
+            3.0,
+            2.5,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Guest bed northwest",
+          "kind": "bed",
+          "role": "seating",
+          "location": [
+            8.5,
+            6.5,
+            4.0
+          ],
+          "size": [
+            1.2,
+            2.2,
+            0.75
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Guest nightstand northwest",
+          "kind": "nightstand",
+          "role": "decor",
+          "location": [
+            10.0,
+            6.5,
+            4.0
+          ],
+          "size": [
+            0.65,
+            0.55,
+            0.75
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Guest wardrobe northwest",
+          "kind": "cabinet",
+          "role": "stock_storage",
+          "location": [
+            1.5,
+            6.5,
+            4.0
+          ],
+          "size": [
+            1.2,
+            0.6,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Guest bed northeast",
+          "kind": "bed",
+          "role": "seating",
+          "location": [
+            20.5,
+            6.5,
+            4.0
+          ],
+          "size": [
+            1.2,
+            2.2,
+            0.75
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Guest nightstand northeast",
+          "kind": "nightstand",
+          "role": "decor",
+          "location": [
+            22.0,
+            6.5,
+            4.0
+          ],
+          "size": [
+            0.65,
+            0.55,
+            0.75
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Guest wardrobe northeast",
+          "kind": "cabinet",
+          "role": "stock_storage",
+          "location": [
+            26.5,
+            6.5,
+            4.0
+          ],
+          "size": [
+            1.2,
+            0.6,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Guest bed southwest",
+          "kind": "bed",
+          "role": "seating",
+          "location": [
+            9.5,
+            15.0,
+            4.0
+          ],
+          "size": [
+            1.2,
+            2.2,
+            0.75
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Guest nightstand southwest",
+          "kind": "nightstand",
+          "role": "decor",
+          "location": [
+            11.0,
+            15.0,
+            4.0
+          ],
+          "size": [
+            0.65,
+            0.55,
+            0.75
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Guest wardrobe southwest",
+          "kind": "cabinet",
+          "role": "stock_storage",
+          "location": [
+            8.5,
+            20.2,
+            4.0
+          ],
+          "size": [
+            1.2,
+            0.6,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Guest bed southeast",
+          "kind": "bed",
+          "role": "seating",
+          "location": [
+            20.5,
+            15.0,
+            4.0
+          ],
+          "size": [
+            1.2,
+            2.2,
+            0.75
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Guest nightstand southeast",
+          "kind": "nightstand",
+          "role": "decor",
+          "location": [
+            22.0,
+            15.0,
+            4.0
+          ],
+          "size": [
+            0.65,
+            0.55,
+            0.75
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Guest wardrobe southeast",
+          "kind": "cabinet",
+          "role": "stock_storage",
+          "location": [
+            20.5,
+            20.2,
+            4.0
+          ],
+          "size": [
+            1.2,
+            0.6,
+            2.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        },
+        {
+          "label": "Corridor linen cart",
+          "kind": "cart",
+          "role": "stock_storage",
+          "location": [
+            14.5,
+            11.5,
+            4.0
+          ],
+          "size": [
+            1.2,
+            0.8,
+            1.0
+          ],
+          "rotationDegrees": 0.0,
+          "collidable": true
+        }
+      ]
+    }
+  ]
+}

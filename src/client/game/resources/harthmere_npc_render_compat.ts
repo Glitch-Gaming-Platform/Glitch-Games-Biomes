@@ -9,8 +9,13 @@ import type {
   ReadonlyEntityWith,
 } from "@/shared/ecs/gen/entities";
 import { Entity } from "@/shared/ecs/gen/entities";
-import { getNpcBoxSize, idToNpcType, isNpcTypeId } from "@/shared/npc/bikkie";
+import {
+  getNpcBoxSize,
+  maybeIdToNpcType,
+  type NpcType,
+} from "@/shared/npc/bikkie";
 import type { Vec3 } from "@/shared/math/types";
+import type { BiomesId } from "@/shared/ids";
 
 export const RENDER_NPC_COMPONENTS = [
   "rigid_body",
@@ -33,6 +38,35 @@ export function isRenderNpcEntity(
 
 export const HARTHMERE_NPC_RENDER_COMPONENT_COMPAT_VERSION =
   "harthmere-npc-render-component-compat";
+
+export function harthmereRenderableNpcType(
+  typeId: unknown
+): NpcType | undefined {
+  return typeof typeId === "number"
+    ? maybeIdToNpcType(typeId as BiomesId)
+    : undefined;
+}
+
+/** Native melee authority uses the raw ECS transform. During the short attack
+ * clip, rendering that body through the normal latency transition can leave the
+ * visible attacker almost a second behind the validated hit volume. */
+export function harthmereNpcAttackUsesAuthoritativeTransform(
+  emote:
+    | {
+        emote_type?: string;
+        emote_start_time?: number;
+      }
+    | undefined,
+  nowSeconds: number
+) {
+  const age =
+    nowSeconds - (emote?.emote_start_time ?? Number.NEGATIVE_INFINITY);
+  return (
+    (emote?.emote_type === "attack1" || emote?.emote_type === "attack2") &&
+    age >= 0 &&
+    age <= 1.5
+  );
+}
 
 // Seeded social / grove / muck NPCs in the Harthmere snapshot frequently arrive
 // with npc_metadata + label + position but WITHOUT the full combat component
@@ -58,9 +92,7 @@ export function harthmereEnsureRenderableNpcEntity(
     return undefined;
   }
   const typeId = entity.npc_metadata.type_id;
-  const npcType = typeof typeId === "number" && isNpcTypeId(typeId)
-    ? idToNpcType(typeId)
-    : undefined;
+  const npcType = harthmereRenderableNpcType(typeId);
   const boxSize: Vec3 = npcType ? getNpcBoxSize(npcType) : [1, 2, 1];
   const maxHp = Math.max(1, Math.trunc(Number(entity.health?.maxHp ?? 100)));
   return {
@@ -68,12 +100,11 @@ export function harthmereEnsureRenderableNpcEntity(
     rigid_body: entity.rigid_body ?? { velocity: [0, 0, 0] },
     size: entity.size ?? { v: boxSize },
     orientation: entity.orientation ?? { v: [0, 0] },
-    health:
-      entity.health ?? {
-        hp: maxHp,
-        maxHp,
-        lastDamageTime: undefined,
-        lastDamageSource: undefined,
-      },
+    health: entity.health ?? {
+      hp: maxHp,
+      maxHp,
+      lastDamageTime: undefined,
+      lastDamageSource: undefined,
+    },
   } as unknown as RenderNpcEntity;
 }

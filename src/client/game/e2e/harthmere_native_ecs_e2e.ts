@@ -186,6 +186,17 @@ export interface HarthmereNativeEcsE2EBridge {
         world?: [number, number, number];
       }
     >;
+    animationAudits: Record<
+      string,
+      {
+        selectedState?: string;
+        animationMoving?: boolean;
+        hasMatchingClip?: boolean;
+        horizontalSpeed?: number;
+        position?: [number, number, number];
+        velocity?: [number, number, number];
+      }
+    >;
   };
   publish(serializedEvent: JSONable): Promise<{ sequence: number }>;
   applyChanges(serializedChanges: JSONable[]): Promise<void>;
@@ -224,12 +235,7 @@ export interface HarthmereNativeEcsE2EBridge {
   }>;
   jobsBoardFrontendRoundTrip(input: {
     operation:
-      | "fetch"
-      | "accept"
-      | "pickup"
-      | "completeQuest"
-      | "complete"
-      | "abandon";
+      "fetch" | "accept" | "pickup" | "completeQuest" | "complete" | "abandon";
     jobId?: string;
     boardId?: string;
     questTodoId?: string;
@@ -272,6 +278,13 @@ export interface HarthmereNativeEcsE2EBridge {
       activity: string;
     }>;
   }>;
+  /** Source-backed matrix for every distinct Chapter 1 NPC stage and absence. */
+  chapter1NpcAuditCatalog(): Promise<unknown>;
+  /** Install one exact story-state projection from the NPC acceptance matrix. */
+  chapter1PrepareNpcAudit(id: string): Promise<unknown>;
+  /** Read the projected overrides and the actual live render records together. */
+  chapter1NpcPresentationSnapshot(): Promise<unknown>;
+  chapter1ClearNpcAudit(): Promise<void>;
   /** Request a real registered cutscene through the production director queue. */
   chapter1StartCutscene(id: string): Promise<{ accepted: boolean }>;
   chapter1StopCutscene(): void;
@@ -434,6 +447,17 @@ export function installHarthmereNativeEcsE2E(
             world?: [number, number, number];
           }
         >;
+        __harthmereVoxelNpcAnimationAudit?: Record<
+          string,
+          {
+            selectedState?: string;
+            animationMoving?: boolean;
+            hasMatchingClip?: boolean;
+            horizontalSpeed?: number;
+            position?: [number, number, number];
+            velocity?: [number, number, number];
+          }
+        >;
       };
       return {
         bridgeAt: browserWindow.__harthmereLiveCreatureEcsBridge?.at,
@@ -442,6 +466,9 @@ export function installHarthmereNativeEcsE2E(
         ],
         combatActors: {
           ...(browserWindow.__harthmereCombatActorPositions ?? {}),
+        },
+        animationAudits: {
+          ...(browserWindow.__harthmereVoxelNpcAnimationAudit ?? {}),
         },
       };
     },
@@ -502,9 +529,8 @@ export function installHarthmereNativeEcsE2E(
     },
     allocateId: () => jsonFetch<BiomesId>("/api/admin/allocate_id"),
     farmingFrontendSnapshot: async () => {
-      const { buildNativeFarmingInterfaceModel } = await import(
-        "@/client/components/biomes_ui/adapters/nativeFarmingInterfaceAdapter"
-      );
+      const { buildNativeFarmingInterfaceModel } =
+        await import("@/client/components/biomes_ui/adapters/nativeFarmingInterfaceAdapter");
       const playerPosition = context.resources.get("/scene/local_player").player
         .position;
       return buildNativeFarmingInterfaceModel({
@@ -517,9 +543,7 @@ export function installHarthmereNativeEcsE2E(
     farmingMapFrontendSnapshot: async () => {
       const [{ buildNativeFarmingInterfaceModel }, farmingMapQuest] =
         await Promise.all([
-          import(
-            "@/client/components/biomes_ui/adapters/nativeFarmingInterfaceAdapter"
-          ),
+          import("@/client/components/biomes_ui/adapters/nativeFarmingInterfaceAdapter"),
           import("@/client/components/biomes_ui/adapters/farmingMapQuest"),
         ]);
       const playerPosition = context.resources.get("/scene/local_player").player
@@ -536,9 +560,8 @@ export function installHarthmereNativeEcsE2E(
       };
     },
     vendorPurchase: async (input) => {
-      const { submitHarthmereVendorPurchaseToLiveModeForTest } = await import(
-        "@/client/components/challenges/LocalDevHarthmereInventorySystem"
-      );
+      const { submitHarthmereVendorPurchaseToLiveModeForTest } =
+        await import("@/client/components/challenges/LocalDevHarthmereInventorySystem");
       return submitHarthmereVendorPurchaseToLiveModeForTest(
         input.offset,
         input.itemId,
@@ -554,9 +577,7 @@ export function installHarthmereNativeEcsE2E(
         mapPinnedDestination,
       ] = await Promise.all([
         import("@/client/components/biomes_ui/adapters/nativeQuestMapAdapter"),
-        import(
-          "@/client/components/biomes_ui/adapters/nativeQuestNavAidResolver"
-        ),
+        import("@/client/components/biomes_ui/adapters/nativeQuestNavAidResolver"),
         import("@/client/components/biomes_ui/adapters/mainQuestSelection"),
         import("@/client/components/biomes_ui/adapters/mapPinnedDestination"),
       ]);
@@ -629,24 +650,26 @@ export function installHarthmereNativeEcsE2E(
               worldPosition: [...activeMapPin.worldPosition] as [
                 number,
                 number,
-                number
+                number,
               ],
             }
           : undefined,
         markers: markers.flatMap((marker) => {
           if (!marker.worldPosition) return [];
           const [, questId = "", triggerId = ""] = marker.id.split(":");
-          return [{
-            id: marker.id,
-            label: marker.label,
-            questId,
-            triggerId,
-            worldPosition: [...marker.worldPosition] as [
-              number,
-              number,
-              number
-            ],
-          }];
+          return [
+            {
+              id: marker.id,
+              label: marker.label,
+              questId,
+              triggerId,
+              worldPosition: [...marker.worldPosition] as [
+                number,
+                number,
+                number,
+              ],
+            },
+          ];
         }),
         quests: quests.map((quest) => {
           const bundle = bundles.find(
@@ -671,9 +694,8 @@ export function installHarthmereNativeEcsE2E(
       };
     },
     robotFrontendSnapshot: async (robotId) => {
-      const routing = await import(
-        "@/shared/harthmere/snapshot_grove_npc_mesh_routing"
-      );
+      const routing =
+        await import("@/shared/harthmere/snapshot_grove_npc_mesh_routing");
       const entity = context.table.get(robotId);
       const position = entity?.position?.v;
       return {
@@ -691,9 +713,8 @@ export function installHarthmereNativeEcsE2E(
       };
     },
     groundedHarthmerePosition: async ({ position, requireOpenSky = true }) => {
-      const { groundHarthmereLiveEntityFeetYWithStatus } = await import(
-        "@/client/game/util/harthmere_entity_grounding"
-      );
+      const { groundHarthmereLiveEntityFeetYWithStatus } =
+        await import("@/client/game/util/harthmere_entity_grounding");
       const result = groundHarthmereLiveEntityFeetYWithStatus(
         context.resources,
         position[0],
@@ -710,9 +731,8 @@ export function installHarthmereNativeEcsE2E(
       };
     },
     refreshBibleQuestFrontendSnapshot: async () => {
-      const adapter = await import(
-        "@/client/components/challenges/bibleQuestLiveAdapter"
-      );
+      const adapter =
+        await import("@/client/components/challenges/bibleQuestLiveAdapter");
       // Redis fixtures used by the catalog batch must invalidate the shared
       // 14-second read cache before React is asked to rebuild NPC actions.
       adapter.resetHarthmereBibleQuestReadCacheForTest();
@@ -722,9 +742,8 @@ export function installHarthmereNativeEcsE2E(
       return adapter.readHarthmereBibleQuestSnapshot({ maxAgeMs: 0 });
     },
     chapter1RuntimeAudit: async () => {
-      const { ch1RunBrowserAudit } = await import(
-        "@/shared/harthmere/ch1_browser_audit"
-      );
+      const { ch1RunBrowserAudit } =
+        await import("@/shared/harthmere/ch1_browser_audit");
       return ch1RunBrowserAudit();
     },
     chapter1NativeQuestCatalog: async () => {
@@ -776,9 +795,7 @@ export function installHarthmereNativeEcsE2E(
           import("@/shared/cutscene/ch1_scenes"),
           import("@/shared/harthmere/ch1_ids"),
           import("@/shared/harthmere/ch1_staging"),
-          import(
-            "@/client/components/challenges/Chapter1WorldProjectionController"
-          ),
+          import("@/client/components/challenges/Chapter1WorldProjectionController"),
           import("@/shared/cutscene/puppets"),
           import("@/client/game/renderers/ch1_fracture_gate"),
         ]);
@@ -851,18 +868,68 @@ export function installHarthmereNativeEcsE2E(
         id === CH1_SCENE_IDS.firstGate
           ? ["ch1_gate_fence_sighting"]
           : id === CH1_SCENE_IDS.persistentGate
-          ? ["ch1_gate_desert"]
-          : [];
+            ? ["ch1_gate_desert"]
+            : [];
       gates.setCh1ActiveGateIds(activeGateIds);
       return {
         activeGateIds,
         staging: projection.staging,
       };
     },
-    chapter1StartCutscene: async (id) => {
-      const cutsceneService = await import(
-        "@/client/game/cutscene/cutscene_service"
+    chapter1NpcAuditCatalog: async () => {
+      const { ch1NpcLiveAuditCatalog } =
+        await import("@/shared/harthmere/ch1_npc_live_audit");
+      return ch1NpcLiveAuditCatalog();
+    },
+    chapter1PrepareNpcAudit: async (id) => {
+      const [audit, projectionModule, puppets] = await Promise.all([
+        import("@/shared/harthmere/ch1_npc_live_audit"),
+        import("@/client/components/challenges/Chapter1WorldProjectionController"),
+        import("@/shared/cutscene/puppets"),
+      ]);
+      const scenario = audit.ch1NpcLiveAuditScenario(id);
+      if (!scenario) {
+        throw new Error(`Unknown Chapter 1 NPC audit scenario: ${id}`);
+      }
+      const projection = {
+        staging: audit.ch1NpcLiveAuditStaging(scenario.input).map((row) => ({
+          ...row,
+          position: row.position
+            ? ([...row.position] as [number, number, number])
+            : undefined,
+        })),
+        worldPhase: [],
+      };
+      window.__chapter1E2ECutsceneProjection = projection;
+      puppets.publishChapter1PuppetOverrides(
+        projectionModule.chapter1ProjectionPuppetOverrides(projection)
       );
+      return { ...scenario, staging: projection.staging };
+    },
+    chapter1NpcPresentationSnapshot: async () => {
+      const puppets = await import("@/shared/cutscene/puppets");
+      const browserWindow = window as typeof window & {
+        __harthmereLiveCreatureEcsBridge?: {
+          at?: number;
+          records?: unknown[];
+        };
+      };
+      return {
+        overrides: puppets.readChapter1PuppetOverrides(),
+        bridgeAt: browserWindow.__harthmereLiveCreatureEcsBridge?.at,
+        records: [
+          ...(browserWindow.__harthmereLiveCreatureEcsBridge?.records ?? []),
+        ],
+      };
+    },
+    chapter1ClearNpcAudit: async () => {
+      const puppets = await import("@/shared/cutscene/puppets");
+      delete window.__chapter1E2ECutsceneProjection;
+      puppets.clearChapter1PuppetOverrides();
+    },
+    chapter1StartCutscene: async (id) => {
+      const cutsceneService =
+        await import("@/client/game/cutscene/cutscene_service");
       const source = cutsceneService.cutsceneLibrary.get(id);
       if (!source) {
         return { accepted: false, defId: id };
@@ -924,9 +991,8 @@ export function installHarthmereNativeEcsE2E(
       );
       let captureId = input.id;
       if (input.promoId) {
-        const { promoSceneById } = await import(
-          "@/shared/cutscene/promo_scenes"
-        );
+        const { promoSceneById } =
+          await import("@/shared/cutscene/promo_scenes");
         const promo = promoSceneById(input.promoId);
         if (!promo) {
           throw new Error(`unknown Chapter 1 promo scene ${input.promoId}`);
@@ -1002,15 +1068,13 @@ export function installHarthmereNativeEcsE2E(
       };
     },
     chapter1SetActiveGates: async (ids) => {
-      const { setCh1ActiveGateIds } = await import(
-        "@/client/game/renderers/ch1_fracture_gate"
-      );
+      const { setCh1ActiveGateIds } =
+        await import("@/client/game/renderers/ch1_fracture_gate");
       setCh1ActiveGateIds(ids);
     },
     chapter1GateRenderSnapshot: async () => {
-      const { ch1FractureGateRenderSnapshot } = await import(
-        "@/client/game/renderers/ch1_fracture_gate"
-      );
+      const { ch1FractureGateRenderSnapshot } =
+        await import("@/client/game/renderers/ch1_fracture_gate");
       return ch1FractureGateRenderSnapshot();
     },
     chapter1TerrainSnapshot: async (samples) => {
@@ -1062,9 +1126,7 @@ export function installHarthmereNativeEcsE2E(
     farmingHoeQuestSnapshot: async (operation) => {
       const [{ buildNativeFarmingInterfaceModel }, farmingMapQuest] =
         await Promise.all([
-          import(
-            "@/client/components/biomes_ui/adapters/nativeFarmingInterfaceAdapter"
-          ),
+          import("@/client/components/biomes_ui/adapters/nativeFarmingInterfaceAdapter"),
           import("@/client/components/biomes_ui/adapters/farmingMapQuest"),
         ]);
       const model = buildNativeFarmingInterfaceModel({
@@ -1076,13 +1138,13 @@ export function installHarthmereNativeEcsE2E(
         operation === "reset"
           ? farmingMapQuest.resetHarthmereHoeQuestForTest(context.userId)
           : operation === "accept"
-          ? farmingMapQuest.acceptHarthmereHoeQuest(context.userId)
-          : operation === "reconcile"
-          ? farmingMapQuest.reconcileHarthmereHoeQuestState(
-              context.userId,
-              model.hasHoe
-            )
-          : farmingMapQuest.readHarthmereHoeQuestState(context.userId);
+            ? farmingMapQuest.acceptHarthmereHoeQuest(context.userId)
+            : operation === "reconcile"
+              ? farmingMapQuest.reconcileHarthmereHoeQuestState(
+                  context.userId,
+                  model.hasHoe
+                )
+              : farmingMapQuest.readHarthmereHoeQuestState(context.userId);
       return {
         state,
         hasHoe: model.hasHoe,
@@ -1157,9 +1219,8 @@ export function installHarthmereNativeEcsE2E(
       const {
         createHarthmereJobsBoardAdapter,
         submitHarthmereJobsBoardMutation,
-      } = await import(
-        "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter"
-      );
+      } =
+        await import("@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter");
       const adapter = createHarthmereJobsBoardAdapter(fetch);
       let snapshot;
       if (input.operation === "fetch") {

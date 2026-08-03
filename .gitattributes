@@ -59,7 +59,12 @@ public/assets/harthmere/audio/sfx/** -text -filter -merge -diff
 public/assets/harthmere/boss_attack_shape_previews/** -text -filter -merge -diff
 public/assets/harthmere/glb/boss_attack_shapes/** -text -filter -merge -diff
 public/assets/harthmere/glb/bosses/** -text -filter -merge -diff
+public/assets/harthmere/glb/business_furniture/** -text -filter -merge -diff
+public/assets/harthmere/glb/business_interiors/** -text -filter -merge -diff
+public/assets/harthmere/glb/gathering_nodes/** -text -filter -merge -diff
+public/assets/harthmere/glb/jobs_boards/** -text -filter -merge -diff
 public/assets/harthmere/glb/projectiles/** -text -filter -merge -diff
+public/assets/harthmere/glb/quest/** -text -filter -merge -diff
 public/assets/harthmere/glb/weapons/** -text -filter -merge -diff
 public/assets/harthmere/inventory_icons/** -text -filter -merge -diff
 public/assets/harthmere/projectile_previews/** -text -filter -merge -diff

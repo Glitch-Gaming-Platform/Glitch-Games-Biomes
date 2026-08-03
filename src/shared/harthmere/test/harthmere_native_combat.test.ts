@@ -65,12 +65,12 @@ describe("Harthmere native ECS combat rules", () => {
         weapon.profile === "ranged" || weapon.profile === "thrown"
           ? "ranged"
           : weapon.profile === "magic" || weapon.profile === "magicBook"
-          ? "spell"
-          : weapon.profile === "shield"
-          ? "melee"
-          : weapon.twoHanded
-          ? "heavy"
-          : "melee";
+            ? "spell"
+            : weapon.profile === "shield"
+              ? "melee"
+              : weapon.twoHanded
+                ? "heavy"
+                : "melee";
       assert.equal(profile.kind, expectedKind, weapon.id);
 
       if (
@@ -243,19 +243,21 @@ describe("Harthmere native ECS combat rules", () => {
 
     for (const species of ["cow", "sheep"] as const) {
       const profile = profileFor(species);
-      assert.equal(profile.attackIntervalSecs, 1.8);
+      assert.equal(profile.attackIntervalSecs, 2.35);
       assert.equal(profile.walkSpeed, 1.65);
       assert.equal(profile.runSpeed, 3.5);
       assert.equal(profile.behaviorKind, "retaliate");
       assert.deepEqual(profile.aggroTrigger, { kind: "onlyIfAttacked" });
       assert.equal(profile.galoisPath, `npcs/${species}`);
+      assert.equal(profile.attackStrikeMomentSecs, 0.68);
     }
 
     const rabbit = profileFor("rabbit");
-    assert.equal(rabbit.attackIntervalSecs, 2.4);
+    assert.equal(rabbit.attackIntervalSecs, 2.7);
     assert.equal(rabbit.walkSpeed, 2.4);
     assert.equal(rabbit.runSpeed, 4.4);
     assert.equal(rabbit.galoisPath, "npcs/rabbit");
+    assert.equal(rabbit.attackStrikeMomentSecs, 0.56);
   });
 
   it("keeps native humans on player meshes and creatures on snapshot GLTFs", () => {
@@ -304,13 +306,15 @@ describe("Harthmere native ECS combat rules", () => {
     assert.equal(profile.galoisPath, "npcs/indisworm");
     assert.equal(profile.attackDamage, 34);
     assert.equal(profile.attackDistance, 2.35);
-    assert.equal(profile.attackStrikeMomentSecs, 0.72);
+    assert.equal(profile.attackStrikeMomentSecs, 0.95);
+    assert.equal(profile.attackIntervalSecs, 2.9);
     assert.deepEqual(biscuit.boxSize, [1.05, 1.9, 1.05]);
     assert.ok(poisonSpit);
     assert.equal(poisonSpit.projectileVisualId, "indisworm_poison_spit");
     assert.equal(poisonSpit.damageType, "nature");
     assert.equal(poisonSpit.magic, false);
     assert.equal(poisonSpit.animationClip, "RangedAttack");
+    assert.equal(poisonSpit.castTimeSecs, 1.15);
     assert.ok(poisonSpit.minimumDistance > profile.attackDistance);
   });
 });

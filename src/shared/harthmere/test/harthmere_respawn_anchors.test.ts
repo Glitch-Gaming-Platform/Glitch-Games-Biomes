@@ -23,6 +23,7 @@ import { HARTHMERE_BIBLE_DISTRICTS } from "@/shared/harthmere/harthmere_district
 import { HARTHMERE_BUILDINGS } from "@/shared/harthmere/harthmere_town_buildings";
 import { HARTHMERE_STILL_WATER_FEATURES } from "@/shared/harthmere/harthmere_still_water";
 import { harthmereRiverContains } from "@/shared/harthmere/harthmere_river";
+import { harthmereForestWildlifePlacements } from "@/shared/harthmere/harthmere_forest_wildlife";
 
 describe("harthmere respawn anchors", () => {
   it("satisfies its own contract", () => {
@@ -85,6 +86,33 @@ describe("harthmere respawn anchors", () => {
         resolved.region,
         "harthmere_extension",
         `death at authored ${x},${z} fell through to the Grove`
+      );
+    }
+  });
+
+  it("keeps every generated Harthmere forest death in Harthmere", () => {
+    const forest = harthmereForestWildlifePlacements();
+    assert.ok(forest.length > 0);
+    for (const placement of forest) {
+      const death: [number, number, number] = [
+        placement.authoredX + HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+        HARTHMERE_EXTENSION_FEET_Y,
+        placement.authoredZ,
+      ];
+      assert.equal(
+        harthmereRespawnPositionForDeath(death).region,
+        "harthmere_extension",
+        `${placement.species} forest position ${death} fell through to the Grove`
+      );
+    }
+  });
+
+  it("uses X/Z extension ownership for Harthmere caves and high places", () => {
+    for (const y of [-80, 220]) {
+      assert.equal(
+        harthmereRespawnRegionForPosition([2200, y, -540]),
+        "harthmere_extension",
+        `Harthmere position at Y=${y} fell through to the Grove`
       );
     }
   });

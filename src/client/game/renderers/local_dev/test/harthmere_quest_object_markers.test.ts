@@ -10,6 +10,7 @@ import {
   HARTHMERE_ACTIVE_QUEST_MARKER_BLUE,
   HARTHMERE_ACTIVE_QUEST_MARKER_CAP,
   HARTHMERE_ACTIVE_WORLD_OBJECT_MARKER_RENDER_POLICY,
+  HARTHMERE_LUIS_REPAIR_CART_ASSET_URL,
   HARTHMERE_QUEST_OBJECT_MARKER_VERSION,
   HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY,
   HARTHMERE_QUEST_OBJECT_MARKERS,
@@ -26,6 +27,7 @@ import {
   shouldRenderHarthmereQuestObjectMarkerMesh,
   isRenderableHarthmereQuestObjectLandmark,
   makeHarthmereQuestObjectMarkersRenderer,
+  replaceHarthmereRepairCartFallbackWithAsset,
 } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers";
 import { createNewScenes } from "@/client/game/renderers/scenes";
 import {
@@ -103,6 +105,73 @@ describe("harthmereResolveWorldQuestBeaconMarkerId (cross-system eclipse)", () =
         activePinMarkerId: "vendor_marker:smith",
       }),
       "boss_marker"
+    );
+  });
+});
+
+describe("Luis repair cart authored asset", () => {
+  it("ships a non-empty binary glTF at the renderer URL", () => {
+    assert.equal(
+      HARTHMERE_LUIS_REPAIR_CART_ASSET_URL,
+      "/assets/harthmere/glb/quest/luis_repair_cart.glb"
+    );
+    const assetPath = path.join(
+      process.cwd(),
+      "public",
+      HARTHMERE_LUIS_REPAIR_CART_ASSET_URL.replace(/^\/assets\//, "assets/")
+    );
+    const contents = fs.readFileSync(assetPath);
+    assert.equal(contents.subarray(0, 4).toString("utf8"), "glTF");
+    assert.ok(
+      contents.length > 20_000,
+      "authored cart GLB is unexpectedly small"
+    );
+  });
+
+  it("replaces only the procedural cart while preserving its quest beacon", () => {
+    const marker = createHarthmereQuestObjectMarkerMesh({
+      id: "chapter1_objective:stand-him-up:gather-parts",
+      label: "Luis's Repair Cart",
+      kind: "interactable",
+      position: [490, 65, -206],
+      dynamic: "chapter1",
+    });
+    const beacon = createHarthmereActiveQuestMarkerBeacon();
+    marker.add(beacon);
+    const prototype = new THREE.Group();
+    prototype.name = "test-authored-cart";
+    prototype.add(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(3.2, 2.4, 1.8),
+        new THREE.MeshBasicMaterial()
+      )
+    );
+
+    const asset = replaceHarthmereRepairCartFallbackWithAsset(
+      marker,
+      prototype
+    );
+    assert.ok(asset, "authored cart should replace the procedural fallback");
+    assert.ok(
+      marker.children.includes(beacon),
+      "quest beacon must be retained"
+    );
+    assert.equal(
+      marker.children.some(
+        (child) => typeof child.userData.harthmereRepairCartPart === "string"
+      ),
+      false,
+      "procedural fallback pieces must not remain stacked under the GLB"
+    );
+    assert.equal(asset!.userData.harthmereRepairCartAsset, true);
+    assert.equal(
+      marker.userData.harthmereRepairCartAssetUrl,
+      HARTHMERE_LUIS_REPAIR_CART_ASSET_URL
+    );
+    assert.equal(
+      replaceHarthmereRepairCartFallbackWithAsset(marker, prototype),
+      undefined,
+      "asset replacement must be idempotent"
     );
   });
 });
@@ -492,10 +561,38 @@ describe("Harthmere quest object procedural markers current", () => {
     );
     assert.equal(cart!.visible, true);
     assert.equal(findActiveBeacon(cart!)?.visible, true);
+    assert.equal(cart!.userData.harthmereQuestObjectVisualKind, "repair_cart");
+    const parts = new Set<string>();
+    cart!.traverse((child) => {
+      const part = child.userData.harthmereRepairCartPart;
+      if (typeof part === "string") parts.add(part);
+    });
+    for (const requiredPart of [
+      "deck",
+      "left-rail",
+      "right-rail",
+      "tailgate",
+      "wheel-front-left",
+      "wheel-front-right",
+      "wheel-rear-left",
+      "wheel-rear-right",
+      "handle-left",
+      "handle-right",
+      "repair-chest",
+      "iron-ingots",
+      "wrench-handle",
+      "repair-flag",
+    ]) {
+      assert.ok(parts.has(requiredPart), `repair cart missing ${requiredPart}`);
+    }
+    const bounds = new THREE.Box3().setFromObject(cart!);
+    const size = bounds.getSize(new THREE.Vector3());
+    assert.ok(size.x >= 2.7, "repair cart should read as a full-size wagon");
     assert.ok(
-      cart!.children.filter((child) => child instanceof THREE.Mesh).length >= 7,
-      "the target should look like a cart with cargo, not a generic cube"
+      size.y >= 2,
+      "repair flag should make the hand-in point readable"
     );
+    assert.ok(size.z >= 1.3, "wheels should be visible from either side");
 
     publishChapter1ObjectiveWorldProjection(undefined);
     renderer.draw(scenes, 0.3);

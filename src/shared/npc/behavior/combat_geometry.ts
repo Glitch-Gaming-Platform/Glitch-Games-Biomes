@@ -72,14 +72,68 @@ export const LINE_OF_SIGHT_TARGET_HEIGHT_FRACTIONS = [0.9, 0.55, 0.15] as const;
 /** Eye height fraction used for the observing NPC (unchanged behaviour). */
 export const LINE_OF_SIGHT_EYE_HEIGHT_FRACTION = 0.72;
 
+/**
+ * A directional melee swing cannot fold through the attacker's own upper body.
+ * This is intentionally below the visual top of a large boss: a player standing
+ * on a shell, shoulder, or back is already outside the feet-level strike plane,
+ * even when the boss's giant full-body AABB overlaps the player vertically.
+ */
+export const MELEE_RIDER_MIN_HEIGHT_FRACTION = 0.35;
+export const MELEE_RIDER_MIN_HEIGHT_METERS = 1.5;
+export const MELEE_RIDER_FOOTPRINT_MARGIN_METERS = 0.35;
+export const MELEE_RIDER_MIN_ATTACKER_HEIGHT_METERS = 3;
+export const MELEE_RIDER_MIN_ATTACKER_FOOTPRINT_METERS = 4;
+
+export function targetIsRidingAttackerBody(input: {
+  attackerPosition: ReadonlyVec3;
+  attackerSize: ReadonlyVec3;
+  targetPosition: ReadonlyVec3;
+}): boolean {
+  const attackerHeight = Number(input.attackerSize[1]);
+  const attackerWidth = Number(input.attackerSize[0]);
+  const attackerDepth = Number(input.attackerSize[2]);
+  if (
+    !Number.isFinite(attackerHeight) ||
+    !Number.isFinite(attackerWidth) ||
+    !Number.isFinite(attackerDepth) ||
+    attackerHeight <= 0 ||
+    attackerWidth <= 0 ||
+    attackerDepth <= 0
+  ) {
+    return false;
+  }
+  if (
+    attackerHeight < MELEE_RIDER_MIN_ATTACKER_HEIGHT_METERS &&
+    Math.max(attackerWidth, attackerDepth) <
+      MELEE_RIDER_MIN_ATTACKER_FOOTPRINT_METERS
+  ) {
+    return false;
+  }
+  const targetFeetY = Number(input.targetPosition[1]);
+  const riderHeight = Math.max(
+    MELEE_RIDER_MIN_HEIGHT_METERS,
+    attackerHeight * MELEE_RIDER_MIN_HEIGHT_FRACTION
+  );
+  if (
+    !Number.isFinite(targetFeetY) ||
+    targetFeetY < input.attackerPosition[1] + riderHeight
+  ) {
+    return false;
+  }
+  const halfWidth = attackerWidth / 2 + MELEE_RIDER_FOOTPRINT_MARGIN_METERS;
+  const halfDepth = attackerDepth / 2 + MELEE_RIDER_FOOTPRINT_MARGIN_METERS;
+  return (
+    Math.abs(input.targetPosition[0] - input.attackerPosition[0]) <=
+      halfWidth &&
+    Math.abs(input.targetPosition[2] - input.attackerPosition[2]) <= halfDepth
+  );
+}
+
 export function horizontalDistance(a: ReadonlyVec3, b: ReadonlyVec3): number {
   return Math.hypot(a[0] - b[0], a[2] - b[2]);
 }
 
-export function horizontalDistanceSq(
-  a: ReadonlyVec3,
-  b: ReadonlyVec3
-): number {
+export function horizontalDistanceSq(a: ReadonlyVec3, b: ReadonlyVec3): number {
   const dx = a[0] - b[0];
   const dz = a[2] - b[2];
   return dx * dx + dz * dz;
@@ -122,7 +176,10 @@ export interface AttackReachInput {
 export function effectiveHorizontalAttackRadius(input: AttackReachInput) {
   return (
     Math.max(0, input.attackRadius) +
-    Math.max(0, input.hitboxCushion ?? TARGET_HITBOX_ATTACK_RANGE_CUSHION_METERS)
+    Math.max(
+      0,
+      input.hitboxCushion ?? TARGET_HITBOX_ATTACK_RANGE_CUSHION_METERS
+    )
   );
 }
 
@@ -264,7 +321,11 @@ export function evaluateChaseTargetRetention(
   }
   const lastSeen = input.lastSeenAtSeconds;
   if (lastSeen === undefined || !Number.isFinite(lastSeen)) {
-    return { retain: false, lastSeenAtSeconds: undefined, reason: "never_seen" };
+    return {
+      retain: false,
+      lastSeenAtSeconds: undefined,
+      reason: "never_seen",
+    };
   }
   const age = input.nowSeconds - lastSeen;
   if (age < 0) {
@@ -291,5 +352,9 @@ export function evaluateChaseTargetRetention(
       reason: "hunting_last_known",
     };
   }
-  return { retain: false, lastSeenAtSeconds: undefined, reason: "lost_timeout" };
+  return {
+    retain: false,
+    lastSeenAtSeconds: undefined,
+    reason: "lost_timeout",
+  };
 }

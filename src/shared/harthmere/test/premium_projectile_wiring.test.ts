@@ -10,6 +10,7 @@ import {
   harthmereNativeItemIdForBiomesId,
 } from "@/shared/harthmere/harthmere_native_item_ids";
 import {
+  HARTHMERE_AUTHORITATIVE_IMPACT_EPSILON_SECS,
   HARTHMERE_DIRECT_RANGED_ATTACK_VISUAL_IDS,
   HARTHMERE_PROJECTILE_MAX_FLIGHT_SECS,
   HARTHMERE_PROJECTILE_MIN_FLIGHT_SECS,
@@ -17,6 +18,7 @@ import {
   HARTHMERE_PROJECTILE_VISUAL_VERSION,
   HARTHMERE_TERRAIN_MUTATING_PROJECTILE_VISUAL_IDS,
   getHarthmereProjectileVisual,
+  harthmereAuthoritativeImpactRemainingSecs,
   harthmereProjectileFlightDurationSecs,
   harthmereNativeNpcProjectileVisualId,
   resolveHarthmereProjectileVisual,
@@ -77,6 +79,38 @@ describe("premium projectile native wiring", () => {
         authoritativeImpactSecs: 1,
       }),
       1
+    );
+    assert.equal(
+      harthmereProjectileFlightDurationSecs({
+        distanceMeters: 12,
+        speedMetersPerSecond: fireball.speed,
+        authoritativeImpactSecs: 0.1,
+      }),
+      0.1
+    );
+    assert.equal(
+      harthmereProjectileFlightDurationSecs({
+        distanceMeters: 12,
+        speedMetersPerSecond: fireball.speed,
+        authoritativeImpactSecs: 0,
+      }),
+      HARTHMERE_AUTHORITATIVE_IMPACT_EPSILON_SECS
+    );
+    assert.equal(
+      harthmereAuthoritativeImpactRemainingSecs({
+        releaseTime: 100,
+        impactDelaySecs: 1,
+        now: 100.75,
+      }),
+      0.25
+    );
+    assert.equal(
+      harthmereAuthoritativeImpactRemainingSecs({
+        releaseTime: 100,
+        impactDelaySecs: 1,
+        now: 102,
+      }),
+      0
     );
   });
 

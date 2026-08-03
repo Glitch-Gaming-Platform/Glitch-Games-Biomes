@@ -19,6 +19,7 @@ import { TimelineMatcher } from "@/client/game/util/timeline_matcher";
 import type { CharacterAnimationTiming } from "@/server/shared/minigames/ruleset/tweaks";
 import { HARTHMERE_CINEMATIC_ANIMATION_DEFINITIONS } from "@/shared/cutscene/cinematic_expressions";
 import { playerMovementActionAnimationName } from "@/shared/game/movement_actions";
+import { HARTHMERE_PLAYER_ATTACK_TIMINGS } from "@/shared/harthmere/deliberate_combat";
 import * as THREE from "three";
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
@@ -33,10 +34,34 @@ export const HARTHMERE_BODY_ANIMATION_SYNC_VERSION =
   "harthmere-body-animation-weapon-sync";
 
 export const HARTHMERE_BODY_WEAPON_TIMING_PROFILES = {
-  basic: { windupMs: 150, impactMs: 220, recoveryMs: 340, bodyDurationS: 0.71 },
-  heavy: { windupMs: 260, impactMs: 360, recoveryMs: 520, bodyDurationS: 1.02 },
-  ranged: { windupMs: 180, impactMs: 300, recoveryMs: 420, bodyDurationS: 0.9 },
-  magic: { windupMs: 220, impactMs: 380, recoveryMs: 520, bodyDurationS: 1.12 },
+  basic: {
+    ...HARTHMERE_PLAYER_ATTACK_TIMINGS.basic,
+    bodyDurationS:
+      (HARTHMERE_PLAYER_ATTACK_TIMINGS.basic.impactMs +
+        HARTHMERE_PLAYER_ATTACK_TIMINGS.basic.recoveryMs) /
+      1000,
+  },
+  heavy: {
+    ...HARTHMERE_PLAYER_ATTACK_TIMINGS.heavy,
+    bodyDurationS:
+      (HARTHMERE_PLAYER_ATTACK_TIMINGS.heavy.impactMs +
+        HARTHMERE_PLAYER_ATTACK_TIMINGS.heavy.recoveryMs) /
+      1000,
+  },
+  ranged: {
+    ...HARTHMERE_PLAYER_ATTACK_TIMINGS.ranged,
+    bodyDurationS:
+      (HARTHMERE_PLAYER_ATTACK_TIMINGS.ranged.impactMs +
+        HARTHMERE_PLAYER_ATTACK_TIMINGS.ranged.recoveryMs) /
+      1000,
+  },
+  magic: {
+    ...HARTHMERE_PLAYER_ATTACK_TIMINGS.magic,
+    bodyDurationS:
+      (HARTHMERE_PLAYER_ATTACK_TIMINGS.magic.impactMs +
+        HARTHMERE_PLAYER_ATTACK_TIMINGS.magic.recoveryMs) /
+      1000,
+  },
   block: { windupMs: 70, impactMs: 110, recoveryMs: 260, bodyDurationS: 0.44 },
 } as const;
 
@@ -65,8 +90,7 @@ type HarthmereAttackVariationEmoteType =
   | "attack2Var3"
   | "attack2Var4";
 let harthmereCachedAttackVariationEmote:
-  | HarthmereAttackVariationEmoteType
-  | undefined;
+  HarthmereAttackVariationEmoteType | undefined;
 
 function getHarthmereAttackVariationEmoteType(
   emoteType: "attack1" | "attack2",
@@ -892,10 +916,10 @@ export function syncAnimationsToPlayerState(
       movementType: player.crouching
         ? "crouching"
         : player.flying
-        ? "flying"
-        : swimming
-        ? "swimming"
-        : "walking",
+          ? "flying"
+          : swimming
+            ? "swimming"
+            : "walking",
       runSpeed: RUN_SPEED,
       characterSystem: playerSystem,
     }),

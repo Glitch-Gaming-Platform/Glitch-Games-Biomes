@@ -36,6 +36,10 @@ interface OptionsControlsSurfaceProps {
   onMusicVolumeChange?: (next: number) => void;
   voiceVolume: number;
   onVoiceVolumeChange?: (next: number) => void;
+  playerVoiceVolume?: number;
+  onPlayerVoiceVolumeChange?: (next: number) => void;
+  playerVoiceEnabled?: boolean;
+  onPlayerVoiceEnabledChange?: (next: boolean) => void;
   npcSpeechEnabled?: boolean;
   onNpcSpeechEnabledChange?: (next: boolean) => void;
   npcSpeechProvider?: NpcVoiceProvider;
@@ -67,6 +71,10 @@ export const OptionsControlsSurfaceForTest: React.FunctionComponent<
   onMusicVolumeChange,
   voiceVolume,
   onVoiceVolumeChange,
+  playerVoiceVolume = 80,
+  onPlayerVoiceVolumeChange,
+  playerVoiceEnabled = false,
+  onPlayerVoiceEnabledChange,
   npcSpeechEnabled = true,
   onNpcSpeechEnabledChange,
   npcSpeechProvider = "elevenlabs",
@@ -143,6 +151,24 @@ export const OptionsControlsSurfaceForTest: React.FunctionComponent<
           value={voiceVolume}
           onChange={onVoiceVolumeChange}
         />
+        <SliderRow
+          label="Player Voice"
+          value={playerVoiceVolume}
+          onChange={onPlayerVoiceVolumeChange}
+        />
+        <Row label="Nearby Player Voice Chat">
+          <div style={playerVoiceToggleStyle}>
+            <input
+              type="checkbox"
+              checked={playerVoiceEnabled}
+              aria-label="Nearby Player Voice Chat"
+              onChange={(event) =>
+                onPlayerVoiceEnabledChange?.(event.currentTarget.checked)
+              }
+            />
+            <span style={playerVoiceHintStyle}>Toggle microphone with F8</span>
+          </div>
+        </Row>
         <Row label="NPC Speech">
           <input
             type="checkbox"
@@ -348,4 +374,17 @@ const microphoneStatusStyle: React.CSSProperties = {
   gridColumn: "1 / -1",
   fontSize: 11,
   color: "var(--biomes-fg-muted)",
+};
+
+const playerVoiceToggleStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  gap: 8,
+};
+
+const playerVoiceHintStyle: React.CSSProperties = {
+  color: "var(--biomes-fg-muted)",
+  fontSize: 11,
+  whiteSpace: "nowrap",
 };

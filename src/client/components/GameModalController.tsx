@@ -341,7 +341,11 @@ export function GameModalController() {
       );
       break;
     case "death":
-      child = <DeathModal onClose={() => {}} />;
+      // Deathmatch can kill and revive the same player repeatedly without a
+      // different modal kind being rendered between rounds. Remount the modal
+      // for each resource version so React never reuses a stale hook/effect
+      // chain from the previous death lifecycle.
+      child = <DeathModal onClose={() => {}} key={gameModalVersion} />;
       allowClickToDismiss = false;
       break;
     case "staleSession":

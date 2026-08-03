@@ -327,7 +327,10 @@ export const createMinigameThroughAssociationEventHandler = makeEventHandler(
 
 export const quitMinigameEventHandler = makeEventHandler("quitMinigameEvent", {
   prepareInvolves: (event) => ({
-    player: q.id(event.id),
+    // A disconnected participant is iced before the minigame can restore its
+    // stash and clipboard. Quitting must remain available to that participant;
+    // the main involves query already includes iced entities.
+    player: q.id(event.id).includeIced(),
     minigameInstance: q
       .id(event.minigame_instance_id)
       .with("minigame_instance")

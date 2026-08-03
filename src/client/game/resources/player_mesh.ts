@@ -73,6 +73,7 @@ import {
   HARTHMERE_PLAYER_LIKE_NPC_VARIANT_VERSION,
   harthmerePlayerLikeNpcVariant,
 } from "@/shared/harthmere/npc_playerlike_variants";
+import { applyCh1CastFallbackWearables } from "@/shared/harthmere/ch1_cast_visuals";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import type { Disposable } from "@/shared/disposable";
 import { makeDisposable } from "@/shared/disposable";
@@ -1414,8 +1415,8 @@ function localDevPlayerVoxelFaceFromConfig(
       faceConfig.cheekStyle === "freckled"
         ? 0x6a3c28
         : faceConfig.cheekStyle === "strong"
-        ? 0x8a5844
-        : 0xd98a7c,
+          ? 0x8a5844
+          : 0xd98a7c,
     headSize: [headWidth, headHeight, headDepth],
     headPosition: [0, 1.58, -0.01],
     hairSize: [headWidth + 0.02, hairThickness, headDepth + 0.02],
@@ -1464,8 +1465,8 @@ function localDevPlayerVoxelFaceFromConfig(
       faceConfig.browStyle === "soft"
         ? 0.09
         : faceConfig.browStyle === "stern"
-        ? 0.14
-        : 0.12,
+          ? 0.14
+          : 0.12,
       faceConfig.browStyle === "scarred" ? 0.026 : 0.02,
       0.026,
     ],
@@ -1940,8 +1941,7 @@ function installHarthmerePlayerFacialExpressionBridge(
   let lastStateAt = 0;
   const handler = (event: Event) => {
     const detail = (event as CustomEvent).detail as
-      | HarthmereFacialExpressionState
-      | undefined;
+      HarthmereFacialExpressionState | undefined;
     if (!detail) return;
     const actorId = String(detail.actorId ?? detail.targetId ?? "player");
     if (!actorIds.has(actorId)) return;
@@ -2137,8 +2137,7 @@ function harthmerePlayerClothingRenderMode(
   item: HarthmereClothingItem
 ): HarthmerePlayerClothingRenderMode {
   const explicit = item.renderMode as
-    | HarthmerePlayerClothingRenderMode
-    | undefined;
+    HarthmerePlayerClothingRenderMode | undefined;
   if (explicit === "gltf" || explicit === "threejs" || explicit === "auto") {
     return explicit;
   }
@@ -2161,28 +2160,28 @@ function harthmerePlayerClothingFitMetrics(
     body.bodyType === "slim"
       ? 0.34
       : body.bodyType === "broad"
-      ? 0.5
-      : body.bodyType === "stocky"
-      ? 0.54
-      : body.bodyType === "athletic"
-      ? 0.46
-      : body.bodyType === "soft"
-      ? 0.48
-      : 0.42;
+        ? 0.5
+        : body.bodyType === "stocky"
+          ? 0.54
+          : body.bodyType === "athletic"
+            ? 0.46
+            : body.bodyType === "soft"
+              ? 0.48
+              : 0.42;
   const torsoHeight =
     body.bodyType === "stocky"
       ? 0.54
       : body.bodyType === "athletic"
-      ? 0.62
-      : body.bodyType === "soft"
-      ? 0.56
-      : 0.58;
+        ? 0.62
+        : body.bodyType === "soft"
+          ? 0.56
+          : 0.58;
   const shoulderWidth =
     body.shoulderWidth === "wide"
       ? torsoWidth + 0.26
       : body.shoulderWidth === "narrow"
-      ? torsoWidth + 0.04
-      : torsoWidth + 0.14;
+        ? torsoWidth + 0.04
+        : torsoWidth + 0.14;
   const legLength =
     body.legLength === "long" ? 0.64 : body.legLength === "short" ? 0.4 : 0.52;
   const armLength =
@@ -2197,10 +2196,10 @@ function harthmerePlayerClothingFitMetrics(
     body.bodyHeight === "short"
       ? -0.03
       : body.bodyHeight === "tall"
-      ? 0.035
-      : body.bodyHeight === "very_tall"
-      ? 0.07
-      : 0;
+        ? 0.035
+        : body.bodyHeight === "very_tall"
+          ? 0.07
+          : 0;
   return {
     torsoWidth,
     torsoHeight: torsoHeight + heightNudge * 0.5,
@@ -2487,8 +2486,8 @@ function addHarthmerePlayerProceduralClothingProxy(
     const chestColor = armor
       ? palette.metal
       : hunter
-      ? palette.leather
-      : palette.cloth;
+        ? palette.leather
+        : palette.cloth;
     addHarthmerePlayerClothingBox(
       group,
       `${name}-front-panel`,
@@ -3213,9 +3212,9 @@ async function addHarthmerePlayerModularClothingRuntime(
       item.fitMode !== "none";
     const anchorKind = bodyFittedThreeJs
       ? "root"
-      : (item.attachBone as HarthmereRuntimeClothingAnchor | undefined) ??
+      : ((item.attachBone as HarthmereRuntimeClothingAnchor | undefined) ??
         HARTHMERE_PLAYER_CLOTHING_SLOT_ANCHORS[slot] ??
-        "root";
+        "root");
     const anchor = harthmerePlayerClothingAnchor(root, anchorKind);
     const group = new THREE.Group();
     group.name = `harthmere-player-modular-clothing-${slot}`;
@@ -4940,22 +4939,22 @@ function harthmereBodyVisualScales(body: HarthmereVoxelBodyConfig) {
     body.bodyHeight === "short"
       ? 0.94
       : body.bodyHeight === "tall"
-      ? 1.06
-      : body.bodyHeight === "very_tall"
-      ? 1.13
-      : 1;
+        ? 1.06
+        : body.bodyHeight === "very_tall"
+          ? 1.13
+          : 1;
   const widthScale =
     body.bodyType === "slim"
       ? 0.9
       : body.bodyType === "broad"
-      ? 1.14
-      : body.bodyType === "stocky"
-      ? 1.2
-      : body.bodyType === "athletic"
-      ? 1.08
-      : body.bodyType === "soft"
-      ? 1.05
-      : 1;
+        ? 1.14
+        : body.bodyType === "stocky"
+          ? 1.2
+          : body.bodyType === "athletic"
+            ? 1.08
+            : body.bodyType === "soft"
+              ? 1.05
+              : 1;
   const depthScale =
     body.bodyType === "stocky" ? 1.1 : body.bodyType === "soft" ? 1.08 : 1;
   const armScale =
@@ -4966,20 +4965,20 @@ function harthmereBodyVisualScales(body: HarthmereVoxelBodyConfig) {
     body.shoulderWidth === "wide"
       ? 1.16
       : body.shoulderWidth === "narrow"
-      ? 0.9
-      : 1;
+        ? 0.9
+        : 1;
   const torsoWidthScale =
     body.bodyType === "slim"
       ? 0.88
       : body.bodyType === "broad"
-      ? 1.12
-      : body.bodyType === "stocky"
-      ? 1.16
-      : body.bodyType === "athletic"
-      ? 1.08
-      : body.bodyType === "soft"
-      ? 1.06
-      : 1;
+        ? 1.12
+        : body.bodyType === "stocky"
+          ? 1.16
+          : body.bodyType === "athletic"
+            ? 1.08
+            : body.bodyType === "soft"
+              ? 1.06
+              : 1;
   const torsoHeightScale =
     body.bodyType === "stocky" ? 0.96 : body.bodyType === "athletic" ? 1.04 : 1;
   return {
@@ -5035,8 +5034,8 @@ function applyLocalDevPlayerInnerBodyConfig(
         body.shoulderWidth === "wide"
           ? 1.08
           : body.shoulderWidth === "narrow"
-          ? 0.94
-          : 1;
+            ? 0.94
+            : 1;
     } else if (
       /(^|[_ -])(r|right)[_ -]?(arm|forearm|hand|shoulder)([_ -]|$)/i.test(
         object.name
@@ -5047,8 +5046,8 @@ function applyLocalDevPlayerInnerBodyConfig(
         body.shoulderWidth === "wide"
           ? 1.08
           : body.shoulderWidth === "narrow"
-          ? 0.94
-          : 1;
+            ? 0.94
+            : 1;
     } else if (
       /(^|[_ -])(l|left)[_ -]?(leg|thigh|shin|foot)([_ -]|$)/i.test(object.name)
     ) {
@@ -5196,28 +5195,28 @@ function addLocalDevPlayerBodyShellToObject(
     body.bodyType === "slim"
       ? 0.34
       : body.bodyType === "broad"
-      ? 0.5
-      : body.bodyType === "stocky"
-      ? 0.54
-      : body.bodyType === "athletic"
-      ? 0.46
-      : body.bodyType === "soft"
-      ? 0.48
-      : 0.42;
+        ? 0.5
+        : body.bodyType === "stocky"
+          ? 0.54
+          : body.bodyType === "athletic"
+            ? 0.46
+            : body.bodyType === "soft"
+              ? 0.48
+              : 0.42;
   const torsoHeight =
     body.bodyType === "stocky"
       ? 0.54
       : body.bodyType === "athletic"
-      ? 0.62
-      : body.bodyType === "soft"
-      ? 0.56
-      : 0.58;
+        ? 0.62
+        : body.bodyType === "soft"
+          ? 0.56
+          : 0.58;
   const shoulderWidth =
     body.shoulderWidth === "wide"
       ? torsoWidth + 0.26
       : body.shoulderWidth === "narrow"
-      ? torsoWidth + 0.04
-      : torsoWidth + 0.14;
+        ? torsoWidth + 0.04
+        : torsoWidth + 0.14;
   const legLength =
     body.legLength === "long" ? 0.64 : body.legLength === "short" ? 0.4 : 0.52;
   const armLength =
@@ -5763,12 +5762,17 @@ function snapshotRichNpcFallbackWearables(
     add(BikkieIds.outerwear, outerwear);
   }
 
+  // Chapter One story actors have authored role silhouettes. Overlay them on
+  // the broad deterministic fallback so serious cast members never inherit a
+  // novelty hat or an outfit unrelated to their profession merely because of
+  // their numeric entity id.
+  applyCh1CastFallbackWearables(id, items, (itemId) => anItem(itemId));
+
   return items;
 }
 
 function harthmereLocalPlayerBikkieWearables():
-  | ReadonlyItemAssignment
-  | undefined {
+  ReadonlyItemAssignment | undefined {
   const storage =
     typeof window !== "undefined" ? window.localStorage : undefined;
   if (!storage) {
@@ -5958,8 +5962,8 @@ export function applySnapshotCutscenePlayerAnimation(
   const resolved = isHarthmereCinematicExpression(animation)
     ? animation
     : animation
-    ? SNAPSHOT_CUTSCENE_PLAYER_ANIMATION_ALIASES[animation]
-    : "idle";
+      ? SNAPSHOT_CUTSCENE_PLAYER_ANIMATION_ALIASES[animation]
+      : "idle";
   if (!resolved || !mesh.animationSystem.hasAnimation(resolved)) {
     return;
   }
@@ -5973,12 +5977,12 @@ export function applySnapshotCutscenePlayerAnimation(
         repeat: isHarthmereCinematicExpression(resolved)
           ? harthmereCinematicExpressionRepeat(resolved)
           : resolved === "death"
-          ? { kind: "once", clampWhenFinished: true }
-          : resolved === "hardLand"
-          ? { kind: "once" }
-          : isMovementAction
-          ? { kind: "once", clampWhenFinished: true }
-          : { kind: "repeat" },
+            ? { kind: "once", clampWhenFinished: true }
+            : resolved === "hardLand"
+              ? { kind: "once" }
+              : isMovementAction
+                ? { kind: "once", clampWhenFinished: true }
+                : { kind: "repeat" },
         startTime:
           mesh.animationMixer.time - Math.max(0, Number(animationTime) || 0),
       },

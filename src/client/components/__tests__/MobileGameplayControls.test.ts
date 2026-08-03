@@ -71,12 +71,14 @@ describe("mobile gameplay control wiring", () => {
     const joystick = read("src/client/components/JoystickInput.tsx");
     const hud = read("src/client/styles/hud.css");
     assert.ok(joystick.includes('aria-label="Movement joystick"'));
-    assert.ok(joystick.includes('data-biomes-mobile-controls="true"'));
+    assert.ok(joystick.includes("clientConfig.mobileDevice"));
+    assert.ok(joystick.includes("joysticks--mobile"));
+    assert.ok(joystick.includes("data-biomes-mobile-controls={"));
     assert.ok(hud.includes("touch-action: none"));
     assert.ok(hud.includes("z-index: 1095"));
   });
 
-  it("adds directional double-tap evade and a contained hold-to-crouch control", () => {
+  it("adds directional double-tap evade plus contained crouch and jump controls", () => {
     const joystick = read("src/client/components/JoystickInput.tsx");
     const input = read("src/client/game/context_managers/input.ts");
     const player = read("src/client/game/scripts/player.ts");
@@ -87,12 +89,18 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(joystick.includes('data-biomes-mobile-double-tap-dodge="true"'));
     assert.ok(joystick.includes("pulseAction(command.action"));
     assert.ok(joystick.includes('data-biomes-mobile-crouch="true"'));
+    assert.ok(joystick.includes('data-biomes-mobile-jump="true"'));
     assert.ok(joystick.includes('aria-label="Hold C to crouch"'));
+    assert.ok(joystick.includes('aria-label="Jump or hold to rise"'));
+    assert.ok(joystick.includes("clientConfig.mobileDevice ? ("));
+    assert.ok(joystick.includes("MOBILE_JOYSTICK_JUMP_SOURCE"));
+    assert.match(joystick, /input\.setSyntheticAction\(\s*"jump"/);
     assert.ok(joystick.includes("containMobileControlEvent"));
     assert.ok(input.includes("setSyntheticAction"));
     assert.ok(player.includes("MOBILE_JOYSTICK_CROUCH_SOURCE"));
     assert.ok(player.includes("motionWithoutSyntheticSource"));
-    assert.ok(hud.includes(".mobile-crouch-button"));
+    assert.ok(hud.includes(".mobile-movement-button"));
+    assert.ok(hud.includes(".mobile-jump-button"));
     assert.ok(hud.includes("touch-action: none"));
   });
 
@@ -111,6 +119,17 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(preview.includes("lowMemory ? Math.min(1, devicePixelRatio)"));
   });
 
+  it("uses the phone memory profile and does not mount streaming media players", () => {
+    const config = read("src/client/game/client_config.ts");
+    const spatialMedia = read("src/client/components/SpatialMediaPlayer.tsx");
+    const css3dTv = read("src/client/components/css3d/CSS3DTV.tsx");
+
+    assert.ok(config.includes("MOBILE_VOXELOO_MEMORY_SCALE = 0.25"));
+    assert.ok(config.includes("ret.forceRenderScale = 0.5"));
+    assert.ok(spatialMedia.includes("clientConfig.mobileDevice"));
+    assert.ok(css3dTv.includes("mobileStaticMedia"));
+  });
+
   it("keeps joystick walk/run independent from the keyboard run toggle", () => {
     const player = read("src/client/game/scripts/player.ts");
     assert.ok(player.includes("motionWithoutSyntheticSource"));
@@ -118,20 +137,21 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(player.includes("running = mobileJoystickRunState > 0"));
   });
 
-  it("replaces the R/J prompt with mobile-only Menu and Recipes buttons", () => {
+  it("replaces the R/J prompt with mobile Menu, Recipes, and Invite buttons", () => {
     const prompt = read(
       "src/client/components/biomes_ui/BiomesUIOpenPrompt.tsx"
     );
     const ui = read("src/client/components/biomes_ui/BiomesUI.tsx");
 
     assert.ok(prompt.includes("clientConfig.showVirtualJoystick"));
-    assert.ok(
-      ui.includes("zIndex: clientConfig.showVirtualJoystick ? 5 : undefined")
-    );
+    assert.ok(ui.includes("const phoneLayout = clientConfig.mobileDevice"));
+    assert.ok(ui.includes("zIndex: phoneLayout ? 5 : undefined"));
     assert.ok(prompt.includes('data-biomes-mobile-menu="true"'));
     assert.ok(prompt.includes('data-biomes-mobile-action="menu"'));
     assert.ok(prompt.includes('data-biomes-mobile-action="recipes"'));
+    assert.ok(prompt.includes('data-biomes-mobile-action="invite"'));
     assert.ok(prompt.includes('aria-label="Open Recipes"'));
+    assert.ok(prompt.includes('aria-label="Invite friends"'));
     assert.ok(ui.includes('onActiveTabChange("inventory")'));
     assert.ok(
       ui.includes(
@@ -174,8 +194,9 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(theme.includes("width: min(54vw, 320px);"));
   });
 
-  it("keeps the raised, scrollable hotbar scoped to virtual-joystick mode", () => {
+  it("keeps phone layout changes scoped away from pointerless desktop", () => {
     const ui = read("src/client/components/biomes_ui/BiomesUI.tsx");
+    const nav = read("src/client/components/biomes_ui/nav/BiomesNav.tsx");
     const hotbar = read(
       "src/client/components/biomes_ui/hotbar/BiomesHotbar.tsx"
     );
@@ -192,6 +213,15 @@ describe("mobile gameplay control wiring", () => {
         "bottom: max(28px, calc(env(safe-area-inset-bottom) + 16px));"
       )
     );
-    assert.ok(theme.includes(".biomes-ui-current-objective-hud--mobile"));
+    assert.ok(theme.includes("clamp(136px, 32vw, 164px)"));
+    assert.ok(theme.includes('[data-biomes-mobile-hotbar="true"]'));
+    assert.ok(theme.includes("min-width: 48px"));
+    assert.ok(theme.includes(".biomes-ui-current-objective-hud--phone"));
+    assert.ok(ui.includes("data-biomes-mobile-ui-overlay"));
+    assert.ok(ui.includes("const phoneLayout = clientConfig.mobileDevice"));
+    assert.ok(ui.includes("mobile={phoneLayout}"));
+    assert.ok(ui.includes("mobile={clientConfig.showVirtualJoystick}"));
+    assert.ok(nav.includes("data-biomes-mobile-nav"));
+    assert.ok(nav.includes('flexWrap: mobile ? "nowrap" : "wrap"'));
   });
 });

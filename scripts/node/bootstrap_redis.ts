@@ -12,6 +12,7 @@ import { scriptInit } from "@/server/shared/script_init";
 import { RedisWorld } from "@/server/shared/world/redis";
 import { buildHarthmereGroveRaceMinigameSeedProposedChanges } from "@/server/harthmere/grove_race_minigame_ecs_seed";
 import { buildHarthmereLiveEntityProductionSeedProposedChanges } from "@/server/harthmere/live_entity_ecs_seed";
+import { buildSnapshotMinigameCatalogSeedProposedChanges } from "@/server/harthmere/snapshot_minigame_ecs_seed";
 import { buildHarthmereSnapshotGroveNpcSeedProposedChanges } from "@/server/harthmere/snapshot_grove_npc_ecs_seed";
 import { ProposedChange } from "@/shared/ecs/change";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
@@ -52,6 +53,10 @@ export async function bootstrapRedis(backupFile?: string) {
   }
   await storage.stop();
 
+  const snapshotEntities = changes.flatMap((change) =>
+    change.kind === "create" ? [change.entity] : []
+  );
+
   const existingIds = new Set(
     changes
       .map(
@@ -72,6 +77,11 @@ export async function bootstrapRedis(backupFile?: string) {
       nowSeconds: secondsSinceEpoch(),
       existingIds,
     });
+  const snapshotMinigameSeedChanges =
+    buildSnapshotMinigameCatalogSeedProposedChanges({
+      nowSeconds: secondsSinceEpoch(),
+      entities: snapshotEntities,
+    });
   const snapshotGroveNpcSeedChanges =
     buildHarthmereSnapshotGroveNpcSeedProposedChanges({
       nowSeconds: secondsSinceEpoch(),
@@ -80,10 +90,11 @@ export async function bootstrapRedis(backupFile?: string) {
   changes.push(
     ...liveEntitySeedChanges,
     ...groveRaceSeedChanges,
+    ...snapshotMinigameSeedChanges,
     ...snapshotGroveNpcSeedChanges
   );
   console.log(
-    `Added ${liveEntitySeedChanges.length} Harthmere live entity seed changes, ${groveRaceSeedChanges.length} Grove race minigame seed changes, and ${snapshotGroveNpcSeedChanges.length} Grove NPC seed changes.`
+    `Added ${liveEntitySeedChanges.length} Harthmere live entity seed changes, ${groveRaceSeedChanges.length} Grove race minigame seed changes, ${snapshotMinigameSeedChanges.length} snapshot minigame repair changes, and ${snapshotGroveNpcSeedChanges.length} Grove NPC seed changes.`
   );
 
   console.log(`Loaded ${changes.length} changes, placing into redis.`);

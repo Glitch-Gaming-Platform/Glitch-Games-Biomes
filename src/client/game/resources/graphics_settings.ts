@@ -145,8 +145,11 @@ function genGraphicsSettingsResolved(
   // Resolves user settings, which represents
   // inferred settings that a user could conceivably set themselves
   const literal = deps.get("/settings/graphics/literal");
-  const quality =
-    context.clientConfig.forceGraphicsQuality ?? literal.quality ?? "auto";
+  const quality = graphicsQualityForDevice({
+    mobileDevice: context.clientConfig.mobileDevice,
+    forcedQuality: context.clientConfig.forceGraphicsQuality,
+    storedQuality: literal.quality,
+  });
   const hasDynamicRenderScale =
     context.rendererController.profiler()?.supportsGpuTime() ?? false;
   const gpuTier = context.clientConfig.gpuTier;
@@ -238,6 +241,27 @@ function genGraphicsSettingsResolved(
     quality: "custom",
   };
   return customQuality;
+}
+
+export function graphicsQualityForDevice({
+  mobileDevice,
+  forcedQuality,
+  storedQuality,
+}: {
+  mobileDevice: boolean;
+  forcedQuality?: GraphicsQuality;
+  storedQuality?: GraphicsQuality;
+}): GraphicsQuality {
+  if (forcedQuality !== undefined) {
+    return forcedQuality;
+  }
+  if (mobileDevice) {
+    // Persisted desktop/high settings should never make a phone allocate the
+    // high-quality postprocess chain. Preserve the even-cheaper safe mode,
+    // while explicit URL diagnostics remain authoritative above.
+    return storedQuality === "safeMode" ? "safeMode" : "low";
+  }
+  return storedQuality ?? "auto";
 }
 
 function genGraphicsSettingsComputed(
@@ -382,8 +406,8 @@ function genGraphicsSettingsDynamic(
   const renderScale =
     computedSettings.renderScale.kind === "scale"
       ? computedSettings.renderScale.scale
-      : deps.get("/settings/graphics/dynamic_render_scale").value ??
-        (gpuTier <= 1 ? 0.5 : 1.0);
+      : (deps.get("/settings/graphics/dynamic_render_scale").value ??
+        (gpuTier <= 1 ? 0.5 : 1.0));
 
   const isDynamicDrawDistance = computedSettings.drawDistance === "dynamic";
   const dynamicDrawDistance = isDynamicDrawDistance
@@ -396,8 +420,8 @@ function genGraphicsSettingsDynamic(
           : defaultDynamicDrawDistance(context.clientConfig.lowMemory);
       })()
     : typeof computedSettings.drawDistance === "number"
-    ? computedSettings.drawDistance
-    : DRAW_DISTANCES.low;
+      ? computedSettings.drawDistance
+      : DRAW_DISTANCES.low;
   const drawDistance = applyDrawDistanceFloors(dynamicDrawDistance, {
     hardMinDrawDistance: context.clientConfig.minDrawDistance,
     dynamicMinDrawDistance: context.clientConfig.dynamicMinDrawDistance,

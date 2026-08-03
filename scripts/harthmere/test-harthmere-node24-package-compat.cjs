@@ -3,6 +3,10 @@ const fs = require("fs");
 const path = require("path");
 const root = process.argv[2] || process.cwd();
 const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+const fastTestLauncher = fs.readFileSync(
+  path.join(root, "scripts/harthmere/t.sh"),
+  "utf8"
+);
 let ok = true;
 function dep(name) {
   return (
@@ -42,6 +46,14 @@ check(
   "uWebSockets carries the pinned Node 24 ABI release",
   dep("uWebSockets.js") ===
     "https://github.com/uNetworking/uWebSockets.js/archive/refs/tags/v20.69.0.tar.gz"
+);
+check(
+  "full fast-test gate selects the exact .nvmrc runtime before loading uWebSockets",
+  fastTestLauncher.includes('if [ "${1:-}" = "full" ]') &&
+    fastTestLauncher.includes("REQUIRED_NODE_VERSION") &&
+    fastTestLauncher.includes("$HOME/.nvm/versions/node/v${REQUIRED_NODE_VERSION}/bin") &&
+    fastTestLauncher.indexOf('if [ "${1:-}" = "full" ]') <
+      fastTestLauncher.indexOf("NODE_MAJOR=")
 );
 check(
   "Kubernetes client stays below 1.x to avoid ESM-only migration in the current dependency set",

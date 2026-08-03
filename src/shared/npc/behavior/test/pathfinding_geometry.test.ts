@@ -62,10 +62,35 @@ describe("hill pathfinding: movement offsets", () => {
     assert.ok(offsets.some((offset) => offset[1] === -1));
   });
 
+  it("offers two-block cardinal hill steps only to an oversized profile", () => {
+    const ordinary = npcMovementOffsets({
+      onFullBlock: true,
+      maxStepHeight: 1,
+    });
+    const oversized = npcMovementOffsets({
+      onFullBlock: true,
+      maxStepHeight: 2,
+    });
+    assert.equal(
+      ordinary.some((offset) => Math.abs(offset[1]) === 2),
+      false
+    );
+    assert.ok(oversized.some((offset) => offset[1] === 2));
+    assert.ok(oversized.some((offset) => offset[1] === -2));
+    assert.equal(
+      oversized.some((offset) => isDiagonalOffset(offset) && offset[1] !== 0),
+      false
+    );
+  });
+
   it("weights diagonals by their true length so A* stays admissible", () => {
     assert.equal(pathfindingEdgeWeight([1, 0, 0]), PATHFINDING_CARDINAL_WEIGHT);
     assert.equal(pathfindingEdgeWeight([1, 0, 1]), PATHFINDING_DIAGONAL_WEIGHT);
     assert.equal(pathfindingEdgeWeight([1, 1, 0]), PATHFINDING_VERTICAL_WEIGHT);
+    assert.equal(
+      pathfindingEdgeWeight([1, 2, 0]),
+      PATHFINDING_VERTICAL_WEIGHT * 2
+    );
     assert.ok(PATHFINDING_DIAGONAL_WEIGHT < 2 * PATHFINDING_CARDINAL_WEIGHT);
   });
 });
@@ -242,8 +267,7 @@ describe("hill pathfinding: cached path maintenance", () => {
         targetPosition: [30, 35, -400],
         maxDriftMeters: 3,
         nowSeconds: now,
-        lastSearchAtSeconds:
-          now - PATHFINDING_REBUILD_COOLDOWN_SECONDS / 2,
+        lastSearchAtSeconds: now - PATHFINDING_REBUILD_COOLDOWN_SECONDS / 2,
       }).kind,
       "wait_for_cooldown"
     );
@@ -299,7 +323,11 @@ describe("hill pathfinding: cached path maintenance", () => {
 
   it("repairs a path by swapping only its final node", () => {
     const path: Path = {
-      nodes: [{ position: [0, 0, 0] }, { position: [1, 0, 0] }, { position: [2, 0, 0] }],
+      nodes: [
+        { position: [0, 0, 0] },
+        { position: [1, 0, 0] },
+        { position: [2, 0, 0] },
+      ],
     };
     const repaired = repairPathDestination(path, [3, 0, 0]);
     assert.equal(repaired.nodes.length, 3);

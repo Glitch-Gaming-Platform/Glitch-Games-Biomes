@@ -1,0 +1,1457 @@
+{
+  "assetVersion": "harthmere-world-interaction-graphics-blender-v1",
+  "generatorVersion": 1,
+  "coordinateContract": {
+    "unitMeters": 1,
+    "pivot": "bottom_center",
+    "blenderToWorld": {
+      "x": "worldX",
+      "y": "worldZ",
+      "z": "worldY"
+    }
+  },
+  "performance": {
+    "textures": "none_compact_pbr_colors_only",
+    "compression": "EXT_meshopt_compression via gltfpack 1.2 -cc",
+    "collision": "interaction_authority_only_no_render_mesh_collision",
+    "runtimeLights": 0
+  },
+  "authorityBoundary": {
+    "authoredGatheringNodes": "server_shared_respawn_static_landmark_no_gaia_plant_tick",
+    "plantedCrops": "native_ecs_farming_plant_component_plus_gaia_growth_and_harvest",
+    "visualReuseRule": "share_species_silhouette_and_material_not_static_landmark_renderer"
+  },
+  "gatheringNodeLodPolicy": {
+    "lod0MaxDistanceMeters": 18,
+    "lod1MaxDistanceMeters": 64,
+    "hiddenBeyondMeters": 96
+  },
+  "jobsBoardLodPolicy": {
+    "lod0MaxDistanceMeters": 22,
+    "lod1MaxDistanceMeters": 72,
+    "hiddenBeyondMeters": 110
+  },
+  "gatheringNodes": [
+    {
+      "nodeId": "harthmere_north_iron_vein",
+      "displayName": "North Road Iron Vein",
+      "profession": "mining",
+      "archetype": "iron_vein",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/harthmere_north_iron_vein/harthmere_north_iron_vein.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/harthmere_north_iron_vein/harthmere_north_iron_vein.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.125,
+          -0.9,
+          -0.1024
+        ],
+        "max": [
+          1.125,
+          0.9,
+          0.8164
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 13008,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 5308,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "harthmere_orchard_softwood",
+      "displayName": "Orchard Softwood Branches",
+      "profession": "logging",
+      "archetype": "softwood_branches",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/harthmere_orchard_softwood/harthmere_orchard_softwood.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/harthmere_orchard_softwood/harthmere_orchard_softwood.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.2,
+          -0.9,
+          0.0
+        ],
+        "max": [
+          1.2,
+          0.9,
+          0.6436
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 15268,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 4892,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "harthmere_temple_peacebloom",
+      "displayName": "Temple Peacebloom Bed",
+      "profession": "herbalism",
+      "archetype": "peacebloom",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/harthmere_temple_peacebloom/harthmere_temple_peacebloom.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/harthmere_temple_peacebloom/harthmere_temple_peacebloom.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.25,
+          -0.825,
+          0.0
+        ],
+        "max": [
+          1.25,
+          0.825,
+          0.8285
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 13232,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 5208,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "harthmere_river_fishing_pool",
+      "displayName": "Bluewater Fishing Pool",
+      "profession": "fishing",
+      "archetype": "fishing_pool",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/harthmere_river_fishing_pool/harthmere_river_fishing_pool.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/harthmere_river_fishing_pool/harthmere_river_fishing_pool.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.25,
+          -1.09,
+          0.0
+        ],
+        "max": [
+          1.25,
+          1.09,
+          1.168
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 11080,
+          "meshCount": 1,
+          "primitiveCount": 5,
+          "materialCount": 5,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 6456,
+          "meshCount": 1,
+          "primitiveCount": 5,
+          "materialCount": 5,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "harthmere_farm_crops",
+      "displayName": "Farm Crop Row",
+      "profession": "farming",
+      "archetype": "crop_row",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/harthmere_farm_crops/harthmere_farm_crops.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/harthmere_farm_crops/harthmere_farm_crops.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.25,
+          -0.825,
+          0.0
+        ],
+        "max": [
+          1.25,
+          0.825,
+          0.8915
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 30596,
+          "meshCount": 1,
+          "primitiveCount": 4,
+          "materialCount": 4,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 6944,
+          "meshCount": 1,
+          "primitiveCount": 4,
+          "materialCount": 4,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "harthmere_mudden_scrap",
+      "displayName": "Mudden Ward Scrap Pile",
+      "profession": "scavenging",
+      "archetype": "scrap_pile",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/harthmere_mudden_scrap/harthmere_mudden_scrap.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/harthmere_mudden_scrap/harthmere_mudden_scrap.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.2,
+          -0.95,
+          -0.3602
+        ],
+        "max": [
+          1.2,
+          0.95,
+          1.4402
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 11248,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 4696,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "harthmere_river_clay",
+      "displayName": "Riverbank Clay Deposit",
+      "profession": "scavenging",
+      "archetype": "river_clay",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/harthmere_river_clay/harthmere_river_clay.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/harthmere_river_clay/harthmere_river_clay.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.25,
+          -1.0,
+          0.0
+        ],
+        "max": [
+          1.25,
+          1.0,
+          0.7742
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 7440,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 4740,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "harthmere_old_well_essence",
+      "displayName": "Old Well Mana Residue",
+      "profession": "magical_harvesting",
+      "archetype": "mana_residue",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/harthmere_old_well_essence/harthmere_old_well_essence.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/harthmere_old_well_essence/harthmere_old_well_essence.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.1,
+          -0.95,
+          0.0
+        ],
+        "max": [
+          1.1,
+          0.95,
+          1.0794
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 13384,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 5044,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "harthmere_chapel_relic_dig",
+      "displayName": "Old Grave Relic Dig",
+      "profession": "archaeology",
+      "archetype": "relic_dig",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/harthmere_chapel_relic_dig/harthmere_chapel_relic_dig.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/harthmere_chapel_relic_dig/harthmere_chapel_relic_dig.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.25,
+          -0.95,
+          0.0
+        ],
+        "max": [
+          1.25,
+          0.95,
+          0.7962
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 9596,
+          "meshCount": 1,
+          "primitiveCount": 5,
+          "materialCount": 5,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 5128,
+          "meshCount": 1,
+          "primitiveCount": 5,
+          "materialCount": 5,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "harthmere_wolf_carcass",
+      "displayName": "Road Wolf Carcass",
+      "profession": "skinning",
+      "archetype": "wolf_harvest",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/harthmere_wolf_carcass/harthmere_wolf_carcass.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/harthmere_wolf_carcass/harthmere_wolf_carcass.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.325,
+          -1.025,
+          0.0
+        ],
+        "max": [
+          1.3365,
+          1.025,
+          1.02
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 14404,
+          "meshCount": 1,
+          "primitiveCount": 5,
+          "materialCount": 5,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 5904,
+          "meshCount": 1,
+          "primitiveCount": 4,
+          "materialCount": 4,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "greenmere_oak_grove",
+      "displayName": "Greenmere Oak Grove",
+      "profession": "logging",
+      "archetype": "oak_grove",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/greenmere_oak_grove/greenmere_oak_grove.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/greenmere_oak_grove/greenmere_oak_grove.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.2,
+          -0.9,
+          0.0
+        ],
+        "max": [
+          1.2,
+          0.9044,
+          0.763
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 10740,
+          "meshCount": 1,
+          "primitiveCount": 2,
+          "materialCount": 2,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 3972,
+          "meshCount": 1,
+          "primitiveCount": 2,
+          "materialCount": 2,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "north_pine_stand",
+      "displayName": "North Greenmere Pine Stand",
+      "profession": "logging",
+      "archetype": "pine_stand",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/north_pine_stand/north_pine_stand.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/north_pine_stand/north_pine_stand.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.2,
+          -0.9,
+          0.0
+        ],
+        "max": [
+          1.2,
+          1.0874,
+          1.595
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 13876,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 4128,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "old_wood_birch_grove",
+      "displayName": "Old Wood Birch Grove",
+      "profession": "logging",
+      "archetype": "birch_grove",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/old_wood_birch_grove/old_wood_birch_grove.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/old_wood_birch_grove/old_wood_birch_grove.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.2,
+          -0.9,
+          0.0
+        ],
+        "max": [
+          1.2,
+          0.9,
+          0.66
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 22116,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 3404,
+          "meshCount": 1,
+          "primitiveCount": 2,
+          "materialCount": 2,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "briarfen_willow_cuttings",
+      "displayName": "Briarfen Willow Cuttings",
+      "profession": "logging",
+      "archetype": "willow_cuttings",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/briarfen_willow_cuttings/briarfen_willow_cuttings.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/briarfen_willow_cuttings/briarfen_willow_cuttings.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.2,
+          -0.9,
+          0.0
+        ],
+        "max": [
+          1.2,
+          0.9,
+          0.988
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 18536,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 5284,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "watchtower_iron_cut",
+      "displayName": "Watchtower Iron Cut",
+      "profession": "mining",
+      "archetype": "iron_cut",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/watchtower_iron_cut/watchtower_iron_cut.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/watchtower_iron_cut/watchtower_iron_cut.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.125,
+          -0.9,
+          -0.2284
+        ],
+        "max": [
+          1.125,
+          0.9,
+          0.8937
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 13956,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 5760,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "bandit_ridge_coal_seam",
+      "displayName": "Bandit Ridge Coal Seam",
+      "profession": "mining",
+      "archetype": "coal_seam",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/bandit_ridge_coal_seam/bandit_ridge_coal_seam.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/bandit_ridge_coal_seam/bandit_ridge_coal_seam.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.125,
+          -0.9,
+          -0.1024
+        ],
+        "max": [
+          1.125,
+          0.9,
+          0.8164
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 15352,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 6612,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "old_wood_silver_thread",
+      "displayName": "Old Wood Silver Thread",
+      "profession": "mining",
+      "archetype": "silver_thread",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/old_wood_silver_thread/old_wood_silver_thread.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/old_wood_silver_thread/old_wood_silver_thread.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.125,
+          -0.9,
+          -0.1024
+        ],
+        "max": [
+          1.125,
+          0.9,
+          0.9517
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 16428,
+          "meshCount": 1,
+          "primitiveCount": 2,
+          "materialCount": 2,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 4988,
+          "meshCount": 1,
+          "primitiveCount": 2,
+          "materialCount": 2,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "gravewood_gold_fragment",
+      "displayName": "Gravewood Gold Fragment",
+      "profession": "mining",
+      "archetype": "gold_fragment",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/gravewood_gold_fragment/gravewood_gold_fragment.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/gravewood_gold_fragment/gravewood_gold_fragment.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.125,
+          -0.9,
+          -0.1024
+        ],
+        "max": [
+          1.125,
+          0.9,
+          0.8164
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 13604,
+          "meshCount": 1,
+          "primitiveCount": 2,
+          "materialCount": 2,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 5328,
+          "meshCount": 1,
+          "primitiveCount": 2,
+          "materialCount": 2,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "greenmere_berry_thicket",
+      "displayName": "Greenmere Berry Thicket",
+      "profession": "herbalism",
+      "archetype": "berry_thicket",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/greenmere_berry_thicket/greenmere_berry_thicket.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/greenmere_berry_thicket/greenmere_berry_thicket.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.15,
+          -0.925,
+          0.0
+        ],
+        "max": [
+          1.15,
+          0.925,
+          0.845
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 10824,
+          "meshCount": 1,
+          "primitiveCount": 2,
+          "materialCount": 2,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 5856,
+          "meshCount": 1,
+          "primitiveCount": 2,
+          "materialCount": 2,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "old_wood_mushroom_ring",
+      "displayName": "Old Wood Mushroom Ring",
+      "profession": "herbalism",
+      "archetype": "mushroom_ring",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/old_wood_mushroom_ring/old_wood_mushroom_ring.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/old_wood_mushroom_ring/old_wood_mushroom_ring.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.15,
+          -0.925,
+          0.0
+        ],
+        "max": [
+          1.15,
+          0.925,
+          0.59
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 28300,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 5564,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "briarfen_reed_bed",
+      "displayName": "Briarfen Reed Bed",
+      "profession": "scavenging",
+      "archetype": "reed_bed",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/briarfen_reed_bed/briarfen_reed_bed.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/briarfen_reed_bed/briarfen_reed_bed.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.25,
+          -1.0,
+          0.0
+        ],
+        "max": [
+          1.25,
+          1.0,
+          1.35
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 19664,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 5720,
+          "meshCount": 1,
+          "primitiveCount": 3,
+          "materialCount": 3,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "briarfen_clay_bank",
+      "displayName": "Briarfen Blackwater Clay Bank",
+      "profession": "scavenging",
+      "archetype": "blackwater_clay",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/briarfen_clay_bank/briarfen_clay_bank.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/briarfen_clay_bank/briarfen_clay_bank.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.25,
+          -1.0,
+          0.0
+        ],
+        "max": [
+          1.25,
+          1.0,
+          0.7742
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 8444,
+          "meshCount": 1,
+          "primitiveCount": 4,
+          "materialCount": 4,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 5772,
+          "meshCount": 1,
+          "primitiveCount": 4,
+          "materialCount": 4,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "gravewood_moss_and_nightshade",
+      "displayName": "Gravewood Moss and Nightshade",
+      "profession": "herbalism",
+      "archetype": "nightshade",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/gravewood_moss_and_nightshade/gravewood_moss_and_nightshade.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/gravewood_moss_and_nightshade/gravewood_moss_and_nightshade.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.15,
+          -0.925,
+          -0.1024
+        ],
+        "max": [
+          1.15,
+          0.925,
+          0.8164
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 22432,
+          "meshCount": 1,
+          "primitiveCount": 4,
+          "materialCount": 4,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 7528,
+          "meshCount": 1,
+          "primitiveCount": 4,
+          "materialCount": 4,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "gate_field_flax_row",
+      "displayName": "Gate Field Flax Row",
+      "profession": "farming",
+      "archetype": "flax_row",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/gate_field_flax_row/gate_field_flax_row.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/gate_field_flax_row/gate_field_flax_row.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.25,
+          -0.825,
+          0.0
+        ],
+        "max": [
+          1.25,
+          0.825,
+          0.8915
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 30640,
+          "meshCount": 1,
+          "primitiveCount": 4,
+          "materialCount": 4,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 7000,
+          "meshCount": 1,
+          "primitiveCount": 4,
+          "materialCount": 4,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "orchard_honey_hive",
+      "displayName": "Orchard Honey Hive",
+      "profession": "farming",
+      "archetype": "honey_hive",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/orchard_honey_hive/orchard_honey_hive.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/orchard_honey_hive/orchard_honey_hive.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.1,
+          -0.9,
+          0.0
+        ],
+        "max": [
+          1.1,
+          0.9,
+          1.6336
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 8240,
+          "meshCount": 1,
+          "primitiveCount": 5,
+          "materialCount": 5,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 5384,
+          "meshCount": 1,
+          "primitiveCount": 5,
+          "materialCount": 5,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "deer_hunting_trail",
+      "displayName": "Deer Hunting Trail",
+      "profession": "skinning",
+      "archetype": "deer_harvest",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/deer_hunting_trail/deer_hunting_trail.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/deer_hunting_trail/deer_hunting_trail.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.325,
+          -1.025,
+          0.0
+        ],
+        "max": [
+          1.3365,
+          1.025,
+          1.0444
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 15252,
+          "meshCount": 1,
+          "primitiveCount": 6,
+          "materialCount": 6,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 6312,
+          "meshCount": 1,
+          "primitiveCount": 5,
+          "materialCount": 5,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "boar_sounder_harvest",
+      "displayName": "Boar Sounder Harvest",
+      "profession": "skinning",
+      "archetype": "boar_harvest",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/boar_sounder_harvest/boar_sounder_harvest.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/boar_sounder_harvest/boar_sounder_harvest.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.325,
+          -1.025,
+          0.0
+        ],
+        "max": [
+          1.4035,
+          1.025,
+          0.8976
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 13860,
+          "meshCount": 1,
+          "primitiveCount": 6,
+          "materialCount": 6,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 6324,
+          "meshCount": 1,
+          "primitiveCount": 5,
+          "materialCount": 5,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "bear_den_harvest",
+      "displayName": "Black Bear Den Harvest",
+      "profession": "skinning",
+      "archetype": "bear_harvest",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/bear_den_harvest/bear_den_harvest.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/bear_den_harvest/bear_den_harvest.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.325,
+          -1.025,
+          0.0
+        ],
+        "max": [
+          1.3365,
+          1.025,
+          0.9556
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 13160,
+          "meshCount": 1,
+          "primitiveCount": 5,
+          "materialCount": 5,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 6768,
+          "meshCount": 1,
+          "primitiveCount": 4,
+          "materialCount": 4,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    {
+      "nodeId": "gravewood_zombie_remains",
+      "displayName": "Bell-Woken Zombie Remains",
+      "profession": "monster_harvesting",
+      "archetype": "zombie_remains",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/gathering_nodes/gravewood_zombie_remains/gravewood_zombie_remains.glb",
+        "lod1": "/assets/harthmere/glb/gathering_nodes/gravewood_zombie_remains/gravewood_zombie_remains.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -1.2,
+          -0.95,
+          0.0
+        ],
+        "max": [
+          1.2,
+          0.95,
+          0.5758
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 12748,
+          "meshCount": 1,
+          "primitiveCount": 4,
+          "materialCount": 4,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 5272,
+          "meshCount": 1,
+          "primitiveCount": 4,
+          "materialCount": 4,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    }
+  ],
+  "jobsBoardVariants": {
+    "blue": {
+      "accentColor": "#1a8cc7",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/jobs_boards/jobs_board_blue/jobs_board_blue.glb",
+        "lod1": "/assets/harthmere/glb/jobs_boards/jobs_board_blue/jobs_board_blue.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -3.312,
+          -0.7176,
+          0.0
+        ],
+        "max": [
+          3.312,
+          0.5175,
+          6.4507
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 38752,
+          "meshCount": 1,
+          "primitiveCount": 7,
+          "materialCount": 7,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 7608,
+          "meshCount": 1,
+          "primitiveCount": 7,
+          "materialCount": 7,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    "amber": {
+      "accentColor": "#e0801f",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/jobs_boards/jobs_board_amber/jobs_board_amber.glb",
+        "lod1": "/assets/harthmere/glb/jobs_boards/jobs_board_amber/jobs_board_amber.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -3.312,
+          -0.7176,
+          0.0
+        ],
+        "max": [
+          3.312,
+          0.5175,
+          6.4507
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 38752,
+          "meshCount": 1,
+          "primitiveCount": 7,
+          "materialCount": 7,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 7604,
+          "meshCount": 1,
+          "primitiveCount": 7,
+          "materialCount": 7,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    "rose": {
+      "accentColor": "#b8336b",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/jobs_boards/jobs_board_rose/jobs_board_rose.glb",
+        "lod1": "/assets/harthmere/glb/jobs_boards/jobs_board_rose/jobs_board_rose.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -3.312,
+          -0.7176,
+          0.0
+        ],
+        "max": [
+          3.312,
+          0.5175,
+          6.4507
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 38752,
+          "meshCount": 1,
+          "primitiveCount": 7,
+          "materialCount": 7,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 7608,
+          "meshCount": 1,
+          "primitiveCount": 7,
+          "materialCount": 7,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    "green": {
+      "accentColor": "#5c9424",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/jobs_boards/jobs_board_green/jobs_board_green.glb",
+        "lod1": "/assets/harthmere/glb/jobs_boards/jobs_board_green/jobs_board_green.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -3.312,
+          -0.7176,
+          0.0
+        ],
+        "max": [
+          3.312,
+          0.5175,
+          6.4507
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 38760,
+          "meshCount": 1,
+          "primitiveCount": 7,
+          "materialCount": 7,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 7612,
+          "meshCount": 1,
+          "primitiveCount": 7,
+          "materialCount": 7,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    "violet": {
+      "accentColor": "#8547b8",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/jobs_boards/jobs_board_violet/jobs_board_violet.glb",
+        "lod1": "/assets/harthmere/glb/jobs_boards/jobs_board_violet/jobs_board_violet.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -3.312,
+          -0.7176,
+          0.0
+        ],
+        "max": [
+          3.312,
+          0.5175,
+          6.4507
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 38768,
+          "meshCount": 1,
+          "primitiveCount": 7,
+          "materialCount": 7,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 7620,
+          "meshCount": 1,
+          "primitiveCount": 7,
+          "materialCount": 7,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    }
+  },
+  "summary": {
+    "gatheringNodeCount": 29,
+    "jobsBoardVariantCount": 5,
+    "glbCount": 68,
+    "totalBytes": 840560
+  }
+}

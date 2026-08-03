@@ -41,9 +41,7 @@ export function objectiveRequiresRecipesForTest(objective: unknown) {
   const text = cleanObjectiveText(objective)?.toLowerCase();
   return Boolean(
     text &&
-      /\b(?:handcraft|craft|mix|brew|cook|bake|smelt|forge|assemble)\b/.test(
-        text
-      )
+    /\b(?:handcraft|craft|mix|brew|cook|bake|smelt|forge|assemble)\b/.test(text)
   );
 }
 
@@ -60,7 +58,7 @@ function questToolSourceMatchesActivePin(
 ): boolean {
   return Boolean(
     pin?.markerId &&
-      questDetailToolShopMarkerCandidates(quest).includes(pin.markerId)
+    questDetailToolShopMarkerCandidates(quest).includes(pin.markerId)
   );
 }
 
@@ -70,7 +68,7 @@ function questItemSourceMatchesActivePin(
 ): boolean {
   return Boolean(
     pin?.markerId &&
-      questDetailItemSourceMarkerCandidates(quest).includes(pin.markerId)
+    questDetailItemSourceMarkerCandidates(quest).includes(pin.markerId)
   );
 }
 
@@ -168,9 +166,9 @@ export function currentQuestObjectiveForHUDForTest(input: {
       : undefined) ??
     (explicitlyCleared
       ? undefined
-      : questObjectiveForHUD(activeRoadAheadQuest) ??
+      : (questObjectiveForHUD(activeRoadAheadQuest) ??
         questObjectiveForHUD(activeQuest) ??
-        cleanObjectiveText(currentMissionStep?.objective))
+        cleanObjectiveText(currentMissionStep?.objective)))
   );
 }
 
@@ -256,6 +254,10 @@ export const CurrentQuestObjectiveHUD: React.FunctionComponent<{
       className={`biomes-ui-current-objective-hud ${
         clientConfig.showVirtualJoystick
           ? "biomes-ui-current-objective-hud--mobile"
+          : ""
+      } ${
+        clientConfig.mobileDevice
+          ? "biomes-ui-current-objective-hud--phone"
           : ""
       }`.trim()}
       aria-label="Current objective"

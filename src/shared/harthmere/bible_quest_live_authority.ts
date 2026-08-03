@@ -243,7 +243,7 @@ export interface HarthmereBibleQuestOffer {
   rewardPreview: string;
   levelBand: { min: number; max: number };
   estimatedMinutes: number;
-  /** Present when the gate currently blocks the offer. */
+  /** Retained for old serialized clients; live offers are always eligible. */
   blockedReasons?: string[];
 }
 
@@ -270,26 +270,10 @@ export function harthmereBibleQuestOffersForGiver(input: {
     if (!quest) continue;
     if (input.inProgressQuestIds.has(questId)) continue;
     const gate = bibleQuestGate(quest, input.context);
-    if (gate.ok) {
-      offers.push(offerFor(quest));
-      continue;
-    }
-    // A quest blocked only by level, time or weather is still worth surfacing
-    // so the NPC can say "come back at dusk" instead of pretending it does not
-    // exist. A missing prerequisite, a spent cadence, or a finished once-only
-    // quest is hidden — the player has no way to know it exists yet, or has
-    // already seen it.
-    const hidesEntirely = gate.failures.some(
-      (failure) =>
-        failure.reason === "missing_prerequisite" ||
-        failure.reason === "already_completed_once" ||
-        failure.reason === "cadence_cooldown"
-    );
-    if (hidesEntirely) continue;
-    offers.push({
-      ...offerFor(quest),
-      blockedReasons: gate.failures.map((failure) => failure.reason),
-    });
+    // An offer is an actionable promise. If the same shared gate used by the
+    // mutation authority says acceptance will fail, do not show it as a quest
+    // the player can take.
+    if (gate.ok) offers.push(offerFor(quest));
   }
   return offers;
 }
@@ -1023,8 +1007,7 @@ function reduceThaedrynBossEvent(
   slice.thaedryn = completion.state;
   slice.townPhase = completion.townPhase;
   const pathId = (completion.path?.id ?? resolving.chosenPath) as
-    | HarthmereThaedrynPath
-    | undefined;
+    HarthmereThaedrynPath | undefined;
   if (!pathId) {
     return fail("missing_path_choice");
   }

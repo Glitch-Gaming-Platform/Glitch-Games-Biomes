@@ -1,6 +1,7 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { HealthBarHUD } from "@/client/components/HealthBarHUD";
+import { switchCameraModes } from "@/client/components/inventory/cameraModeActions";
 import { useOwnedItems } from "@/client/components/inventory/helpers";
 import { NormalSlot } from "@/client/components/inventory/NormalSlot";
 import { SelectionNameOverlay } from "@/client/components/inventory/SelectionHints";
@@ -25,10 +26,7 @@ import { getTypedStorageItem } from "@/client/util/typed_local_storage";
 import type { CameraItemMode } from "@/shared/bikkie/schema/types";
 import type { Health } from "@/shared/ecs/gen/components";
 import { Inventory } from "@/shared/ecs/gen/components";
-import {
-  ChangeCameraModeEvent,
-  InventoryChangeSelectionEvent,
-} from "@/shared/ecs/gen/events";
+import { InventoryChangeSelectionEvent } from "@/shared/ecs/gen/events";
 import type {
   Item,
   OwnedItemReference,
@@ -58,23 +56,6 @@ export function handleCameraKeyDown(
 
   const newMode: CameraItemMode = modeSwitcher[newIndex];
   switchCameraModes(reactResources, events, newMode);
-}
-
-export function switchCameraModes(
-  reactResources: ClientReactResources,
-  events: Events,
-  mode: CameraItemMode
-) {
-  const newMode = mode;
-  const localPlayer = reactResources.use("/scene/local_player");
-  reactResources.set("/hotbar/camera_mode", {
-    value: mode,
-  });
-  fireAndForget(
-    events.publish(
-      new ChangeCameraModeEvent({ id: localPlayer.id, mode: newMode.modeType })
-    )
-  );
 }
 
 export function exitCameraMode(
@@ -109,6 +90,8 @@ export function exitCameraMode(
   }
   return true;
 }
+
+export { switchCameraModes } from "@/client/components/inventory/cameraModeActions";
 
 function updateHotbarIndexResource(
   deps: ClientContextSubset<"userId" | "gardenHose" | "resources">,

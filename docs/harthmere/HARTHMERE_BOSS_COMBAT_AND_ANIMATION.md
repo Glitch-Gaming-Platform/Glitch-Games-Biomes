@@ -1,5 +1,11 @@
 # Harthmere boss combat and animation
 
+This is the boss-specific companion to
+`docs/harthmere/HARTHMERE_COMBAT_SYSTEM.md`. The general document defines
+player attack commitment, survival stamina, dodge/evade i-frames, impact-frame
+contact, enemy recovery, Hex/Indisworm behavior, and large-body terrain
+traversal. This document owns the eleven-boss attack and presentation matrix.
+
 This document is the runtime contract for the eleven live Harthmere bosses.
 Every boss has exactly five authoritative attacks, at least one magical attack,
 an exported body animation for each attack, and a shape-correct telegraph or
@@ -8,19 +14,19 @@ the server player-health handler as an accepted native ECS damage receipt.
 
 ## Live boss roster and attacks
 
-| Boss | Five attacks |
-| --- | --- |
-| Muck-Scarred Helix | Maul Crush; Siphon Volley; Helix Pulse; Spore Cast; Breach Rupture |
-| The Gilded Bull | Sun Court Charge; Pillar Crash; Sun-Core Beam; Hoof Quake; Core Rupture |
-| The Ninth Winter | Roofbeam Sweep; Failed-Dawn Shard; Blizzard; Same Day Again; The Year Breaks |
-| The Failed Apprentice | Bell-Fist; Shard Cast; Failed Ward; Wrong Note; Last Lesson |
-| The First Choir | Crone's Rebuke; Stonemason's Toll; Apprentice's False Note; Threefold Canon; Harmony Break |
-| The Echo-Singer | Copy Melee; Copy Ranged; Copy Magic; Echo Delay; Resonance Overload |
-| Vyrahel, the Vein-Keeper | Tail Feint; Vein Breath; Wing Burst; Burrow Rush; Crystal Guard Shatter |
-| Thaedryn the Bellbound | Sleeper Sweep; Sound Cloud; River-Force Breath; Cathedral Wing Gust; Vein Call |
-| Hex Wraith | Hex Volley; Grave-Violet Beam; Lantern-Rib Pulse; Tablet Prison; Phase Scythe |
-| Alpha Mucker | Branch Slam; Seed Barrage; Road Uproot; Root Cage; Muckheart Pulse |
-| The Root-Crowned Dead | Root Eruption; Crown Sweep; Grave Sap; Crown-Seed Barrage; Rootling Swarm |
+| Boss                     | Five attacks                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------------ |
+| Muck-Scarred Helix       | Maul Crush; Siphon Volley; Helix Pulse; Spore Cast; Breach Rupture                         |
+| The Gilded Bull          | Sun Court Charge; Pillar Crash; Sun-Core Beam; Hoof Quake; Core Rupture                    |
+| The Ninth Winter         | Roofbeam Sweep; Failed-Dawn Shard; Blizzard; Same Day Again; The Year Breaks               |
+| The Failed Apprentice    | Bell-Fist; Shard Cast; Failed Ward; Wrong Note; Last Lesson                                |
+| The First Choir          | Crone's Rebuke; Stonemason's Toll; Apprentice's False Note; Threefold Canon; Harmony Break |
+| The Echo-Singer          | Copy Melee; Copy Ranged; Copy Magic; Echo Delay; Resonance Overload                        |
+| Vyrahel, the Vein-Keeper | Tail Feint; Vein Breath; Wing Burst; Burrow Rush; Crystal Guard Shatter                    |
+| Thaedryn the Bellbound   | Sleeper Sweep; Sound Cloud; River-Force Breath; Cathedral Wing Gust; Vein Call             |
+| Hex Wraith               | Hex Volley; Grave-Violet Beam; Lantern-Rib Pulse; Tablet Prison; Phase Scythe              |
+| Alpha Mucker             | Branch Slam; Seed Barrage; Road Uproot; Root Cage; Muckheart Pulse                         |
+| The Root-Crowned Dead    | Root Eruption; Crown Sweep; Grave Sap; Crown-Seed Barrage; Rootling Swarm                  |
 
 The authoritative definitions live in
 `src/shared/harthmere/boss_attack_catalog.ts`. Attack geometry is one of
@@ -74,6 +80,11 @@ horizontal distance traveled while walk/run animation weight is active, rather
 than by a blind timer. Idle, death, hovering bosses, and teleport-sized position
 jumps reset the cadence. Current stomp-enabled bosses are Muck-Scarred Helix,
 The Gilded Bull, The Ninth Winter, Alpha Mucker, and The Root-Crowned Dead.
+Because this generated path bypasses the normal Galois `footsteps` multiplier,
+each grounded giant supplies an explicit body-sized reference distance, 4x
+bounded gain, 96m-or-larger maximum distance, and 0.85 exponential rolloff.
+That keeps the stomp audible at ordinary boss-fight range without changing or
+clipping the source file.
 
 ## Focused verification
 
@@ -134,3 +145,9 @@ boss long enough to cycle all five attacks and confirm:
 5. leaving the telegraph before impact produces a miss;
 6. the browser animation audit reports the selected special clip and attack
    ability rather than only a generic retaliation animation.
+
+For coordinated combat acceptance, prefer the serial non-fail-fast batch in
+`scripts/harthmere/test-harthmere-combat-live-browser-batch.cjs`. It preserves
+independent giant/hill, ordinary chase, and Indisworm failures in one report so
+source fixes can be made as a batch instead of restarting after the first
+broken scenario.

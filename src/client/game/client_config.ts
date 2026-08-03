@@ -47,6 +47,7 @@ export type ClientConfig = typeof BASE_CLIENT_CONFIG;
 const BASE_CLIENT_CONFIG = {
   dev: false,
   showVirtualJoystick: false,
+  mobileDevice: false,
   forceCharacterSetup: false,
   lowMemory: false,
   unsupportedBrowser: false,
@@ -112,14 +113,20 @@ function adjustConfigForLowMemory(clientConfig: ClientConfig) {
   // On low memory or 32-bit systems it can be difficult to allocate a large
   // chunk of contiguous memory, so in low memory mode we allocate a smaller
   // chunk for voxeloo memory.
-  clientConfig.voxelooMemoryMb *= VOXELOO_MEMORY_SCALE;
+  const memoryScale = lowMemoryScaleForDevice(clientConfig.mobileDevice);
+  clientConfig.voxelooMemoryMb *= memoryScale;
 
   // With less voxeloo memory, we must reduce our resource capacity
   // proportionally, since most resources require voxeloo memory.
-  scaleResourceCapacity(clientConfig, VOXELOO_MEMORY_SCALE);
+  scaleResourceCapacity(clientConfig, memoryScale);
 }
 
 const VOXELOO_MEMORY_SCALE = 0.5;
+const MOBILE_VOXELOO_MEMORY_SCALE = 0.25;
+
+export function lowMemoryScaleForDevice(mobileDevice: boolean) {
+  return mobileDevice ? MOBILE_VOXELOO_MEMORY_SCALE : VOXELOO_MEMORY_SCALE;
+}
 
 function scaleResourceCapacity(clientConfig: ClientConfig, scale: number) {
   clientConfig.clientResourceCapacity = {
@@ -266,6 +273,7 @@ export function doBrowserOverrides(ret: ClientConfig) {
   const deviceType = uaParser.getDevice().type?.toLowerCase();
   const osName = uaParser.getOS().name?.toLowerCase() ?? "";
   const mobileDevice = isMobileDeviceDescription({ deviceType, osName });
+  ret.mobileDevice = mobileDevice;
 
   ret.showVirtualJoystick = shouldShowVirtualJoystick({
     pointerLockSupported: supportsPointerLock(),
@@ -277,6 +285,12 @@ export function doBrowserOverrides(ret: ClientConfig) {
   if (mobileDevice) {
     log.info("Mobile device detected, forcing low memory config.");
     ret.lowMemory = true;
+    // The phone WebContent process shares its per-process budget with JS,
+    // WASM, decoded assets, render targets, and iframe/media overhead. Start
+    // phones at half-resolution immediately instead of letting a high GPU tier
+    // allocate full-size targets before dynamic quality has enough samples to
+    // react. A URL forceRenderScale override still wins below for diagnostics.
+    ret.forceRenderScale = 0.5;
 
     // The 128m Harthmere landmark floor is useful on desktop, but it prevents
     // dynamic graphics from reaching its 64m emergency target on iOS/Android.

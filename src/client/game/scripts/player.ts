@@ -50,10 +50,7 @@ import {
   UpdatePlayerHealthEvent,
 } from "@/shared/ecs/gen/events";
 import { DropSelector, PlaceableSelector } from "@/shared/ecs/gen/selectors";
-import type {
-  EmoteType,
-  OptionalDamageSource,
-} from "@/shared/ecs/gen/types";
+import type { EmoteType, OptionalDamageSource } from "@/shared/ecs/gen/types";
 import type { CollisionCallback } from "@/shared/game/collision";
 import { CollisionHelper } from "@/shared/game/collision";
 import {
@@ -237,8 +234,7 @@ type HarthmereLocalDevTownCollisionBox = {
 };
 
 let harthmereLocalDevTownCollisionSource:
-  | readonly HarthmereLocalDevTownCollisionObstacle[]
-  | undefined;
+  readonly HarthmereLocalDevTownCollisionObstacle[] | undefined;
 let harthmereLocalDevTownCollisionBoxes: HarthmereLocalDevTownCollisionBox[] =
   [];
 
@@ -734,8 +730,7 @@ function harthmereInstallBrowserCollisionE2EHelpers(): void {
           (result) =>
             (
               (result as Record<string, unknown>).obstacle as
-                | Record<string, unknown>
-                | undefined
+                Record<string, unknown> | undefined
             )?.name
         )
         .filter(Boolean),
@@ -2432,6 +2427,7 @@ export class PlayerScript implements Script {
     lateral: -1 | 0 | 1;
   }): boolean {
     const now = this.resources.get("/clock").time;
+    const localPlayer = this.resources.get("/scene/local_player");
     const health = this.resources.get("/ecs/c/health", this.userId);
     const replicatedMovementState = this.resources.get(
       "/ecs/c/movement_state",
@@ -2439,6 +2435,7 @@ export class PlayerScript implements Script {
     );
     if (
       (health?.hp ?? 0) <= 0 ||
+      localPlayer.isAttacking(now) ||
       player.isMovementActionActive(now) ||
       now < this.localMovementActionCooldownUntil ||
       movementActionIsOnCooldown(replicatedMovementState, now) ||
@@ -2474,10 +2471,10 @@ export class PlayerScript implements Script {
       action === "evade"
         ? evadeDirection!.direction
         : lateral
-        ? scale(lateral, sideDirection)
-        : forward
-        ? scale(forward, forwardDirection)
-        : sideDirection;
+          ? scale(lateral, sideDirection)
+          : forward
+            ? scale(forward, forwardDirection)
+            : sideDirection;
     const direction = normalizeMovementActionDirection(requestedDirection);
     const timing = PLAYER_MOVEMENT_ACTION_TIMING[action];
     const nonce = Math.random();
@@ -2689,6 +2686,9 @@ export class PlayerScript implements Script {
       }
     }
     const nowSeconds = this.resources.get("/clock").time;
+    const attackMovementScale = localPlayer.isAttacking(nowSeconds)
+      ? Math.max(0, Math.min(1, localPlayer.attackInfo?.movementScale ?? 0.38))
+      : 1;
     const movementActionPlaying = player.isMovementActionActive(nowSeconds);
     const movementActionControlLocked = player.movementActionInfo
       ? movementActionLocksControl({
@@ -2787,7 +2787,8 @@ export class PlayerScript implements Script {
       // Moving sideways is slower.
       (lateral === 0 ? 1 : this.tweaks.playerPhysics.lateralMultiplier) *
       this.smoothedSpeedModifier.get() *
-      nativeMovementSpeed;
+      nativeMovementSpeed *
+      attackMovementScale;
 
     // Assemble the list of input forces.
     let forces: Force[] = [];
@@ -3062,16 +3063,16 @@ export class PlayerScript implements Script {
     player.velocity = hitLocalDevEdge
       ? [0, Math.min(0, result.movement.velocity[1]), 0]
       : hitLocalDevTown
-      ? [
-          Math.abs(townSafePosition[0] - edgeSafePosition[0]) < 0.0001
-            ? result.movement.velocity[0]
-            : 0,
-          result.movement.velocity[1],
-          Math.abs(townSafePosition[2] - edgeSafePosition[2]) < 0.0001
-            ? result.movement.velocity[2]
-            : 0,
-        ]
-      : [...result.movement.velocity];
+        ? [
+            Math.abs(townSafePosition[0] - edgeSafePosition[0]) < 0.0001
+              ? result.movement.velocity[0]
+              : 0,
+            result.movement.velocity[1],
+            Math.abs(townSafePosition[2] - edgeSafePosition[2]) < 0.0001
+              ? result.movement.velocity[2]
+              : 0,
+          ]
+        : [...result.movement.velocity];
     player.onGround = onGround;
     player.running = running;
     player.crouching = crouching;

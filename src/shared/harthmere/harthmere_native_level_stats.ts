@@ -217,9 +217,7 @@ export function syncHarthmereNativeLevelStats(
   // and update the mutable components so consecutive step/completion awards in
   // the same trigger transaction build on each other's current values.
   const triggerState = entity.mutableTriggerState();
-  const progression = readHarthmereNativeCombatProgression(
-    triggerState
-  );
+  const progression = readHarthmereNativeCombatProgression(triggerState);
   const stats = harthmereNativeLevelStats(progression.level);
 
   const beforeVitals = readHarthmereNativeVitals(triggerState);
@@ -245,10 +243,7 @@ export function syncHarthmereNativeLevelStats(
   const health = entity.health?.();
   if (health && entity.mutableHealth) {
     const mutable = entity.mutableHealth();
-    const previousMaxHp = Math.max(
-      1,
-      Math.trunc(Number(mutable.maxHp) || 0)
-    );
+    const previousMaxHp = Math.max(1, Math.trunc(Number(mutable.maxHp) || 0));
     hpGained = Math.max(0, stats.maxHp - previousMaxHp);
     if (previousMaxHp !== stats.maxHp) {
       const previousHp = Math.max(0, Math.trunc(Number(mutable.hp) || 0));

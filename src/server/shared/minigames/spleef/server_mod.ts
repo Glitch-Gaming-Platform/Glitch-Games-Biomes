@@ -7,12 +7,14 @@ import { spleefHandlers } from "@/server/shared/minigames/spleef/handlers";
 import { zSpleefSettings } from "@/server/shared/minigames/spleef/types";
 import {
   handleSpleefTick,
+  requiredSpleefPlayerCount,
   spleefNotReadyReason,
 } from "@/server/shared/minigames/spleef/util";
 import {
   instanceOfStateKind,
   mutInstanceOfStateKind,
   mutMinigameComponentOfMetadataKind,
+  parseMinigameSettings,
 } from "@/server/shared/minigames/type_utils";
 import type { ModLogicHooks, ServerMod } from "@/server/shared/minigames/types";
 import {
@@ -79,19 +81,25 @@ const logicHooks: ModLogicHooks = {
     minigameInstanceState.player_stats.delete(player.id);
     const numPlayers =
       minigameInstanceEntity.minigameInstance().active_players.size;
+    if (minigameInstanceState.instance_state.kind === "playing_round") {
+      minigameInstanceState.instance_state.alive_round_players.delete(
+        player.id
+      );
+    }
     if (numPlayers === 0) {
       closeMinigameInstance(minigameEntity, minigameInstanceEntity, context);
     } else if (
-      numPlayers === 1 &&
-      minigameInstanceState.instance_state.kind !== "waiting_for_players"
+      numPlayers <
+      requiredSpleefPlayerCount(
+        parseMinigameSettings(
+          minigameEntity.minigameComponent().minigame_settings,
+          zSpleefSettings
+        )
+      )
     ) {
       minigameInstanceState.instance_state = {
         kind: "waiting_for_players",
       };
-    } else if (minigameInstanceState.instance_state.kind === "playing_round") {
-      minigameInstanceState.instance_state.alive_round_players.delete(
-        player.id
-      );
     }
   },
 

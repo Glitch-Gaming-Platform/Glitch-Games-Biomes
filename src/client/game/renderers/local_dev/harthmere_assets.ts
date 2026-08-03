@@ -2,6 +2,7 @@
 // HARTHMERE_RENDERER_ANIMATION_SYNTAX_FIX_VERSION
 
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
+import { freezeStaticObjectMatrices } from "@/client/game/renderers/static_object_matrices";
 import { createGltfLoader } from "@/client/game/util/gltf_helpers";
 import {
   safePlayerLightDirection,
@@ -27,6 +28,7 @@ import {
   type HarthmereMagicImpactFeedback,
 } from "@/client/game/renderers/local_dev/harthmere_projectiles";
 import { emitHarthmereSoundEffect } from "@/shared/harthmere/sound_effect_manifest";
+import { HARTHMERE_PLAYER_ATTACK_TIMINGS } from "@/shared/harthmere/deliberate_combat";
 import {
   harthmereCreatureIdleDelayMs,
   harthmereCreatureShouldPlayAttackSound,
@@ -6562,14 +6564,10 @@ function createHarthmereBusinessOutpostPlacements(): RuntimePlacement[] {
   for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS) {
     const record =
       HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS[outpost.outpostId];
-    if (record) {
-      placements.push(
-        ...createHarthmereBusinessOutpostInteriorDecorPlacements(
-          record,
-          outpost
-        )
-      );
-    }
+    // Static authored dressing is rendered once by the combined-interior LOD
+    // renderer. Retain this helper for asset/unit audits and custom placement
+    // previews, but never instantiate the same fixtures here in the live world.
+    void record;
     const workPoint = harthmereBusinessOutpostStaffWorkPoint(outpost);
     const groundY = harthmereBusinessOutpostGroundY(outpost);
     placements.push(
@@ -28318,6 +28316,8 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     this.installHarthmerePlayerSwordVisuals();
     this.installHarthmereFacialExpressionBridge();
     this.root.name = "harthmere-rebuilt-town-and-wilds-root";
+    this.root.updateMatrix();
+    this.root.matrixAutoUpdate = false;
     this.townWalkDebugOverlay.name = "harthmere-town-walk-debug-overlay";
     this.root.add(this.townWalkDebugOverlay);
     this.installDebugBridge();
@@ -31197,9 +31197,9 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
                 drawn: true,
                 attack,
                 at: Date.now(),
-                windupMs: attack === "heavy" ? 260 : 150,
-                impactMs: attack === "heavy" ? 360 : 220,
-                recoveryMs: attack === "heavy" ? 520 : 340,
+                windupMs: HARTHMERE_PLAYER_ATTACK_TIMINGS[attack].windupMs,
+                impactMs: HARTHMERE_PLAYER_ATTACK_TIMINGS[attack].impactMs,
+                recoveryMs: HARTHMERE_PLAYER_ATTACK_TIMINGS[attack].recoveryMs,
               },
             })
           );
@@ -31830,6 +31830,11 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       hitRadius: Number(detail.hitRadius ?? 0),
       coneAngleDeg: Number(detail.coneAngleDeg ?? 0),
       windupSecs: Number(detail.windupSecs ?? 0),
+      authoritativeImpactSecs: Number.isFinite(
+        Number(detail.authoritativeImpactSecs)
+      )
+        ? Math.max(0, Number(detail.authoritativeImpactSecs))
+        : undefined,
       visualScale: Number(detail.visualScale ?? 1),
       damageType: String(detail.damageType ?? ""),
     });
@@ -34931,6 +34936,10 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
             installHarthmereLocomotion(animated, prototype.clips);
           }
           this.animated.push(animated);
+        } else {
+          // Static town/building clones make up most of this object graph.
+          // Their authored transforms are final; LOD only toggles visibility.
+          freezeStaticObjectMatrices(clone);
         }
         if (isProceduralLifeKey(placement.asset)) {
           this.registerCombatLife(placement, clone, mixer, prototype.clips);

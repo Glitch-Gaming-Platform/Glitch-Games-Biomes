@@ -1,5 +1,6 @@
 import {
   isMobileDeviceDescription,
+  lowMemoryScaleForDevice,
   resolveGlitchLocalSyncBaseUrl,
   shouldShowVirtualJoystick,
 } from "@/client/game/client_config";
@@ -46,6 +47,11 @@ describe("Glitch runtime sync URL resolution", () => {
 });
 
 describe("mobile control selection", () => {
+  it("uses a phone-specific WASM/resource budget without changing desktop low-memory mode", () => {
+    assert.equal(lowMemoryScaleForDevice(true), 0.25);
+    assert.equal(lowMemoryScaleForDevice(false), 0.5);
+  });
+
   it("recognizes mobile operating systems even when UA device classification is missing", () => {
     assert.equal(
       isMobileDeviceDescription({ deviceType: undefined, osName: "iOS" }),

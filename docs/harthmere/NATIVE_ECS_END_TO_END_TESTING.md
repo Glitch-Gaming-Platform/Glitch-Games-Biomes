@@ -163,6 +163,21 @@ harness also waits for Anima and Gaia automatically whenever
 `HARTHMERE_NATIVE_ECS_E2E=1`; a web-only HTTP 200 is not considered sufficient
 for native-ECS browser testing.
 
+That command is the one-time world bootstrap, not the bundle-development inner
+loop. For later client/server fixes, retain `biomes-prod-smoke-redis` and run:
+
+```bash
+scripts/glitch/refresh-warm-local-stack.cjs --build all
+```
+
+The helper rebuilds the selected application outputs, mounts `.next`, `dist`,
+and `public` read-only, and replaces only `biomes-prod-smoke-app`. It forces
+snapshot population, bootstrap role, and Redis flush permission off, validates
+the existing snapshot hash/seed keys before and after the swap, and restores
+the previous app if full lifecycle readiness fails. Use `--build none` when a
+coordinated build owner has already released complete artifacts. Do not rerun
+`--skip-build --local-smoke`: local-smoke still recreates its disposable Redis.
+
 The complete release suite still requires Gaia. For the focused chase-only
 scenario on a Docker Desktop VM with roughly 16-17 GiB of memory, Gaia and the
 unrelated firehose workers may be disabled because neither participates in the

@@ -162,6 +162,30 @@ describe("Harthmere business storefront purchase (buy_storefront_good)", () => {
     assert.equal(r.inventoryItemDeltas.iron_ingot, 2);
   });
 
+  it("sells actual Scrap Metal for the Chapter 1 repair quest", () => {
+    const { state, businessId } = openBusiness("weapons_tools");
+    const listing = harthmereBusinessStorefrontListingsForType(
+      "weapons_tools"
+    ).find((entry) => entry.itemId === "scrap_metal");
+    assert.ok(listing);
+    assert.equal(listing!.kind, "material");
+
+    const result = run(state, "buy_storefront_good", {
+      businessId,
+      itemId: "scrap_metal",
+      count: 4,
+    });
+    assert.deepStrictEqual(
+      result.warnings.filter((warning: string) =>
+        warning.startsWith("economy_rejected")
+      ),
+      []
+    );
+    assert.equal(result.inventoryItemDeltas.scrap_metal, 4);
+    assert.equal(result.inventoryItemDeltas.metal_part, undefined);
+    assert.ok(result.inventoryGoldDelta < 0);
+  });
+
   it("sells each restricted energy weapon at its fixed Security & Defense price", () => {
     const { state, businessId } = openBusiness("security_defense_contractor");
     const listings = harthmereBusinessStorefrontListingsForType(

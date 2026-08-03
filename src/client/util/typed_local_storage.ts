@@ -95,12 +95,14 @@ export const zSettings = z.object({
   "settings.volume.effects": z.number().default(100),
   "settings.volume.media": z.number().default(50),
   "settings.volume.voice": z.number().default(50),
+  "settings.volume.playerVoice": z.number().default(80),
   "settings.voice.microphoneDeviceId": z.string().default(""),
   "settings.voice.npcSpeechEnabled": z.boolean().default(true),
   // New and returning players use ElevenLabs unless they explicitly select
   // the existing OpenAI/Azure provider in Options.
   "settings.voice.npcSpeechProvider": zNpcVoiceProvider.default("elevenlabs"),
   "settings.voice.microphoneInputEnabled": z.boolean().default(true),
+  "settings.voice.playerVoiceEnabled": z.boolean().default(false),
 
   "inventory.craftByDefault": z.boolean(),
 

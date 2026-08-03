@@ -51,6 +51,7 @@ const DRAW_DISTANCE_ADJUSTMENT_INCREMENT = 16;
 // Minimum number of performance samples we need before we'll start making
 // decisions. Reset after every performance tweak.
 const MIN_STAT_SAMPLES_COUNT = 110;
+const DYNAMIC_PERFORMANCE_CHECK_INTERVAL_MS = 250;
 
 // Based on our current framerate, find out what quality settings we'll aim
 // towards via dynamic graphics settings updates. The reason the settings are
@@ -169,6 +170,7 @@ interface PerformanceCheck<T> {
 
 export class DynamicSettingsUpdater {
   private lastDynamicPerformanceUpdate: number = 0;
+  private nextPerformanceCheckAtMs: number = 0;
 
   constructor(private readonly profiler: ReadonlyPerformanceProfiler) {}
 
@@ -181,6 +183,16 @@ export class DynamicSettingsUpdater {
 
     // Non-performance related dynamic render scale updates.
     this.updateRenderScaleNonPerformance(computed, resources, width, height);
+
+    // Percentile extraction and candidate construction are advisory control
+    // work, not frame work. Running them at 4 Hz is still far faster than the
+    // 2-3 second quality-change gates below, while keeping them out of every
+    // requestAnimationFrame on CPU-bound clients.
+    const now = performance.now();
+    if (now < this.nextPerformanceCheckAtMs) {
+      return;
+    }
+    this.nextPerformanceCheckAtMs = now + DYNAMIC_PERFORMANCE_CHECK_INTERVAL_MS;
 
     // Performance related dynamic updates.
     this.updatePerformanceSettings(computed, resources);

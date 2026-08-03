@@ -38,14 +38,25 @@ function delta(id: number, components: Record<string, unknown> = {}) {
 describe("Anima NpcControllerService", () => {
   let originalBatchSize: number;
   let originalHfcWrites: string | undefined;
+  let originalConfig: typeof globalThis.CONFIG | undefined;
 
   beforeEach(() => {
-    originalBatchSize = CONFIG.animaNpcTickBatchSize;
+    originalConfig = globalThis.CONFIG;
+    originalBatchSize = globalThis.CONFIG?.animaNpcTickBatchSize ?? 500;
+    globalThis.CONFIG = {
+      ...(globalThis.CONFIG ?? ({} as typeof globalThis.CONFIG)),
+      animaNpcTickTimeMs: globalThis.CONFIG?.animaNpcTickTimeMs ?? 100,
+      animaNpcTickBatchSize: originalBatchSize,
+    } as typeof globalThis.CONFIG;
     originalHfcWrites = process.env.ANIMA_HFC_WRITES;
   });
 
   afterEach(() => {
-    CONFIG.animaNpcTickBatchSize = originalBatchSize;
+    if (originalConfig === undefined) {
+      delete (globalThis as { CONFIG?: typeof globalThis.CONFIG }).CONFIG;
+    } else {
+      globalThis.CONFIG = originalConfig;
+    }
     if (originalHfcWrites === undefined) {
       delete process.env.ANIMA_HFC_WRITES;
     } else {
@@ -54,7 +65,7 @@ describe("Anima NpcControllerService", () => {
   });
 
   it("chunks NPC state writes and wraps events with the Anima actor id", async () => {
-    CONFIG.animaNpcTickBatchSize = 2;
+    globalThis.CONFIG.animaNpcTickBatchSize = 2;
     process.env.ANIMA_HFC_WRITES = "0";
     const applied: ChangeToApply[][] = [];
     const published: any[] = [];
@@ -213,6 +224,43 @@ describe("Anima NpcControllerService", () => {
 
     assert.equal(stateAttempts, 1);
     assert.equal(eventAttempts, 1);
+  });
+
+  it("commits NPC attack receipts before publishing their damage events", async () => {
+    const order: string[] = [];
+    let releaseState!: () => void;
+    const stateApplied = new Promise<void>((resolve) => {
+      releaseState = resolve;
+    });
+    const service = makeService(
+      {
+        ping: async () => {},
+        publish: async () => {
+          order.push("event");
+          assert.deepEqual(order, ["state-start", "state-finish", "event"]);
+        },
+      },
+      {
+        apply: async () => {
+          order.push("state-start");
+          await stateApplied;
+          order.push("state-finish");
+          return { outcomes: ["success"], changes: [] };
+        },
+      } as unknown as WorldApi
+    );
+
+    const pending = (service as any).applyTickUpdates(
+      new TickUpdates(
+        [delta(1, { npc_state: { data: new Uint8Array([1]) } })],
+        [{ kind: "melee-impact" } as unknown as AnyEvent]
+      )
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(order, ["state-start"]);
+    releaseState();
+    await pending;
+    assert.deepEqual(order, ["state-start", "state-finish", "event"]);
   });
 
   it("merges updates from held shards and assigns the shared apply promise", async () => {

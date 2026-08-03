@@ -47,6 +47,8 @@ describe("Chapter1NativeObjectivePrompt input ownership", () => {
   it("coalesces state polls and synchronously excludes completion races", () => {
     assert.match(source, /refreshInFlight\.current/);
     assert.match(source, /if \(refreshInFlight\.current\) return/);
+    assert.match(source, /lastStateSignature\.current/);
+    assert.match(source, /signature !== lastStateSignature\.current/);
     assert.match(source, /busyRef\.current = true/);
     assert.match(source, /!busyRef\.current/);
   });

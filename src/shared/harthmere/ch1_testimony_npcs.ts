@@ -18,7 +18,7 @@ import { SNAPSHOT_LIVE_NPC_LORE } from "@/shared/harthmere/snapshot_live_npc_bib
 import type { BiomesId } from "@/shared/ids";
 
 export const CH1_TESTIMONY_NPC_SEED_VERSION =
-  "chapter1-testimony-native-player-mesh-v1" as const;
+  "chapter1-testimony-grover-onboarding-clearance-v2" as const;
 
 const TESTIMONY_ANCHORS: Readonly<Record<string, Ch1AnchorKey>> = {
   testimony_alva: "testimony_alva",

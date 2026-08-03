@@ -4,6 +4,7 @@ import { BiomesUIMount } from "@/client/components/biomes_ui/BiomesUIMount";
 import { useBiomesUIReplaceLegacyFlag } from "@/client/components/biomes_ui/BiomesUIFlags";
 import { useBiomesHUDVisibilitySnapshot } from "@/client/components/biomes_ui/hudVisibilitySettings";
 import { HarthmereUnifiedHUD } from "@/client/components/challenges/HarthmereUnifiedHUD";
+import { PlayerVoiceChat } from "@/client/components/system/PlayerVoiceChat";
 import React from "react";
 
 export const QuestsAndMiniMapHUD: React.FunctionComponent<{}> = ({}) => {
@@ -19,6 +20,7 @@ export const QuestsAndMiniMapHUD: React.FunctionComponent<{}> = ({}) => {
             <RulesetToggleable name="minimap">
               <MiniMapHUD />
             </RulesetToggleable>
+            <PlayerVoiceChat />
           </div>
         )}
         <BiomesUIMount forceEnabled={replaceLegacy} />
@@ -34,6 +36,7 @@ export const QuestsAndMiniMapHUD: React.FunctionComponent<{}> = ({}) => {
           <RulesetToggleable name="minimap">
             <MiniMapHUD />
           </RulesetToggleable>
+          <PlayerVoiceChat />
         </div>
       )}
       <BiomesUIMount forceEnabled={replaceLegacy} />

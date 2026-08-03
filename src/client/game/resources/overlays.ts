@@ -39,6 +39,12 @@ export interface NpcInspectOverlay {
   entityId: BiomesId;
   entity: ReadonlyEntity;
   npcType: NpcType;
+  /**
+   * Per-player story projection can render a canonical NPC outside the shared
+   * ECS body's local subscription. The overlay owns the OOB-fetched canonical
+   * entity in that case, so dialogue remains available at the visible body.
+   */
+  projectedTalkable?: boolean;
 }
 
 export interface RobotInspectOverlay {

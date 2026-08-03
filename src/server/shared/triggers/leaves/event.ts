@@ -14,6 +14,8 @@ import {
   NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
   NATIVE_GET_THE_MUCK_OUT_MOSSY_MUCKLING_TYPE_ID,
   NATIVE_GET_THE_MUCK_OUT_MUCKLING_STEP_ID,
+  NATIVE_GET_THE_MUCK_OUT_RACE_MINIGAME_ID,
+  NATIVE_GET_THE_MUCK_OUT_RACE_STEP_ID,
   isNativeGetTheMuckOutCompatibleMucklingTypeId,
 } from "@/shared/harthmere/native_road_ahead_contract";
 import { nativeLegacyCombatQuestCanonicalNpcTypeId } from "@/shared/harthmere/native_combat_quest_routing";
@@ -111,6 +113,14 @@ export function eventTriggerMatchesEventForTest(
   event: FirehoseEvent
 ) {
   if (event.kind !== trigger.eventKind) return false;
+  if (
+    Number(trigger.questId) === Number(NATIVE_GET_THE_MUCK_OUT_QUEST_ID) &&
+    Number(trigger.triggerId) ===
+      Number(NATIVE_GET_THE_MUCK_OUT_RACE_STEP_ID) &&
+    event.kind === "minigame_simple_race_finish"
+  ) {
+    return event.minigameId === NATIVE_GET_THE_MUCK_OUT_RACE_MINIGAME_ID;
+  }
   if (trigger.predicate === undefined || matches(trigger.predicate, event)) {
     return true;
   }

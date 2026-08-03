@@ -1,10 +1,13 @@
 import {
   clearChapter1PuppetOverrides,
   publishChapter1PuppetOverrides,
+  SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET,
   type CutscenePuppetOverride,
 } from "@/shared/cutscene/puppets";
 import { CH1_NEW_CAST } from "@/shared/harthmere/ch1_cast";
 import { harthmereLiveCreatureAssetFor } from "@/shared/harthmere/live_creature_ecs_bridge";
+import { snapshotGroveNpcAssetKeyForEntity } from "@/shared/harthmere/snapshot_grove_npc_mesh_routing";
+import { ch1CastVisualForEntity } from "@/shared/harthmere/ch1_cast_visuals";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { setCh1WorldPhaseEffectIds } from "@/client/game/renderers/ch1_world_phase";
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
@@ -12,6 +15,7 @@ import React, { useEffect } from "react";
 
 export interface Chapter1ProjectionResponse {
   staging: Array<{
+    key?: string;
     entityId: number;
     displayName: string;
     present: boolean;
@@ -52,7 +56,23 @@ export function chapter1ProjectionPuppetOverrides(
       ];
     }
     const member = castByEntityId.get(npc.entityId);
-    const family = member?.key === "marrow" ? "animal" : "live_entity";
+    const authoredVisual = ch1CastVisualForEntity(npc.entityId);
+    const family =
+      member?.key === "marrow" || authoredVisual?.route === "animal"
+        ? "animal"
+        : "live_entity";
+    const snapshotAsset = member
+      ? snapshotGroveNpcAssetKeyForEntity(member.entityId, member.displayName, {
+          isRobot: member.key === "augur9",
+        })
+      : undefined;
+    const fallbackAsset =
+      authoredVisual?.asset ??
+      snapshotAsset ??
+      (authoredVisual?.route === "player_like" ||
+      authoredVisual?.route === "snapshot_player_like"
+        ? SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET
+        : undefined);
     return [
       {
         id: npc.entityId,
@@ -62,16 +82,19 @@ export function chapter1ProjectionPuppetOverrides(
         yaw: 0,
         label: npc.displayName,
         animation: npc.activity.includes("walking") ? "walk" : undefined,
-        ...(npc.position && member
+        ...(npc.position && fallbackAsset
           ? {
               ghost: {
                 family,
-                asset: harthmereLiveCreatureAssetFor(
-                  family,
-                  member.key === "marrow" ? "dog" : undefined,
-                  npc.displayName
-                ),
+                asset:
+                  fallbackAsset ??
+                  harthmereLiveCreatureAssetFor(
+                    family,
+                    member?.key === "marrow" ? "dog" : undefined,
+                    npc.displayName
+                  ),
                 label: npc.displayName,
+                appearanceSourceEntityId: npc.entityId,
               },
             }
           : {}),
@@ -88,12 +111,27 @@ function publishProjection(response: Chapter1ProjectionResponse) {
   window.dispatchEvent(new CustomEvent("chapter1-world-projection-updated"));
 }
 
+export function chapter1ProjectionSignature(
+  response: Chapter1ProjectionResponse
+) {
+  return JSON.stringify(response);
+}
+
 export const Chapter1WorldProjectionController: React.FunctionComponent =
   () => {
     useEffect(() => {
       if (!nativeBiomesEcsAuthorityEnabled()) return;
       let disposed = false;
       let inFlight = false;
+      let lastPublishedSignature: string | undefined;
+      const publishIfChanged = (response: Chapter1ProjectionResponse) => {
+        const signature = chapter1ProjectionSignature(response);
+        if (signature === lastPublishedSignature) {
+          return;
+        }
+        lastPublishedSignature = signature;
+        publishProjection(response);
+      };
       const refresh = async () => {
         if (disposed || inFlight || document.visibilityState !== "visible")
           return;
@@ -105,7 +143,7 @@ export const Chapter1WorldProjectionController: React.FunctionComponent =
           // current saved-game state.
           const e2eProjection = window.__chapter1E2ECutsceneProjection;
           if (e2eProjection) {
-            publishProjection(e2eProjection);
+            publishIfChanged(e2eProjection);
             return;
           }
           const response = await defaultHarthmereLiveFetch(
@@ -118,7 +156,7 @@ export const Chapter1WorldProjectionController: React.FunctionComponent =
             }
           );
           if (response.ok && !disposed) {
-            publishProjection(
+            publishIfChanged(
               (await response.json()) as Chapter1ProjectionResponse
             );
           }
@@ -130,10 +168,21 @@ export const Chapter1WorldProjectionController: React.FunctionComponent =
         }
       };
       void refresh();
-      const timer = window.setInterval(() => void refresh(), 1_000);
+      // Mutating chapter actions already emit chapter1-story-updated, so they
+      // refresh immediately. The slower interval is only a reconciliation
+      // safety net for cross-tab/server-side changes.
+      const onStoryUpdated = () => void refresh();
+      const onVisibilityChange = () => {
+        if (document.visibilityState === "visible") void refresh();
+      };
+      window.addEventListener("chapter1-story-updated", onStoryUpdated);
+      document.addEventListener("visibilitychange", onVisibilityChange);
+      const timer = window.setInterval(() => void refresh(), 2_000);
       return () => {
         disposed = true;
         window.clearInterval(timer);
+        window.removeEventListener("chapter1-story-updated", onStoryUpdated);
+        document.removeEventListener("visibilitychange", onVisibilityChange);
         clearChapter1PuppetOverrides();
         setCh1WorldPhaseEffectIds(undefined);
         delete window.__chapter1WorldPhase;

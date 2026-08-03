@@ -16,7 +16,12 @@ import type {
 import type { FishingInfo } from "@/client/game/util/fishing/state_machine";
 import type { WarpingInfo } from "@/client/game/util/warping";
 import type { Buff, EmoteType, Item } from "@/shared/ecs/gen/types";
-import { attackIntervalSeconds } from "@/shared/game/damage";
+import { harthmereNativeItemCombatProfile } from "@/shared/harthmere/harthmere_native_combat";
+import {
+  HARTHMERE_PLAYER_ATTACK_TIMINGS,
+  harthmerePlayerAttackCommitmentSeconds,
+  type HarthmerePlayerAttackTimingClass,
+} from "@/shared/harthmere/deliberate_combat";
 import { INVALID_BIOMES_ID, type BiomesId } from "@/shared/ids";
 import type { ReadonlyAABB, ReadonlyVec3 } from "@/shared/math/types";
 import type { RegistryLoader } from "@/shared/registry";
@@ -114,9 +119,22 @@ export class LocalPlayer {
       attackEmotes[this.attackCount % attackEmotes.length]
     );
 
+    const timingClass: HarthmerePlayerAttackTimingClass = (() => {
+      switch (harthmereNativeItemCombatProfile(tool)?.kind) {
+        case "heavy":
+          return "heavy";
+        case "ranged":
+          return "ranged";
+        case "spell":
+          return "magic";
+        default:
+          return "basic";
+      }
+    })();
     this.attackInfo = {
       start: time,
-      duration: attackIntervalSeconds(tool),
+      duration: harthmerePlayerAttackCommitmentSeconds(timingClass),
+      movementScale: HARTHMERE_PLAYER_ATTACK_TIMINGS[timingClass].movementScale,
     };
   }
 

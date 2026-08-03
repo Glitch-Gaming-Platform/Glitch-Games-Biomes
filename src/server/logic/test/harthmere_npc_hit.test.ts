@@ -43,6 +43,7 @@ import {
 } from "@/shared/harthmere/harthmere_native_bikkie_items";
 import {
   applyHarthmereNativeAttackStats,
+  harthmereNativeNpcChaseAttackParams,
   harthmereNativeNpcBiscuit,
   harthmereNativeItemCombatProfile,
   mitigateHarthmereNativeIncomingDamage,
@@ -52,10 +53,18 @@ import {
   writeHarthmereNativeCombatProgression,
 } from "@/shared/harthmere/harthmere_native_combat";
 import { harthmereNativeLevelStats } from "@/shared/harthmere/harthmere_native_level_stats";
+import {
+  readHarthmereNativeVitals,
+  writeHarthmereNativeVitals,
+} from "@/shared/harthmere/harthmere_native_vitals";
 import { addToBag, bagContains, countOf, createBag } from "@/shared/game/items";
 import { anItem } from "@/shared/game/item";
 import { findItemEquippableSlot } from "@/shared/game/wearables";
-import { buildCreatureProgression } from "@/shared/npc/creature_level";
+import {
+  buildCreatureProgression,
+  readCreatureProgression,
+  scaleCreatureCombatStats,
+} from "@/shared/npc/creature_level";
 import {
   deserializeNpcCustomState,
   serializeNpcCustomState,
@@ -69,6 +78,13 @@ import {
 import { harthmereBossAttacksForLabel } from "@/shared/harthmere/boss_attack_catalog";
 import { HARTHMERE_BOSS_VISUAL_ASSETS } from "@/shared/harthmere/boss_visual_assets";
 import { harthmereMagicChargeDurationSecs } from "@/shared/harthmere/magic_charge";
+import {
+  effectiveAttackStrikeDelaySecs,
+  enhancedNightMuckerHexCombatParams,
+  isNightForNpcAggro,
+  NPC_MELEE_STRIKE_GRACE_SECONDS,
+} from "@/shared/npc/behavior/chase_attack";
+import { sub, yaw } from "@/shared/math/linear";
 
 // Native NPC health is the one combat authority for Harthmere seeds. The handler
 // also verifies melee reach so a voxel interaction or forged client event cannot
@@ -200,6 +216,107 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
       },
     ]);
     return { id, profile };
+  }
+
+  function stageNativeMeleeReceipt(
+    attacker: ReturnType<typeof spawnNativeNpc>,
+    playerId: BiomesId,
+    overrides?: {
+      castYaw?: number;
+      targetId?: BiomesId;
+      result?: "hit" | "miss" | "cancelled";
+      resolvedAt?: number;
+    }
+  ) {
+    const attackerEntity = logic.world.table.get(attacker.id)!;
+    const playerEntity = logic.world.table.get(playerId)!;
+    const attackerPosition = attackerEntity.position!.v;
+    const playerPosition = playerEntity.position!.v;
+    const playerHeight = playerEntity.size?.v[1] ?? 1.8;
+    const now = secondsSinceEpoch();
+    const base = harthmereNativeNpcChaseAttackParams(attacker.profile)!;
+    const effective =
+      enhancedNightMuckerHexCombatParams(
+        attackerEntity.label?.text ?? attacker.profile.displayName,
+        isNightForNpcAggro(now),
+        base,
+        base
+      ) ?? base;
+    const existingState = deserializeNpcCustomState(
+      attackerEntity.npc_state?.data
+    );
+    const progression = readCreatureProgression(existingState);
+    const scaled = scaleCreatureCombatStats(
+      {
+        maxHp: attacker.profile.maxHp,
+        attackDamage: effective.attackDamage,
+        attackIntervalSecs: effective.attackIntervalSecs,
+        walkSpeed: attacker.profile.walkSpeed,
+        runSpeed: attacker.profile.runSpeed,
+        killXp: attacker.profile.killXp,
+      },
+      progression.level
+    );
+    const strikeDelay = effectiveAttackStrikeDelaySecs({
+      attackStrikeMomentSecs: effective.attackStrikeMomentSecs,
+      attackAnimationMultiplier: effective.attackAnimationMultiplier,
+      attackIntervalSecs: scaled.attackIntervalSecs,
+    });
+    const attackTime = now - strikeDelay - 0.01;
+    const impactTime = attackTime + strikeDelay;
+    const impactPoint: [number, number, number] = [
+      playerPosition[0],
+      playerPosition[1] + playerHeight * 0.5,
+      playerPosition[2],
+    ];
+    const targetId = overrides?.targetId ?? playerId;
+    editEntity(logic.world, attacker.id, (entity) => {
+      entity.setNpcState(
+        NpcState.create({
+          data: serializeNpcCustomState({
+            ...existingState,
+            chaseAttack: {
+              ...existingState.chaseAttack,
+              attackTarget: targetId,
+              attackTime,
+              strikeTime: now,
+              meleeAttack: {
+                targetId,
+                attackTime,
+                impactTime,
+                expiresAt: impactTime + NPC_MELEE_STRIKE_GRACE_SECONDS,
+                originPoint: [...attackerPosition],
+                impactPoint,
+                castYaw:
+                  overrides?.castYaw ??
+                  yaw(sub(playerPosition, attackerPosition)),
+                attackDistance: effective.attackDistance,
+                attackFovDeg: effective.attackFovDeg,
+                verticalReach: 1,
+                attackDamage: scaled.attackDamage,
+                lineOfSightAtImpact: true,
+                result: overrides?.result ?? "hit",
+                resolvedAt: overrides?.resolvedAt ?? now,
+              },
+            },
+          }),
+        })
+      );
+    });
+    return {
+      damage: scaled.attackDamage,
+      event: new UpdatePlayerHealthEvent({
+        id: playerId,
+        hpDelta: -999,
+        damageSource: {
+          kind: "attack",
+          attacker: attacker.id,
+          dir: [1, 0, 0],
+        },
+        attackTime,
+        impactPoint,
+      }),
+    };
   }
 
   it("applies attack damage to a live mucker", async () => {
@@ -482,9 +599,47 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
       100 - expectedDamage
     );
     const attackerState = logic.world.table.get(attacker)?.trigger_state;
+    assert.equal(readHarthmereNativeVitals(attackerState).stamina, 100);
     assert.ok(readHarthmereNativeSkillTotalXp(attackerState, "combat") > 0);
     assert.ok(
       readHarthmereNativeSkillTotalXp(attackerState, "melee_combat") > 0
+    );
+  });
+
+  it("allows ordinary attacks at zero movement stamina without spending it", async () => {
+    const attacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
+    equipNativeItem(attacker, "iron_longsword", 2);
+    editEntity(logic.world, attacker, (player) => {
+      writeHarthmereNativeVitals(player.mutableTriggerState(), {
+        stamina: 0,
+      });
+    });
+    const target = spawnNativeNpc(
+      harthmereGroundedMuckMonsterSeedsInTerritory()[0],
+      [2, 0, 0],
+      100
+    );
+
+    await logic.publish(
+      new GameEvent(
+        attacker,
+        new UpdateNpcHealthEvent({
+          id: target.id,
+          hp: -999,
+          damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+        })
+      )
+    );
+
+    assert.ok((logic.world.table.get(target.id)?.health?.hp ?? 100) < 100);
+    assert.equal(
+      readHarthmereNativeVitals(logic.world.table.get(attacker)?.trigger_state)
+        .stamina,
+      0
     );
   });
 
@@ -852,6 +1007,9 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
         writeHarthmereNativeCombatProgression(player.mutableTriggerState(), {
           lastAttackMs: 0,
         });
+        writeHarthmereNativeVitals(player.mutableTriggerState(), {
+          stamina: 100,
+        });
       });
       const target = spawnNativeNpc(seed, [8, 0, 0], 200);
       await logic.publish(
@@ -935,7 +1093,7 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     );
   });
 
-  it("ignores forged NPC damage and applies native level plus worn armor", async () => {
+  it("requires one receipt-backed impact and applies native level plus worn armor", async () => {
     const player = (
       await addGameUser(logic.world, generateTestId(), {
         position: [0, 0, 0],
@@ -960,16 +1118,8 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     const armor = nativeCombatArmorStats([leather, shield]);
     const defenderStats = harthmereNativeLevelStats(3);
     const attackerStats = harthmereNativeLevelStats(attacker.profile.level);
-    const expectedDamage = mitigateHarthmereNativeIncomingDamage({
-      rawDamage: attacker.profile.attackDamage,
-      armor: armor.armor + defenderStats.armor,
-      defense: armor.defense + defenderStats.defense,
-      evasion: armor.evasion + defenderStats.evasion,
-      accuracy: attackerStats.accuracy,
-      attackerLevel: attacker.profile.level,
-      defenderLevel: 3,
-    });
 
+    // A client-provided NPC id and hpDelta are not an attack receipt.
     await logic.publish(
       new GameEvent(
         player,
@@ -984,6 +1134,20 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
         })
       )
     );
+    assert.equal(logic.world.table.get(player)?.health?.hp, 100);
+
+    const receipt = stageNativeMeleeReceipt(attacker, player);
+    const expectedDamage = mitigateHarthmereNativeIncomingDamage({
+      rawDamage: receipt.damage,
+      armor: armor.armor + defenderStats.armor,
+      defense: armor.defense + defenderStats.defense,
+      evasion: armor.evasion + defenderStats.evasion,
+      accuracy: attackerStats.accuracy,
+      attackerLevel: attacker.profile.level,
+      defenderLevel: 3,
+    });
+
+    await logic.publish(new GameEvent(player, receipt.event));
 
     assert.equal(
       logic.world.table.get(player)?.health?.hp,
@@ -1005,6 +1169,10 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
           (item.lifetimeDurabilityMs ?? 0) < (leather.lifetimeDurabilityMs ?? 0)
       )
     );
+
+    const hpAfterHit = logic.world.table.get(player)?.health?.hp;
+    await logic.publish(new GameEvent(player, receipt.event));
+    assert.equal(logic.world.table.get(player)?.health?.hp, hpAfterHit);
   });
 
   it("uses the same body-aware vertical melee reach as Anima", async () => {
@@ -1021,21 +1189,10 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
       entity.setSize(Size.create({ v: [1, 1.2, 1] }));
     });
 
-    const attack = () =>
-      logic.publish(
-        new GameEvent(
-          player,
-          new UpdatePlayerHealthEvent({
-            id: player,
-            hpDelta: -999,
-            damageSource: {
-              kind: "attack",
-              attacker: attacker.id,
-              dir: [1, 0, 0],
-            },
-          })
-        )
-      );
+    const attack = () => {
+      const receipt = stageNativeMeleeReceipt(attacker, player);
+      return logic.publish(new GameEvent(player, receipt.event));
+    };
 
     // Feet differ by 2 m, but the 1.2 m attacker body leaves only a 0.8 m
     // vertical gap. This is the reachable ledge case Anima already accepts.
@@ -1049,6 +1206,43 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     // A 3 m feet offset leaves 1.8 m of empty vertical space and must remain
     // unhittable through the floor/ledge.
     await attack();
+    assert.equal(logic.world.table.get(player)?.health?.hp, 100);
+  });
+
+  it("rejects a directional boss melee receipt when the player is riding its back", async () => {
+    const player = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 10, 0],
+      })
+    ).id;
+    const attacker = spawnNativeNpc(
+      harthmereGroundedMuckMonsterSeedsInTerritory()[0],
+      [0, 0, 0]
+    );
+    editEntity(logic.world, attacker.id, (entity) => {
+      entity.setSize(Size.create({ v: [20, 14, 12] }));
+    });
+
+    const receipt = stageNativeMeleeReceipt(attacker, player);
+    await logic.publish(new GameEvent(player, receipt.event));
+
+    assert.equal(logic.world.table.get(player)?.health?.hp, 100);
+  });
+
+  it("rejects a receipt whose impact facing no longer contains the player", async () => {
+    const player = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [1, 0, 0],
+      })
+    ).id;
+    const attacker = spawnNativeNpc(
+      harthmereGroundedMuckMonsterSeedsInTerritory()[0],
+      [0, 0, 0]
+    );
+    const backwards = stageNativeMeleeReceipt(attacker, player, {
+      castYaw: yaw([-1, 0, 0]),
+    });
+    await logic.publish(new GameEvent(player, backwards.event));
     assert.equal(logic.world.table.get(player)?.health?.hp, 100);
   });
 
@@ -1312,8 +1506,8 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
         visual.id === "alpha_mucker"
           ? "Old Wood Mucker 1"
           : visual.id === "hex_wraith"
-          ? "Gravewood Pale Hexer 7"
-          : visual.displayName;
+            ? "Gravewood Pale Hexer 7"
+            : visual.displayName;
       logic.world.writeableTable.apply([
         {
           kind: "create",
@@ -1430,25 +1624,18 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     const levelOne = spawnNativeNpc(seed, [0, 0, 0], undefined, 1);
     const levelFive = spawnNativeNpc(seed, [0, 0, 0], undefined, 5);
 
-    const attackFrom = (attacker: BiomesId) =>
-      logic.publish(
-        new GameEvent(
-          player,
-          new UpdatePlayerHealthEvent({
-            id: player,
-            hpDelta: -999,
-            damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
-          })
-        )
-      );
+    const attackFrom = (attacker: ReturnType<typeof spawnNativeNpc>) => {
+      const receipt = stageNativeMeleeReceipt(attacker, player);
+      return logic.publish(new GameEvent(player, receipt.event));
+    };
 
-    await attackFrom(levelOne.id);
+    await attackFrom(levelOne);
     const levelOneDamage =
       100 - (logic.world.table.get(player)?.health?.hp ?? 100);
     editEntity(logic.world, player, (entity) => {
       entity.setHealth(Health.create({ hp: 100, maxHp: 100 }));
     });
-    await attackFrom(levelFive.id);
+    await attackFrom(levelFive);
     const levelFiveDamage =
       100 - (logic.world.table.get(player)?.health?.hp ?? 100);
 

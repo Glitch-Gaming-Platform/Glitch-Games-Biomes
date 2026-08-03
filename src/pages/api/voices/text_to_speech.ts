@@ -10,6 +10,7 @@ import {
   synthesizeElevenLabsSpeech,
 } from "@/server/shared/elevenlabs";
 import {
+  findCommittedNpcVoiceAudio,
   npcVoiceAudioCacheKey,
   resolveNpcVoiceAudioUrl,
 } from "@/server/shared/npc_voice_audio_cache";
@@ -39,6 +40,25 @@ export async function resolveChatVoiceRequest(
   body: ChatVoiceRequest
 ): Promise<ChatVoiceResponse> {
   const { text, voice, language, provider } = body;
+  // Cache the exact text sent to the selected provider. ElevenLabs removes
+  // visual-only markup before synthesis, while Azure receives trimmed text.
+  const spokenText =
+    provider === "elevenlabs" ? elevenLabsSpokenTextForTest(text) : text.trim();
+  if (!spokenText) {
+    return { url: "" };
+  }
+  // Persisted Grove NPCs can retain an older voice descriptor while their
+  // reviewed static line already exists under the replacement entity's voice
+  // profile. Resolve the committed recording by equivalent actor identity and
+  // text before requiring provider credentials or starting synthesis.
+  const committedUrl = findCommittedNpcVoiceAudio({
+    provider,
+    text: spokenText,
+    voice,
+  });
+  if (committedUrl) {
+    return { url: committedUrl };
+  }
   // Provider credentials and voice discovery stay server-side. The client
   // sends the provider choice plus the existing per-NPC voice descriptor.
   const elevenLabsConfig =
@@ -46,13 +66,6 @@ export async function resolveChatVoiceRequest(
   const azureConfig =
     provider === "openai" ? azureSpeechConfigFromEnv() : undefined;
   if (!elevenLabsConfig && !azureConfig) {
-    return { url: "" };
-  }
-  // Cache the exact text sent to the selected provider. ElevenLabs removes
-  // visual-only markup before synthesis, while Azure receives trimmed text.
-  const spokenText =
-    provider === "elevenlabs" ? elevenLabsSpokenTextForTest(text) : text.trim();
-  if (!spokenText) {
     return { url: "" };
   }
   const synthesisIdentity = elevenLabsConfig
@@ -68,6 +81,8 @@ export async function resolveChatVoiceRequest(
   const url = await resolveNpcVoiceAudioUrl({
     cacheKey,
     provider,
+    text: spokenText,
+    voice,
     generate: async () => {
       const result = elevenLabsConfig
         ? await synthesizeElevenLabsSpeech({

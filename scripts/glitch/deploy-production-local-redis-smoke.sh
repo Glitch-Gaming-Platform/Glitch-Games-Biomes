@@ -2346,7 +2346,18 @@ const readLog = () => {
 }
 
 run_azure_world_sync_job() {
+  local mode="${1:-full}"
+  local town_repair_only=0
   local registry_username registry_password execution status="" polls=0 logs=""
+
+  case "$mode" in
+    full) ;;
+    town-only) town_repair_only=1 ;;
+    *)
+      echo "ERROR unknown Harthmere reconciliation mode: $mode" >&2
+      return 2
+      ;;
+  esac
 
   if az containerapp job show \
     --resource-group "$AZURE_RESOURCE_GROUP" \
@@ -2362,7 +2373,7 @@ run_azure_world_sync_job() {
 
   registry_username="$(az acr credential show --name "$ACR_NAME" --query username -o tsv)"
   registry_password="$(az acr credential show --name "$ACR_NAME" --query 'passwords[0].value' -o tsv)"
-  log "Creating temporary in-VNet Harthmere reconciliation job (${HARTHMERE_WORLD_SYNC_JOB_CPU} CPU, ${HARTHMERE_WORLD_SYNC_JOB_MEMORY})."
+  log "Creating temporary in-VNet Harthmere reconciliation job mode=$mode (${HARTHMERE_WORLD_SYNC_JOB_CPU} CPU, ${HARTHMERE_WORLD_SYNC_JOB_MEMORY})."
   az containerapp job create \
     --resource-group "$AZURE_RESOURCE_GROUP" \
     --name "$HARTHMERE_WORLD_SYNC_JOB_NAME" \
@@ -2397,6 +2408,7 @@ run_azure_world_sync_job() {
       BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600 \
       BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z=0 \
       HARTHMERE_DEPLOY_TAG="$TAG" \
+      HARTHMERE_TOWN_REPAIR_ONLY="$town_repair_only" \
       HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_MODE="$HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_MODE" \
       HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_SCAN_COUNT="$HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_SCAN_COUNT" \
       HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_APPLY_SHARD_BATCH_SIZE="$HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_APPLY_SHARD_BATCH_SIZE" \
@@ -2562,7 +2574,24 @@ reconcile_production_world_sync() {
     return
   fi
   if [ "${HARTHMERE_SKIP_RECONCILIATION_AFTER_TERRAIN:-0}" = "1" ]; then
-    log "Skipping broad Harthmere outpost/ECS/connector reconciliation after targeted terrain maintenance."
+    log "Skipping broad Harthmere outpost/ECS/connector reconciliation after targeted terrain maintenance; the mandatory persisted-town repair still runs."
+    check_production_redis_aof_health "targeted town repair"
+    check_production_redis_snapshot_hash "targeted town repair"
+    if use_azure_world_sync_job; then
+      run_azure_world_sync_job town-only
+    else
+      HARTHMERE_TOWN_REPAIR_ONLY=1 \
+        HARTHMERE_DEPLOY_TAG="$TAG" \
+        APPLY=1 \
+        IS_SERVER=1 \
+        REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}" \
+        GLITCH_REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}" \
+        LOCAL_REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}" \
+        REDIS_PORT="${HARTHMERE_WORLD_SYNC_REDIS_PORT:-$PROD_REDIS_PORT}" \
+        GLITCH_REDIS_PORT="${HARTHMERE_WORLD_SYNC_REDIS_PORT:-$PROD_REDIS_PORT}" \
+        ./scripts/glitch/run-harthmere-production-reconciliation.sh
+    fi
+    force_production_redis_bgsave "targeted persisted Harthmere town repair"
     return
   fi
 
@@ -2806,6 +2835,7 @@ run_build_checks() {
   node scripts/harthmere/test-glitch-aegis-telemetry-mucker-clearance.cjs .
   node scripts/glitch/test-production-api-route-imports.cjs .
   node scripts/glitch/test-production-deploy-local-redis-smoke.cjs .
+  node scripts/harthmere/test-harthmere-deploy-terrain-gate.cjs
   node scripts/glitch/test-production-redis8-stream-compat.cjs .
   node scripts/glitch/test-production-redis-shared-world.cjs .
   node scripts/harthmere/test-glitch-prod-bucket-asset-proxy.cjs .
@@ -2847,7 +2877,11 @@ run_build_checks() {
 
 build_artifacts() {
   local build_id build_node_options
-  build_id="$(git rev-parse HEAD)"
+  # Coordinated release candidates are sometimes built from an intentionally
+  # dirty shared worktree before the owners create commits. Let the build owner
+  # supply the exact-current source fingerprint so two materially different
+  # images cannot embed the same HEAD-only BUILD_ID.
+  build_id="${BIOMES_BUILD_ID_OVERRIDE:-$(git rev-parse HEAD)}"
   # Bound both production compilers so a local release rehearsal cannot evict
   # Redis or the browser test it is about to run on memory-constrained Macs.
   build_node_options="--max-old-space-size=${BIOMES_BUILD_MAX_OLD_SPACE_MB:-6144}"
@@ -3079,6 +3113,76 @@ verify_local_container_image_identity() {
     return 1
   fi
   log "Immutable image identity verified: $container -> $actual"
+}
+
+verify_retained_local_browser_stack() {
+  local stability_seconds="${LOCAL_POST_SMOKE_STABILITY_SECONDS:-10}"
+  local expected_hash actual_hash dbsize required_count
+
+  log "Holding the retained local browser stack for ${stability_seconds}s before final acceptance."
+  sleep "$stability_seconds"
+
+  if [ "$(docker inspect -f '{{.State.Running}}' "$LOCAL_APP_CONTAINER" 2>/dev/null || true)" != "true" ] ||
+     [ "$(docker inspect -f '{{.State.Running}}' "$LOCAL_REDIS_CONTAINER" 2>/dev/null || true)" != "true" ]; then
+    echo "ERROR retained local app/Redis stack is not running after endpoint smoke." >&2
+    return 1
+  fi
+  if [ "$(docker inspect -f '{{.RestartCount}}' "$LOCAL_APP_CONTAINER")" != "0" ] ||
+     [ "$(docker inspect -f '{{.RestartCount}}' "$LOCAL_REDIS_CONTAINER")" != "0" ]; then
+    echo "ERROR retained local app/Redis stack restarted after its initial readiness gate." >&2
+    return 1
+  fi
+  if [ "$(docker inspect -f '{{.State.OOMKilled}}' "$LOCAL_APP_CONTAINER")" != "false" ] ||
+     [ "$(docker inspect -f '{{.State.OOMKilled}}' "$LOCAL_REDIS_CONTAINER")" != "false" ]; then
+    echo "ERROR retained local app/Redis stack was OOM-killed." >&2
+    return 1
+  fi
+
+  verify_local_container_image_identity "$LOCAL_APP_CONTAINER"
+  wait_for_http
+  wait_for_unified_stack_services
+
+  if [ "$(docker exec "$LOCAL_REDIS_CONTAINER" redis-cli --raw PING 2>/dev/null || true)" != "PONG" ]; then
+    echo "ERROR retained local Redis no longer answers RESP PING." >&2
+    return 1
+  fi
+  expected_hash="$(snapshot_backup_hash)"
+  actual_hash="$(
+    docker exec "$LOCAL_REDIS_CONTAINER" redis-cli --raw GET \
+      "biomes:${GLITCH_TITLE_ID}:snapshot_hash" 2>/dev/null || true
+  )"
+  if [ -z "$actual_hash" ]; then
+    actual_hash="$(
+      docker exec "$LOCAL_REDIS_CONTAINER" redis-cli --raw GET \
+        biomes_data_snapshot_hash 2>/dev/null || true
+    )"
+  fi
+  dbsize="$(docker exec "$LOCAL_REDIS_CONTAINER" redis-cli --raw DBSIZE 2>/dev/null || true)"
+  required_count="$(
+    docker exec "$LOCAL_REDIS_CONTAINER" redis-cli --raw EXISTS \
+      b:8810000000019301 \
+      b:8810000000019401 \
+      b:8810000000019451 2>/dev/null || true
+  )"
+  if [ "$actual_hash" != "$expected_hash" ] ||
+     [ "${dbsize:-0}" -lt 1000 ] ||
+     [ "${required_count:-0}" -ne 3 ]; then
+    echo "ERROR retained local Redis lost or incompletely retained its snapshot: hash_match=$([ "$actual_hash" = "$expected_hash" ] && echo yes || echo no) dbsize=${dbsize:-0} required_seed_keys_present=${required_count:-0}/3." >&2
+    return 1
+  fi
+
+  if [ "${HARTHMERE_NATIVE_ECS_E2E:-0}" = "1" ]; then
+    if [ "$(docker exec "$LOCAL_APP_CONTAINER" printenv HARTHMERE_NATIVE_ECS_E2E 2>/dev/null || true)" != "1" ]; then
+      echo "ERROR retained browser app omitted HARTHMERE_NATIVE_ECS_E2E=1." >&2
+      return 1
+    fi
+    if [ -z "$(docker exec "$LOCAL_APP_CONTAINER" printenv HARTHMERE_E2E_CONTROL_TOKEN 2>/dev/null || true)" ]; then
+      echo "ERROR retained browser app has no HARTHMERE_E2E_CONTROL_TOKEN." >&2
+      return 1
+    fi
+  fi
+
+  log "Retained local browser stack passed the post-smoke stability, snapshot, and auth gate."
 }
 
 start_local_web_container() {
@@ -3381,10 +3485,17 @@ smoke_local_image() {
     node scripts/harthmere/test-harthmere-live-entity-robot-visuals.cjs .
   fi
 
+  verify_retained_local_browser_stack
+
   log "Local production image smoke passed."
 }
 
 push_and_deploy() {
+  local -a existing_azure_envs=()
+  local -a remove_azure_envs=()
+  local -a update_args=()
+  local env_name
+
   if [ "$PUSH_PRODUCTION" != "1" ]; then
     log "Skipping production push. Re-run with --push after reviewing the local smoke output."
     return
@@ -3405,7 +3516,6 @@ push_and_deploy() {
   check_production_redis_snapshot_hash "Azure Container App update"
   archive_production_mutable_hotfix_manifest "Azure Container App update"
   log "Updating Azure Container App $AZURE_CONTAINER_APP to $IMAGE."
-  existing_azure_envs=()
   while IFS= read -r env_name; do
     if [ -n "$env_name" ]; then
       existing_azure_envs+=("$env_name")
@@ -3417,7 +3527,6 @@ push_and_deploy() {
       --query "properties.template.containers[0].env[].name" \
       -o tsv
   )
-  remove_azure_envs=()
   for env_name in "${existing_azure_envs[@]}"; do
     case "$env_name" in
       ES_LOCAL_DEV_BACKEND_VOXEL_TREES_*|GLITCH_CODEX_HOTPATCH|GLITCH_CODEX_HOTPATCH_JS|GLITCH_MUTABLE_HOTFIX_MANIFEST_BASE64|GLITCH_MUTABLE_HOTFIX_MANIFEST_URL|GLITCH_PLAYER_MESH_FALLBACK_ON_BUILD_ERROR|GLITCH_STATIC_PLAYER_MESH_HOTFIX|GLITCH_ANIMA_STARTUP_CANDIDATES|GLITCH_ANIMA_MAX_OLD_SPACE_MB|GLITCH_GAIA_WASM_MEMORY_MB|WASM_MEMORY|GAIA_SHARD_DOMAIN|GALOIS_STATIC_PREFIX|GLITCH_PUBLIC_WEB_ORIGIN)

@@ -387,6 +387,20 @@ describe("Anima schedule and movement behavior contracts", () => {
     assert.equal(npc.state.rotateTarget, undefined);
   });
 
+  it("repairs malformed orientation and drops non-finite rotate targets", () => {
+    const npc = mutableNpc({
+      orientation: [NaN, Infinity],
+      metadata: {
+        spawn_position: [0, 0, 0],
+        spawn_orientation: [0.25, -0.5],
+      },
+    });
+    npc.state.rotateTarget = NaN;
+    rotateTargetTick(npc as any, 90, 0.1);
+    assert.deepEqual(npc.orientation, [0.25, -0.5]);
+    assert.equal(npc.state.rotateTarget, undefined);
+  });
+
   it("tracks time away from home, clears recovery near home, and expires strays", () => {
     const clock = sinon.stub(Date, "now").returns(20_000);
     const npc = mutableNpc({ position: [20, 0, 0] });

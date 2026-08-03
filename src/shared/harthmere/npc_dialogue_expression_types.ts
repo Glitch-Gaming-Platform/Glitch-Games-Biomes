@@ -4,7 +4,8 @@ export type HarthmereDialogueExpressionSource =
   | "compendium"
   | "additive_town"
   | "grove_ambient"
-  | "grove_quest";
+  | "grove_quest"
+  | "native_quest";
 
 export interface HarthmereDialogueExpressionRecord {
   textKey: string;
@@ -12,7 +13,10 @@ export interface HarthmereDialogueExpressionRecord {
   source: HarthmereDialogueExpressionSource;
   actorKey: string;
   actorDisplayName: string;
-  actorEntityOffset: number;
+  actorEntityOffset?: number;
+  actorEntityId?: number;
+  textTemplate?: string;
+  dialogueStepId?: number;
   dialogueKey: string;
   field: string;
 }

@@ -14,7 +14,7 @@ export const zActiveInstancesResponse = z.array(zEntity);
 
 export type ActiveInstancesResponse = z.infer<typeof zActiveInstancesResponse>;
 
-function validInstance(entity: LazyEntity) {
+export function validMinigameInstance(entity: LazyEntity) {
   const minigameInstance = entity.minigameInstance();
   if (!minigameInstance || minigameInstance?.finished) {
     return false;
@@ -22,7 +22,8 @@ function validInstance(entity: LazyEntity) {
 
   if (
     minigameInstance.state.kind === "deathmatch" &&
-    minigameInstance.state.instance_state === undefined
+    (minigameInstance.state.instance_state === undefined ||
+      minigameInstance.state.instance_state.kind === "finished")
   ) {
     return false;
   }
@@ -30,6 +31,8 @@ function validInstance(entity: LazyEntity) {
   if (entity.hasIced()) {
     return false;
   }
+
+  return true;
 }
 
 export default biomesApiHandler(
@@ -45,7 +48,7 @@ export default biomesApiHandler(
       minigameId: minigameId,
     });
 
-    const activeInstances = instances.filter(validInstance);
+    const activeInstances = instances.filter(validMinigameInstance);
 
     return activeInstances.map(
       (e) =>

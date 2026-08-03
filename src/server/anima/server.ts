@@ -1,5 +1,6 @@
 import type { AnimaServerContext } from "@/server/anima/context";
 import { NpcControllerService } from "@/server/anima/npc_controller_service";
+import { animaNpcTickTimeMs } from "@/server/anima/runtime_config";
 import type { LogicApi } from "@/server/shared/api/logic";
 import { NpcTracker } from "@/server/shared/npc/npc_tracker";
 import type { AnimaReplica } from "@/server/shared/npc/table";
@@ -204,7 +205,7 @@ export class AnimaServer {
     // Flush changes in the background to make npc controller ticks more
     // responsive.
     this.controller.runInBackground("flushReplicaChanges", async (signal) => {
-      while (await sleep(CONFIG.animaNpcTickTimeMs, signal)) {
+      while (await sleep(animaNpcTickTimeMs(), signal)) {
         flushChanges();
       }
     });

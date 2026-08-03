@@ -12,6 +12,7 @@ scripts/harthmere/t.sh quests     # focused quest/container contracts
 scripts/harthmere/t.sh ui         #   9 tests, 1.1 s
 scripts/harthmere/t.sh icons      # inventory assets, native aliases, UI, types
 scripts/harthmere/t.sh gate       # quest + UI + client config + contract + types
+scripts/harthmere/t.sh perf       # FPS frame path + polling/save/telemetry contracts
 scripts/harthmere/t.sh watch ch1  # re-runs on save
 scripts/harthmere/t.sh types      # scoped typecheck, ~3 s
 scripts/harthmere/t.sh types:stack # Ask/Logic focused-stack wiring
@@ -110,24 +111,31 @@ type-shape fix, not another scene revision.
 
 ## 3. Choosing a lane
 
-| You changed…                               | Run                        | Cost                              |
-| ------------------------------------------ | -------------------------- | --------------------------------- |
-| Chapter 1 data/logic                       | `t.sh ch1`                 | 4.6 s                             |
-| Quest containers, F prompts, world objects | `t.sh quests`              | 0.8 s                             |
-| A BiomesUI tab                             | `t.sh ui`                  | 1.1 s                             |
-| Inventory icons or item presentation       | `t.sh icons`               | one focused serial release lane   |
-| Quest/container/UI handoff                 | `t.sh gate`                | one Mocha startup + one typecheck |
-| Cutscene defs or the generator             | `t.sh cutscene`            | 2.9 s                             |
-| One file, tight loop                       | `t.sh watch ch1`           | ~1 s per save                     |
-| Types (the thing `./b test` never checks)  | `t.sh types`               | ~3 s                              |
-| Server handlers, Bikkie, ECS gen, triggers | `t.sh full`                | minutes                           |
-| Anything shipping to players               | `t.sh full` + browser gate | —                                 |
+| You changed…                                | Run                        | Cost                              |
+| ------------------------------------------- | -------------------------- | --------------------------------- |
+| Chapter 1 data/logic                        | `t.sh ch1`                 | 4.6 s                             |
+| Quest containers, F prompts, world objects  | `t.sh quests`              | 0.8 s                             |
+| A BiomesUI tab                              | `t.sh ui`                  | 1.1 s                             |
+| Inventory icons or item presentation        | `t.sh icons`               | one focused serial release lane   |
+| Quest/container/UI handoff                  | `t.sh gate`                | one Mocha startup + one typecheck |
+| Cutscene defs or the generator              | `t.sh cutscene`            | 2.9 s                             |
+| FPS, polling, cloud-save, telemetry changes | `t.sh perf`                | one focused Mocha + static guards |
+| One file, tight loop                        | `t.sh watch ch1`           | ~1 s per save                     |
+| Types (the thing `./b test` never checks)   | `t.sh types`               | ~3 s                              |
+| Server handlers, Bikkie, ECS gen, triggers  | `t.sh full`                | minutes                           |
+| Anything shipping to players                | `t.sh full` + browser gate | —                                 |
 
 ### The one thing that will bite you
 
 **`./b test` does not typecheck.** `tsconfig.json` configures ts-node with
 `transpileOnly: true` and `swc: true`. Green tests say nothing about type
 correctness. Run `t.sh types` too — it is 3 seconds.
+
+For the final FPS response, run `t.sh perf` first. It checks static Harthmere
+matrix freezing, renderer frame setup, dynamic-quality throttling, Chapter One
+poll dedupe/event refresh, compact cloud-save responses, and bounded telemetry
+outbox draining in one warm lane. Then run `t.sh types:client`; the performance
+preset deliberately does not duplicate that compiler process.
 
 **Inventory item identity has three player-visible spellings.** Generated icon
 catalogues are normally keyed by semantic ids such as `item_grey_card` and
@@ -185,6 +193,62 @@ as an operational checklist, not background history:
 - **Do not start duplicate scoped typechecks.** `t.sh gate` already includes
   `tsconfig.ch1check.json`. Run either `t.sh gate`, or an explicit parallel
   batch that omits the separate `t.sh types`; never both at once.
+- **Run production/server builds with the Node version pinned by `.nvmrc`.**
+  This repository is on Node 24 (`.nvmrc` currently pins `24.18.1`), but a
+  desktop shell can still resolve `node` to v20. `next build` may get far
+  enough to waste minutes before server webpack fails with
+  `experiments.typescript requires Node.js >= 22.6` / missing
+  `module.stripTypeScriptTypes`. Print `node --version` before the expensive
+  build and switch the PATH/runtime once; do not restart the client build.
+- **Preflight `GLITCH_TITLE_TOKEN` before building a local Glitch image.** The
+  unified launcher exits immediately when the token is absent, even when the
+  code under test uses a `local-*` install identity. Verify that the secret is
+  available without printing it before spending minutes on Next, webpack, and
+  Docker. Never copy the token into source, command output, or test artifacts.
+- **Give isolated stacks their own complete readiness contract.** When a
+  source-exact stack runs beside the release-gate stack, publish unique web,
+  sync, and Redis ports and pass all three to `e2e-jump.cjs ready` together
+  with the isolated container name. Checking web on the new port while leaving
+  sync/Redis defaults pointed at the old stack mixes evidence across images.
+- **A running unified container is not proof that its child services are
+  alive.** The launcher process can remain running in a listener wait loop
+  after Shim or another child has already exited. Do not accept `docker ps`, a
+  bare TCP listener, or the container state as readiness. Require
+  `e2e-jump.cjs ready` to see Web plus the per-service lifecycle endpoints for
+  Logic, Sync, Trigger, Shim, and Bikkie before opening a browser.
+- **Bootstrap a fresh external Redis with the focused production topology,
+  not the ordinary shim/memory preset.** The ordinary preset can still reach
+  `loadBakedTrayFromProd` and fail on a local machine without GCloud even when
+  the no-cloud flags are present. For an exact-image browser lane, use the
+  release-gate Redis/HFC modes (`redis2`, `hfc-hybrid`, Redis chat/firehose and
+  Bikkie cache), `GLITCH_FOCUSED_NATIVE_E2E_STACK=1`, and the no-cloud/skip-prod
+  flags. Run one explicit bootstrap job with
+  `GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=1`, `GLITCH_POPULATE_SNAPSHOT_REDIS=1`, and
+  `GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=1`; stop that job before starting the app,
+  then require the installed snapshot hash, a realistic DB size, and all three
+  canonical seed keys. Never let an ordinary app replica populate or flush an
+  external Redis implicitly.
+- **Glitch web play links do not forward arbitrary query parameters.** A live
+  `/games/<title>/play?invite_code=...` check kept the parameter on the Glitch
+  parent page, but the Biomes iframe received only Glitch-owned launch fields
+  (`install_id` and `glitch_auto_play`) and `document.referrer` was reduced to
+  `https://www.glitch.fun/`. Do not hide this platform failure behind a manual
+  code-entry field: the player-invite requirement is a one-click Glitch URL.
+  Acceptance must prove `invite_code` reaches the game iframe and triggers the
+  automatic post-Wake-Up join. If Glitch still drops it, report the platform
+  handoff as blocked instead of changing the requested player experience.
+- **Invite rotation must revoke the previous record, not only replace the
+  inviter's active-code pointer.** Otherwise **New Code** appears to rotate the
+  invitation while the old code remains joinable until its one-hour TTL. Keep
+  a lifecycle test that creates, rotates, and proves the prior code returns
+  `INVITE_NOT_FOUND`.
+- **Invite idempotency needs an atomic claim immediately before the warp.** A
+  separate `hasClaim` then `setClaim` sequence lets two simultaneous Wake Up
+  retries both publish a warp. Acquire the Redis claim with `SET ... NX EX`,
+  return `already_joined` to the loser, and release the claim if publishing the
+  warp fails so a real retry remains possible. Validate player readiness and
+  destination restrictions before acquiring the claim, or a temporary failure
+  can consume the invite without ever moving the player.
 - **Do not use obsolete Mocha bootstrap paths.** The supported single-file
   command is `scripts/harthmere/t.sh file <path>`. Do not invent a direct
   `mocha --require src/server/test/register.ts` command.
@@ -360,6 +424,14 @@ July 29 robot-story follow-up added four more concrete traps:
   it. When that objective completes, require the normal main-story marker to
   replace the vendor/gathering pin; otherwise the HUD can advance while the
   minimap continues pointing at an obsolete supplier.
+  For a focused visual proof of this handoff, run only the `quests` feature at
+  `gather_parts` with
+  `HARTHMERE_E2E_CHAPTER_1_MATERIAL_VISUAL_CAPTURE=1`. The runner writes one
+  screenshot while the selected material source is centered on the real Map
+  (including its world coordinates) and one after the actor reaches Luis's
+  visible repair cart, before the turn-in removes that objective prop. Do not
+  enable the default Chapter 1 feature set for this check: that also pays for
+  every cutscene, dungeon-terrain, cast, gate, and branded-still audit.
   For objectives whose evidence belongs to another system (Jobs Board or a
   vendor), Chapter 1 must not register its own world-interaction candidate
   while `blocksChapterInteraction` is true. The owning board/vendor keeps `F`;
@@ -1166,7 +1238,7 @@ isolated sync origin>`, wait for the local-player HUD/name and the observer
   authoritative ECS while rendering a mutation-free showcase.
 - **Double jump and evade-cancel tests cross the Native ECS/client boundary.**
   Keep `doubleJump` in the existing `MovementActionEvent` contract so the
-  server atomically replicates it and deducts exactly four stamina; it must
+  server atomically replicates it and deducts exactly ten survival stamina; it must
   have zero horizontal action distance and no i-frames. Test the shared timing
   with `t.sh file`, but run the handler and interaction rows directly with
   `node_modules/.bin/mocha --config .mocharc.json src/client/game/interact/item_types/attack_destroy_delegate_item_spec.test.ts src/server/logic/test/movement_actions.test.ts`
@@ -1211,6 +1283,16 @@ isolated sync origin>`, wait for the local-player HUD/name and the observer
   `.next/static` a second time. Never restart a bind-mounted app during that
   interval. If another compiler appears, wait for its owner or completion;
   do not launch a competing build or kill an unowned one.
+- **A wrapper failure does not prove its compiler has exited.** On August 2,
+  one `./b build next` caller returned an ENOENT for
+  `.next/server/pages-manifest.json`, but process inspection showed another
+  authorized deployment still owned a live `node .../next build --webpack`
+  child and the partial tree. Before quarantining, deleting, or restarting
+  `.next`, inspect the full process tree for the build launcher, `next build`,
+  and Webpack. Wait for every owner to exit, coordinate an explicit release,
+  then re-check `BUILD_ID`, `server/pages-manifest.json`, `server`, and
+  `static`. Never clean a partial tree while any compiler remains active; that
+  creates a second writer and corrupts both artifacts.
 - **Do not rerecord a completed WebM because browser automation cannot expose
   the page's main-world sink.** First require the
   `biomes-cutscene-video-output` status to be `complete`. Prefer the native E2E
@@ -1301,6 +1383,72 @@ isolated sync origin>`, wait for the local-player HUD/name and the observer
   hash and representative world keys, then repeat the full readiness contract
   after a short stability window. Any capture after a Redis restart is invalid
   environment evidence, not a scene attempt.
+- **A helper's final endpoint smoke is not permission to skip the retained-stack
+  stability gate.** On August 2, `--skip-build --local-smoke --keep-local`
+  finished its root, auth/session, and player-mesh checks, then the disposable
+  no-persistence Redis container restarted once under `unless-stopped`. The
+  helper still printed `Local production image smoke passed`, but Redis had
+  lost the snapshot and chat's consumer group; Web then shut down with
+  `NOGROUP`. Before any feature browser, hold the stack for a short stability
+  window and repeat full lifecycle readiness. Require app and Redis restart
+  counts `0`, Redis `PONG`, the installed snapshot hash, a realistic DB size,
+  and the three canonical Grove seed keys. If Redis restarted, discard the
+  browser attempt and recreate the disposable snapshot; never let a healthy
+  TCP port or stale lifecycle log override the restart evidence. The local
+  smoke helper now enforces this again immediately before its final pass.
+- **Redis Docker health is not a literal readiness assertion.** The stock
+  `redis-cli ping` health command exits successfully while Redis is still
+  returning `LOADING Redis is loading the dataset in memory`; a replacement
+  1.9 GiB RDB was therefore marked healthy before `DBSIZE` was even numeric.
+  Before validating hashes or opening Chromium, require the command output to
+  equal exactly `PONG`. Treat `LOADING`, blank output, or any error string as
+  not ready even when Docker reports `healthy`.
+- **A 16.56 GiB Docker VM has capacity for one full 335k-world lane.** On
+  August 2, several isolated exact-image tasks correctly chose unique networks,
+  ports, containers and Redis databases, but starting them together consumed
+  roughly 9 GiB in Redis plus 4.3 GiB in app/maintenance processes. One Redis
+  was OOM-killed before any browser opened. Isolation prevents state collision;
+  it does not create memory. Serialize heavy lanes. Before handing off the
+  runtime token, stop the app/maintenance role first, issue `SAVE` to a healthy
+  Redis, retain its container/RDB, then stop the forwarder and Redis. A force
+  stop of a launcher can report exit 137 without `OOMKilled`; record both
+  fields instead of treating the exit code alone as an OOM. On resume, recreate
+  or restart the assigned lane, require literal PONG, full lifecycle readiness,
+  and app/Redis `RestartCount=0`. Every screenshot or gameplay assertion made
+  before that fresh lifecycle is invalid environment evidence. Never delete a
+  neighboring task's lane to make room, and never start a second full lane
+  while the current owner is still reconciling or testing.
+- **Do not hide restart-gate failures behind a later standalone readiness
+  pass.** A combined `set -e` preflight correctly stopped at
+  `Redis RestartCount != 0` and printed nothing, then a separately invoked
+  `e2e-jump.cjs ready` went green because that helper checks services, not
+  historical restarts. Print the app/Redis restart counts, snapshot hash,
+  database size, canonical keys, and literal PONG before invoking readiness,
+  and require all of them in the same accepted record. If the browser lock was
+  acquired before a Redis replacement/restart, that run is invalid even if it
+  finishes later; coordinate with its owner and rerun only the affected slice
+  after a zero-restart second stability window.
+- **Manual exact-image recreation must preserve the browser authorization
+  contract.** Recreating only the web role with the right image, Redis, ports,
+  and control token but `HARTHMERE_NATIVE_ECS_E2E=0` makes
+  `/api/harthmere/visual_test_auth` correctly return HTTP 401
+  (`Native ECS E2E access is disabled`). Before Chromium, inspect the active
+  container and require both `HARTHMERE_NATIVE_ECS_E2E=1` and a nonempty
+  `HARTHMERE_E2E_CONTROL_TOKEN`; retrieve the token without printing it. An
+  auth 401 before page navigation is an environment failure with zero gameplay
+  coverage. Preserve Redis, correct only the app role, and repeat the complete
+  readiness/hash/restart gate instead of replaying or diagnosing the feature.
+- **Never remove the retained app before the replacement container has been
+  created successfully.** On August 2, a manual warm-artifact recreation read
+  Docker's environment list into repeated `--env` arguments, retained the
+  trailing blank line as an empty argument, removed the stopped app, and then
+  failed `docker run` with `invalid environment variable`. Filter empty entries
+  and use `docker create` under a temporary name first. Verify its image,
+  mounts, environment contract, and port plan; only then remove/rename the old
+  app and start the replacement. Redis survived this incident, but deleting the
+  only copy of the app configuration turned a one-line client mount into an
+  unnecessary manual reconstruction. Prefer the explicit launcher environment
+  over cloning a container's full `Config.Env` whenever possible.
 - **Do not persist a snapshot merely because the importer printed its final
   change count.** A Redis restart during import can let the producer eventually
   report all 335,656 submitted changes while leaving an incomplete database;
@@ -1599,6 +1747,290 @@ consumer-group gates still run before Chromium starts; only the independent
 work is overlapped. Full production rehearsals retain their historical stream-
 worker ordering.
 
+#### Serialize exact-image browser lanes on a 16 GiB Docker host
+
+Do not boot several production-shaped snapshot stacks in parallel merely
+because their ports and Docker networks do not overlap. On the August 2 exact
+image, three 335k-entity Redis containers consumed roughly 9 GiB before their
+apps finished hydrating; the additional app/maintenance processes pushed a
+16.56 GiB Docker VM into a real Redis OOM kill. Port isolation prevented data
+cross-talk, but it did not provide memory isolation. Evidence collected before
+that OOM, or after a container auto-restart, is invalid.
+
+Use one heavy runtime lane at a time:
+
+1. bootstrap and warm one external Redis;
+2. require app and Redis `RestartCount=0` and `OOMKilled=false`;
+3. run every serial slice assigned to that image/Redis pair;
+4. quiesce the app and browser;
+5. if Redis was launched with `--save '' --appendonly no`, run a synchronous
+   `redis-cli SAVE` before stopping it so the retained container can restore
+   `/data/dump.rdb` instead of silently becoming empty;
+6. only then release the memory token to the next lane.
+
+#### Supported warm-Redis application refresh
+
+Bootstrap the expensive world only once. The ordinary retained-stack command
+is still the initial setup:
+
+```bash
+export HARTHMERE_NATIVE_ECS_E2E=1
+export HARTHMERE_E2E_CONTROL_TOKEN="$(openssl rand -hex 32)"
+export GLITCH_IDLE_SESSION_MS=900000
+export SMOKE_TIMEOUT_SECONDS=1800
+export HARTHMERE_SKIP_LIVE_ENTITY_BROWSER_SMOKE=1
+
+scripts/glitch/deploy-production-local-redis-smoke.sh \
+  --local-smoke --keep-local \
+  --tag "warm-e2e-$(date -u +%Y%m%d%H%M%S)"
+```
+
+After that first import, do **not** run `--local-smoke` again for each source
+fix. That launcher intentionally removes its disposable app and Redis before a
+new smoke boot, so `--skip-build --local-smoke --keep-local` still replaces the
+world. Refresh only the app against the retained Redis instead:
+
+```bash
+# Build both application outputs serially, then replace only the app container.
+scripts/glitch/refresh-warm-local-stack.cjs --build all
+
+# If another coordinated task already produced and released .next/dist/public:
+scripts/glitch/refresh-warm-local-stack.cjs --build none
+```
+
+The defaults use `biomes-prod-smoke-app` and `biomes-prod-smoke-redis`. Pass
+`--app <name> --redis <name>` for an isolated named lane. `--dry-run` performs
+the ownership, artifact, app, network, and Redis validation without creating or
+stopping a container. The helper:
+
+1. refuses to continue while another Next/server compiler owns the outputs;
+2. requires stable `.next/BUILD_ID`, `.next/server`, `.next/static`,
+   `dist/web.js`, and `public` trees;
+3. requires the retained Redis to be the same running, zero-restart,
+   non-OOM-killed container with literal `PONG`, the installed snapshot hash, a
+   realistic database size, and all three canonical seed keys;
+4. copies the current app environment but forcibly sets external Redis mode,
+   `GLITCH_POPULATE_SNAPSHOT_REDIS=0`,
+   `GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=0`, and
+   `GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=0`;
+5. bind-mounts the completed `.next`, `dist`, and `public` trees read-only;
+6. creates and verifies the replacement app before stopping the current one;
+7. restores the previous app automatically if lifecycle, HTTP, Sync, or Redis
+   readiness does not return before the timeout; and
+8. verifies the Redis container identity and world contract again after the
+   application is ready.
+
+`e2e-jump.cjs ready` now accepts
+`HARTHMERE_E2E_REDIS_CONTAINER=<name>`, so Docker-only Redis does not need a
+host port or a second database merely for readiness. The browser/API, fixture
+writer, and replacement app still must all use that one named world.
+
+This shortcut is for client/server bundle changes. If the change touches the
+Docker image, launcher, Redis bootstrap, reconciliation, service topology, or
+runtime dependencies outside the mounted trees, build a new exact candidate
+image and test it intact. You may still attach that exact replacement app to a
+materialized external Redis with population and flush disabled, but do not mix
+new bundles with incompatible old launcher scripts.
+
+Run the static safety contract after changing the helper:
+
+```bash
+node scripts/glitch/test-refresh-warm-local-stack.cjs .
+```
+
+A create-only full-topology reconciliation can also be CPU-bound for more than
+ten minutes under AMD64/Rosetta before lifecycle services start. Constant CPU,
+flat memory, and unchanged restart counts are progress, not a hang. A focused
+original-world mode may skip that additive edge pass only when the exact test
+fixture is wholly inside imported terrain and full-topology acceptance remains
+assigned to another serialized lane. Never make that substitution implicitly.
+
+For a retained warm Redis that is missing the entire additive band, native ARM
+maintenance can partition the create-only terrain work without changing normal
+runtime behavior. Run disjoint workers with the same positive
+`BIOMES_HARTHMERE_TERRAIN_PARTITION_COUNT`, unique zero-based
+`BIOMES_HARTHMERE_TERRAIN_PARTITION_INDEX` values, and
+`BIOMES_HARTHMERE_TERRAIN_PARTITION_ONLY=1`. Each stable sorted-ID partition
+writes only its own missing shards and deliberately does not stamp the overall
+seed marker. After every worker exits, run one ordinary unpartitioned
+reconciliation to verify completeness, install shared authored content, and
+stamp the final fingerprint.
+
+When shell-checking a generated entity list, remember that zsh does not split a
+scalar on spaces by default. `for id in $ids` can send one giant Redis key and
+falsely report `0/N` entities. Prefer a Node argument array (as the snapshot
+minigame runner does), a real shell array, or explicit zsh `${=ids}` expansion.
+
+#### Snapshot minigame exact-image gate
+
+The dedicated runner inventories all 74 non-fishing snapshot definitions,
+executes every race through start/checkpoints/finish, runs every Spleef arena
+through multiplayer countdown/play/clipboard reset, runs all Deathmatches
+through loadout/kill/finish, and verifies finished Deathmatch instances are no
+longer advertised. It uses two rendered low-memory sessions; the historical
+20x20 Spleef row opens one additional session because its persisted setting
+requires three players.
+
+Run type slices serially against the same warm, restart-count-zero stack:
+
+```sh
+set -a
+. /tmp/<lane>.env # chmod 600; contains the fresh control token
+set +a
+
+COMMON_MINIGAME_E2E_ENV=(
+  HARTHMERE_E2E_BASE_URL=http://127.0.0.1:<web>
+  HARTHMERE_E2E_SYNC_BASE_URL=http://127.0.0.1:<sync>
+  HARTHMERE_E2E_URL=http://127.0.0.1:<web>/at
+  HARTHMERE_E2E_REDIS_PORT=<redis>
+  HARTHMERE_E2E_STACK_CONTAINER=<app-container>
+  HARTHMERE_E2E_IMAGE_ID=sha256:<full-image-id>
+  HARTHMERE_E2E_BUILD_ID=<embedded-build-id>
+)
+
+env "${COMMON_MINIGAME_E2E_ENV[@]}" \
+  HARTHMERE_MINIGAME_E2E_KINDS=simple_race \
+  node scripts/harthmere/test-snapshot-minigames-live-browser.cjs
+env "${COMMON_MINIGAME_E2E_ENV[@]}" \
+  HARTHMERE_MINIGAME_E2E_KINDS=spleef \
+  node scripts/harthmere/test-snapshot-minigames-live-browser.cjs
+env "${COMMON_MINIGAME_E2E_ENV[@]}" \
+  HARTHMERE_MINIGAME_E2E_KINDS=deathmatch \
+  node scripts/harthmere/test-snapshot-minigames-live-browser.cjs
+```
+
+The runner refuses to start Chromium unless Redis answers real `PING/PONG`,
+the canonical snapshot/minigame keys exist, `e2e-jump.cjs ready` sees every
+focused service, the container image and embedded BUILD_ID match the released
+values, and the app has never restarted or been OOM-killed. It never builds or
+starts a stack.
+
+If a long type slice stops after some rows have already passed, preserve its
+JSON report and resume only the missing IDs with
+`HARTHMERE_MINIGAME_E2E_IDS=<comma-separated-ids>`. Do not throw away valid
+per-row evidence by rerunning the whole slice. Snapshot worlds can also contain
+ambient Twitch media near a race endpoint; React Player 3.4.0 may call the
+provider's `play()` before its iframe exists. Product code defers autoplay by
+one animation frame, while the exact-image runner applies the equivalent safe
+retry when validating an older coordinated image. External provider failures
+remain excluded from minigame browser failures, but local resource errors and
+all other page exceptions still fail the run.
+
+A timed-out `create_or_join` response is not proof that Logic rejected the
+event. The event can commit before Web loses its Logic connection, leaving the
+retained test actor in an active instance and its clipboard elements iced.
+After that exact transport error, the runner first checks the actor's
+authoritative `playing_minigame`: if it matches the requested game, the join
+committed and the scenario continues without publishing a duplicate event.
+If it did not commit, the runner publishes the same authoritative
+`CreateOrJoinSpleefEvent` or `JoinDeathmatchEvent` through the rendered
+client's native event channel and records that transport fallback in the JSON
+report. This avoids a duplicate web request while still exercising the real
+Logic handler; the shared web convenience route must already have at least one
+green scenario in the retained evidence. Resume with the same actor IDs: the
+runner quits any retained active instance before auditing the catalog, then
+runs only the IDs selected above. Do not blindly retry `create_or_join`, and do
+not repair the iced element directly; both can hide whether the production
+quit/reset path restored the clipboard.
+
+On a long-lived full local container, lazy asset workers and Web background
+scans can consume enough CPU that both Web and Sync lose their Logic publish
+call even though Docker did not restart or OOM. After retaining at least one
+green shared-web-route scenario, do not pause Web or its asset workers: a
+brief CPU pause does not repair an already-broken zRPC channel. Expose the
+running Logic RPC port through a tiny forwarder, then resume the unfinished
+IDs with a fresh repository `LogicApi` client:
+
+```sh
+docker run -d --name <lane>-logic-forward --network <lane>-net \
+  -p 127.0.0.1:6504:6504 alpine/socat \
+  TCP-LISTEN:6504,fork,reuseaddr TCP:<app-container>:3504
+
+LOGIC_PORT=6504 \
+HARTHMERE_MINIGAME_E2E_FRESH_LOGIC_PORT=6504 \
+HARTHMERE_MINIGAME_E2E_FORCE_NATIVE_JOIN=1 \
+HARTHMERE_MINIGAME_E2E_IDS=<unfinished-ids> \
+  node scripts/harthmere/test-snapshot-minigames-live-browser.cjs
+```
+
+The rendered clients still observe and assert the authoritative ECS state;
+only their native event publications use the fresh supported Logic connection.
+The runner records the publication count and transport fallbacks in its JSON
+report. A fresh client can receive Logic's explicit `Too much contention`
+non-commit outcome when rendered clients are concurrently writing movement to
+the same actor. Retry only that typed outcome with bounded backoff. Do not
+freeze rendered Chromium pages around the transaction: freezing pauses Sync
+heartbeats, the server ices the disconnected actor, and `IcedSideEffect`
+removes it from the minigame. Never use this mode for the first shared
+Web/browser route proof.
+
+An interrupted Spleef join can leave a catalog element iced after its instance
+has already disappeared. Catalog reconciliation intentionally does not rewrite
+live runtime state. Before its catalog audit, the browser runner clears stale
+icing only for a selected game whose authoritative `active_instance_ids` set
+is empty, and records the cleanup in the report. It must never clear icing
+while any instance is active.
+
+Resume batches must not re-audit unrelated catalog rows or fail fast on the
+first broken game. The snapshot-minigame runner audits only the selected IDs,
+records per-row failures, rotates to fresh numeric actors after a failed row,
+and completes the rest of the selected batch before returning a combined
+failure report. Fix that report as one batch, then resume only its failed IDs.
+
+Deathmatches with a one-kill limit can transition directly from the lethal
+native damage event to `finished`, clearing transient `player_states` before a
+browser poll observes the intermediate kill/death counters. Accept either the
+counter state or the immediate finished state, record `finishedOnKill`, and do
+not force a second finish tick after the match already ended.
+
+The imported Deathmatch settings still issue legacy Bikkie weapons such as
+Mega Axe while Harthmere players carry a migrated native-combat progression.
+Do not interpret a rejected synthetic damage event as a broken match state or
+retry all maps individually. The shared player-damage handler must treat a
+native-catalogue item without a combat profile as non-combat, but derive a
+legacy item's authoritative damage, reach, and interval from the selected ECS
+item. Cover that compatibility boundary once in the Deathmatch integration
+test, lower the browser fixture target to one HP, and run every failed map in
+one resume batch. An immutable older image may use the runner's explicit
+`HARTHMERE_MINIGAME_E2E_LEGACY_DEATHMATCH_IMAGE_WORKAROUND=1` unarmed shim to
+prove round scoring/cleanup, but that evidence does not replace a browser run
+against the rebuilt handler with the authored loadout still selected.
+
+An auto-finished Deathmatch can clear `playing_minigame` before runner cleanup.
+That does not mean the disposable actor is ready for reuse: always restore its
+health, death marker, and iced state even when no explicit quit event is
+needed. Otherwise the first two passes contaminate every later row in a batch.
+
+If Sync disconnects before a Spleef quit, the participant may already be iced.
+The quit handler's prepare query must include iced players just like its main
+query; otherwise the event never reaches stash/clipboard restoration and the
+arena remains locked for every later batch. Reproduce this with one iced-player
+quit integration test, fix the shared query once, then resume all affected
+arenas together. Do not manually unice production participants as the product
+fix; unicing a disposable actor is only an old-image fixture recovery step.
+
+Repeated Deathmatch deaths can also reopen the stock death modal before an old
+render tree has fully settled. Key `DeathModal` by the authoritative game-modal
+resource version so each death/revive lifecycle remounts its hook chain. A
+React hook-dependency exception after otherwise green scoring is still a
+browser failure; keep the completed gameplay rows, fix the shared modal, and
+require one post-build repeated-death browser gate rather than replaying every
+map.
+
+Do not reuse an unfinished minigame instance whose authoritative
+`active_players` map is empty. Interrupted batches can leave such a stale
+`playing` instance behind; the first actor must create a fresh instance and the
+second actor may then join that new instance.
+
+Nonempty is not sufficient either: a retained participant can leave a stale
+instance in `playing`. Reuse only an instance whose authoritative state is
+`waiting_for_players`; never attach a resume actor to a playing round.
+
+Before a selected resume batch, retire stale instances whose authoritative
+`active_players` map is empty: mark the instance finished and remove its ID
+from the parent minigame. This cleanup is safe only for zero-player instances;
+never retire an instance that still has a participant.
+
 #### Chapter 1 Elsewhen terrain preflight
 
 The Chapter 1 quest and dungeon browser lanes require the 109 authored
@@ -1759,6 +2191,26 @@ and preserve the Redis container. This avoids rebuilding and loading a
 multi-gigabyte Docker image after every fix. Once the browser campaign is
 green, package those exact validated outputs into one final image; do not make
 an image rebuild part of every browser iteration.
+
+That warm-mount shortcut is valid only while the base image's launcher/scripts
+remain compatible with the mounted outputs. On August 2, an old r3 image was
+started with a newer `.next` and `dist` after the deployment also changed the
+water/startup launcher path. Even with `GLITCH_POPULATE_SNAPSHOT_REDIS=0`, the
+mixed stack entered authored-content synchronization, repopulated the
+disposable Redis snapshot, and began another startup cycle. If the change set
+touches Docker, startup scripts, reconciliation, Redis bootstrap, or service
+topology, do not combine old image scripts with new bundles. Wait for the exact
+candidate image and test it intact. Reserve warm mounts for client-only or
+bundle-only fixes whose launcher compatibility has been explicitly proved.
+
+The additive Harthmere extension is now default-on. Setting the retired
+`BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0` does not disable its startup sync and is
+not a valid focused-test shortcut. For an explicitly Grove-only diagnostic,
+use `BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET=1` (and the matching
+`NEXT_PUBLIC_` switch when rebuilding the client). Record that topology in the
+report: it can validate original-Grove quests such as Road Ahead, but it cannot
+sign off Harthmere-town terrain, water, NPCs, or fishing. Prefer the full exact
+image whenever its additive reconciliation is already materialized.
 
 Do not replace or delete the bind-mounted `.next` directory while the app
 container is running. Docker keeps the old directory inode mounted, so a new
@@ -1998,9 +2450,97 @@ HARTHMERE_E2E_ROAD_AHEAD_FINAL_HANDOFF_ONLY=1 \
   node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
 ```
 
-Use the visible `Exit Camera` button for no-pointer-lock cleanup. It exercises
-the supported recovery control without letting a capture-phase keyboard
-listener turn a completed photo objective into a two-minute `X` timeout.
+For ordinary photo-flow coverage that is not changing keyboard input, the
+visible `Exit Camera` button is acceptable no-pointer-lock cleanup. It must not
+be used as evidence that the displayed `X` shortcut works. The August 2 Road
+Ahead audit found the HUD rendering `X — Exit Camera` while the hotbar handler
+accepted only `Delete`; the browser runner clicked the button and mislabeled
+the scenario as an X pass. A camera-shortcut gate must focus
+`canvas.biomes-canvas`, press physical `KeyX`, require the exit HUD to hide,
+require authoritative camera mode to return to normal, and require selection
+to leave the camera slot. Do not click the button in that scenario, do not
+publish an exit event fallback, and do not waive the key because Pointer Lock
+was released—the camera exit handler is deliberately a pointer-lock-independent
+recovery path.
+
+Keep camera-shortcut failures bounded and evidence-rich. Before pressing
+`KeyX`, install capture- and bubble-phase observers; after the key, record the
+active element, whether the event reached both phases, whether an earlier
+handler called `preventDefault`, the live `/hotbar/selection` kind/ref/mode,
+and whether `.camera-exit-button` is still visible. Fail within ten seconds
+with that diagnostic. A two- or three-minute locator timeout proves only that
+the button stayed visible and hides whether the key was swallowed, the HotBar
+listener was absent, or the selection was no longer `camera`.
+
+Do not put a replacement-HUD recovery key only in a legacy component. The
+August 2 key probe showed `KeyX` reaching document capture and bubble with a
+live camera selection, but `defaultPrevented` stayed false because `HotBar` is
+not mounted when `replaceLegacyBiomesUI` is active. The listener must live in
+`InGameCameraHUD`, the component that renders the Exit Camera control in both
+HUD modes. Keep the old HotBar handler for legacy UI compatibility, but require
+the camera-only selection guard in both places so ordinary `X` remains dodge.
+
+Treat `ReactResources.use(...)` as a render-only hook, not a convenient resource
+getter. The next exact-image pass showed `KeyX` reaching the new HUD listener
+and becoming `defaultPrevented`, yet `/hotbar/index` recorded zero writes. The
+shared camera action called `reactResources.use("/scene/local_player")` from the
+document key handler, so React aborted the action before selection changed. Any
+helper callable from a key, click, timer, promise, or ECS callback must use
+`reactResources.get(...)`; reserve `use(...)` for component/hook render bodies.
+For camera regressions, trace `/hotbar/index` writes and inventory slot actions
+in the same ten-second key diagnostic. A prevented event alone does not prove
+the player-facing action completed.
+
+Do not import a large component merely to unit-test one event action. Importing
+`HotBar.tsx` in the bootstrap-free camera test pulled `NormalSlot`, inventory
+icons, and `/public/hud/default-challenge-icon.png` into Node, failing before one
+assertion ran. Extract event-safe behavior into a dependency-light module and
+test that module directly; keep a static contract proving the component imports
+it. Classify a missing static-image module during Mocha collection as a test
+boundary error, not as a camera, inventory, or asset regression.
+
+An authenticated `/at/x/y/z/...` tab is not a safe Grove-NPC observer. The
+coordinate slug intentionally selects observer mode, while a retained player
+cookie can still make the client believe that synchronized player is local;
+Sync then removes it from the observer subscription and the client correctly
+raises `Should never delete local player!`. Use `anon=1` for coordinate-only
+NPC/terrain observation, or keep the authenticated player route slug-free and
+move the player through the approved fixture path. Do not clear Redis, restart
+the stack, or diagnose the NPC because an authenticated observer URL mixed two
+incompatible identities. Also keep only one heavy game tab in the in-app
+browser: parallel authenticated and observer WebGL clients can exhaust the
+browser-control connection even while the app remains healthy.
+
+Do not let a quest-step wait hide actor replacement for the full feature
+timeout. The August 2 Road Ahead run had already proved Billy's real toolbag
+and Pick transfer, then waited 180 seconds for `Return Billy's Pick`; the final
+diagnostic showed that the actor no longer had the quest in `in_progress` or
+`complete`, and its trigger roots were empty. Every authoritative quest-action
+wait must treat that state as an immediate actor-continuity failure and report
+the actor id, icing state, and trigger-root count. Preserve the last passed
+checkpoint and resume there with a fresh actor. Do not replay earlier quest
+stages, and do not misclassify the resulting timeout as a bad prompt, NPC, or
+quest trigger until the actor row itself has been proven continuous.
+
+For a claim immediately after a prop/container interaction, never treat a
+fire-and-forget MoveEvent as proof that the player has returned to the NPC.
+The August 2 focused Road Ahead resume moved the browser simulation to Billy's
+toolbag, published a return MoveEvent, and immediately sent `Return Billy's
+Pick`; Logic correctly rolled it back with `Talking distance is too large`
+while the harness waited on trigger state. Before every
+`CompleteQuestStepAtEntityEvent`, place the browser-owned `/sim/player`, publish
+the matching MoveEvent, and wait until both authoritative ECS and the scene
+player are within `gameMaxTalkDistance` of the exact claim entity. A rollback
+log is a failed action, not a reason to keep polling for the success state.
+
+Classify the local profile-picture fallback consistently for both response and
+request-failure paths. The local stack has no production social bucket proxy,
+so `GET /buckets/biomes-social/<id>/profile_pic/...` may either return 404 or be
+aborted while React replaces the image with `avatar-placeholder`. Both are
+expected transients when—and only when—the method is GET and the pathname
+matches that exact profile-picture shape. Do not let an `ERR_ABORTED` avatar
+request terminate a feature run after the equivalent 404 was already accepted;
+all other same-origin failed requests remain fatal.
 
 Level-stat verification must remain mounted for several client ticks after the
 server award. `PlayerScript.updateMaxHealth()` is another authoritative writer:
@@ -3140,6 +3680,303 @@ The report under `artifacts/harthmere-indisworm-live-browser/<run>/report.json`
 is the handoff artifact; failed attempts should remain available as evidence of
 the specific readiness or fixture edge case they caught.
 
+### 4.28 Prove melee at the authored contact frame, not at button-down or re-entry
+
+Treat one melee swing as a bounded receipt shared by animation, Anima, and the
+logic server. The receipt must identify one target, one attack start, one impact
+time, one impact point, the strike volume, and the final hit/miss/cancel result.
+Use the same `attackTime` for the public Attack emote and the damage event. A
+pending wind-up must be cancelled when the target changes, leaves horizontal or
+body-aware vertical reach, leaves facing, loses terrain line of sight, dies,
+enters protection, or the attacker evades. Allow only a short coarse-tick grace
+around impact; a swing that is seconds old must expire instead of landing when
+the player later returns.
+
+Commit the NPC's `npc_state` receipt before publishing its damage event. Running
+state apply and event publish in one `Promise.allSettled` creates a real race:
+the health handler can receive a legitimate hit while it still sees the prior
+swing. Preserve independent failure attempts, but make event delivery wait for
+all state chunks to settle. The server then validates target identity, swing
+timestamp, impact point, result, freshness, replay, facing, horizontal reach,
+body vertical gap, and the recorded line-of-sight decision before applying
+damage. Test the ledge-overlap and through-floor cases separately; raising one
+3D radius to make hills pass is not acceptable.
+
+Player attacks follow the same presentation boundary. Start the body/weapon
+animation immediately, resolve damage at that weapon class's authored impact
+frame, and re-sample melee candidates at impact so a target that stepped out is
+not hit from the button-down snapshot. Cover unarmed, one-handed melee, heavy,
+tools, ranged, and magic timing. Cancelling or unselecting a weapon must clear
+the pending impact timer. The native NPC renderer should use the raw ECS
+position/orientation during the short attack window; ordinary 0.8-second network
+interpolation can otherwise leave the visible creature behind the validated
+hitbox even when authority is correct.
+
+Creature animation acceptance has three layers:
+
+- edit the tracked Blender source and merge the resulting action into the
+  tracked GLTF; changing only one of those files leaves regeneration or runtime
+  stale;
+- statically require `Attack`, `HitReact`, and `Death` with nonzero channels and
+  durations for every Hex, Mucker, cow, sheep, and rabbit rig, and record the
+  livestock impact frame used by combat tuning;
+- use Blender contact-frame renders only as authoring QA. The final evidence is
+  the exact-current-source game renderer performing a real receipt-backed melee
+  exchange with before/contact/after screenshots and authoritative health.
+
+Do not run a Bikkie/ECS-importing combat file under the bootstrap-free
+`t.sh file` lane and interpret missing item hardness, unknown NPC types, or
+misclassified premium weapons as product failures. This exact mistake produces
+`Uncached lookup by schema` warnings and can make unrelated terrain assertions
+fail later in the same process. Pure geometry/timing/controller files belong in
+the fast lane; native item catalogues, generated ECS events, and health handlers
+belong in `scripts/harthmere/t.sh full` under the `.nvmrc` runtime.
+
+Do not cold-start the complete additive-town Shim reconciliation merely to run
+the focused hill-melee fixture. The production image's AMD64-emulated
+`node --no-opt` process can remain CPU-bound after `Loaded WASM` for longer than
+the 15-minute readiness contract while it builds thousands of unrelated horizon
+shards. Reuse the populated warm Redis snapshot, set the explicit additive-town
+rollback flag only on the disposable focused web/Anima test topology, and let
+the E2E create its deterministic floor, ledge, crest, and NPC rows through the
+signed admin ECS path. This is a fixture-lane optimization, not production
+terrain acceptance. A 337k-entity local Anima scan can also take more than the
+old hardcoded 75-second hill-combat ceiling under emulation; set
+`HARTHMERE_E2E_HILL_COMBAT_TIMEOUT_MS` for the bounded functional run while
+leaving every acquisition, range, line-of-sight, animation, and HP predicate
+unchanged. Never enable performance assertions for that extended functional
+rerun.
+
+### 4.29 Low-FPS projectile and giant-audio evidence must follow presentation, not requests
+
+A `200` or `304` for a projectile GLB or sound file proves only that the client
+requested an asset. It does not prove that the player saw or heard the attack.
+The August 2 Helix capture loaded Fireball, Life Drain, Helix Projector Beam,
+Entangling Roots, and `giant_boss_stomp.webm` successfully while the user still
+reported missing projectiles and footsteps. Correlate HAR timestamps with the
+public ranged cast, renderer counters, authoritative HP change, and an actual
+captured frame or audible playback profile.
+
+Do not use the renderer's capped particle delta as the authoritative projectile
+clock. At 1 FPS, adding only 50 ms to a one-second projectile per rendered frame
+puts visible contact roughly twenty seconds behind Anima damage. Advance charge,
+projectile, and attack-shape lifecycle progress with wall time; retain the small
+delta only for mixers, trails, and particle integration. When a synchronized
+release arrives late, calculate the remaining interval from
+`releaseTime + impactDelay - now`. If impact already happened, resolve the
+travel/shape immediately into a persistent impact effect instead of replaying a
+fresh full-duration projectile after health changed. Keep a direct runtime test
+that advances a hostile projectile by one one-second frame; event/asset tests do
+not cover this failure.
+
+Generated Harthmere audio paths bypass Galois `AudioAssetType`, including the
+normal `footsteps` volume multiplier. The generic `playPathAt` defaults
+(`refDistance = 2`, ordinary effects gain) can therefore make a full-scale boss
+stomp nearly inaudible at 15–25 metres even when the clip itself peaks at 0 dB.
+Pass an explicit giant profile with a boss-sized reference distance, bounded
+volume boost, arena-scale maximum distance, and gentler rolloff. Test the
+profile and the calling path; do not regenerate a louder clip to compensate for
+incorrect spatial attenuation.
+
+Finally, “the boss has five attacks” needs two different gates. Parse the real
+GLB and require the body clip for all five catalog entries, then run one
+selection encounter that opens authored range and health phases and observes
+all five ability IDs in order. A catalog-length assertion alone does not prove
+that round-robin selection can reach the close-range move or the low-health
+finisher. Conversely, a short full-health long-range browser fight is not
+evidence that those phase-gated moves are missing.
+
+### 4.30 A staged NPC is one presentation contract, not only a moved mesh
+
+Chapter One NPC positions are per-player projections over shared ECS entities.
+Testing only the renderer override can leave four contradictory truths in one
+client: the body at the quest location, the nameplate at the shared spawn, the
+nearby `F — Talk` selector at the shared spawn, and the objective marker at a
+static cast placement. The August 2 Jackie report exposed that split: the
+Chapter One state correctly projected canonical Jackie to the road-house while
+the shared starter body remained the input to overlay and proximity scans. A
+player could therefore see a name without the expected body, interact with the
+wrong location, or interpret the two positions as two Jackies.
+
+Route every NPC presentation consumer through one resolver: renderer body,
+nameplate, cursor/proximity Talk, combat/interaction registry, cutscene binding,
+and objective target. Merge exact canonical entities into spatial scans when a
+projection moves them into range, remove the old shared position from that
+player's candidate set, and honor `hidden` for intentionally absent/ending
+states. Before Chapter One, the shared original Jackie remains visible and
+talkable for Road Ahead; after the chapter starts, the same entity id appears
+exactly once at the current staged location. Never delete or globally move the
+shared body to solve a per-player story transition.
+
+The projected body can be inside the player's view while the shared ECS body
+is outside Sync's local subscription. A renderer ghost alone is insufficient:
+the nearby-Talk scan then has no entity to classify and the player sees Jackie
+without an `F Talk` prompt. OOB-fetch only the explicit positive projected ids,
+cache their canonical read-only entity for the overlay scan, and mark that
+overlay as projected-talkable. Do not broaden the subscription or invent a
+second NPC. Live acceptance must exercise Talk at a stage far enough from the
+shared post to cross this boundary.
+
+**Special `F Talk` rule for projected bodies:** a positive-id projection ghost
+is not an ECS raycast target. The cursor therefore commonly reports the terrain
+immediately behind the visible body, and the ordinary terrain-hit branch stops
+generic nearby-NPC fallbacks by design. Recover `F Talk` only after the normal
+authored-object selector fails, only for an explicit non-hidden projected NPC,
+and only when that projected position is within the terrain hit's bounded
+inspection depth. Keep the normal facing/radius score and return the canonical
+entity id with `projectedTalkable`; never let every nearby NPC leak a prompt
+through walls or aimed terrain. Unit-test projected/non-projected and in-depth/
+behind-depth cases, then live-test the same visible body, canonical id, and one
+`F Talk` overlay together. A screenshot of the nameplate is not sufficient.
+
+Also keep the disposable audit actors unique and clean them up or use a new
+username after an interrupted run. A prior browser actor left standing at the
+same projection post can legitimately win the direct player ray and show
+`F View Profile` instead of Jackie's prompt. That is fixture contamination, not
+permission to weaken player-overlay priority. The matrix must diagnose the
+current cursor target and projected record together so a stale actor cannot be
+misreported as another NPC projection failure. For known disposable actors,
+pass their numeric ids through
+`HARTHMERE_E2E_CHAPTER_1_NPC_CLEANUP_PLAYER_IDS=<id,id>`; the runner deletes
+only those explicit rows after the new authenticated actor is ready and rejects
+an attempt to delete the active actor. Never scan-and-delete ordinary players.
+
+Reuse a known audit username when its generated player mesh is already warm.
+On August 2, four uncached `/api/assets/player_mesh.glb` requests each took
+roughly 93–99 seconds in the emulated exact-image stack. Client context and Sync
+were healthy, but the full-screen loading wrapper correctly remained while the
+meshes were computing and outlived the 120-second browser gate. Creating a new
+username for the retry repeated the same delay with a new appearance. Preserve
+the failed report, let the exact app finish and cache the requested meshes, then
+rerun the affected slice with the same known actor. Do not remove the loading-
+wrapper gate, increase every timeout, or treat client-context readiness alone as
+gameplay readiness.
+
+The same rule applies to returning characters. Sergeant Holt's canonical body
+belongs at Harthmere's North Gate for players who are not giving the Chapter
+One statement. Globally moving that ECS entity to the Grove watch house fixes
+one scene by breaking every North Gate quest. Keep the shared body at its
+authored post and project the same canonical id to the watch house only for the
+player whose active step is `report_or_not`; the projected body, label, Talk
+selector, dialogue-expression identity and objective target must all move
+together. Jackie is held on Teak's evidence whether the player reports her or
+withholds the accusation, so `jackieExpelled` and the live statement step—not
+only `jackieReported`—own her watch-house staging.
+
+The exhaustive fast test must replay accumulated authored flags in quest order.
+Checking every late objective with only `ch1_started` creates impossible states
+and correctly reports actors such as Lou absent. For each real objective state,
+require every cast-targeted objective to point at the staged body, every present
+cast id to yield one presentation, and every absent cast id to yield zero.
+
+Visual fallback is part of the same contract. A successful GLB request proves
+neither that a body entered the correct render pass nor that an
+off-subscription puppet retained the intended character. Preserve archived
+snapshot assets for promoted actors such as Jackie, native robot/animal models
+for AUGUR-9 and Marrow, and deterministic role-authored clothing for seeded
+player-like humans. Do not let numeric-id random fallback assign novelty hats
+or unrelated costumes to serious story cast. Live acceptance should capture
+one serial screenshot per distinct authored stage, count the canonical id once,
+confirm the Talk prompt at the visible body, and review body, hair, clothing,
+scale, lighting, and ground contact—not merely the floating label or HTTP 200.
+Use the source-backed `chapter1NpcAuditCatalog` / `chapter1PrepareNpcAudit`
+bridge matrix for that final pass. It enumerates legacy Road Ahead Jackie, each
+distinct Chapter One stage and ending absence, all thirteen canonical cast
+members, returning Holt, twelve testimony witnesses, six suppliers, and the
+remaining named quest givers. Do not hand-author a partial flag set in the
+browser or run one new Chromium process per NPC.
+
+Run that matrix in one authenticated browser process with
+`HARTHMERE_E2E_CHAPTER_1_NPC_AUDIT_ONLY=1`. The runner uses the production
+projection bridge, moves one disposable player through every authored stage,
+requires one record per canonical id, proves ending absences, binds the nearby
+Talk target to that same id, opens starter Jackie's real Road Ahead dialogue,
+and writes serial screenshots for every stage and shared quest NPC. Do not
+replace this with a label-only DOM loop or a separate browser per character.
+If infrastructure or the runner fails after a screenshot-backed stage has
+passed, set `HARTHMERE_E2E_CHAPTER_1_NPC_RESUME_AFTER=<scenario-id>` and resume
+at the next source-catalog row. The runner validates the checkpoint against the
+catalog before skipping anything; never hand-edit the remaining stage list.
+
+When a focused Road Ahead run finishes the last quest transition, React can
+unmount the quest tracker while its hashed `quest-main.*.png` icon request is
+still in flight. Chromium reports that one same-origin image as
+`net::ERR_ABORTED`; record it as teardown/transient only in robot-story mode.
+Do not broadly ignore `/_next/static` failures: script chunks, styles, other
+media, non-aborted responses, and the same icon outside this unmount boundary
+remain failures.
+
+### 4.31 A giant combat hitbox is not a viable hill-walking body
+
+Keep an oversized boss's authored ECS `size` as the authority for rendering,
+combat reach, projectiles, targeting, and damage. Do not also use the entire
+six-to-fifty-eight-metre box as its terrain-walking body. On uneven ground, one
+raised voxel beneath a tail, wing, or distant limb makes that full AABB already
+intersect terrain; physics enters escape mode before forward movement, the
+rigid-body velocity remains near zero, and the renderer correctly—but
+misleadingly—selects Idle even though Anima is trying to chase.
+
+Derive a bounded central locomotion core for oversized walking NPCs. Preserve
+full height, keep at least a one-metre footprint, cap the horizontal core so it
+still collides with walls, and allow at most a two-block cardinal hill step for
+truly giant bodies. Ordinary creatures retain the one-block profile. The A*
+graph and the physics climb probe must use the same maximum step height;
+changing only one side creates routes the body cannot execute or body movement
+the planner never requests. Synthetic acceptance must prove a Helix-sized body
+crosses a two-block rolling hill and remains stopped by a taller cliff.
+
+Orientation is a separate persisted-data invariant. Repair every non-finite
+pitch/yaw before behavior runs, reject malformed rotate targets and timing
+inputs, and make `SimulatedNpc.setOrientation` a final finite write boundary.
+Flying/swimming NPCs should derive facing from the newly integrated velocity
+only when that vector is finite and nonzero. HFC quarantine is still required
+for rolling-revision safety, but a green product gate must prove Anima no longer
+creates the malformed component in the first place.
+
+Finally, test the actual animation decision, not only that a GLB contains
+`Walk`. Uphill collision conversion can produce a finite horizontal speed below
+the player animation system's historical 0.5 m/s idle threshold. NPC rendering
+uses its existing 0.06 m/s anti-jitter deadzone as the locomotion threshold, so
+slow uphill progress selects and advances Walk while stationary bodies remain
+Idle. Run the focused source lane before any image build:
+
+```bash
+./b test -b \
+  src/shared/npc/test/ground_locomotion.test.ts \
+  src/shared/npc/test/motion_safety.test.ts \
+  src/shared/npc/test/simulated_combat_state.test.ts \
+  src/shared/npc/behavior/test/pathfinding_geometry.test.ts \
+  src/shared/physics/movement.test.ts \
+  src/server/anima/test/shared_behavior_contracts.test.ts \
+  src/client/game/util/test/animations_locomotion.test.ts \
+  --timeout 30000
+```
+
+The exact-image browser gate must then observe one real oversized boss move
+across authored uneven terrain, report finite ECS orientation/position/velocity,
+select Walk or Run while displacement is increasing, remain blocked by the
+cliff fixture, and retain the full combat-sized hit volume. A static Blender
+walk render or a source-only velocity assertion does not satisfy that gate.
+
+Do **not** cold-start that full hill-combat browser gate on the 16.56 GiB
+Docker VM with a private 335k-world Redis, the unified Web/Logic/Sync/Bikkie
+stack, Anima, and Chromium all resident. The August 2 exact-image attempt was
+fully lifecycle-ready with `RestartCount=0` and `OOMKilled=false`, and Anima
+completed its 305,906-entity scan, but Redis was OOM-killed immediately after
+the browser created the deterministic hill fixtures. Disabling unrelated
+stream workers and lowering Web/Anima heaps did not create enough safe
+headroom; lowering the shared service heap far enough to fit instead put Logic
+into sustained garbage-collection thrash during its snapshot bootstrap.
+
+On that host, stop after the already-green focused movement/combat contracts
+and exact-source renderer captures, record the exact-image browser gate as
+resource-constrained rather than failed, and do not rerun passed suites while
+tuning containers. Run the remaining integrated gate only against an
+already-warm shared world that does not require another Redis copy, or on a
+larger Docker host. Any run in which Redis or the app is OOM-killed is invalid
+environment evidence even if screenshots or partial ECS assertions were
+produced before the kill.
+
 ---
 
 ## 5. Suggested loop
@@ -3148,6 +3985,7 @@ the specific readiness or fixture edge case they caught.
 edit ──► t.sh watch <preset>        (~1 s, continuous)
      └─► t.sh gate                  (batched changed-surface handoff)
      └─► t.sh full                  (minutes, before a PR)
+     └─► refresh-warm-local-stack   (replace app, retain Redis world)
      └─► e2e-jump url <checkpoint>  (seconds, when it must be seen)
      └─► full browser gate          (release only)
 ```
@@ -3165,6 +4003,8 @@ cost a full stack boot plus a manual walk to discover.
 | `.mocharc.fast.json`                                   | Bootstrap-free mocha config                          |
 | `scripts/harthmere/t.sh`                               | Test presets, watch mode, scoped typecheck           |
 | `scripts/harthmere/e2e-jump.cjs`                       | Browser deep links, Cloud Save URL, seeds, readiness |
+| `scripts/glitch/refresh-warm-local-stack.cjs`          | Replace app artifacts while retaining one Redis      |
+| `scripts/glitch/test-refresh-warm-local-stack.cjs`     | No-reseed/no-flush warm-refresh contract             |
 | `scripts/harthmere/seed-get-muck-out-browser-step.cjs` | Focus Get the Muck Out recipe/hunt steps             |
 | `tsconfig.ch1check.json`                               | Fast scoped typecheck (~3 s)                         |
 | `tsconfig.biblecheck.json`                             | Bible catalog typecheck (~13-15 s)                   |
@@ -3283,6 +4123,16 @@ node -e 'const u=require("uWebSockets.js"); console.log(process.versions.modules
 ./b test -p 'src/server/shared/zrpc/test/zrpc.test.ts' \
   --grep 'Can handle a simple RPC'
 ```
+
+Run `scripts/harthmere/t.sh full` under the exact `.nvmrc` runtime. On August 2,
+a production Next build refreshed `node_modules`, then a Node 20 shell launched
+the broad suite. `uWebSockets.js` rejected ABI 115 before Mocha ran one test,
+even though the client build and focused tests were healthy. The launcher now
+selects `$HOME/.nvm/versions/node/v$(cat .nvmrc)/bin` for `full` before it sets
+Node options or imports the native zRPC server. Treat an ABI-load exception as
+a test-runtime failure with zero suite coverage; do not rebuild the product or
+debug the feature. Focused presets remain usable on transitional Node 20 when
+they do not import that native server boundary.
 
 ### Redis 8.8.1 is the exact server target
 
@@ -3445,3 +4295,268 @@ Do not rebuild Next, Webpack, Docker, or generated WASM concurrently. Reuse one
 warm lane, then run Chapter One browser tests serially. None of these local
 commands authorizes an Azure revision, Redis change, restart, image push, or
 production deployment.
+
+## Harthmere town repair: persisted-world gate before Chromium
+
+The August 2 Harthmere HAR investigation showed that a visually black or empty
+district is not automatically a missing surface shard. The Player Services and
+Copper Kettle capture had a fully solid Y=52 surface; the defect was authored
+content: district-sized single-material stone rectangles, flat colored-wool
+roofs, and ten random persisted `Local Dev Townsperson` rows. Do not infer a
+missing shard merely because `/sync/oob` did not include that Y band—the initial
+terrain may have arrived over live sync.
+
+After preserve-overlays terrain maintenance and content reconciliation, run the
+read-only town repair audit before opening Chromium:
+
+```bash
+REDIS_HOST=<isolated-redis-container> REDIS_PORT=6379 \
+  node scripts/harthmere/audit-harthmere-town-repair.cjs
+```
+
+Require `HARTHMERE_TOWN_REPAIR_READY`. The helper verifies all of these against
+persisted tensors/entities:
+
+- Player Services/Copper Kettle has open grass courts and at least five surface
+  materials rather than one dominant stone slab.
+- The Brass Scale Bank, Black Anvil Smithy, Copper Kettle Inn, and Mail Post
+  House have stepped shingle/thatch roofs and no old colored-wool roof blocks.
+- The canonical Brell source voxel at `[2214, 51, -174]` is still water level
+  `15`.
+- The ten production-audited generic townsperson IDs and the old persistent
+  business-customer band are absent; customer-only patrons remain session-only.
+- A complete Redis scan finds no `Local Dev Townsperson` or
+  `Local Dev Walking Townsperson` fallback labels.
+
+The production reconciliation now runs
+`repair-harthmere-town-production.cjs` on every deployment, including ordinary
+`additive` deployments. This is required because additive terrain maintenance
+does not rewrite existing persisted shard seeds. The targeted repair restores
+the complete canonical seed for only the 14 affected town shards, applies the
+reviewed surface/roof overrides, preserves mutable overlays, and retires only
+the audited generic/customer IDs. Its fatal audit runs after every downstream
+terrain writer. The deployment town gate sets
+`HARTHMERE_TOWN_REPAIR_SKIP_WATER=1` because authored water has a separate
+deployment gate; manual full-world audits should continue to check water.
+Even the targeted-terrain deployment path that skips broad outpost/ECS work
+runs this repair in `HARTHMERE_TOWN_REPAIR_ONLY=1` mode before promotion.
+
+Run the helper again after Gaia has started and settled. A pre-Gaia `15` is not
+enough if simulation later zeroes `shard_water`. Then use one anonymous,
+low-memory in-app-browser observer for the final visual gate: town HAR
+coordinates first, the Brell second, and no other heavy game tab.
+
+Do not start one production-shaped Redis/app pair per task on a 16 GiB Docker
+VM. Each restored Redis used roughly 2–3 GiB before application hydration; four
+simultaneous lanes exceeded the VM and OOM-killed an otherwise unrelated Redis.
+Serialize heavy lanes, retain stopped containers/RDBs between turns, and reject
+all evidence collected after any app or Redis restart. A literal `PONG`, exact
+DB size/hash, `RestartCount=0`, and `OOMKilled=false` belong in the same accepted
+lifecycle record.
+
+## Creature grounding must respect authored encounter volumes
+
+The August 2 consolidated rollout reached the final creature-grounding pass and
+then rejected 64 valid encounters: four remote-corner apex bosses and all 60
+cavern Indisworms. The generic repair projected every non-town creature onto a
+colliding outdoor surface. That rule cannot validate an underground authored
+cave position, and the remote production spawn points can be outside the
+terrain-shard domain scanned by the repair.
+
+`reconcile-production-live-creature-grounding.cjs` now treats these two classes
+as authored encounter positions. Cavern creatures must remain inside their
+declared cave bounds; remote-corner bosses must remain at their audited apex
+spawn. Their position, respawn anchor, health, size, and expiry state are still
+repaired and read back, but they are not required to pass the town/open-surface
+footprint probe. Ordinary Muckers, Hexes, wildlife, livestock, and bandits keep
+the full terrain-support check.
+
+Do not promote by treating canonical position and size as sufficient creature
+evidence. In the August 2 r2 follow-up, all cavern rows remained at the correct
+authored coordinates and human-sized dimensions, but the skipped final repair
+left 17 production creatures at zero health with `expires` set. Those rows are
+correctly absent from the rendered world. Before visual inspection, run the
+reconciler once with `APPLY=0` and require all of the following:
+
+- `repairPlanned: 0`;
+- `repairPlannedByFamily.cavernIndisworms: 0`;
+- `unresolvedAfterReadback: 0`;
+- `unresolvedByFamily.cavernIndisworms: 0`.
+
+If the only reasons are `dead_or_missing_health` or `live_entity_expiring`, run
+the exact released reconciler with `APPLY=1`, require a clean `APPLY=0`
+readback, and checkpoint Redis before opening the single browser observer. A
+valid ECS position for a dead/expiring NPC is persistence evidence, not visual
+evidence.
+
+For an isolated cloned snapshot that intentionally lacks unrelated authored
+terrain, scope the repair/readback to known entity IDs instead of weakening the
+terrain-support rules or fabricating terrain for other families:
+
+```sh
+HARTHMERE_CREATURE_GROUNDING_SEED_IDS=8810000000019461,8810000000019464,8810000000021021,8810000000021022 \
+APPLY=1 node scripts/harthmere/reconcile-production-live-creature-grounding.cjs
+```
+
+Repeat with `APPLY=0` and require both repair and unresolved counts to be zero.
+The filter is opt-in and must never be set for the production all-family gate.
+
+## Combat HARs: measure decisions, not request volume
+
+The August 2 fight captures showed why a combat complaint cannot be closed by
+proving that attack assets loaded or that a cooldown exists. The useful evidence
+was the timestamped combat state embedded in the save traffic: basic attacks
+were reaching impact in roughly 220 ms, the mouse path applied damage on
+button-down while the keyed path waited for a timer, and a struck NPC could run
+an immediate counterattack in the same call stack before its real-time AI ever
+entered `windup`. That combination made correct contact validation still feel
+unfair and unskilled.
+
+Use the deliberate-combat contract when auditing or changing attacks:
+
+1. assert one shared `windup -> impact -> recovery` timeline for body, weapon,
+   damage, movement commitment, cooldown, and debug telemetry;
+2. use fake timers to prove HP/events do not change one millisecond before the
+   impact frame;
+3. re-sample target position, range, facing, height, and line of sight at impact
+   rather than treating button-down aim as a hit reservation;
+   lock directional-melee yaw at windup, reject a player who moves behind that
+   cone, and reject feet-level melee against a player standing on the attacker's
+   upper body/back even when a giant full-body AABB overlaps them;
+4. prove an enemy retaliation enters the AI brain and completes a visible
+   windup; never keep a same-frame counterattack shortcut beside the state
+   machine;
+5. test special-movement costs against the existing survival stamina bar;
+   dodge, evade, and double jump subtract immediate extra stamina, while the
+   bar keeps its ordinary active-play decline and never regenerates with time;
+   ordinary attacks add no stamina cost, and food remains the living-player
+   replenishment path;
+6. preserve distinct weapon identity: light, heavy, ranged, and magic attacks
+   must differ in windup, recovery, movement reduction, and resource cost—not
+   only damage;
+7. for bosses and Indisworms, assert both the individual attack telegraph and
+   the full cadence/recovery opening. A long cooldown does not repair a strike
+   whose tell is too short.
+
+Do not infer combat cadence from repeated audio/GLB requests. Browsers normally
+cache those assets, so a HAR may show only the first load even when several
+attacks occurred. Likewise, `live_mode_player_status_state` can be a delayed
+projection; if it reports `staminaPersisted=false`, use the ECS TriggerState and
+the accepted server transaction as stamina evidence. Never conclude that
+stamina was spent merely because the visible bar happened to remain constant.
+
+For this class of change, run the timing/profile tests and only the specific
+server attack cases that failed. Do not repeat an already-green image or full
+world suite. Browser acceptance still needs one real fight capture showing the
+tell, a successful timed evade, a whiff after the target leaves the active
+frame, and a punishable recovery. If the 16 GiB Docker host cannot hold the
+required exact-image world without an OOM/restart, record that resource limit,
+retain the source/unit/type evidence, and do not manufacture acceptance by
+starting another full Redis/app lane.
+
+When attaching a standalone exact-current Anima bundle to a retained focused
+web/Redis lane, point both `SHIM_SERVICE_HOST`/`SHIM_SERVICE_PORT` and
+`LOGIC_SERVICE_HOST`/`LOGIC_SERVICE_PORT` at that web container. Redis and HFC
+can be healthy while Anima remains in `creatingContext` if either RPC endpoint
+silently falls back to localhost. For a warm artifact refresh, the replacement
+container's `BUILD_ID` must be the mounted `.next/BUILD_ID`; copying the stale
+source-container value makes an exact-current client/server mount look like the
+old image and invalidates lifecycle evidence.
+
+Focused combat stacks can explicitly disable stream workers, Anima, or Gaia in
+the unified app while a required simulator runs as its own container. Readiness
+must inspect those enable flags before requiring in-container `/ready` probes.
+Requiring Trigger from a container with `GLITCH_ENABLE_STREAM_WORKERS=0` leaves
+a healthy reduced topology in a false wait and can eventually roll back a valid
+warm refresh. This exception is topology-specific: quest progression still
+requires Trigger, and a complete farming/world-simulation gate still requires
+Gaia.
+
+Collect independent rendered combat failures before editing. Run
+`scripts/harthmere/test-harthmere-combat-live-browser-batch.cjs`; it executes
+the giant/hill, ordinary chase/melee, Anima escort, and Indisworm slices
+serially against one warm world, persists each child log, and does not stop
+after the first failure. The escort row must prove native assignment, Anima
+movement, Sync readback, and rendered Walk/Run rather than teleporting the
+companion. Make one grouped source/test/doc fix from that report, then rerun
+only the failed slices rather than replaying green scenarios.
+
+The first exact-current batch exposed four fixture mistakes worth preserving:
+
+- Do not give a visual-auth player an artificial maximum health value. The
+  normal player-status authority restores the real maximum, and waiting for the
+  impossible fixture can leave void/death recovery free to move the actor. Fill
+  the existing native health component to its real maximum, prove one strike,
+  and refill that same component between independent assertions.
+- A server `MoveEvent` is not enough for a browser-owned player. Update
+  `/sim/player` before publishing the matching move or the next local movement
+  tick can overwrite the authoritative pose and move the Sync subscription away
+  from a newly created combat fixture.
+- NPC mesh/render-state generation can race entity deletion or a Sync-radius
+  transition. A missing `npc_metadata` component during generation is a clean
+  unrenderable cache miss, not an assertion failure that should poison the
+  resource and abort an unrelated browser scenario.
+- When live Anima owns `rigid_body`, a single manual velocity update is only a
+  transient sample. For an authored Walk/Run mixer probe, hold the bounded
+  authoritative test velocity long enough for the clip to blend, then release
+  it and separately prove Anima-owned movement and attacks. Do not disable the
+  simulator merely to make an animation assertion easier.
+
+On the 16.56 GiB Docker host, do not repeat the full-snapshot standalone-Anima
+combat matrix after the simulator reaches its memory ceiling. The August 3
+exact-current run retained one 340k-key Redis and one focused app, then attached
+Anima to the same world. At a 2,048 MB V8 heap Anima aborted after roughly eleven
+minutes with `Reached heap limit`; app and Redis remained restart-zero and were
+not OOM-killed. A single bounded retry at 3,072 MB kept Anima alive but raised
+its resident memory above 4.6 GiB, leaving the complete lane near the 16.56 GiB
+VM limit; new boss, Mucker, escort, and Indisworm fixtures still did not receive
+an Anima state update inside their 12–90 second acceptance windows. Treat this
+as invalid simulator acceptance, preserve the source/unit/type and already
+captured renderer evidence, stop Anima, and move on. Do not start another Redis,
+raise the heap again, or weaken gameplay assertions to manufacture a pass.
+
+For an Indisworm retry where GLB, Idle, Walk, HitReact, and Run already passed,
+set `HARTHMERE_E2E_INDISWORM_DAMAGE_ONLY=1`. The runner keeps the real Sync and
+renderer setup but skips those green animation assertions and resumes at the
+live Anima ranged/melee authority boundary. This flag is a no-repeat test mode,
+not a substitute for the full first run.
+
+### 4.32 Business customers require a real same-world Anima process
+
+A focused web container with `GLITCH_ENABLE_ANIMA=0` can still create and render
+a native business-customer ECS entity. That is not movement acceptance: without
+a same-world Anima process consuming the entity and publishing HFC updates, the
+customer remains in `entering` with a computed route but a stationary position.
+The business browser runner must therefore require a separate Anima container,
+`RestartCount=0`, `OOMKilled=false`, `ANIMA_HFC_WRITES=1`, and a literal `OK`
+from Anima's `/ready` endpoint before and after the matrix. Gaia is required
+only for a business row whose transaction actually participates in farming or
+plant simulation; it is not customer locomotion authority.
+
+On a loaded warm world, Anima's generic `/ready` can become `OK` before the HFC
+subscription finishes bootstrapping. Wait for both service readiness and the
+explicit `HFC Bootstrap complete` lifecycle line before starting a customer
+session. Starting in the gap can produce misleading partial-state evidence.
+
+Business customer routes author pace in metres per second, while
+`forwardWalkingForce` consumes an acceleration coefficient. Passing the raw
+2-4 m/s pace into ordinary ground physics lets friction cancel the movement and
+produces a correctly routed but stationary customer. Convert only the
+`businessCustomer` locomotion pace through `horizontalForceForTargetSpeed`, then
+prove the conversion in the focused Anima logic contract before browser work.
+
+Business-customer phase transitions are HFC authority. Do not write a mixed
+`npc_state` plus `expires` update only through regular ECS: the stale HFC
+`npc_state` wins merged reads, so aborted customers remain `entering` and later
+test sessions collide with them. Partition every existing-customer update with
+the native HFC classifier: `npc_state`/`emote` to HFC, `expires` to RC, and
+normal create/delete operations through the HybridWorldApi. Before retrying a
+failed browser row, confirm prior aborted session customers reached
+`cancelled`/`despawn_ready` or were removed; do not stack a new session on stale
+fixtures and misdiagnose collision escape as pathfinding failure.
+
+Smoke one business through entrance, service, departure, and safe despawn.
+After that passes, run all 19 rows serially in one browser context and one warm
+world. Persist each row immediately. If the batch exposes failures, fix them as
+one group and rerun only the failed `HARTHMERE_BUSINESS_E2E_IDS`; never replay
+already-green original mini-games or business rows.

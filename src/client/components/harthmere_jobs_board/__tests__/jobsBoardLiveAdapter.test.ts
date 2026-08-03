@@ -501,7 +501,40 @@ describe("Harthmere universal jobs board live adapter", () => {
           {},
           { fetchImpl }
         ),
-      /post_cooldown/
+      (error: any) =>
+        error?.message === "You can post another job in a moment." &&
+        !error.message.includes("jobs_board_rejected")
+    );
+  });
+
+  it("hides jobs the current player cannot accept", () => {
+    const snapshot = sampleSnapshot();
+    snapshot.openJobs.push({
+      ...snapshot.openJobs[0],
+      jobId: "own_job",
+      issuerKind: "player",
+      issuerId: snapshot.actorId,
+    });
+    assert.equal(
+      getHarthmereAvailableJobsPanel(
+        snapshot,
+        snapshot.defaultBoardId,
+        NOW
+      ).some((job) => job.jobId === "own_job"),
+      false
+    );
+
+    snapshot.cooldown.lastAcceptAtMs = NOW - 1;
+    assert.deepEqual(
+      getHarthmereAvailableJobsPanel(snapshot, snapshot.defaultBoardId, NOW),
+      []
+    );
+
+    snapshot.cooldown.lastAcceptAtMs = undefined;
+    snapshot.safety.maxActiveAcceptedPerSeeker = 1;
+    assert.deepEqual(
+      getHarthmereAvailableJobsPanel(snapshot, snapshot.defaultBoardId, NOW),
+      []
     );
   });
 

@@ -1,0 +1,32 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false,
+    "types": ["node", "mocha"]
+  },
+  "include": [
+    "src/shared/npc/ground_locomotion.ts",
+    "src/shared/npc/motion_safety.ts",
+    "src/shared/npc/simulated.ts",
+    "src/shared/npc/behavior/rotate_target.ts",
+    "src/shared/physics/utils.ts",
+    "src/shared/npc/behavior/pathfinding_geometry.ts",
+    "src/shared/npc/behavior/pathfinding.ts",
+    "src/shared/npc/behavior/meander.ts",
+    "src/shared/npc/behavior/chase_attack.ts",
+    "src/shared/npc/logic.ts",
+    "src/client/game/util/animations.ts",
+    "src/client/game/resources/npcs.ts",
+    "src/client/game/e2e/harthmere_native_ecs_e2e.ts",
+    "src/shared/npc/test/ground_locomotion.test.ts",
+    "src/shared/npc/test/motion_safety.test.ts",
+    "src/client/game/util/test/animations_locomotion.test.ts",
+    "src/shared/npc/behavior/test/pathfinding_geometry.test.ts",
+    "src/shared/npc/behavior/test/chase_attack_logic.test.ts",
+    "src/shared/physics/movement.test.ts",
+    "src/server/anima/test/shared_behavior_contracts.test.ts",
+    "src/shared/npc/test/simulated_combat_state.test.ts",
+    "modules.d.ts"
+  ]
+}

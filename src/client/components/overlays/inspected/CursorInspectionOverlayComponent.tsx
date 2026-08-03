@@ -75,6 +75,8 @@ export const CursorInspectionComponent: React.FunctionComponent<
     context,
     overlay?.entityId ?? INVALID_BIOMES_ID
   );
+  const canTalkToProjectedNpc =
+    overlay?.kind === "npc" && overlay.projectedTalkable === true;
   const [openingContainer, setOpeningContainer] = useState(false);
   const [containerOpenError, setContainerOpenError] = useState<string>();
   const [objectInteractionPending, setObjectInteractionPending] =
@@ -110,12 +112,11 @@ export const CursorInspectionComponent: React.FunctionComponent<
   );
   const canUseObjectSemantics =
     overlay?.kind !== "placeable" || Boolean(allowPlaceableObjectInteraction);
-  const useHarthmereObjectSemantics =
-    shouldUseHarthmereCursorObjectSemantics({
-      canTalk,
-      isNativeDialogueQuestObject,
-      canUseObjectSemantics,
-    });
+  const useHarthmereObjectSemantics = shouldUseHarthmereCursorObjectSemantics({
+    canTalk,
+    isNativeDialogueQuestObject,
+    canUseObjectSemantics,
+  });
   const isHarthmereObjectContainer =
     useHarthmereObjectSemantics &&
     isHarthmereContainerObjectLabel({
@@ -156,7 +157,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
       // entity owns quest_giver/default_dialog and is the authored return target.
       // Once nativeQuestGiverUsesEcsDialogue has classified that immutable
       // source, expose the same real talk modal without requiring NPC metadata.
-      (canTalk || isNativeDialogueQuestObject) &&
+      (canTalk || canTalkToProjectedNpc || isNativeDialogueQuestObject) &&
       overlay?.entityId
     ) {
       contextualActions.push({
@@ -177,7 +178,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
       objectActions.push({
         title: openingContainer
           ? "Opening…"
-          : harthmereObjectInteraction?.title ?? "Open Container",
+          : (harthmereObjectInteraction?.title ?? "Open Container"),
         disabled: openingContainer,
         onKeyDown: () => {
           setContainerOpenError(undefined);
@@ -228,7 +229,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
       objectActions.push({
         title: objectInteractionPending
           ? `${harthmereObjectInteraction?.title ?? "Inspect"}…`
-          : harthmereObjectInteraction?.title ?? "Inspect",
+          : (harthmereObjectInteraction?.title ?? "Inspect"),
         disabled: objectInteractionPending,
         onKeyDown: () => {
           setObjectInteractionError(undefined);
@@ -280,6 +281,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
     );
   }, [
     canTalk,
+    canTalkToProjectedNpc,
     harthmereObjectInteraction,
     harthmereObjectActionable,
     harthmereObjectInteractionEntityId,

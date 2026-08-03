@@ -50,8 +50,7 @@ const CONTROL_TOKEN = process.env.HARTHMERE_E2E_CONTROL_TOKEN || "";
 const USERNAME = process.env.HARTHMERE_E2E_USERNAME || "NativeECS-A-1050377428";
 const REDIS_HOST = process.env.REDIS_HOST || "127.0.0.1";
 const REDIS_PORT = Number.parseInt(process.env.REDIS_PORT || "6392", 10);
-const VERIFY_ONLY =
-  process.env.HARTHMERE_FISHING_FIXTURE_VERIFY_ONLY === "1";
+const VERIFY_ONLY = process.env.HARTHMERE_FISHING_FIXTURE_VERIFY_ONLY === "1";
 const TARGET_SHARD_X = 69;
 const TARGET_SHARD_Z = -6;
 const TARGET_SHARD_Y = 1;
@@ -272,6 +271,11 @@ async function verify(redis, voxeloo, specs) {
     const river = [2214 - 2208, 51 - 32, -174 - -192];
     assert.notEqual(seed.get(...bank), 0, "Fishing Board bank is not solid");
     assert.equal(
+      seed.get(...river),
+      0,
+      "Brell source water is buried inside solid shard_seed terrain"
+    );
+    assert.equal(
       water.get(...river),
       15,
       "Brell river is not source-level water"
@@ -309,10 +313,25 @@ async function main() {
         `Fishing fixture is incomplete: ${existing.size}/${specs.length} shards exist`
       );
     } else {
-      const changes = specs.map((spec) => ({
-        kind: existing.has(spec.id) ? "update" : "create",
-        entity: makeShard(voxeloo, spec),
-      }));
+      const changes = specs.map((spec) => {
+        const shard = makeShard(voxeloo, spec);
+        if (!existing.has(spec.id)) {
+          return { kind: "create", entity: shard };
+        }
+        // Existing production shards may carry player and simulation overlays.
+        // Update only the authored seed and authored water tensors; omitting all
+        // other components preserves shard_diff, shapes, muck, farming, water
+        // overlays outside this fixture, occupancy, restoration, and concurrent
+        // live state.
+        return {
+          kind: "update",
+          entity: {
+            id: shard.id,
+            shard_seed: shard.shard_seed,
+            shard_water: shard.shard_water,
+          },
+        };
+      });
       const cookie = await authenticate();
       await applyChanges(cookie, changes);
     }

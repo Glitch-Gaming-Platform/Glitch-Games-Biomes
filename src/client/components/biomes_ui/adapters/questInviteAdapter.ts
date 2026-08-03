@@ -1,6 +1,10 @@
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
 import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
 import { harthmereJobsBoardQuestMarkerRuntimePositionForId } from "@/shared/harthmere/jobs_board_quest_marker_positions";
+import {
+  HarthmereQuestActionError,
+  harthmereQuestRejectionWarningsFromResponse,
+} from "@/client/components/challenges/questActionError";
 
 export const HARTHMERE_QUEST_INVITES_UPDATED_EVENT =
   "harthmere:quest-invites-updated";
@@ -247,39 +251,57 @@ export async function submitHarthmereQuestInviteMutation(
   fetchImpl: typeof fetch = fetch
 ) {
   const operation = text(payload.operation, "quest_invite");
+  const errorContext = {
+    action: "invite" as const,
+    questTitle:
+      typeof payload.questTitle === "string" ? payload.questTitle : undefined,
+  };
   const requestId = `biomes_ui_${operation}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await fetchHarthmereLiveWithTimeout(
-    fetchImpl,
-    "/api/harthmere/live_mode",
-    {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestId,
-        idempotencyKey: requestId,
-        actionKind: "request_quest_state_update",
-        subsystem: "quest",
-        actorEntityVersion: 1,
-        zoneId: "harthmere",
-        targetId:
-          typeof payload.inviteeActorId === "string"
-            ? payload.inviteeActorId
-            : undefined,
-        payload,
-        clientClaims: {},
-      }),
-    }
-  );
-  const body = await response.json();
-  if (!response.ok || body?.ok === false) {
-    throw new Error(
-      Array.isArray(body?.validation?.errors)
-        ? body.validation.errors.join(",")
-        : `quest_invite_failed:${operation}`
+  let response: Response;
+  try {
+    response = await fetchHarthmereLiveWithTimeout(
+      fetchImpl,
+      "/api/harthmere/live_mode",
+      {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId,
+          idempotencyKey: requestId,
+          actionKind: "request_quest_state_update",
+          subsystem: "quest",
+          actorEntityVersion: 1,
+          zoneId: "harthmere",
+          targetId:
+            typeof payload.inviteeActorId === "string"
+              ? payload.inviteeActorId
+              : undefined,
+          payload,
+          clientClaims: {},
+        }),
+      }
     );
+  } catch {
+    throw new HarthmereQuestActionError(
+      ["quest_invite_rejected:network_error"],
+      errorContext
+    );
+  }
+  const body = await response.json().catch(() => undefined);
+  const rejectionWarnings = harthmereQuestRejectionWarningsFromResponse(body);
+  if (!body || !response.ok || body?.ok === false) {
+    throw new HarthmereQuestActionError(
+      rejectionWarnings.length
+        ? rejectionWarnings
+        : ["quest_invite_rejected:request_failed"],
+      errorContext
+    );
+  }
+  if (rejectionWarnings.length) {
+    throw new HarthmereQuestActionError(rejectionWarnings, errorContext);
   }
   if (typeof window !== "undefined") {
     window.dispatchEvent(

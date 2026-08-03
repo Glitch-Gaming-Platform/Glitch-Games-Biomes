@@ -14,7 +14,12 @@ import {
   type Ch1DungeonTerrainDef,
   type Ch1DungeonVolume,
 } from "@/shared/harthmere/ch1_dungeon_terrain";
-import { CH1_ANCHORS, type Ch1Vec3 } from "@/shared/harthmere/ch1_ids";
+import {
+  CH1_ANCHORS,
+  CH1_FLAGS,
+  type Ch1Vec3,
+} from "@/shared/harthmere/ch1_ids";
+import { ch1StageDirectionFor } from "@/shared/harthmere/ch1_staging";
 import {
   CH1_QUESTS,
   type Ch1QuestDef,
@@ -120,9 +125,29 @@ function vec3(value: readonly [number, number, number]): Ch1Vec3 {
   return [value[0], value[1], value[2]];
 }
 
-function ch1CastPosition(key: string): Ch1Vec3 | undefined {
+function ch1CastPosition(
+  key: string,
+  context?: Ch1ObjectiveTargetContext,
+  activeQuestId?: string,
+  activeStepId?: string
+): Ch1Vec3 | undefined {
   const member = CH1_NEW_CAST.find((candidate) => candidate.key === key);
   if (!member) return undefined;
+  if (context?.runtime) {
+    const direction = ch1StageDirectionFor(member.key, {
+      flags: [...new Set([...context.runtime.flags, CH1_FLAGS.started])],
+      ending: context.runtime.ending,
+      hallrChoice: context.runtime.hallrChoice,
+      activeQuestId,
+      activeStepId,
+    });
+    if (direction?.place.kind === "absent") {
+      return undefined;
+    }
+    if (direction?.place.kind === "anchor") {
+      return vec3(CH1_ANCHORS[direction.place.anchor]);
+    }
+  }
   if (member.placement) return vec3(member.placement);
   switch (member.key) {
     case "iris_fen":
@@ -532,7 +557,7 @@ function targetPosition(
     castMatchesTarget(member.displayName, target)
   );
   if (cast) {
-    const position = ch1CastPosition(cast.key);
+    const position = ch1CastPosition(cast.key, context, quest.id, step.id);
     if (position) {
       return { position, source: "npc", entityId: cast.entityId };
     }

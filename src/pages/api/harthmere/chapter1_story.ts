@@ -31,6 +31,7 @@ import {
   ch1StageDirections,
   ch1WorldPhaseEffects,
 } from "@/shared/harthmere/ch1_staging";
+import { ch1ReturningNpcStageDirections } from "@/shared/harthmere/ch1_returning_npcs";
 import type { Ch1LiveGateRuntimeState } from "@/shared/harthmere/ch1_live_gate";
 import {
   ch1LinkLiveFragments,
@@ -212,7 +213,10 @@ function project(
     activeQuestId: activeObjective?.questId,
     activeStepId: activeObjective?.stepId,
   };
-  const staging = ch1StageDirections(stagingInput);
+  const staging = [
+    ...ch1StageDirections(stagingInput),
+    ...ch1ReturningNpcStageDirections(stagingInput),
+  ];
   const entries = [...runtime.ledger.entries]
     .sort((a, b) => b.recoveredAtMs - a.recoveredAtMs)
     .flatMap((entry) => {
@@ -322,8 +326,7 @@ async function evaluateAmbientTrigger(args: {
 }): Promise<Ch1LiveStoryActionResult> {
   const player = await args.worldApi.get(args.userId);
   const position = player?.position()?.v as
-    | [number, number, number]
-    | undefined;
+    [number, number, number] | undefined;
   const health = player?.health();
   const maxHp = Number(health?.maxHp ?? 0);
   const healthFraction =
@@ -409,20 +412,20 @@ export default biomesApiHandler(
         body.action === "play_log"
           ? ch1PlayLiveLog(state.chapter1, body.fragmentId, nowMs)
           : body.action === "recharge"
-          ? ch1RechargeLiveAugur9(state.chapter1, body.itemId)
-          : body.action === "use_skill"
-          ? ch1UseLiveLatentSkill(state.chapter1, body.skillId, nowMs)
-          : body.action === "trigger"
-          ? await evaluateAmbientTrigger({
-              worldApi,
-              userId: auth.userId,
-              runtime: state.chapter1,
-              items: nativeItems,
-              fragmentId: body.fragmentId,
-              kind: body.kind,
-              nowMs,
-            })
-          : ch1LinkLiveFragments(state.chapter1, body.fragmentIds, nowMs);
+            ? ch1RechargeLiveAugur9(state.chapter1, body.itemId)
+            : body.action === "use_skill"
+              ? ch1UseLiveLatentSkill(state.chapter1, body.skillId, nowMs)
+              : body.action === "trigger"
+                ? await evaluateAmbientTrigger({
+                    worldApi,
+                    userId: auth.userId,
+                    runtime: state.chapter1,
+                    items: nativeItems,
+                    fragmentId: body.fragmentId,
+                    kind: body.kind,
+                    nowMs,
+                  })
+                : ch1LinkLiveFragments(state.chapter1, body.fragmentIds, nowMs);
       if (!result.ok) {
         return {
           ...project(state, activeObjective),
@@ -464,7 +467,7 @@ export default biomesApiHandler(
             id: auth.userId,
             transaction_id: `chapter1:augur9:recharge:${
               body.action === "recharge"
-                ? body.requestId ?? randomUUID()
+                ? (body.requestId ?? randomUUID())
                 : randomUUID()
             }`,
             take: createBag(countOf(nativeItemId, 1n)),

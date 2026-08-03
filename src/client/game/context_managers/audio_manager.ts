@@ -28,6 +28,7 @@ export type VolumeSettingsType = Extends<
   | "settings.volume.effects"
   | "settings.volume.media"
   | "settings.volume.voice"
+  | "settings.volume.playerVoice"
 >;
 
 export const VOLUME_TYPE_VOLUME_MULTIPLER = new Map<SettingsKey, number>([
@@ -35,6 +36,7 @@ export const VOLUME_TYPE_VOLUME_MULTIPLER = new Map<SettingsKey, number>([
   ["settings.volume.effects", 0.2],
   ["settings.volume.media", 0.4],
   ["settings.volume.voice", 0.6],
+  ["settings.volume.playerVoice", 1],
 ]);
 
 export const ASSET_TYPE_VOLUME_MULTIPLER = new Map<AudioAssetType, number>([
@@ -73,6 +75,38 @@ export interface BackgroundMusicDiagnostics {
 export interface AudioRecordingStream {
   stream: MediaStream;
   dispose(): void;
+}
+
+export interface PathSpatialAudioOptions {
+  volumeMultiplier?: number;
+  refDistance?: number;
+  maxDistance?: number;
+  rolloffFactor?: number;
+}
+
+export function resolvePathSpatialAudioOptions(
+  volume: number,
+  options: PathSpatialAudioOptions = {}
+) {
+  const volumeMultiplier = Number(options.volumeMultiplier);
+  const refDistance = Number(options.refDistance);
+  const maxDistance = Number(options.maxDistance);
+  const rolloffFactor = Number(options.rolloffFactor);
+  const resolvedRefDistance =
+    Number.isFinite(refDistance) && refDistance > 0 ? refDistance : 2;
+  return {
+    volume: fixVolume(
+      volume *
+        (Number.isFinite(volumeMultiplier) ? Math.max(0, volumeMultiplier) : 1)
+    ),
+    refDistance: resolvedRefDistance,
+    maxDistance:
+      Number.isFinite(maxDistance) && maxDistance > 0
+        ? Math.max(resolvedRefDistance, maxDistance)
+        : 64,
+    rolloffFactor:
+      Number.isFinite(rolloffFactor) && rolloffFactor >= 0 ? rolloffFactor : 1,
+  };
 }
 
 export const DEFAULT_BACKGROUND_MUSIC_CROSSFADE_SECONDS = 5;
@@ -755,7 +789,11 @@ export class AudioManager {
     );
   }
 
-  playPathAt(assetPath: AudioPath, position: readonly number[]) {
+  playPathAt(
+    assetPath: AudioPath,
+    position: readonly number[],
+    options: PathSpatialAudioOptions = {}
+  ) {
     fireAndForget(
       (async () => {
         if (!this.audioListener || position.length < 3) {
@@ -771,11 +809,13 @@ export class AudioManager {
         }
         const sound = new THREE.PositionalAudio(this.audioListener);
         sound.setBuffer(buffer);
-        sound.setVolume(volume);
+        const spatial = resolvePathSpatialAudioOptions(volume, options);
+        sound.setVolume(spatial.volume);
         sound.position.set(position[0], position[1], position[2]);
         sound.setDistanceModel("exponential");
-        sound.setRefDistance(2);
-        sound.setMaxDistance(64);
+        sound.setRolloffFactor(spatial.rolloffFactor);
+        sound.setRefDistance(spatial.refDistance);
+        sound.setMaxDistance(spatial.maxDistance);
         sound.updateMatrixWorld(true);
         sound.onEnded = () => sound.disconnect();
         sound.play();
@@ -800,7 +840,7 @@ export class AudioManager {
         ? 1 - this.backgroundMusicAttenuation
         : 1;
     const assetTypeMultiplier = assetType
-      ? ASSET_TYPE_VOLUME_MULTIPLER.get(assetType) ?? 1
+      ? (ASSET_TYPE_VOLUME_MULTIPLER.get(assetType) ?? 1)
       : 1;
     const volumeTypeMultiplier = VOLUME_TYPE_VOLUME_MULTIPLER.get(type) ?? 1;
 

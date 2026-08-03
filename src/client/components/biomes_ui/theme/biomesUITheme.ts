@@ -1503,6 +1503,25 @@ button.biomes-ui-card:disabled {
   opacity: 0.92;
 }
 
+.biomes-ui-open-prompt__button {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.biomes-ui-open-prompt__button:hover,
+.biomes-ui-open-prompt__button:focus-visible {
+  opacity: 1;
+  filter: brightness(1.16);
+  outline: none;
+}
+
 .biomes-ui-open-prompt__key {
   min-width: 34px;
   min-height: 34px;
@@ -1575,6 +1594,10 @@ button.biomes-ui-card:disabled {
   text-shadow: var(--text-bordered-light);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+.biomes-ui-mobile-menu--phone .biomes-ui-mobile-menu__button {
+  min-height: 44px;
 }
 
 .biomes-ui-mobile-menu__button:active {
@@ -2854,6 +2877,9 @@ button.biomes-ui-card:disabled {
     min-height: 30px;
     font-size: 10px;
   }
+  .biomes-ui-mobile-menu--phone .biomes-ui-mobile-menu__button {
+    min-height: 44px;
+  }
   .biomes-ui-current-objective-hud--mobile {
     right: calc(max(8px, env(safe-area-inset-right)) + 108px);
     bottom: max(108px, calc(env(safe-area-inset-bottom) + 96px));
@@ -2886,6 +2912,11 @@ button.biomes-ui-card:disabled {
   align-items: stretch;
 }
 
+.biomes-ui-hotbar-hud--mobile[data-biomes-mobile-hotbar="true"] {
+  left: calc(env(safe-area-inset-left) + clamp(136px, 32vw, 164px));
+  right: max(10px, env(safe-area-inset-right));
+}
+
 .biomes-ui-hotbar-hud--mobile .biomes-ui-hotbar-hud__content {
   min-width: 0;
   width: 100%;
@@ -2894,6 +2925,44 @@ button.biomes-ui-card:disabled {
 .biomes-ui-hotbar--mobile .biomes-ui-hotbar__slots {
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+}
+
+.biomes-ui-hotbar-hud[data-biomes-mobile-hotbar="true"] .biomes-ui-slot {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.biomes-ui-current-objective-hud--phone {
+  right: max(8px, env(safe-area-inset-right));
+  bottom: max(112px, calc(env(safe-area-inset-bottom) + 100px));
+  width: min(56vw, 320px);
+  max-height: min(28dvh, 220px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.biomes-ui-overlay--mobile [role="tablist"] {
+  scrollbar-width: none;
+}
+
+.biomes-ui-overlay--mobile [role="tablist"]::-webkit-scrollbar {
+  display: none;
+}
+
+.biomes-ui-overlay__panel--mobile {
+  max-height: 100%;
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .biomes-ui-current-objective-hud--phone {
+    right: calc(max(8px, env(safe-area-inset-right)) + 112px);
+    bottom: max(108px, calc(env(safe-area-inset-bottom) + 96px));
+    width: min(34vw, 300px);
+    max-height: min(36dvh, 150px);
+  }
 }
 
 .biomes-ui-hotbar--mobile .biomes-ui-hotbar__slots::-webkit-scrollbar {

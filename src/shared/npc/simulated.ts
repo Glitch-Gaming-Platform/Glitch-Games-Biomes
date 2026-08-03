@@ -13,6 +13,7 @@ import {
   Orientation,
   Position,
   RigidBody,
+  Size,
 } from "@/shared/ecs/gen/components";
 import type { Delta, DeltaWith } from "@/shared/ecs/gen/delta";
 import { PatchableEntity } from "@/shared/ecs/gen/delta";
@@ -28,6 +29,7 @@ import { log } from "@/shared/logging";
 import type { Vec2, Vec3 } from "@/shared/math/types";
 import { getNpcBehavior, idToNpcType } from "@/shared/npc/bikkie";
 import { killNpc } from "@/shared/npc/modify_health";
+import { finiteNpcOrientation } from "@/shared/npc/motion_safety";
 import type { DeserializedNpcState } from "@/shared/npc/serde";
 import {
   deserializeNpcCustomState,
@@ -38,7 +40,7 @@ import { removeFalsyInPlace } from "@/shared/util/object";
 import type { DeepReadonly } from "@/shared/util/type_helpers";
 
 export class SimulatedNpc {
-  public readonly type;
+  public type;
   private readonly events: AnyEvent[] = [];
   private patchableEntity: PatchableEntity;
   private deserializedNpcState: DeserializedNpcState | undefined;
@@ -64,6 +66,7 @@ export class SimulatedNpc {
         rigid_body: external.rigid_body
           ? RigidBody.clone(external.rigid_body)
           : undefined,
+        size: external.size ? Size.clone(external.size) : undefined,
         movement_state: external.movement_state
           ? MovementState.clone(external.movement_state)
           : undefined,
@@ -75,6 +78,11 @@ export class SimulatedNpc {
           : undefined,
       }) as Npc
     );
+    // A live HybridWorld create can be observed first through a partial view
+    // and completed by the next regular-ECS update. Refresh the type alongside
+    // the authoritative metadata so a newly spawned NPC cannot remain cached
+    // forever with fallback movement/turning values.
+    this.type = idToNpcType(this.entity.npcMetadata().type_id);
     this.deserializedNpcState = undefined;
   }
 
@@ -160,7 +168,13 @@ export class SimulatedNpc {
   }
 
   setOrientation(orientation: Vec2) {
-    this.entity.setOrientation({ v: orientation });
+    const fallback = finiteNpcOrientation(
+      this.orientation,
+      this.metadata.spawn_orientation
+    );
+    this.entity.setOrientation({
+      v: finiteNpcOrientation(orientation, fallback),
+    });
   }
 
   setVelocity(velocity: Vec3) {
@@ -235,8 +249,8 @@ export class SimulatedNpc {
   attack(
     target: BiomesId,
     damage: number,
-    ranged?: {
-      attackAbilityId: string;
+    attack?: {
+      attackAbilityId?: string;
       attackTime: number;
       impactPoint: Readonly<Vec3>;
     }
@@ -251,9 +265,9 @@ export class SimulatedNpc {
           attacker: this.id,
           dir: undefined,
         },
-        attackAbilityId: ranged?.attackAbilityId,
-        attackTime: ranged?.attackTime,
-        impactPoint: ranged?.impactPoint,
+        attackAbilityId: attack?.attackAbilityId,
+        attackTime: attack?.attackTime,
+        impactPoint: attack?.impactPoint,
       })
     );
   }

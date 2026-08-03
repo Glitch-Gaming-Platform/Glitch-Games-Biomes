@@ -20,6 +20,7 @@ import {
   horizontalDistance,
   lineOfSightEyeHeight,
   lineOfSightTargetSamples,
+  targetIsRidingAttackerBody,
   withinAttackReach,
   withinHorizontalAttackReach,
   withinVerticalAttackReach,
@@ -148,6 +149,55 @@ describe("hill combat: attack reach decomposition", () => {
   });
 });
 
+describe("melee contact: attacker body exclusion", () => {
+  const giantPosition: [number, number, number] = [10, 20, -30];
+  const giantSize: [number, number, number] = [18, 12, 10];
+
+  it("rejects a player standing on an oversized boss's back", () => {
+    assert.equal(
+      targetIsRidingAttackerBody({
+        attackerPosition: giantPosition,
+        attackerSize: giantSize,
+        targetPosition: [10, 29, -29],
+      }),
+      true
+    );
+  });
+
+  it("does not reject a target standing in front at ground level", () => {
+    assert.equal(
+      targetIsRidingAttackerBody({
+        attackerPosition: giantPosition,
+        attackerSize: giantSize,
+        targetPosition: [10, 20, -36],
+      }),
+      false
+    );
+  });
+
+  it("keeps ordinary one-step hill overlap hittable", () => {
+    assert.equal(
+      targetIsRidingAttackerBody({
+        attackerPosition: [0, 0, 0],
+        attackerSize: [1, 1.2, 1],
+        targetPosition: [0.65, 2, 0],
+      }),
+      false
+    );
+  });
+
+  it("does not turn malformed persisted body sizes into a global miss", () => {
+    assert.equal(
+      targetIsRidingAttackerBody({
+        attackerPosition: giantPosition,
+        attackerSize: [Number.NaN, 12, 10],
+        targetPosition: [10, 29, -29],
+      }),
+      false
+    );
+  });
+});
+
 describe("hill combat: approach decision", () => {
   const base = {
     attackRadius: MUCKER_ATTACK_RADIUS,
@@ -209,7 +259,9 @@ describe("hill combat: line-of-sight sampling", () => {
     // Descending, so the cheap common case (head visible) exits first.
     assert.ok(samples[0][1] > samples[1][1] && samples[1][1] > samples[2][1]);
     // X/Z are untouched: only the height varies.
-    assert.ok(samples.every((sample) => sample[0] === 10 && sample[2] === -400));
+    assert.ok(
+      samples.every((sample) => sample[0] === 10 && sample[2] === -400)
+    );
   });
 
   it("keeps an eye out of the ground for tiny bodies", () => {

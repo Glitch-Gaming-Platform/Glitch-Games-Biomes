@@ -17,6 +17,7 @@ import { staticUrlForAttribute } from "@/shared/bikkie/schema/binary";
 import { makeDisposable } from "@/shared/disposable";
 import type { Item } from "@/shared/game/item";
 import { getAabbForPlaceable } from "@/shared/game/placeables";
+import { harthmereBusinessFurnitureAsset } from "@/shared/harthmere/generated/harthmere_business_furniture_manifest";
 import type { BiomesId } from "@/shared/ids";
 import { affineToMatrix } from "@/shared/math/affine";
 import { normalizeAngle } from "@/shared/math/angles";
@@ -29,7 +30,6 @@ import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 const BIKKIE_PLACEABLES_TRANSFORM = makeYRotate(Math.PI);
 
-
 // GLITCH_SNAPSHOT_PLACEABLE_GALOIS_FALLBACK:
 // The 2026-05-16 snapshot bucket is the asset authority, but Glitch keeps newer
 // source/Bikkie definitions. Some Glitch-added placeables may still reference a
@@ -40,18 +40,24 @@ function makeMissingPlaceableGltf(item: Item, galoisPath: string): GLTF {
   const scene = new Group();
   scene.name = `missing-placeable-galois:${galoisPath || "empty"}`;
   if (process.env.NODE_ENV !== "production") {
-    console.warn("[snapshot-placeable-galois-fallback] Missing placeable galois asset", {
-      id: item.id,
-      displayName: item.displayName,
-      galoisPath,
-    });
+    console.warn(
+      "[snapshot-placeable-galois-fallback] Missing placeable galois asset",
+      {
+        id: item.id,
+        displayName: item.displayName,
+        galoisPath,
+      }
+    );
   }
   return {
     scene,
     scenes: [scene],
     animations: [],
     cameras: [],
-    asset: { version: "2.0", generator: "glitch-snapshot-placeable-galois-fallback" },
+    asset: {
+      version: "2.0",
+      generator: "glitch-snapshot-placeable-galois-fallback",
+    },
     parser: undefined,
     userData: { missingPlaceableGaloisPath: galoisPath, itemId: item.id },
   } as unknown as GLTF;
@@ -112,6 +118,29 @@ export function setPlaceableOrientation(
 }
 
 export async function loadPlaceableGltf(item: Item): Promise<GLTF> {
+  // Harthmere's reusable furniture keeps native ECS/Bikkie item identity and
+  // occupancy, but uses the optimized Blender catalogue for presentation.
+  // Resolve this before donor mesh/galois attributes so the exact furniture
+  // mesh and its matching inventory icon cannot drift apart.
+  const furnitureAsset = harthmereBusinessFurnitureAsset(item.id);
+  if (furnitureAsset) {
+    const gltf = await loadGltf(furnitureAsset.lod0Url);
+    gltf.userData = {
+      ...gltf.userData,
+      harthmereBusinessFurniture: true,
+      lod1Url: furnitureAsset.lod1Url,
+    };
+    if (furnitureAsset.yawCorrectionRadians !== 0) {
+      const scene = gltfToThree(gltf);
+      ok(scene);
+      scene.rotation.y += furnitureAsset.yawCorrectionRadians;
+      const parent = new Group();
+      parent.add(scene);
+      gltf.scene = parent;
+    }
+    return gltf;
+  }
+
   const mesh = item.worldMesh ?? item.mesh;
   if (!mesh) {
     const galoisPath = item.galoisPath ?? "";

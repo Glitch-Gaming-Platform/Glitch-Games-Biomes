@@ -81,6 +81,7 @@ import {
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS } from "@/shared/harthmere/combat_reach";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import { HARTHMERE_PLAYER_ATTACK_TIMINGS } from "@/shared/harthmere/deliberate_combat";
 import React, { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION =
@@ -181,12 +182,7 @@ type CombatRelationship =
 type GroupRole = "tank" | "healer" | "damage" | "support" | "controller";
 
 type MultiplayerMode =
-  | "solo"
-  | "party"
-  | "raid"
-  | "duel"
-  | "public_event"
-  | "battleground";
+  "solo" | "party" | "raid" | "duel" | "public_event" | "battleground";
 
 interface MultiplayerCombatLogEntry {
   id: string;
@@ -275,10 +271,7 @@ function now() {
 // Physical sword damage is resolved at the impact frame, not immediately when
 // the key goes down. These values also feed the renderer so visual and damage
 // timing stay testable from one contract.
-const HARTHMERE_SWORD_ATTACK_TIMINGS = {
-  basic: { windupMs: 150, impactMs: 220, recoveryMs: 340 },
-  heavy: { windupMs: 260, impactMs: 360, recoveryMs: 520 },
-} as const;
+const HARTHMERE_SWORD_ATTACK_TIMINGS = HARTHMERE_PLAYER_ATTACK_TIMINGS;
 
 function harthmereSwordAttackTiming(
   attack: HarthmerePlayerAttackType | undefined
@@ -710,7 +703,7 @@ function afterHostileAction(
   const nextContribution = { ...state.contribution };
   for (const [key, value] of Object.entries(contribution) as [
     keyof MultiplayerContribution,
-    number
+    number,
   ][]) {
     nextContribution[key] += value;
   }
@@ -1229,75 +1222,94 @@ export function performHarthmereMousePrimaryAttack(
     );
   }
 
-  const runtime = readHarthmereForwardArcRuntime();
-
-  // HARTHMERE_CROSSHAIR_COMBAT_TARGET: prefer the creature actually under the
-  // crosshair (camera-projected screen position published by the renderer) over
-  // the forward-arc cone. The arc depends on the player body-forward/yaw/origin
-  // runtime, which in the embed build is frequently missing or in the wrong
-  // coordinate frame -> "no target inside the arc" -> every swing misses even
-  // when you are aiming straight at a mucker. Screen targeting is the literal
-  // "hit what you are pointing at" and works without that runtime.
-  let arcResult: { hitOffsets: number[]; candidateOffsets: number[] };
-  const crosshairActors = readHarthmereCrosshairCombatActors();
-  const crosshairPick = aim
-    ? pickHarthmereCrosshairCombatTarget({
-        actors: crosshairActors,
-        aim,
-        playerX: runtime?.position?.[0],
-        playerZ: runtime?.position?.[2],
-        worldReach: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS,
-      })
-    : undefined;
-
-  if (crosshairPick) {
-    performHarthmereCombatAttack(crosshairPick.offset, attack, {
-      contactProven: true,
-      contactSource: "forward_arc",
-      contactDistance: crosshairPick.worldDistance,
-      contactReason: "crosshair_aimed_actor",
-      debugLabel: `crosshair:${attack}`,
+  const timing = harthmereSwordAttackTiming(attack);
+  const resolveMouseImpact = () => {
+    const runtime = readHarthmereForwardArcRuntime();
+    // Re-sample the crosshair and actor positions at the authored contact
+    // frame. Button-down aim is a tell, not a guaranteed hit: a target that
+    // dodges or leaves the blade arc during windup must be allowed to escape.
+    const crosshairActors = readHarthmereCrosshairCombatActors();
+    const crosshairPick = aim
+      ? pickHarthmereCrosshairCombatTarget({
+          actors: crosshairActors,
+          aim,
+          playerX: runtime?.position?.[0],
+          playerZ: runtime?.position?.[2],
+          worldReach: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS,
+        })
+      : undefined;
+    let arcResult: { hitOffsets: number[]; candidateOffsets: number[] };
+    if (crosshairPick) {
+      performHarthmereCombatAttack(crosshairPick.offset, attack, {
+        contactProven: true,
+        contactSource: "forward_arc",
+        contactDistance: crosshairPick.worldDistance,
+        contactReason: "crosshair_aimed_actor_at_impact_frame",
+        debugLabel: `crosshair:${attack}`,
+      });
+      arcResult = {
+        hitOffsets: [crosshairPick.offset],
+        candidateOffsets: crosshairActors.map((actor) => actor.offset),
+      };
+      submitHarthmereLiveModeMousePrimaryAttack(
+        [
+          {
+            offset: crosshairPick.offset,
+            targetId: crosshairPick.targetId,
+            targetPosition: crosshairPick.targetPosition,
+          },
+        ],
+        runtime,
+        "crosshair_visible_actor"
+      );
+    } else {
+      arcResult = performHarthmereForwardArcAttack(attack, runtime);
+      submitHarthmereLiveModeMousePrimaryAttack(
+        arcResult.hitOffsets,
+        runtime,
+        "forward_arc_fallback"
+      );
+    }
+    recordHarthmereSwordImpactTimingDebug(attack, {
+      phase: "mouse_primary_impact",
+      impactMs: timing.impactMs,
+      hitOffsets: arcResult.hitOffsets,
+      candidateOffsets: arcResult.candidateOffsets,
+      bypassedDrawGate,
     });
-    arcResult = {
-      hitOffsets: [crosshairPick.offset],
-      candidateOffsets: crosshairActors.map((actor) => actor.offset),
-    };
-    submitHarthmereLiveModeMousePrimaryAttack(
-      [
-        {
-          offset: crosshairPick.offset,
-          targetId: crosshairPick.targetId,
-          targetPosition: crosshairPick.targetPosition,
-        },
-      ],
-      runtime,
-      "crosshair_visible_actor"
+    const impactState = readHarthmereMultiplayerCombatState();
+    writeHarthmereMultiplayerCombatState(
+      afterHostileAction(
+        impactState,
+        "Mouse Attack Impact",
+        `Left mouse reached its contact frame and hit ${arcResult.hitOffsets.length} target(s). Candidates checked: ${arcResult.candidateOffsets.length}.`,
+        { damage: 18 }
+      )
     );
-  } else {
-    arcResult = performHarthmereForwardArcAttack(attack, runtime);
-    submitHarthmereLiveModeMousePrimaryAttack(
-      arcResult.hitOffsets,
-      runtime,
-      "forward_arc_fallback"
-    );
-  }
+  };
   recordHarthmereSwordImpactTimingDebug(attack, {
-    phase: "mouse_primary_immediate",
-    hitOffsets: arcResult.hitOffsets,
-    candidateOffsets: arcResult.candidateOffsets,
+    phase: "mouse_primary_scheduled",
+    windupMs: timing.windupMs,
+    impactMs: timing.impactMs,
+    recoveryMs: timing.recoveryMs,
     bypassedDrawGate,
   });
+  if (isBrowser()) {
+    window.setTimeout(resolveMouseImpact, timing.impactMs);
+  } else {
+    resolveMouseImpact();
+  }
 
   state = setCooldown(state, attack, 1.4);
   writeHarthmereMultiplayerCombatState(
     afterHostileAction(
       state,
       "Mouse Attack",
-      `Left mouse resolved a basic attack and hit ${arcResult.hitOffsets.length} target(s). Candidates checked: ${arcResult.candidateOffsets.length}.`,
-      { damage: 18 }
+      "Left mouse started a committed basic swing. Damage will resolve only if a target is still inside the contact frame.",
+      {}
     )
   );
-  return arcResult;
+  return { hitOffsets: [], candidateOffsets: [] };
 }
 
 export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
@@ -1475,8 +1487,8 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
     attack === "spark"
       ? "Magic Attack"
       : attack === "heavy"
-      ? "Heavy Attack"
-      : "Basic Attack";
+        ? "Heavy Attack"
+        : "Basic Attack";
   const contribution =
     attack === "spark"
       ? { damage: 24, crowdControl: 3 }
@@ -1510,8 +1522,8 @@ export function simulateHarthmereAllySupport(
     kind === "heal"
       ? { healing: 42 }
       : kind === "shield"
-      ? { shielding: 35 }
-      : { revives: 1 };
+        ? { shielding: 35 }
+        : { revives: 1 };
   writeHarthmereMultiplayerCombatState(
     afterHostileAction(state, "Co-op Support", details[kind], contribution)
   );

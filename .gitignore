@@ -71,10 +71,12 @@ BUILD_ID.bob
 
 ### Local scratch, reports, and agent artifacts
 /artifacts/
+/output/
 /scratch/
 /harthmere-debug-dumps/
 **/.codex-artifacts/
 /tmp/
+/_wtest
 scripts/harthmere/.artifacts/
 harthmere-auto-survey-*.json
 *.log

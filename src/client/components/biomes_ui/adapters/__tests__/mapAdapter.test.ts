@@ -1291,6 +1291,39 @@ describe("biomes_ui map adapter (V141)", () => {
     assert.deepEqual(marker?.worldPosition, [380, 71, -202]);
   });
 
+  it("shows an accepted Harthmere Bible quest in the normal journal and map", () => {
+    const questId = "harthmere_sq_041_the_doorway_that_wasnt";
+    const markerId = `bible_quest_marker:${questId}`;
+    const markerPosition: [number, number, number] = [2069, 64, -209];
+    const adapter = buildBiomesUIMapAdapterForTest(1, undefined, undefined, {
+      version: "harthmere-live-mode-quest-state",
+      actorId: "player_harthmere",
+      active: {
+        [questId]: {
+          stepId: "harthmere_sq_041_the_doorway_that_wasnt_obj_01",
+          progress: 0,
+          source: "bible_catalog",
+          title: "The Doorway That Wasn’t",
+          questKind: "side_hidden",
+          giverPosition: markerPosition,
+        },
+      },
+      completed: {},
+    });
+
+    const quest = adapter
+      .getTrackableQuests()
+      .find((entry) => entry.questId === questId);
+    assert.equal(quest?.title, "The Doorway That Wasn’t");
+    assert.equal(quest?.status, "active");
+    assert.equal(quest?.firstMarkerId, markerId);
+
+    const marker = adapter.getMarkers().find((entry) => entry.id === markerId);
+    assert.equal(marker?.active, true);
+    assert.equal(marker?.kind, "objective");
+    assert.deepEqual(marker?.worldPosition, markerPosition);
+  });
+
   it("still returns business outpost markers when the snapshot api is missing", () => {
     clearFixture();
     const adapter = buildAdapter();

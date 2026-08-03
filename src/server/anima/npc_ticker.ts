@@ -1,5 +1,10 @@
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import { Npc } from "@/shared/ecs/gen/entities";
+import {
+  animaNpcTickDurationSeconds,
+  animaNpcTickTimeMs,
+  validatedAnimaNpcTickDurationSeconds,
+} from "@/server/anima/runtime_config";
 import { PlayerSelector } from "@/shared/ecs/gen/selectors";
 import { isDayTime, sunInclination } from "@/shared/game/sun_moon_position";
 import type { BiomesId } from "@/shared/ids";
@@ -72,6 +77,7 @@ const npcPlayerDistance = createHistogram({
   buckets: linearBuckets(1, 32, 10),
 });
 
+
 // Applies the core NPC tick logic, without doing any IO. All event publishing
 // is the responsibility of NpcTicker's client, with the goal being to enable
 // NpcTicker to be used in multiple different contexts (e.g. client side
@@ -137,14 +143,22 @@ export class NpcTicker {
   private async generateUpdates(): Promise<TickUpdates> {
     // Figure out how many ticks to run, according to a fixed interval so that
     // we can have constant time deltas for deterministic state updates.
+    // Capture the interval exactly once. Config watchers can replace the
+    // global value while a loaded shard batch is being traversed; recomputing
+    // the duration for each NPC can otherwise pair ticks earned at one
+    // interval with a zero/different physics delta from a later config value.
+    const tickTimeMs = animaNpcTickTimeMs();
+    const tickDurationSeconds = tickTimeMs / 1000;
     const outstandingTicks = this.fixedRateTicker.advanceClock(
       this.lastTickTime!,
-      CONFIG.animaNpcTickTimeMs,
+      tickTimeMs,
       CONFIG.animaNpcMaxFixedTicksPerTick
     );
     let updates = new TickUpdates();
     for await (const npc of asyncYieldForEach(this.npcs, 15)) {
-      updates = updates.merge(this.tickNpc(npc, outstandingTicks));
+      updates = updates.merge(
+        this.tickNpc(npc, outstandingTicks, tickDurationSeconds)
+      );
     }
     return updates;
   }
@@ -203,7 +217,8 @@ export class NpcTicker {
 
   private tickNpc(
     npc: SimulatedNpc,
-    outstandingTicks: number
+    outstandingTicks: number,
+    tickDurationSeconds = animaNpcTickDurationSeconds()
   ): TickUpdates | undefined {
     if (npc.hp <= 0) {
       deadTicks.inc({ type: npc.type.name }, 1);
@@ -218,7 +233,11 @@ export class NpcTicker {
       // Not our time to tick.
       return;
     }
-    const updates = this.tickNpcMultipleTimes(npc, outstandingTicks);
+    const updates = this.tickNpcMultipleTimes(
+      npc,
+      outstandingTicks,
+      tickDurationSeconds
+    );
     npcFixedTicks.inc({ type: npc.type.name }, outstandingTicks);
     npcTicks.inc({ type: npc.type.name });
     if (updates) {
@@ -227,11 +246,17 @@ export class NpcTicker {
     return updates;
   }
 
-  tickNpcMultipleTimes(npc: SimulatedNpc, tickCount: number) {
+  tickNpcMultipleTimes(
+    npc: SimulatedNpc,
+    tickCount: number,
+    tickDurationSeconds = animaNpcTickDurationSeconds()
+  ) {
+    const safeTickDurationSeconds =
+      validatedAnimaNpcTickDurationSeconds(tickDurationSeconds);
     if (serverSideNpcTick(npc)) {
       for (let i = 0; i < tickCount; ++i) {
         const timer = new Timer();
-        npcTickLogic(this.env, npc, CONFIG.animaNpcTickTimeMs / 1000);
+        npcTickLogic(this.env, npc, safeTickDurationSeconds);
         npcTickNpcMs.observe({ type: npc.type.name }, timer.elapsed);
       }
     }

@@ -1,4 +1,5 @@
 import { NpcTicker } from "@/server/anima/npc_ticker";
+import { animaNpcTickTimeMs } from "@/server/anima/runtime_config";
 import { GameEvent } from "@/server/shared/api/game_event";
 import type { LogicApi } from "@/server/shared/api/logic";
 import type { WorldApi } from "@/server/shared/world/api";
@@ -29,6 +30,20 @@ const npcControllerTickTimes = createHistogram({
   help: "Timings for the NpcControllerService.tick() method.",
   buckets: exponentialBuckets(2, 2, 8),
 });
+
+function animaControllerConfig() {
+  const config = (
+    globalThis as typeof globalThis & {
+      CONFIG?: {
+        animaNpcTickTimeMs?: number;
+        animaNpcTickBatchSize?: number;
+      };
+    }
+  ).CONFIG;
+  return {
+    batchSize: config?.animaNpcTickBatchSize ?? 500,
+  };
+}
 
 interface ShardContext {
   // Ticker to perform state changes for the shard.
@@ -76,7 +91,7 @@ export class NpcControllerService {
   async start() {
     this.tickTimer = new RepeatingAsyncTimer(
       () => this.tick(),
-      () => CONFIG.animaNpcTickTimeMs
+      () => animaNpcTickTimeMs()
     );
   }
 
@@ -109,10 +124,17 @@ export class NpcControllerService {
   }
 
   private async applyTickUpdates(updates: TickUpdates): Promise<void> {
-    await Promise.allSettled([
-      ...chunk(updates.state, CONFIG.animaNpcTickBatchSize).map((chunk) =>
+    // Damage receipts live in npc_state. Commit every state chunk before the
+    // matching events are published so the logic handler never races ahead and
+    // rejects a legitimate impact because it can still see the previous swing.
+    // allSettled preserves the old failure isolation: event delivery is still
+    // attempted even if a state backend fails.
+    await Promise.allSettled(
+      chunk(updates.state, animaControllerConfig().batchSize).map((chunk) =>
         this.applyStateChanges(chunk)
-      ),
+      )
+    );
+    await Promise.allSettled([
       this.logicApi.publish(
         ...updates.events.map((e) => new GameEvent(AnimaId, e))
       ),

@@ -29,6 +29,14 @@ const gate = fs.readFileSync(
   path.join(root, "scripts/harthmere/run-harthmere-native-ecs-e2e.sh"),
   "utf8"
 );
+const cameraModeActions = fs.readFileSync(
+  path.join(root, "src/client/components/inventory/cameraModeActions.ts"),
+  "utf8"
+);
+const cameraHotBar = fs.readFileSync(
+  path.join(root, "src/client/components/inventory/HotBar.tsx"),
+  "utf8"
+);
 
 function requireText(text, label) {
   if (!runner.includes(text)) {
@@ -39,7 +47,7 @@ function requireText(text, label) {
 
 function triggerChildren(trigger) {
   return ["seq", "all", "any", "variant"].includes(trigger?.kind)
-    ? trigger.triggers ?? []
+    ? (trigger.triggers ?? [])
     : [];
 }
 
@@ -131,6 +139,19 @@ async function main() {
     ["Robot-story browser batch found", "non-fail-fast chapter batch"],
     ["road-ahead-selfie.png", "rendered Road Ahead selfie evidence"],
     ["selfie upload and X camera exit", "camera post and recovery key proof"],
+    ["__harthmereCameraKeyProbe", "physical camera-key delivery diagnostics"],
+    [
+      "__harthmereCameraResourceProbe",
+      "camera exit hotbar resource-write diagnostics",
+    ],
+    [
+      "actor continuity lost before trigger progression",
+      "immediate actor-state replacement diagnosis",
+    ],
+    [
+      "claim target and player are within talking distance",
+      "authoritative NPC-claim proximity gate",
+    ],
     [
       "Take All transfers every authored item",
       "complete clothing crate transfer",
@@ -144,12 +165,35 @@ async function main() {
       "local profile-picture fallback classification",
     ],
     [
+      "abortedLocalProfilePicture",
+      "aborted local profile-picture fallback classification",
+    ],
+    [
       "robot naming completes setup and advances Gimme Shelter",
       "robot naming preserves the remaining Gimme Shelter objectives",
     ],
   ]) {
     requireText(text, label);
   }
+
+  if (
+    !cameraModeActions.includes('reactResources.get("/scene/local_player")')
+  ) {
+    throw new Error(
+      "Camera input action must read the local player without invoking React hooks"
+    );
+  }
+  if (cameraModeActions.includes("reactResources.use(")) {
+    throw new Error(
+      "Camera input action must not invoke ReactResources.use outside render"
+    );
+  }
+  if (!cameraHotBar.includes("inventory/cameraModeActions")) {
+    throw new Error(
+      "Camera hotbar must consume the dependency-light event action module"
+    );
+  }
+  process.stdout.write("OK camera actions are hook-free outside render\n");
 
   if (
     !gate.includes("HARTHMERE_E2E_ROBOT_STORY_EXHAUSTIVE=1") ||

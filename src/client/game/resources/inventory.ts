@@ -26,7 +26,7 @@ export interface CameraSelection {
 export type HotBarSelection = ItemSelection | CameraSelection;
 
 export function isCameraExitKey(code: string, selection: HotBarSelection) {
-  return code === "Delete" && selection.kind === "camera";
+  return selection.kind === "camera" && (code === "KeyX" || code === "Delete");
 }
 
 export function slotRefFromSelection(
@@ -118,7 +118,7 @@ function genHotBarSelection(
       kind: "camera",
       mode: compatibleCameraModes(ret.item).find((m) => isEqual(m, cameraMode))
         ? cameraMode
-        : first(compatibleCameraModes(ret.item)) ?? "normal",
+        : (first(compatibleCameraModes(ret.item)) ?? "normal"),
       ref: ret,
     } as CameraSelection;
   } else {

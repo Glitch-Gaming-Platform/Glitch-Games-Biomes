@@ -170,6 +170,72 @@ memory:voxeloo:usedMemory
 memory:voxeloo:freeMemory
 ```
 
+### Production follow-up — 2026-08-02
+
+The final upgraded production image was inspected read-only after the user
+confirmed the complete stack was current:
+
+```text
+revision: biomes-node-vnet--0000215
+image: glitchgames.azurecr.io/biomes-node:harthmere-consolidated-final-20260802-r2
+traffic: 100 percent
+replicas: 3 healthy, 0 observed restarts
+```
+
+Two active client samples again proved a CPU/main-thread limit:
+
+| Metric                  |    Replica sample A |    Replica sample B |
+| ----------------------- | ------------------: | ------------------: |
+| Render interval         | 87.65 ms (11.4 FPS) | 65.46 ms (15.3 FPS) |
+| CPU render time         |            66.10 ms |            49.37 ms |
+| GPU render time         |            11.03 ms |            12.53 ms |
+| Event-loop latency      |            134.0 ms |            108.9 ms |
+| Render + postprocessing |            28.10 ms |            26.14 ms |
+| Reported JS heap        |       about 1.09 GB |       about 1.25 GB |
+
+The browser Aegis overlay ranged from roughly 5-14 FPS in the same Grove view.
+There were only 11-19 rendered NPCs and one player in the aggregate samples,
+so the result is not explained by a runaway actor count. GPU time remained far
+below CPU time; reducing resolution or increasing GPU utilization is not the
+primary remedy.
+
+The accompanying production HAR covered about 13.7 seconds and exposed two
+additional avoidable sources of main-thread/server pressure:
+
+- Chapter 1 gate, story, and objective state were requested independently at
+  750-1000 ms intervals. Identical responses still republished React/renderer
+  state, and the story controller rebuilt puppet overrides every second.
+- One `storeSave` uploaded about 140 KB, took about 3.1 seconds, and returned
+  about 595 KB because the server echoed the complete Base64 payload the client
+  had just uploaded. The client only needs the returned save id/version.
+- Production console logs showed external behavior-event calls commonly taking
+  about 1.8-2.4 seconds each. A serial 25-item Redis outbox drain could therefore
+  remain active for nearly a minute.
+
+The source response installed for this evidence:
+
+- freezes local/world matrix recomputation for static Harthmere placement
+  hierarchies after their authored transforms are complete;
+- keeps the static Harthmere root matrix out of Three.js's automatic per-frame
+  composition while animated actors and VFX retain automatic matrices;
+- clears the six known render scenes without allocating `Object.values(...).map`
+  output every frame;
+- updates the postprocess chain only when its resource version changes;
+- runs dynamic-quality percentile/candidate analysis at 4 Hz instead of once
+  per rendered frame (quality changes already have 2-3 second gates);
+- deduplicates identical Chapter 1 objective, gate, and projection responses;
+- refreshes world projection immediately from `chapter1-story-updated`, with a
+  two-second reconciliation poll for cross-tab/server changes;
+- returns compact cloud-save identity/version metadata without echoing payload;
+- drains consecutive best-effort behavior telemetry with bounded concurrency,
+  while preserving serial ordering barriers around saves/progression;
+- exports `draw`, React invalidation, terrain, player, NPC, and Harthmere runtime
+  renderer timing cvals so the next production sample identifies the remaining
+  renderer share directly.
+
+This batch does not reduce the 192 m dynamic view-distance floor and does not
+change explicit Low/Safe graphics modes.
+
 ## Render Distance Contract
 
 Harthmere is an open, landmark-driven world. Auto graphics must not collapse
@@ -709,10 +775,13 @@ instruction.
 Status at this document update:
 
 - The 192 m dynamic view-distance floor and the earlier React/NPC performance
-  batch were present in the latest production build inspected on 2026-08-01.
-- The final direct-scene-routing, gathering-node, and marker-diagnostic changes
-  were source-only and validated locally.
-- No production build or deployment was initiated for that final source batch.
+  batch were present in production revision `biomes-node-vnet--0000215`
+  inspected on 2026-08-02.
+- The final static-matrix, frame-setup, Chapter 1 polling, save-response, outbox,
+  and renderer-cval changes described above are source-only until an explicitly
+  authorized build/deployment includes them.
+- No production build, restart, traffic change, image push, or deployment was
+  initiated for this final source batch.
 
 ## Mission Markers
 

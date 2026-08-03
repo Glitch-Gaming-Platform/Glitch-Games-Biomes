@@ -5,6 +5,8 @@
 
 import assert from "assert";
 import {
+  HARTHMERE_BIBLE_QUEST_MARKER_SOURCE,
+  bibleQuestAcceptedLandmarksForBiomesUI,
   bibleQuestTrackableQuestsForBiomesUI,
   harthmereBibleDialogModelForGiver,
   harthmereBibleGiverIdForNpcLabel,
@@ -16,6 +18,7 @@ import {
   harthmereThaedrynEncounterModel,
   readHarthmereBibleQuestSnapshot,
   resetHarthmereBibleQuestReadCacheForTest,
+  submitHarthmereBibleQuestOperation,
   type HarthmereBibleQuestClientSnapshot,
 } from "@/client/components/challenges/bibleQuestLiveAdapter";
 import {
@@ -219,6 +222,31 @@ describe("bible quest client adapter", () => {
     });
   });
 
+  it("does not show giver quests whose shared acceptance gate fails", () => {
+    const gatedQuest = BIBLE_QUEST_CATALOG.find(
+      (quest) =>
+        !quest.hidden &&
+        bibleQuestGiverId(quest) &&
+        quest.gate.levelBand.min > 1 &&
+        quest.start.kind === "giver"
+    );
+    assert.ok(gatedQuest, "catalog must contain a level-gated giver quest");
+    const snapshot = emptySnapshot();
+    snapshot.playerLevel = gatedQuest!.gate.levelBand.min - 1;
+    const model = harthmereBibleDialogModelForGiver({
+      giverId: bibleQuestGiverId(gatedQuest!)!,
+      snapshot,
+    });
+    assert.equal(
+      model.actions.some((action) => action.questId === gatedQuest!.id),
+      false
+    );
+    assert.equal(
+      model.offers.some((offer) => offer.questId === gatedQuest!.id),
+      false
+    );
+  });
+
   it("uses the server-projected actor level when callers omit an override", () => {
     const snapshot = emptySnapshot();
     const model = harthmereBibleDialogModelForGiver({
@@ -328,6 +356,50 @@ describe("bible quest client adapter", () => {
     assert.ok(String(trackables[0].objective).length > 0);
   });
 
+  it("projects accepted Bible quests into active map landmarks", () => {
+    const questId = "harthmere_sq_041_the_doorway_that_wasnt";
+    const landmarks = bibleQuestAcceptedLandmarksForBiomesUI({
+      active: {
+        [questId]: {
+          source: "bible_catalog",
+          progress: 0,
+          giverPosition: [2069, 64, -209],
+        },
+      },
+    });
+    assert.equal(landmarks.length, 1);
+    assert.equal(landmarks[0].id, `bible_quest_marker:${questId}`);
+    assert.equal(landmarks[0].active, true);
+    assert.equal(landmarks[0].source, HARTHMERE_BIBLE_QUEST_MARKER_SOURCE);
+    assert.deepEqual(landmarks[0].position, [2069, 64, -209]);
+  });
+
+  it("surfaces server acceptance rejection as player-readable dialogue", async () => {
+    const questId = "harthmere_sq_041_the_doorway_that_wasnt";
+    const fetchImpl = (async () =>
+      new Response(
+        JSON.stringify({
+          ok: true,
+          backendMutation: {
+            warnings: ["bible_quest_rejected:player_level_below_minimum"],
+          },
+          questState: emptySnapshot(),
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )) as typeof fetch;
+    await assert.rejects(
+      () =>
+        submitHarthmereBibleQuestOperation(
+          { operation: "bible_quest_accept", questId },
+          { fetchImpl }
+        ),
+      (error: any) =>
+        error?.message ===
+          "Reach level 6 before accepting “The Doorway That Wasn’t”." &&
+        !error.message.includes("bible_quest_rejected")
+    );
+  });
+
   it("parses quest snapshots defensively from response bodies", () => {
     const snapshot = harthmereBibleQuestSnapshotFromResponse({
       questState: { active: null, completed: 7, bible: "garbage" },
@@ -350,16 +422,33 @@ describe("bible quest client adapter", () => {
     assert.equal(snapshot.serverNowMs, 1_700_000_123_456);
   });
 
-  it("selects a hidden quest to trigger only within the radius", () => {
-    const hidden = BIBLE_QUEST_CATALOG.find(
-      (q) => q.hidden
+  it("selects a hidden quest only when proximity and acceptance gates pass", () => {
+    const hidden = bibleQuest("harthmere_sq_041_the_doorway_that_wasnt")!;
+    const waypoint = bibleStepWorldWaypoint(hidden, hidden.steps[0]);
+    const tooLow = emptySnapshot();
+    tooLow.playerLevel = 1;
+    assert.equal(
+      harthmereBibleHiddenQuestToTrigger({
+        playerPosition: waypoint,
+        snapshot: tooLow,
+      }),
+      undefined,
+      "the level-6 discovery must not appear or auto-submit for a level-1 player"
     );
-    assert.ok(hidden, "catalog must have hidden quests");
+    const eligible = emptySnapshot();
+    eligible.playerLevel = 6;
+    assert.equal(
+      harthmereBibleHiddenQuestToTrigger({
+        playerPosition: waypoint,
+        snapshot: eligible,
+      }),
+      hidden.id
+    );
     // Not near: no trigger.
     assert.equal(
       harthmereBibleHiddenQuestToTrigger({
         playerPosition: [0, 0, 0],
-        snapshot: emptySnapshot(),
+        snapshot: eligible,
       }),
       undefined
     );

@@ -3,6 +3,8 @@
 import assert from "assert";
 import {
   harthmereEnsureRenderableNpcEntity,
+  harthmereNpcAttackUsesAuthoritativeTransform,
+  harthmereRenderableNpcType,
   isRenderNpcEntity,
 } from "./harthmere_npc_render_compat";
 
@@ -30,7 +32,10 @@ describe("Harthmere NPC render component compatibility", () => {
   });
 
   it("does not manufacture a render body when the entity has no NPC metadata or position", () => {
-    assert.equal(harthmereEnsureRenderableNpcEntity({ id: 1 } as any), undefined);
+    assert.equal(
+      harthmereEnsureRenderableNpcEntity({ id: 1 } as any),
+      undefined
+    );
     assert.equal(
       harthmereEnsureRenderableNpcEntity({
         id: 2,
@@ -47,6 +52,14 @@ describe("Harthmere NPC render component compatibility", () => {
     );
   });
 
+  it("normalizes an unknown numeric NPC type to the Bikkie fallback and rejects malformed ids", () => {
+    assert.equal(
+      harthmereRenderableNpcType(8_899_999_999_999_999)?.name,
+      "unknown"
+    );
+    assert.equal(harthmereRenderableNpcType("not-a-number"), undefined);
+  });
+
   it("returns already-renderable NPCs unchanged", () => {
     const source = {
       id: 456,
@@ -60,5 +73,28 @@ describe("Harthmere NPC render component compatibility", () => {
 
     assert.equal(isRenderNpcEntity(source), true);
     assert.equal(harthmereEnsureRenderableNpcEntity(source), source);
+  });
+
+  it("locks the visible body to the authoritative ECS transform only during a live swing", () => {
+    const emote = { emote_type: "attack1", emote_start_time: 100 };
+    assert.equal(
+      harthmereNpcAttackUsesAuthoritativeTransform(emote, 99.99),
+      false
+    );
+    assert.equal(
+      harthmereNpcAttackUsesAuthoritativeTransform(emote, 100.5),
+      true
+    );
+    assert.equal(
+      harthmereNpcAttackUsesAuthoritativeTransform(emote, 101.51),
+      false
+    );
+    assert.equal(
+      harthmereNpcAttackUsesAuthoritativeTransform(
+        { emote_type: "dance", emote_start_time: 100 },
+        100.5
+      ),
+      false
+    );
   });
 });

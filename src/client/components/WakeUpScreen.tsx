@@ -456,42 +456,42 @@ const HarthmereCompactFullBodyPreview: React.FunctionComponent<{
     body.bodyHeight === "very_tall"
       ? "scale-[1.08]"
       : body.bodyHeight === "tall"
-      ? "scale-[1.02]"
-      : body.bodyHeight === "short"
-      ? "scale-[0.92]"
-      : "scale-100";
+        ? "scale-[1.02]"
+        : body.bodyHeight === "short"
+          ? "scale-[0.92]"
+          : "scale-100";
   const shoulderClass =
     body.shoulderWidth === "wide"
       ? "w-40"
       : body.shoulderWidth === "narrow"
-      ? "w-28"
-      : "w-32";
+        ? "w-28"
+        : "w-32";
   const torsoClass =
     body.bodyType === "broad" || body.bodyType === "stocky"
       ? "w-24"
       : body.bodyType === "slim"
-      ? "w-16"
-      : "w-20";
+        ? "w-16"
+        : "w-20";
   const armClass =
     body.armLength === "long"
       ? "h-24"
       : body.armLength === "short"
-      ? "h-16"
-      : "h-20";
+        ? "h-16"
+        : "h-20";
   const legClass =
     body.legLength === "long"
       ? "h-28"
       : body.legLength === "short"
-      ? "h-20"
-      : "h-24";
+        ? "h-20"
+        : "h-24";
   const faceShapeClass =
     face.faceShape === "wide"
       ? "rounded-[1rem] w-24"
       : face.faceShape === "narrow"
-      ? "rounded-[1rem] w-16"
-      : face.faceShape === "soft"
-      ? "rounded-[1.5rem] w-20"
-      : "rounded-[1rem] w-20";
+        ? "rounded-[1rem] w-16"
+        : face.faceShape === "soft"
+          ? "rounded-[1.5rem] w-20"
+          : "rounded-[1rem] w-20";
 
   return (
     <div
@@ -590,22 +590,22 @@ const HarthmereBuilderTinyAvatarPreview: React.FunctionComponent<{
     body.bodyType === "broad" || body.bodyType === "stocky"
       ? 54
       : body.bodyType === "slim"
-      ? 38
-      : 46;
+        ? 38
+        : 46;
   const shoulderWidth =
     body.shoulderWidth === "wide"
       ? 84
       : body.shoulderWidth === "narrow"
-      ? 62
-      : 72;
+        ? 62
+        : 72;
   const torsoHeight =
     body.bodyHeight === "short"
       ? 58
       : body.bodyHeight === "very_tall"
-      ? 74
-      : body.bodyHeight === "tall"
-      ? 68
-      : 64;
+        ? 74
+        : body.bodyHeight === "tall"
+          ? 68
+          : 64;
   const legHeight =
     body.legLength === "long" ? 58 : body.legLength === "short" ? 42 : 50;
   const armHeight =
@@ -894,12 +894,8 @@ function hasCurrentHarthmereCharacterCustomization(userId: BiomesId) {
     return harthmereWakeupCustomizationOwnerKeys(userId).some((ownerKey) =>
       Boolean(
         window.localStorage.getItem(harthmerePlayerFaceStorageKey(ownerKey)) &&
-          window.localStorage.getItem(
-            harthmerePlayerBodyStorageKey(ownerKey)
-          ) &&
-          window.localStorage.getItem(
-            harthmerePlayerClothingStorageKey(ownerKey)
-          )
+        window.localStorage.getItem(harthmerePlayerBodyStorageKey(ownerKey)) &&
+        window.localStorage.getItem(harthmerePlayerClothingStorageKey(ownerKey))
       )
     );
   } catch {
@@ -2212,10 +2208,10 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
       state === "initial"
         ? "onboarding_intro"
         : state === "name-entry"
-        ? "onboarding_name"
-        : state === "character"
-        ? "character_builder"
-        : "onboarding_wakeup";
+          ? "onboarding_name"
+          : state === "character"
+            ? "character_builder"
+            : "onboarding_wakeup";
     emitHarthmereGlitchBehaviorEvent(step, "screen_view", { state });
   }, [state]);
 

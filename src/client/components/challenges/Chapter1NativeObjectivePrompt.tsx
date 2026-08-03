@@ -203,9 +203,15 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
   const busyRef = useRef(false);
   const modalOpenRef = useRef(false);
   const refreshInFlight = useRef<Promise<void>>(undefined);
+  const lastStateSignature = useRef<string>(undefined);
   const shouldReturnPointerLock = useRef<PointerLockUnlockWhileOpenReturnRef>({
     current: false,
   });
+
+  const commitState = useCallback((next: Chapter1ObjectiveState) => {
+    lastStateSignature.current = JSON.stringify(next);
+    setState(next);
+  }, []);
 
   const refresh = useCallback(() => {
     // The local production stack can take several seconds to answer while it
@@ -216,7 +222,11 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
     const task = (async () => {
       try {
         const next = await requestChapter1Objective({ action: "state" });
-        setState(next);
+        const signature = JSON.stringify(next);
+        if (signature !== lastStateSignature.current) {
+          lastStateSignature.current = signature;
+          setState(next);
+        }
         setError(undefined);
         if (objectiveKey(next) !== autoCompletedKey.current) {
           autoCompletedKey.current = undefined;
@@ -254,7 +264,7 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
           stepId: state.stepId,
           choice,
         });
-        setState(next);
+        commitState(next);
         setError(next.ok ? undefined : next.reason);
         if (next.ok) {
           setChoiceOpen(false);
@@ -290,7 +300,7 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
         setBusy(false);
       }
     },
-    [refresh, state]
+    [commitState, refresh, state]
   );
 
   const prepareEncounter = useCallback(
@@ -312,7 +322,7 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
           stepId: state.stepId,
           choice,
         });
-        setState(next);
+        commitState(next);
         setError(next.ok ? undefined : next.reason);
         if (next.ok) setChoiceOpen(false);
       } catch (caught) {
@@ -322,7 +332,7 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
         setBusy(false);
       }
     },
-    [state]
+    [commitState, state]
   );
 
   const beginSleepTransition = useCallback(async () => {
@@ -767,8 +777,8 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
               {busy
                 ? "Confirming…"
                 : state.requirement && !state.requirement.ready
-                ? "Required item missing"
-                : `F — ${state.actionLabel ?? "Continue"}`}
+                  ? "Required item missing"
+                  : `F — ${state.actionLabel ?? "Continue"}`}
             </div>
             <div className="mt-0.5 text-xs text-white/70">
               {state.targetLabel}

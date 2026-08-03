@@ -277,7 +277,7 @@ describe("live-entity helper live-mode adapter", () => {
           },
           questState: { active: {}, completed: {} },
         }),
-      } as any);
+      }) as any;
 
     await assert.rejects(
       () =>
@@ -289,7 +289,11 @@ describe("live-entity helper live-mode adapter", () => {
         ),
       (error) =>
         isLiveEntityHelperLiveModeRejectionError(error) &&
-        error.warnings.includes("live_entity_helper_rejected:ineligible_entity")
+        error.warnings.includes(
+          "live_entity_helper_rejected:ineligible_entity"
+        ) &&
+        error.message === "This character cannot offer that quest." &&
+        !error.message.includes("live_entity_helper_rejected")
     );
   });
 

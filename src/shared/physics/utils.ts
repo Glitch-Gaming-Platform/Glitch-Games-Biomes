@@ -15,8 +15,9 @@ export function grounded(index: CollisionIndex, aabb: AABB) {
   return intersecting(index, shiftAABB(aabb, [0, -1e-3, 0]));
 }
 
-export function toClimbableIndex(index: CollisionIndex) {
-  return (aabb: AABB, dir: Vec3) => canClimbBlock({ index, aabb, dir });
+export function toClimbableIndex(index: CollisionIndex, maxStepHeight = 1) {
+  return (aabb: AABB, dir: Vec3) =>
+    canClimbBlock({ index, aabb, dir, maxStepHeight });
 }
 
 export function toGroundedIndex(index: CollisionIndex) {
@@ -35,10 +36,12 @@ export function canClimbBlock({
   index,
   aabb,
   dir,
+  maxStepHeight = 1,
 }: {
   index: CollisionIndex;
   aabb: AABB;
   dir: Vec3;
+  maxStepHeight?: number;
 }) {
   // Try placing the player slightly forward and up and see if they are
   // still intersecting to determine if the player can climb. Try climbing
@@ -49,9 +52,14 @@ export function canClimbBlock({
 
   // Number of fractions of a block to check.
   const blockFractions = 11;
+  const boundedMaxStepHeight = Math.max(
+    0,
+    Math.min(4, Number.isFinite(maxStepHeight) ? maxStepHeight : 1)
+  );
+  const samples = Math.ceil(blockFractions * boundedMaxStepHeight);
 
   return Array.from(
-    { length: blockFractions },
+    { length: samples },
     (_, i) => (i + 1) / blockFractions
   ).some(
     (fraction) =>

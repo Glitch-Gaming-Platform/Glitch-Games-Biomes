@@ -105,6 +105,11 @@ import {
   type HarthmereCraftingTableCandidate,
 } from "@/shared/harthmere/harthmere_crafting_table_proximity";
 import { isHarthmerePlacedCookStationItem } from "@/client/components/overlays/inspected/placeables/craftingStationCookRouting";
+import { readRenderablePuppetOverrides } from "@/shared/cutscene/puppets";
+import {
+  harthmereProjectedNpcCandidates,
+  harthmereProjectedNpcPresentation,
+} from "@/client/game/scripts/harthmere_npc_projection";
 import { ok } from "assert";
 import { isEqual } from "lodash";
 import { Vector3 } from "three";
@@ -269,6 +274,27 @@ export function harthmereNpcTalkCandidateScoreForTest(input: {
   return horizontalDistance - viewDot * 0.9;
 }
 
+export function harthmereNpcTalkCandidatePassesInspectDepthForTest(input: {
+  playerPosition: ReadonlyVec3;
+  npcPosition: ReadonlyVec3;
+  maxDistance?: number;
+  projectedOnly?: boolean;
+  projected: boolean;
+}): boolean {
+  if (input.projectedOnly && !input.projected) {
+    return false;
+  }
+  if (input.maxDistance === undefined) {
+    return true;
+  }
+  const distance = Math.hypot(
+    input.npcPosition[0] - input.playerPosition[0],
+    input.npcPosition[1] - input.playerPosition[1],
+    input.npcPosition[2] - input.playerPosition[2]
+  );
+  return Number.isFinite(distance) && distance <= input.maxDistance;
+}
+
 // HARTHMERE_WORLD_OBJECT_INSPECT_CANDIDATES
 // The interactable Grove props (crates, boards, posts, doors, ...) render as
 // procedural beacons rather than ECS entities, so the cursor raycast never
@@ -276,8 +302,7 @@ export function harthmereNpcTalkCandidateScoreForTest(input: {
 // the same static landmark tables the renderer draws, filtered to the labels
 // the object-interaction semantics recognize as non-living props.
 let harthmereWorldObjectCandidateCache:
-  | HarthmereWorldObjectCandidate[]
-  | undefined;
+  HarthmereWorldObjectCandidate[] | undefined;
 
 // Radius used to gather live ECS world-object candidates from the spatial table.
 // Slightly larger than the selector's own accept radius (6.5m) so the faced-cone
@@ -324,8 +349,7 @@ function harthmereWorldObjectInspectCandidates(): HarthmereWorldObjectCandidate[
 // jobs board itself. Without this the player could walk to the marker and find
 // nothing to interact with, which made every business job uncompletable.
 let harthmereFieldTargetCandidateCache:
-  | HarthmereWorldObjectCandidate[]
-  | undefined;
+  HarthmereWorldObjectCandidate[] | undefined;
 const harthmereFieldTargetGroundedFeetYByColumn = new Map<string, number>();
 
 function harthmereJobsBoardFieldTargetInspectCandidates(
@@ -363,11 +387,11 @@ function harthmereJobsBoardFieldTargetInspectCandidates(
       : [
           {
             ...candidate,
-            position: [
-              candidate.position[0],
-              feetY,
-              candidate.position[2],
-            ] as [number, number, number],
+            position: [candidate.position[0], feetY, candidate.position[2]] as [
+              number,
+              number,
+              number,
+            ],
           },
         ];
   });
@@ -412,18 +436,10 @@ type HarthmereEcsNpcCombatRegistryBehavior =
   | "quest_anchor";
 
 type HarthmereEcsNpcCombatRegistrySpecies =
-  | "human"
-  | "animal"
-  | "undead"
-  | "construct";
+  "human" | "animal" | "undead" | "construct";
 
 type HarthmereEcsNpcCombatRegistrySocialRole =
-  | "hostile"
-  | "wildlife"
-  | "guard"
-  | "merchant"
-  | "civilian"
-  | "training";
+  "hostile" | "wildlife" | "guard" | "merchant" | "civilian" | "training";
 
 type HarthmereEcsNpcCombatActorRegistryEntry = {
   offset: number;
@@ -575,18 +591,10 @@ type HarthmereEcsNpcCombatBridgeBehavior =
   | "quest_anchor";
 
 type HarthmereEcsNpcCombatBridgeSpecies =
-  | "human"
-  | "animal"
-  | "undead"
-  | "construct";
+  "human" | "animal" | "undead" | "construct";
 
 type HarthmereEcsNpcCombatBridgeSocialRole =
-  | "hostile"
-  | "wildlife"
-  | "guard"
-  | "merchant"
-  | "civilian"
-  | "training";
+  "hostile" | "wildlife" | "guard" | "merchant" | "civilian" | "training";
 
 type HarthmereEcsNpcCombatActorBridgeEntry = {
   offset: number;
@@ -719,6 +727,8 @@ export class OverlayScript implements Script {
   lastLandId: BiomesId | undefined = undefined;
   lastLandIdChanged: number = 0;
   lastPosition: Vec3 | undefined = undefined;
+  private readonly projectedNpcOob = new Map<number, ReadonlyEntity>();
+  private readonly projectedNpcOobInFlight = new Set<number>();
 
   constructor(
     private readonly userId: BiomesId,
@@ -730,6 +740,59 @@ export class OverlayScript implements Script {
     private readonly mapManager: MapManager,
     private readonly voxeloo: VoxelooModule
   ) {}
+
+  /**
+   * Spatial selectors see the shared ECS transform, while Chapter One NPCs can
+   * have a different per-player presentation. Merge exact projected entities
+   * into the scan and filter against their visible position so body, name,
+   * Talk and combat diagnostics all agree on one actor.
+   */
+  private projectedNpcCandidates(center: ReadonlyVec3, radius: number) {
+    const overrides = readRenderablePuppetOverrides();
+    const projectedEntities = overrides.flatMap((override) => {
+      if (override.id <= 0) return [];
+      const entity = this.table.get(
+        NpcMetadataSelector.point(override.id as BiomesId)
+      );
+      if (entity) {
+        this.projectedNpcOob.delete(override.id);
+        return [entity];
+      }
+      const cached = this.projectedNpcOob.get(override.id);
+      if (cached) return [cached];
+      if (!this.projectedNpcOobInFlight.has(override.id)) {
+        this.projectedNpcOobInFlight.add(override.id);
+        void this.table.oob
+          .oobFetchSingle(override.id as BiomesId)
+          .then((fetched) => {
+            if (fetched?.npc_metadata) {
+              this.projectedNpcOob.set(override.id, fetched);
+            }
+          })
+          .catch((error) => {
+            log.warn("Could not fetch projected Chapter One NPC", {
+              error,
+              entityId: override.id,
+            });
+          })
+          .finally(() => this.projectedNpcOobInFlight.delete(override.id));
+      }
+      return [];
+    });
+    return harthmereProjectedNpcCandidates({
+      nearby: [
+        ...this.table.scan(
+          NpcMetadataSelector.query.spatial.inSphere({ center, radius })
+        ),
+      ],
+      projectedEntities,
+      overrides,
+      center,
+      radius,
+      basePosition: (entity) => entity.position?.v,
+      baseLabel: (entity) => entity.label?.text,
+    });
+  }
 
   applyNavigationAidOverlays(
     overlayMap: OverlayMap,
@@ -918,11 +981,9 @@ export class OverlayScript implements Script {
     const deadNpcEntityIds: number[] = [];
     const now = Date.now();
 
-    for (const entity of this.table.scan(
-      NpcMetadataSelector.query.spatial.inSphere({
-        center: localPlayer.player.position,
-        radius: HARTHMERE_ECS_NPC_COMBAT_REGISTRY_SCAN_RADIUS,
-      })
+    for (const { entity, presentation } of this.projectedNpcCandidates(
+      localPlayer.player.position,
+      HARTHMERE_ECS_NPC_COMBAT_REGISTRY_SCAN_RADIUS
     )) {
       seenNpcEntityIds.push(Number(entity.id));
 
@@ -939,6 +1000,7 @@ export class OverlayScript implements Script {
           : undefined;
       const npc = this.resources.cached("/scene/npc/render_state", entity.id);
       const rawNpcPos =
+        presentation.position ??
         motionOverrides?.position ??
         npc?.smoothedPosition() ??
         entity.position?.v;
@@ -952,7 +1014,8 @@ export class OverlayScript implements Script {
       }
 
       const npcSize = entity.size?.v ?? getOverlayEntitySizeCompat(entity);
-      const npcName = entity.label?.text ?? npcType.displayName;
+      const npcName =
+        presentation.label ?? entity.label?.text ?? npcType.displayName;
       const hp = Number(entity.health?.hp);
       const maxHp = Number(entity.health?.maxHp);
       const alive = !Number.isFinite(hp) || hp > 0;
@@ -1033,11 +1096,9 @@ export class OverlayScript implements Script {
       HarthmereEcsNpcCombatActorBridgeEntry
     > = {};
 
-    for (const entity of this.table.scan(
-      NpcMetadataSelector.query.spatial.inSphere({
-        center: localPlayer.player.position,
-        radius: MAX_NPC_OVERLAY_DIST,
-      })
+    for (const { entity, presentation } of this.projectedNpcCandidates(
+      localPlayer.player.position,
+      MAX_NPC_OVERLAY_DIST
     )) {
       if (!isNpcTypeId(entity.npc_metadata.type_id)) {
         log.throttledError(
@@ -1070,13 +1131,17 @@ export class OverlayScript implements Script {
         becomeTheNPC.kind === "active" && becomeTheNPC.entityId === entity.id
           ? becomeTheNPC
           : undefined;
-      const npcPos = motionOverrides?.position ?? npc.smoothedPosition();
+      const npcPos =
+        presentation.position ??
+        motionOverrides?.position ??
+        npc.smoothedPosition();
       const npcSize = entity.size?.v ?? getOverlayEntitySizeCompat(entity);
-      const npcName = entity.label?.text ?? npcType.displayName;
+      const npcName =
+        presentation.label ?? entity.label?.text ?? npcType.displayName;
       const attackable = Boolean(
         getNpcBehavior(npcType).damageable?.attackable &&
-          entity.health?.hp !== undefined &&
-          entity.health.hp > 0
+        entity.health?.hp !== undefined &&
+        entity.health.hp > 0
       );
       const bridgeText = harthmereEcsNpcCombatBridgeText(
         npcName,
@@ -1139,7 +1204,7 @@ export class OverlayScript implements Script {
         kind: "name",
         key,
         entity,
-        name: entity.label?.text ?? npcType.displayName,
+        name: npcName,
         typing: false,
         beginHide: true,
         health: getNpcBehavior(npcType).damageable?.attackable
@@ -1202,6 +1267,11 @@ export class OverlayScript implements Script {
     projectionMap: ProjectionMap
   ) {
     const localPlayer = this.resources.get("/scene/local_player");
+    const puppetOverrides = new Map(
+      readRenderablePuppetOverrides()
+        .filter((override) => override.id > 0)
+        .map((override) => [override.id, override] as const)
+    );
 
     for (const entity of this.table.scan(
       NamedQuestGiverSelector.query.spatial.inSphere({
@@ -1216,20 +1286,41 @@ export class OverlayScript implements Script {
       if (this.isHarthmereWorldObjectEntity(entity)) {
         continue;
       }
+      const presentation = harthmereProjectedNpcPresentation(
+        Number(entity.id),
+        entity.position?.v,
+        entity.label?.text,
+        puppetOverrides
+      );
+      if (
+        presentation.hidden ||
+        !presentation.position ||
+        dist(presentation.position, localPlayer.player.position) >
+          MAX_NPC_OVERLAY_DIST
+      ) {
+        continue;
+      }
       const npcKey = `npc:${entity.id}`;
       if (overlayMap.has(npcKey)) {
         continue; // Already handled in NPC selector above
       }
 
-      this.basicEntityPosition(overlayMap, projectionMap, entity, npcKey, {
-        kind: "name",
-        key: npcKey,
+      this.basicEntityPosition(
+        overlayMap,
+        projectionMap,
         entity,
-        name: entity.label?.text,
-        typing: false,
-        beginHide: true,
-        entityId: entity.id,
-      });
+        npcKey,
+        {
+          kind: "name",
+          key: npcKey,
+          entity,
+          name: presentation.label,
+          typing: false,
+          beginHide: true,
+          entityId: entity.id,
+        },
+        presentation.position
+      );
     }
   }
 
@@ -1265,12 +1356,13 @@ export class OverlayScript implements Script {
     projectionMap: ProjectionMap,
     entity: ReadonlyEntity,
     key: string,
-    overlay: Overlay
+    overlay: Overlay,
+    projectedPosition?: ReadonlyVec3
   ) {
     const localPlayer = this.resources.get("/scene/local_player");
     const camera = this.resources.get("/scene/camera");
 
-    const rawNpcPos = entity.position?.v;
+    const rawNpcPos = projectedPosition ?? entity.position?.v;
     const npcPos = rawNpcPos
       ? snapshotGroundLiveNpcPosition(rawNpcPos, entity.label?.text)
       : undefined;
@@ -1515,12 +1607,22 @@ export class OverlayScript implements Script {
         }
       }
       // A direct terrain hit terminates generic proximity fallbacks. Only an
-      // authored procedural object at roughly the same depth may still win;
-      // crates, NPCs, bags, and stations behind the aimed voxel cannot leak an
-      // unrelated F prompt through the reticle.
+      // authored procedural object, or a per-player projected NPC whose visible
+      // body is at roughly the same depth, may still win. The projected body is
+      // a renderer ghost when its shared ECS transform is outside subscription,
+      // so the cursor ray necessarily lands on terrain behind it. Keep ordinary
+      // NPCs, crates, bags, and stations behind the aimed voxel suppressed.
       const localPlayer = this.resources.get("/scene/local_player");
-      return this.getNearbyHarthmereObjectInspectableOverlay(
-        dist(hit.pos, localPlayer.player.position) + 1.25
+      const maxInspectableDistance =
+        dist(hit.pos, localPlayer.player.position) + 1.25;
+      return (
+        this.getNearbyHarthmereObjectInspectableOverlay(
+          maxInspectableDistance
+        ) ??
+        this.getNearbyNpcTalkInspectableOverlay({
+          maxDistance: maxInspectableDistance,
+          projectedOnly: true,
+        })
       );
     }
 
@@ -1600,14 +1702,14 @@ export class OverlayScript implements Script {
     const item = anItem(itemId);
     return Boolean(
       item.isContainer ||
-        item.isDoor ||
-        item.isShopContainer ||
-        item.isCraftingStation ||
-        item.isOutfitStand ||
-        item.readable ||
-        item.isCustomizableTextSign ||
-        item.isMailbox ||
-        item.isMediaPlayer
+      item.isDoor ||
+      item.isShopContainer ||
+      item.isCraftingStation ||
+      item.isOutfitStand ||
+      item.readable ||
+      item.isCustomizableTextSign ||
+      item.isMailbox ||
+      item.isMediaPlayer
     );
   }
 
@@ -1699,12 +1801,12 @@ export class OverlayScript implements Script {
       playerPosition: [...localPlayer.player.position] as [
         number,
         number,
-        number
+        number,
       ],
       facingView: viewDir([0, localPlayer.player.orientation[1]]) as [
         number,
         number,
-        number
+        number,
       ],
       candidates,
       radius: HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS,
@@ -1841,8 +1943,7 @@ export class OverlayScript implements Script {
   // the existing crafting/cooking routing without changing signs, NPCs, boards, or
   // ordinary props.
   private getNearbyHarthmerePlaceableCraftingStationOverlay():
-    | InspectableOverlay
-    | undefined {
+    InspectableOverlay | undefined {
     const localPlayer = this.resources.get("/scene/local_player");
     const playerPosition: ReadonlyVec3 = [
       localPlayer.player.position[0],
@@ -1887,7 +1988,7 @@ export class OverlayScript implements Script {
       facingView: viewDir([0, localPlayer.player.orientation[1]]) as [
         number,
         number,
-        number
+        number,
       ],
       candidates,
     });
@@ -1946,7 +2047,7 @@ export class OverlayScript implements Script {
       facingView: viewDir([0, localPlayer.player.orientation[1]]) as [
         number,
         number,
-        number
+        number,
       ],
       candidates: [
         ...harthmereVisibleStaticWorldObjectInspectCandidates(
@@ -2018,7 +2119,9 @@ export class OverlayScript implements Script {
     };
   }
 
-  private getNearbyNpcTalkInspectableOverlay(): InspectableOverlay | undefined {
+  private getNearbyNpcTalkInspectableOverlay(
+    options: { maxDistance?: number; projectedOnly?: boolean } = {}
+  ): InspectableOverlay | undefined {
     const localPlayer = this.resources.get("/scene/local_player");
     const becomeTheNPC = this.resources.get("/scene/npc/become_npc");
     let best:
@@ -2026,14 +2129,13 @@ export class OverlayScript implements Script {
           score: number;
           entity: ReadonlyEntity;
           npcType: ReturnType<typeof idToNpcType>;
+          projectedTalkable: boolean;
         }
       | undefined;
 
-    for (const entity of this.table.scan(
-      NpcMetadataSelector.query.spatial.inSphere({
-        center: localPlayer.player.position,
-        radius: HARTHMERE_NPC_TALK_FALLBACK_RADIUS,
-      })
+    for (const { entity, presentation } of this.projectedNpcCandidates(
+      localPlayer.player.position,
+      HARTHMERE_NPC_TALK_FALLBACK_RADIUS
     )) {
       if (!isNpcTypeId(entity.npc_metadata.type_id)) {
         continue;
@@ -2054,10 +2156,25 @@ export class OverlayScript implements Script {
           : undefined;
       const npc = this.resources.cached("/scene/npc/render_state", entity.id);
       const npcPosition =
+        presentation.position ??
         motionOverrides?.position ??
         npc?.smoothedPosition() ??
         entity.position?.v;
       if (!npcPosition) {
+        continue;
+      }
+      const projectedTalkable = Boolean(
+        presentation.override?.at && !presentation.hidden
+      );
+      if (
+        !harthmereNpcTalkCandidatePassesInspectDepthForTest({
+          playerPosition: localPlayer.player.position,
+          npcPosition,
+          maxDistance: options.maxDistance,
+          projectedOnly: options.projectedOnly,
+          projected: projectedTalkable,
+        })
+      ) {
         continue;
       }
       const score = harthmereNpcTalkCandidateScoreForTest({
@@ -2069,7 +2186,7 @@ export class OverlayScript implements Script {
         continue;
       }
       if (!best || score < best.score) {
-        best = { score, entity, npcType };
+        best = { score, entity, npcType, projectedTalkable };
       }
     }
 
@@ -2082,6 +2199,7 @@ export class OverlayScript implements Script {
       npcType: best.npcType,
       entity: best.entity,
       entityId: best.entity.id,
+      projectedTalkable: best.projectedTalkable,
     };
   }
 

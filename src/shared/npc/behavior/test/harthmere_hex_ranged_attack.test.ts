@@ -378,6 +378,53 @@ describe("Harthmere Hex ranged attacks", () => {
     assert.equal(attackCount, 55);
   });
 
+  it("uses all five Muck-Scarred Helix attacks in one encounter as range and health phases open", () => {
+    const attacks = harthmereBossAttacksForLabel("Muck-Scarred Helix");
+    assert.ok(attacks);
+    assert.equal(attacks.length, 5);
+    const test = fixture(targetAt(4.25));
+    const selected: string[] = [];
+    let nextCastAt = 2_000;
+
+    for (let index = 0; index < attacks.length; index += 1) {
+      if (index === attacks.length - 1) {
+        (test.npc as any).hp = 50;
+      }
+      assert.equal(
+        rangedAttackTargetTick(
+          test.env,
+          test.npc,
+          test.getTarget(),
+          attacks,
+          nextCastAt
+        ).phase,
+        "fired"
+      );
+      const active = test.state.chaseAttack.rangedAttack;
+      selected.push(active.abilityId);
+      assert.equal(
+        rangedAttackTargetTick(
+          test.env,
+          test.npc,
+          test.getTarget(),
+          attacks,
+          active.impactTime
+        ).phase,
+        "hit"
+      );
+      const selectedAttack = attacks.find(
+        ({ abilityId }) => abilityId === active.abilityId
+      );
+      assert.ok(selectedAttack);
+      nextCastAt = active.releaseTime + selectedAttack.sharedCooldownSecs;
+    }
+
+    assert.deepEqual(
+      selected,
+      attacks.map(({ abilityId }) => abilityId)
+    );
+  });
+
   it("resolves a native ground-area magic attack against every visible player in the radius", () => {
     const secondPlayerId = 91_003 as BiomesId;
     const primary = targetAt(8);
@@ -395,8 +442,8 @@ describe("Harthmere Hex ranged attacks", () => {
       return id === PLAYER_ID
         ? primary
         : id === secondPlayerId
-        ? secondary
-        : undefined;
+          ? secondary
+          : undefined;
     };
     const blizzard = {
       ...fireball,

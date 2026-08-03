@@ -6,6 +6,7 @@ import {
 import { usePointerLockUnlockWhileOpenActive } from "@/client/components/contexts/usePointerLockUnlockWhileOpenActive";
 import { HarthmereBusinessInterfacePanel } from "./HarthmereBusinessInterfacePanel";
 import { HarthmereBusinessInteractionPrompt } from "./HarthmereBusinessInteractionPrompt";
+import { HarthmereBusinessShiftHUD } from "./HarthmereBusinessShiftHUD";
 import {
   createHarthmereBusinessInterfaceAdapter,
   fetchHarthmereBusinessEconomyState,
@@ -130,7 +131,7 @@ export function HarthmereBusinessLiveContainer({
     const inferred = nearestHarthmereBusinessDashboardWorldContext(
       state,
       playerPosition,
-      9
+      4.25
     );
     const next = mergeHarthmereBusinessWorldContext(worldContext, inferred);
     return next.nearbyBusinessId
@@ -205,6 +206,10 @@ export function HarthmereBusinessLiveContainer({
           onClose={onClose}
         />
       ) : null}
+      <HarthmereBusinessShiftHUD
+        adapter={adapter}
+        businessId={context.nearbyBusinessId ?? undefined}
+      />
     </>
   );
 }

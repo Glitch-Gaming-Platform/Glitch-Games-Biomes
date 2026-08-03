@@ -3070,13 +3070,27 @@ ul.bullet-points {
   pointer-events: none;
 }
 
+.joysticks--mobile {
+  position: fixed;
+  bottom: max(104px, calc(env(safe-area-inset-bottom) + 92px));
+}
+
+.joysticks--mobile .mobile-movement-buttons {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
 .joysticks .joystick {
   flex: 0 0 auto;
   pointer-events: auto;
   touch-action: none;
 }
 
-.joysticks .mobile-crouch-button {
+.joysticks .mobile-crouch-button,
+.joysticks--mobile .mobile-movement-button {
   display: flex;
   min-width: 58px;
   min-height: 42px;
@@ -3098,8 +3112,16 @@ ul.bullet-points {
   -webkit-tap-highlight-color: transparent;
 }
 
+.joysticks--mobile .mobile-movement-button {
+  min-height: 48px;
+}
+
 .joysticks .mobile-crouch-button--held,
-.joysticks .mobile-crouch-button:active {
+.joysticks .mobile-crouch-button:active,
+.joysticks--mobile .mobile-crouch-button--held,
+.joysticks--mobile .mobile-crouch-button:active,
+.joysticks--mobile .mobile-jump-button--held,
+.joysticks--mobile .mobile-jump-button:active {
   transform: translateY(2px);
   border-color: rgb(192, 208, 255);
   background: rgba(61, 89, 171, 0.96);
@@ -3107,13 +3129,15 @@ ul.bullet-points {
     inset 0 0 12px rgba(219, 228, 255, 0.35);
 }
 
-.joysticks .mobile-crouch-button__key {
+.joysticks .mobile-crouch-button__key,
+.joysticks--mobile .mobile-movement-button__key {
   font-size: 18px;
   font-weight: 900;
   line-height: 1;
 }
 
-.joysticks .mobile-crouch-button__label {
+.joysticks .mobile-crouch-button__label,
+.joysticks--mobile .mobile-movement-button__label {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;

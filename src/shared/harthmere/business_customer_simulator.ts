@@ -23,6 +23,11 @@ import {
   type HarthmereBusinessMiniGameSpec,
 } from "./business_minigame_specs";
 import { harthmereBoundsOverlapGroveBuildReserve } from "./grove_build_placement_policy";
+import {
+  harthmereBusinessCustomerSessionEntityId,
+  type HarthmereBusinessCustomerReaction,
+  type HarthmereBusinessCustomerWorldPhase,
+} from "./business_interior_runtime";
 
 export type {
   HarthmereBusinessMiniGameDecisionResult,
@@ -192,6 +197,7 @@ export interface HarthmereBusinessMiniGameDefinition {
 
 export interface HarthmereBusinessCustomerTicket {
   ticketId: string;
+  entityId: BiomesId;
   npcId: string;
   askId: string;
   requestedOfferId: string;
@@ -206,6 +212,9 @@ export interface HarthmereBusinessCustomerTicket {
   needDelta: number;
   navGoal: string;
   scenarioId?: string;
+  spatialPhase: HarthmereBusinessCustomerWorldPhase;
+  reaction: HarthmereBusinessCustomerReaction;
+  queueIndex: number;
 }
 
 export interface HarthmereBusinessCustomerSession {
@@ -213,7 +222,8 @@ export interface HarthmereBusinessCustomerSession {
   businessId: string;
   typeId: HarthmereEconomyBusinessTypeId;
   actorId: string;
-  status: "active" | "completed" | "expired";
+  actorEntityId?: BiomesId;
+  status: "active" | "ending" | "completed" | "expired" | "aborted";
   startedAtMs: number;
   expiresAtMs: number;
   currentTicketId?: string;
@@ -226,6 +236,8 @@ export interface HarthmereBusinessCustomerSession {
   progressPoints: number;
   dailyBonusGold: number;
   notes: string[];
+  endedAtMs?: number;
+  cleanupCompletedAtMs?: number;
 }
 
 export interface HarthmereBusinessCustomerStats {
@@ -7442,6 +7454,8 @@ export function createHarthmereBusinessCustomerQueue(input: {
   businessId: string;
   typeId: HarthmereEconomyBusinessTypeId;
   sessionId: string;
+  actorId?: string;
+  actorEntityId?: BiomesId;
   nowMs: number;
   count: number;
   nextTicketNumber: number;
@@ -7506,8 +7520,14 @@ export function createHarthmereBusinessCustomerQueue(input: {
             modifier.patienceMultiplier
         )
       );
+      const ticketId = `customer_ticket_${nextTicketNumber++}`;
       return {
-        ticketId: `customer_ticket_${nextTicketNumber++}`,
+        ticketId,
+        entityId: harthmereBusinessCustomerSessionEntityId({
+          actorId: input.actorId ?? input.businessId,
+          sessionId: input.sessionId,
+          ticketId,
+        }),
         npcId: npc.npcId,
         askId: ask.askId,
         requestedOfferId: ask.desiredOfferId,
@@ -7531,6 +7551,10 @@ export function createHarthmereBusinessCustomerQueue(input: {
         needDelta: ask.needDelta,
         navGoal: ask.navGoal,
         scenarioId: `${ask.askId}:${modifier.id}:${requestContext.id}:${complication.id}`,
+        spatialPhase:
+          index === 0 ? ("entering" as const) : ("entering" as const),
+        reaction: "neutral" as const,
+        queueIndex: index,
       };
     }
   );
@@ -8045,9 +8069,16 @@ function harthmereBusinessOutpostMinigameFootprint(
   const largeProfiles = new Set<
     HarthmereBusinessOutpost["building"]["profile"]
   >(["barracks", "dock_warehouse", "inn", "player_services", "smithy"]);
-  const largeBusiness = /refinery|portal|security|weapons|hospitality/.test(
-    outpost.businessType
-  );
+  const expandedInteriorBusinesses = new Set<HarthmereEconomyBusinessTypeId>([
+    "biome_maintenance_repair",
+    "medical_doctor",
+    "repair_maintenance_person",
+    "food_service_restaurant",
+    "courier",
+  ]);
+  const largeBusiness =
+    /refinery|portal|security|weapons|hospitality/.test(outpost.businessType) ||
+    expandedInteriorBusinesses.has(outpost.businessType);
   const minWidth =
     largeProfiles.has(outpost.building.profile) || largeBusiness ? 28 : 24;
   const minDepth =
@@ -12292,7 +12323,7 @@ export const HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS: Readonly<
 );
 
 export const HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION =
-  "harthmere-business-outpost-rebuild-real-interior-visual-props" as const;
+  "harthmere-business-outpost-rebuild-real-interior-blender-v1-expanded" as const;
 
 export interface HarthmereBusinessOutpostSafeSite {
   outpostId: string;

@@ -10,7 +10,7 @@ import {
 import { makeStandardScenePasses } from "@/client/game/renderers/passes/standard_passes";
 import { PerformanceProfiler } from "@/client/game/renderers/performance_profiler";
 import type { Scenes } from "@/client/game/renderers/scenes";
-import { createNewScenes } from "@/client/game/renderers/scenes";
+import { createNewScenes, SCENE_TYPES } from "@/client/game/renderers/scenes";
 import { CSS3DRenderer } from "@/client/game/renderers/three_ext/css3d";
 import { DynamicSettingsUpdater } from "@/client/game/resources/dynamic_settings_updater";
 import type {
@@ -59,8 +59,8 @@ type RecursivePartial<T> = {
   [P in keyof T]?: T[P] extends (infer U)[]
     ? RecursivePartial<U>[]
     : T[P] extends object
-    ? RecursivePartial<T[P]>
-    : T[P];
+      ? RecursivePartial<T[P]>
+      : T[P];
 };
 export type RenderStateDelta = RecursivePartial<RenderState>;
 
@@ -98,6 +98,7 @@ export class RendererController {
   private cleanups: Array<() => unknown> = [];
   private scenePasses: RenderPass[] | undefined;
   private disabledPasses: { [K in RenderPassName]?: boolean } = {};
+  private postprocessesVersion?: number;
 
   constructor(
     private renderers: Renderer[],
@@ -153,6 +154,7 @@ export class RendererController {
     }
     this.cleanups = [];
     this.renderSettingsVersion = undefined;
+    this.postprocessesVersion = undefined;
   }
 
   attach(canvas: HTMLCanvasElement) {
@@ -248,10 +250,11 @@ export class RendererController {
         // Clear out the existing scene because we will re-populate it each frame,
         // however we still want to re-use the same scene object from frame to
         // frame because THREE.js caches intermediate results within it.
-        Object.values(scenes).map((scene) => {
+        for (const sceneType of SCENE_TYPES) {
+          const scene = scenes[sceneType];
           scene.clear();
           scene.materialDependencies.clear();
-        });
+        }
         const delta = this.threeClock!.getDelta();
         this.rendererScripts.tick(delta, "rendererScripts");
         timeCode("draw", () => this.drawAll(scenes, delta));
@@ -313,10 +316,18 @@ export class RendererController {
           canvas: this.canvas,
         }
       );
+      this.postprocessesVersion = undefined;
     }
 
     // Postprocesses
-    if (this.passRenderer) {
+    const postprocessesVersion = this.resources.version(
+      "/renderer/postprocesses"
+    );
+    if (
+      this.passRenderer &&
+      postprocessesVersion !== this.postprocessesVersion
+    ) {
+      this.postprocessesVersion = postprocessesVersion;
       const postprocesses = this.resources
         .get("/renderer/postprocesses")
         .filter((p) => !this.disabledPasses[p.name]);

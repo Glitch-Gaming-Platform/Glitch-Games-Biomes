@@ -33,6 +33,7 @@ import { QuestSideEffects } from "@/client/components/QuestSideEffects";
 import { RulesetToggleable } from "@/client/components/RulsetToggleable";
 import { inInputElement, ShortcutsHUD } from "@/client/components/ShortcutsHUD";
 import { SpatialMediaPlayers } from "@/client/components/SpatialMediaPlayer";
+import { PlayerInviteArrival } from "@/client/components/system/PlayerInviteArrival";
 import { ToastsHUD } from "@/client/components/toast/ToastsHUD";
 import { UnsupportedBrowserHUD } from "@/client/components/UnsupportedBrowserHUD";
 import { WakeUpScreen } from "@/client/components/WakeUpScreen";
@@ -250,6 +251,9 @@ export const BiomesChrome: React.FunctionComponent<{}> = React.memo(({}) => {
       <HistorySideEffects />
       <MaybeJoystickInput />
       <SpatialMediaPlayers />
+      <NonObserverOnly>
+        <PlayerInviteArrival />
+      </NonObserverOnly>
       <CanvasEffects />
       <CutsceneOverlay />
       <CSS3DContainer />

@@ -104,7 +104,7 @@ const StateRender: React.FunctionComponent<{
             }}
           >
             {minigame && minigameName(minigame)}
-            <div style={{ fontSize: "var(--font-size-large" }}>
+            <div style={{ fontSize: "var(--font-size-large)" }}>
               Waiting for players...
             </div>
           </div>
@@ -115,32 +115,34 @@ const StateRender: React.FunctionComponent<{
       return (
         <div className="center-hud">
           <SpleefHUDTable state={state} />
-          {state.instance_state.last_winner_id && (
-            <div
-              style={{
-                position: "fixed",
-                top: "25vh",
-                left: "50vw",
-                transform: "translate(-50%, -50%)",
-                fontSize: "var(--font-size-xxxlarge)",
-                width: "100%",
-                textAlign: "center",
-                color: "var(--white)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "1vmin",
-                fontWeight: "600",
-              }}
-            >
+          <div
+            style={{
+              position: "fixed",
+              top: "25vh",
+              left: "50vw",
+              transform: "translate(-50%, -50%)",
+              fontSize: "var(--font-size-xxxlarge)",
+              width: "100%",
+              textAlign: "center",
+              color: "var(--white)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "1vmin",
+              fontWeight: "600",
+            }}
+          >
+            {state.instance_state.last_winner_id && (
               <WinnerView userId={state.instance_state.last_winner_id} />
-              <div style={{ fontSize: "var(--font-size-large" }}>
-                Next round in{" "}
-                <ClockDurationEndTime
-                  endTime={state.instance_state.round_start}
-                />
-              </div>
+            )}
+            <div style={{ fontSize: "var(--font-size-large)" }}>
+              {state.instance_state.last_winner_id
+                ? "Next round in "
+                : "Round starts in "}
+              <ClockDurationEndTime
+                endTime={state.instance_state.round_start}
+              />
             </div>
-          )}
+          </div>
         </div>
       );
 
@@ -148,7 +150,7 @@ const StateRender: React.FunctionComponent<{
       return (
         <>
           <div className="title-and-author">
-            Round #{state.round_number + 1}{" "}
+            Round #{state.round_number}{" "}
             <ClockDurationEndTime
               endTime={state.instance_state.round_expires}
             />{" "}

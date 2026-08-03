@@ -20,6 +20,10 @@ export interface HarthmereBossStompProfile {
   strideMeters: number;
   minimumIntervalSeconds: number;
   teleportResetMeters: number;
+  soundVolumeMultiplier: number;
+  soundRefDistance: number;
+  soundMaxDistance: number;
+  soundRolloffFactor: number;
 }
 
 export interface HarthmereBossStompState {
@@ -41,11 +45,20 @@ export function harthmereBossStompProfileForEntity(
     return undefined;
   }
   const strideMeters = Math.max(1.4, Math.min(3, visual.worldSize[1] * 0.2));
+  const footprintMeters = Math.max(visual.worldSize[0], visual.worldSize[2]);
   return {
     bossId: visual.id,
     strideMeters,
     minimumIntervalSeconds: 0.55,
     teleportResetMeters: Math.max(10, strideMeters * 4),
+    // Generated Harthmere paths do not pass through the Galois "footsteps"
+    // asset class, so they do not receive its 6x boost. A generic 2 m
+    // reference distance also made a giant stomp nearly vanish at normal boss
+    // ranges even though the clip loaded and played successfully.
+    soundVolumeMultiplier: 4,
+    soundRefDistance: Math.max(8, Math.min(18, footprintMeters * 1.1)),
+    soundMaxDistance: Math.max(96, footprintMeters * 10),
+    soundRolloffFactor: 0.85,
   };
 }
 

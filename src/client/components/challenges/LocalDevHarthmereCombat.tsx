@@ -773,8 +773,8 @@ function markPlayerDownedFromCombat(
     killer.behavior === "guard"
       ? "guard"
       : killer.behavior === "hostile"
-      ? "npc"
-      : "unknown";
+        ? "npc"
+        : "unknown";
   const record: HarthmereDeathRecord = {
     deathId,
     state: "downed",
@@ -1097,8 +1097,7 @@ export function useHarthmereFallDamageBridge() {
     }
     const handler = (event: Event) => {
       const detail = (event as CustomEvent).detail as
-        | { blocks?: number }
-        | undefined;
+        { blocks?: number } | undefined;
       const blocks = Number(detail?.blocks ?? 0);
       if (Number.isFinite(blocks) && blocks > 0) {
         applyHarthmereFallDamageFromSystem(blocks);
@@ -1117,8 +1116,7 @@ export function useHarthmereDrowningDamageBridge() {
     }
     const handler = (event: Event) => {
       const detail = (event as CustomEvent).detail as
-        | { damage?: number }
-        | undefined;
+        { damage?: number } | undefined;
       const damage = Number(detail?.damage ?? 0);
       if (Number.isFinite(damage) && damage > 0) {
         applyHarthmereDrowningDamageFromSystem(damage);
@@ -1273,10 +1271,10 @@ function equippedWeaponContext(): EquippedWeaponContext {
       weapon.itemId === "two_handed_sword"
         ? 60
         : weapon.itemId === "iron_longsword"
-        ? 50
-        : weapon.itemId === "woodsman_axe"
-        ? 45
-        : 35;
+          ? 50
+          : weapon.itemId === "woodsman_axe"
+            ? 45
+            : 35;
     const durability = Math.max(0, Number(weapon.durability ?? maxDurability));
     const durabilityFactor = clamp(durability / maxDurability, 0.35, 1);
     return { ...context, durabilityFactor };
@@ -1827,8 +1825,8 @@ function normalizeNpcStatsForOffset(
   const fallbackName = fallback.name;
   const staleIdentity = Boolean(
     persistedName &&
-      fallbackName &&
-      persistedName.trim().toLowerCase() !== fallbackName.trim().toLowerCase()
+    fallbackName &&
+    persistedName.trim().toLowerCase() !== fallbackName.trim().toLowerCase()
   );
 
   if (staleIdentity) {
@@ -2081,8 +2079,8 @@ export function reconcileHarthmereCombatStateFromLiveStatus(input: {
     liveState === "protected_after_respawn"
       ? "protected_after_respawn"
       : ["dead", "downed", "respawning"].includes(state.player.combatState)
-      ? "idle"
-      : state.player.combatState;
+        ? "idle"
+        : state.player.combatState;
   if (
     state.player.hp === hp &&
     state.player.maxHp === maxHp &&
@@ -2427,8 +2425,8 @@ function enrichCombatAnimationMetadata(
   const selectedOffset = state.selectedNpcOffset;
   const selectedNpc =
     selectedOffset !== undefined
-      ? state.npcs[String(selectedOffset)] ??
-        npcStatsFromState(state, selectedOffset)
+      ? (state.npcs[String(selectedOffset)] ??
+        npcStatsFromState(state, selectedOffset))
       : undefined;
   const playerNames = new Set([state.player.name, "You", "Player"]);
   const attackerIsPlayer = playerNames.has(entry.attacker);
@@ -2473,16 +2471,16 @@ function enrichCombatAnimationMetadata(
     )
       ? "death"
       : entry.result === "dodge" ||
-        entry.result === "evade" ||
-        entry.result === "out_of_range"
-      ? "evade"
-      : entry.result === "block" ||
-        entry.result === "parry" ||
-        entry.result === "absorb"
-      ? "block"
-      : /spark|magic|spell|arcane/i.test(entry.ability)
-      ? "magic"
-      : "attack");
+          entry.result === "evade" ||
+          entry.result === "out_of_range"
+        ? "evade"
+        : entry.result === "block" ||
+            entry.result === "parry" ||
+            entry.result === "absorb"
+          ? "block"
+          : /spark|magic|spell|arcane/i.test(entry.ability)
+            ? "magic"
+            : "attack");
 
   return {
     ...entry,
@@ -2849,18 +2847,18 @@ function applyAttack(
     effectKind: projectileIsMagic
       ? "magic"
       : projectileVisual
-      ? "physical"
-      : undefined,
+        ? "physical"
+        : undefined,
     vfxKind: projectileIsMagic
       ? "magic"
       : projectileVisual
-      ? "physical"
-      : undefined,
+        ? "physical"
+        : undefined,
     visualKind: projectileIsMagic
       ? "magic"
       : projectileVisual
-      ? "physical"
-      : undefined,
+        ? "physical"
+        : undefined,
   });
 
   debugHarthmereCombat("combat.attack.resolved", {
@@ -2923,42 +2921,42 @@ function reputationForIllegalAttack(
   const legalPenalty = isGuard
     ? -900
     : isChild
-    ? -1200
-    : isMerchant
-    ? -350
-    : isAnimal
-    ? -80
-    : -240;
+      ? -1200
+      : isMerchant
+        ? -350
+        : isAnimal
+          ? -80
+          : -240;
   const likePenalty = isGuard
     ? -220
     : isChild
-    ? -1100
-    : isMerchant
-    ? -320
-    : isAnimal
-    ? -75
-    : -220;
+      ? -1100
+      : isMerchant
+        ? -320
+        : isAnimal
+          ? -75
+          : -220;
   const notorietyGain = isGuard ? 180 : isChild ? 300 : isMerchant ? 80 : 45;
 
   applyHarthmereReputationChange({
     label: isGuard
       ? "Assaulted a town guard"
       : isChild
-      ? "Attacked a vulnerable Harthmere local"
-      : isMerchant
-      ? "Attacked a Harthmere merchant"
-      : isAnimal
-      ? "Attacked protected local wildlife"
-      : "Attacked a Harthmere local",
+        ? "Attacked a vulnerable Harthmere local"
+        : isMerchant
+          ? "Attacked a Harthmere merchant"
+          : isAnimal
+            ? "Attacked protected local wildlife"
+            : "Attacked a Harthmere local",
     detail: isGuard
       ? "The Watch treats assaulting guards as a serious crime. Witnesses spread it quickly."
       : isChild
-      ? "Violence against vulnerable townsfolk severely damages trust and legal standing."
-      : isMerchant
-      ? "Assaulting merchants damages both town trust and Harthmere's local economy."
-      : isAnimal
-      ? "Poaching or abusing protected animals makes locals distrust you."
-      : "Violence against townspeople damages trust and legal standing.",
+        ? "Violence against vulnerable townsfolk severely damages trust and legal standing."
+        : isMerchant
+          ? "Assaulting merchants damages both town trust and Harthmere's local economy."
+          : isAnimal
+            ? "Poaching or abusing protected animals makes locals distrust you."
+            : "Violence against townspeople damages trust and legal standing.",
     npcOffset: offset,
     harthmere: {
       likeability: likePenalty,
@@ -2984,50 +2982,50 @@ function reputationForKilledNpc(target: HarthmereCombatStats, offset: number) {
   const legalPenalty = isGuard
     ? -3200
     : isChild
-    ? -4200
-    : isMerchant
-    ? -1900
-    : isAnimal
-    ? -300
-    : -1400;
+      ? -4200
+      : isMerchant
+        ? -1900
+        : isAnimal
+          ? -300
+          : -1400;
   const likePenalty = isGuard
     ? -900
     : isChild
-    ? -3500
-    : isMerchant
-    ? -1250
-    : isAnimal
-    ? -220
-    : -950;
+      ? -3500
+      : isMerchant
+        ? -1250
+        : isAnimal
+          ? -220
+          : -950;
   const notorietyGain = isGuard
     ? 900
     : isChild
-    ? 1200
-    : isMerchant
-    ? 420
-    : isAnimal
-    ? 80
-    : 260;
+      ? 1200
+      : isMerchant
+        ? 420
+        : isAnimal
+          ? 80
+          : 260;
 
   applyHarthmereReputationChange({
     label: isGuard
       ? "Killed a town guard"
       : isChild
-      ? "Killed a vulnerable Harthmere local"
-      : isMerchant
-      ? "Killed a Harthmere merchant"
-      : isAnimal
-      ? "Killed protected wildlife"
-      : "Killed a Harthmere local",
+        ? "Killed a vulnerable Harthmere local"
+        : isMerchant
+          ? "Killed a Harthmere merchant"
+          : isAnimal
+            ? "Killed protected wildlife"
+            : "Killed a Harthmere local",
     detail: isGuard
       ? "Killing a guard is treated as murder of a legal officer. You are moving toward outlaw status."
       : isChild
-      ? "This is one of the worst crimes Harthmere can witness. Likeability and legal standing collapse."
-      : isMerchant
-      ? "Murdering a merchant damages public trust, legal standing, and the town economy."
-      : isAnimal
-      ? "Locals treat needless killing of protected wildlife as poaching and cruelty."
-      : "Murdering locals makes the town fear and hate you, and the law responds accordingly.",
+        ? "This is one of the worst crimes Harthmere can witness. Likeability and legal standing collapse."
+        : isMerchant
+          ? "Murdering a merchant damages public trust, legal standing, and the town economy."
+          : isAnimal
+            ? "Locals treat needless killing of protected wildlife as poaching and cruelty."
+            : "Murdering locals makes the town fear and hate you, and the law responds accordingly.",
     npcOffset: offset,
     harthmere: {
       likeability: likePenalty,
@@ -3062,8 +3060,8 @@ function reputationForDefeatedThreat(
     detail: isBandit
       ? "Removing a road threat helps the Watch and makes your name more visible."
       : isAnimal
-      ? "Hunting dangerous wildlife helps keep the roads and resource paths safer."
-      : "Stopping a local threat slightly improves safety around Harthmere.",
+        ? "Hunting dangerous wildlife helps keep the roads and resource paths safer."
+        : "Stopping a local threat slightly improves safety around Harthmere.",
     harthmere: {
       likeability: isBandit ? 45 : isAnimal ? 10 : 18,
       legal: isBandit ? 55 : isAnimal ? 2 : 8,
@@ -3092,8 +3090,7 @@ type HarthmereRetaliationAttackOptions = {
 };
 
 let pendingHarthmereLocalMagicCharge:
-  | { chargeId: string; timeout: number }
-  | undefined;
+  { chargeId: string; timeout: number } | undefined;
 
 export function harthmereLocalCombatMagicChargeSeconds(input: {
   ability: HarthmerePlayerAttackType;
@@ -3162,8 +3159,8 @@ function ambientThreatForPosition(position: readonly number[]) {
       rollSelector % 5 === 0
         ? HARTHMERE_BLACK_BEAR_OFFSET
         : rollSelector % 3 === 0
-        ? HARTHMERE_DISEASED_BOAR_OFFSET
-        : HARTHMERE_FOREST_WOLF_OFFSET;
+          ? HARTHMERE_DISEASED_BOAR_OFFSET
+          : HARTHMERE_FOREST_WOLF_OFFSET;
     return {
       offset,
       label: "forest wildlife attack",
@@ -3306,9 +3303,20 @@ function canNpcRunRealtimeCombat(npc: HarthmereCombatStats) {
   return canNpcRetaliate(npc);
 }
 
+export function harthmereImmediateCounterattackAllowedForTest() {
+  return false;
+}
+
 function npcRealtimeAttackCadenceMs(npc: HarthmereCombatStats) {
   const attacksPerSecond = Math.max(0.35, npc.attackSpeed);
-  return clamp(Math.round(2400 / attacksPerSecond), 850, 4200);
+  const descriptor = `${npc.name} ${npc.faction}`.toLowerCase();
+  const minimumCadence =
+    /boss|helix|alpha mucker|giant|thaedryn|ninth winter/.test(descriptor)
+      ? 3_000
+      : /indisworm/.test(descriptor)
+        ? 2_750
+        : 2_100;
+  return clamp(Math.round(3000 / attacksPerSecond), minimumCadence, 5200);
 }
 
 function npcRealtimeAbility(npc: HarthmereCombatStats): CombatAbility {
@@ -3497,8 +3505,8 @@ function tickHarthmereNpcHealthRegen(
     const brain = harthmereNpcBrainFromState(state, offset);
     const aggroActive = Boolean(
       brain &&
-        brain.aggroUntil > now &&
-        !["idle", "disengaged", "dead"].includes(brain.phase)
+      brain.aggroUntil > now &&
+      !["idle", "disengaged", "dead"].includes(brain.phase)
     );
     const damageDelayMs = npc.behavior === "hostile" ? 4500 : 6500;
     const lastDamageAt = npc.lastDamageAt ?? 0;
@@ -4550,8 +4558,8 @@ function harthmereNpcCanReachPlayerNow(
     npc.behavior === "guard" || npc.behavior === "hostile"
       ? 3.1
       : npc.behavior === "defensive" || npc.behavior === "merchant"
-      ? 1.55
-      : 0.65;
+        ? 1.55
+        : 0.65;
   const reach = Math.max(1.1, npc.attackRange) + radius + lungeGrace;
   return {
     canReach: Boolean(distance && distance.distance <= reach),
@@ -4585,6 +4593,11 @@ function harthmereNpcBrainProfile(npc: HarthmereCombatStats) {
   const isDefensive =
     npc.behavior === "defensive" || npc.behavior === "merchant";
   const isSmallAnimal = npc.species === "animal" && npc.maxHp <= 160;
+  const descriptor = `${npc.name} ${npc.faction}`.toLowerCase();
+  const isBoss =
+    npc.maxHp >= 400 ||
+    /boss|helix|alpha mucker|giant|thaedryn|ninth winter/.test(descriptor);
+  const isIndisworm = /indisworm/.test(descriptor);
   return {
     // harthmere-npc-chase-until-out-of-sight: every engaged entity chases
     // at full line-of-sight range (chaseReach = sightRange). Previously only
@@ -4593,26 +4606,46 @@ function harthmereNpcBrainProfile(npc: HarthmereCombatStats) {
     aggroDurationMs: isGuard
       ? 35_000
       : isHostile
-      ? 42_000
-      : isDefensive
-      ? 12_000
-      : 6_000,
+        ? 42_000
+        : isDefensive
+          ? 12_000
+          : 6_000,
     chaseRange: isGuard
       ? Math.max(13, npc.aggroRange + 4)
       : isHostile
-      ? Math.max(15, npc.aggroRange + 5)
-      : isDefensive
-      ? 7.5
-      : 4.0,
+        ? Math.max(15, npc.aggroRange + 5)
+        : isDefensive
+          ? 7.5
+          : 4.0,
     immediateLungeGrace: isGuard
       ? 4.6
       : isHostile
-      ? 5.2
-      : isDefensive
-      ? 2.6
-      : 1.0,
-    windupMs: isGuard ? 420 : isHostile ? 520 : isSmallAnimal ? 360 : 650,
-    recoverMs: isGuard ? 900 : isHostile ? 1050 : isSmallAnimal ? 950 : 1450,
+        ? 5.2
+        : isDefensive
+          ? 2.6
+          : 1.0,
+    windupMs: isBoss
+      ? 1_250
+      : isIndisworm
+        ? 1_050
+        : isGuard
+          ? 720
+          : isHostile
+            ? 820
+            : isSmallAnimal
+              ? 560
+              : 900,
+    recoverMs: isBoss
+      ? 1_650
+      : isIndisworm
+        ? 1_450
+        : isGuard
+          ? 1_100
+          : isHostile
+            ? 1_250
+            : isSmallAnimal
+              ? 1_050
+              : 1_550,
     maxVirtualCloseMs: isGuard ? 1400 : isHostile ? 1700 : 950,
     fleeAtHpRatio: isGuard || isHostile ? 0 : isSmallAnimal ? 0.34 : 0.18,
   };
@@ -4660,9 +4693,9 @@ function harthmereEngageNpcBrain(
       npc.hp <= 0 || npc.combatState === "dead"
         ? "dead"
         : existing?.phase &&
-          !["idle", "disengaged", "dead"].includes(existing.phase)
-        ? existing.phase
-        : "alert",
+            !["idle", "disengaged", "dead"].includes(existing.phase)
+          ? existing.phase
+          : "alert",
     target: "player",
     aggroUntil: Math.max(
       existing?.aggroUntil ?? 0,
@@ -4856,8 +4889,8 @@ function harthmereNpcCanReachPlayerWithBrain(
     reason: canImmediate
       ? "actual_melee_contact"
       : canPursue
-      ? "pursuing_until_actual_range"
-      : "out_of_chase_range",
+        ? "pursuing_until_actual_range"
+        : "out_of_chase_range",
     brainPhase: brain?.phase,
     source,
   };
@@ -5047,10 +5080,10 @@ function statsForRuntimeCombatActor(
   const level = /captain|sergeant|bear|root-crowned|grave/.test(text)
     ? 10
     : /guard|watch|bandit|smuggler|undead|zombie|wolf|boar/.test(text)
-    ? 7
-    : species === "animal"
-    ? 3
-    : 5;
+      ? 7
+      : species === "animal"
+        ? 3
+        : 5;
 
   let hp = species === "animal" ? 220 : 280;
   let attackPoints = species === "animal" ? 18 : 18;
@@ -5158,14 +5191,14 @@ function statsForRuntimeCombatActor(
         behavior === "guard"
           ? "town_watch"
           : behavior === "hostile"
-          ? species === "undead"
-            ? "undead"
+            ? species === "undead"
+              ? "undead"
+              : species === "animal"
+                ? "wildlife"
+                : "bandit"
             : species === "animal"
-            ? "wildlife"
-            : "bandit"
-          : species === "animal"
-          ? "wildlife"
-          : "harthmere_citizen",
+              ? "wildlife"
+              : "harthmere_citizen",
       behavior,
       hp,
       maxHp: hp,
@@ -5228,8 +5261,7 @@ function normalizeHarthmerePosition3(
 }
 
 function readHarthmereForwardArcRuntimeFromWindow():
-  | HarthmereForwardArcRuntimeSnapshot
-  | undefined {
+  HarthmereForwardArcRuntimeSnapshot | undefined {
   if (!isBrowser()) {
     return undefined;
   }
@@ -5240,8 +5272,7 @@ function readHarthmereForwardArcRuntimeFromWindow():
 }
 
 export function readHarthmereForwardArcRuntime():
-  | HarthmereForwardArcRuntimeSnapshot
-  | undefined {
+  HarthmereForwardArcRuntimeSnapshot | undefined {
   return readHarthmereForwardArcRuntimeFromWindow();
 }
 
@@ -5299,8 +5330,7 @@ type HarthmereTownCollisionQuery = {
 };
 
 function readHarthmereTownCollisionQuery():
-  | HarthmereTownCollisionQuery
-  | undefined {
+  HarthmereTownCollisionQuery | undefined {
   if (!isBrowser()) {
     return undefined;
   }
@@ -5751,8 +5781,8 @@ function rankedHarthmereForwardArcTargets(
   );
   const inverseBetterForSelected = Boolean(
     selectedInverse?.accepted &&
-      (!selectedBase?.accepted ||
-        selectedInverse.score + 0.1 < selectedBase.score)
+    (!selectedBase?.accepted ||
+      selectedInverse.score + 0.1 < selectedBase.score)
   );
 
   if (
@@ -5824,8 +5854,8 @@ function rankedHarthmereForwardArcTargets(
         reason: !selected.alive
           ? "selected target is not attackable/alive"
           : selected.dot < -0.1
-          ? "selected target is behind visible body facing"
-          : "selected target out of sweep range or outside forward lane",
+            ? "selected target is behind visible body facing"
+            : "selected target out of sweep range or outside forward lane",
       });
     }
   }
@@ -6332,14 +6362,12 @@ export function performHarthmereCombatAttack(
   // check for the NPC's separate counterattack. The target may have moved (or
   // the local geometry may have been stale) between the two actions.
   const retaliationReachOk = reachCheck.canReach;
-  const canCounterattack =
-    playerAttack.finalDamage > 0 &&
-    canNpcRetaliate(target) &&
-    // HP is the authoritative death gate for this counter path. Avoid a direct
-    // combatState !== "dead" comparison here because TypeScript can narrow the
-    // local target state differently across patched branches.
-    counterCooldownReady &&
-    retaliationReachOk;
+  // The old shortcut applied a full counterattack in this same call stack,
+  // before the renderer or player could observe a tell. Retaliation now only
+  // wakes the shared real-time brain above. That brain must traverse
+  // alert/pursuit -> windup -> contact validation -> recovery, so dodging and
+  // spacing are actual player decisions instead of post-hit decoration.
+  const canCounterattack = harthmereImmediateCounterattackAllowedForTest();
 
   debugHarthmereCombat("combat.countercheck", {
     targetOffset,
@@ -6500,12 +6528,12 @@ export function performHarthmereCombatAttack(
         playerAttack.finalDamage <= 0
           ? "player attack did no HP damage"
           : !retaliationReachOk
-          ? "target cannot physically reach player and no renderer-proven contact was supplied"
-          : !counterCooldownReady
-          ? "counter cooldown"
-          : !canNpcRetaliate(target)
-          ? "npc is not eligible to retaliate"
-          : "behavior/state blocked counter",
+            ? "target cannot physically reach player and no renderer-proven contact was supplied"
+            : !counterCooldownReady
+              ? "counter cooldown"
+              : !canNpcRetaliate(target)
+                ? "npc is not eligible to retaliate"
+                : "behavior/state blocked counter",
     });
   } else if (target.behavior === "passive") {
     state = appendCombatLog(state, {
@@ -7402,8 +7430,8 @@ function autoResolveHarthmereNearbyNpcForDiagnostics(
   const source = firstAccepted
     ? "accepted_forward_target"
     : nearestAliveAttackable
-    ? "nearest_alive_attackable"
-    : "none";
+      ? "nearest_alive_attackable"
+      : "none";
 
   return {
     version: HARTHMERE_RETALIATION_NEAREST_DIAGNOSTICS,
@@ -7779,8 +7807,8 @@ function harthmereRetaliationTraceSnapshot(label: string) {
     selectedNpcOffset: state.selectedNpcOffset,
     selectedNpc:
       state.selectedNpcOffset !== undefined
-        ? state.npcs[String(state.selectedNpcOffset)] ??
-          npcStatsFromState(state, state.selectedNpcOffset)
+        ? (state.npcs[String(state.selectedNpcOffset)] ??
+          npcStatsFromState(state, state.selectedNpcOffset))
         : undefined,
     nearest,
     recent: state.recent.slice(0, 6),
@@ -7822,8 +7850,8 @@ function harthmereRetaliationTraceHpLosses(
       const combatName = afterNpc?.name;
       const visualCombatMismatch = Boolean(
         actorLabel &&
-          combatName &&
-          actorLabel.trim().toLowerCase() !== combatName.trim().toLowerCase()
+        combatName &&
+        actorLabel.trim().toLowerCase() !== combatName.trim().toLowerCase()
       );
       return {
         offset,
@@ -8007,8 +8035,8 @@ function installHarthmereRetaliationTraceBridge() {
         selectedNpcOffset: after.selectedNpcOffset,
         selectedNpc:
           after.selectedNpcOffset !== undefined
-            ? after.npcs[String(after.selectedNpcOffset)] ??
-              npcStatsFromState(after, after.selectedNpcOffset)
+            ? (after.npcs[String(after.selectedNpcOffset)] ??
+              npcStatsFromState(after, after.selectedNpcOffset))
             : undefined,
         hpLosses,
         recentBefore: before.recent.slice(0, 4),

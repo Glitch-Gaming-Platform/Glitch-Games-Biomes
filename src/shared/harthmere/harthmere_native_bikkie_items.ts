@@ -59,6 +59,7 @@ import {
   type HarthmerePremiumWeaponDefinition,
 } from "@/shared/harthmere/premium_weapon_catalog";
 import { harthmereGeneratedInventoryIconUrl } from "@/shared/harthmere/generated/harthmere_inventory_icon_manifest";
+import { harthmereBusinessFurnitureAsset } from "@/shared/harthmere/generated/harthmere_business_furniture_manifest";
 
 /**
  * Existing snapshot biscuits may donate presentation data to an exact
@@ -661,7 +662,9 @@ function harthmereBorrowedPresentation(
 }
 
 function generatedInventoryIconPresentation(itemId: string) {
-  const galoisIcon = harthmereGeneratedInventoryIconUrl(itemId);
+  const galoisIcon =
+    harthmereBusinessFurnitureAsset(itemId)?.iconUrl ??
+    harthmereGeneratedInventoryIconUrl(itemId);
   return galoisIcon
     ? {
         // Native icon attributes are checked before galoisIcon. Clear any
@@ -691,17 +694,18 @@ export function harthmereBiscuitForItemDefinition(
   );
   const category = definition.category?.trim() || "Harthmere";
   const premiumWeapon = getHarthmerePremiumWeapon(definition.itemId);
-  const generatedInventoryIcon = harthmereGeneratedInventoryIconUrl(
-    definition.itemId
-  );
+  const furnitureAsset = harthmereBusinessFurnitureAsset(definition.itemId);
+  const generatedInventoryIcon =
+    furnitureAsset?.iconUrl ??
+    harthmereGeneratedInventoryIconUrl(definition.itemId);
   const inventoryIcon =
     premiumWeapon?.inventoryIconUrl ?? generatedInventoryIcon;
   const placeableSize = definition.objectMetadata?.sizeVoxels;
   const nativePlaceable = Boolean(
     placeableSize &&
-      ["device", "station", "furniture", "garden", "fixture"].includes(
-        definition.objectMetadata!.objectKind
-      )
+    ["device", "station", "furniture", "garden", "fixture"].includes(
+      definition.objectMetadata!.objectKind
+    )
   );
   const seedDefinition = Object.values(HARTHMERE_SEED_DEFINITIONS).find(
     (seed) => seed.seedItemId === definition.itemId
@@ -710,8 +714,8 @@ export function harthmereBiscuitForItemDefinition(
   const fishingToolAttributes = nativeFishingToolAttributes(definition);
   const fishAttributes = nativeFishAttributes(definition);
   const cropBlockId = seedDefinition
-    ? safeParseBiomesId(seedDefinition.cropItemId) ??
-      HARTHMERE_LOCAL_CROP_BLOCK_IDS[seedDefinition.cropItemId]
+    ? (safeParseBiomesId(seedDefinition.cropItemId) ??
+      HARTHMERE_LOCAL_CROP_BLOCK_IDS[seedDefinition.cropItemId])
     : undefined;
   const yieldItemId = seedDefinition
     ? harthmereNativeBiomesIdForItemId(seedDefinition.yieldItemId)
@@ -748,6 +752,16 @@ export function harthmereBiscuitForItemDefinition(
             placeableSize.height,
             placeableSize.depth,
           ],
+          ...(furnitureAsset
+            ? {
+                collidableSize: [...furnitureAsset.collidableSize] as [
+                  number,
+                  number,
+                  number,
+                ],
+                placementType: furnitureAsset.placementType,
+              }
+            : {}),
         }
       : {}),
     ...(seedDefinition && cropBlockId && yieldItemId
@@ -949,8 +963,8 @@ export function withHarthmereNativeBikkieItems(
       existing?.name === expectedName
         ? existing
         : presentationSourceId
-        ? contents.get(presentationSourceId)
-        : undefined;
+          ? contents.get(presentationSourceId)
+          : undefined;
     const biscuit = harthmereBiscuitForItemDefinition(
       definition,
       presentationSource

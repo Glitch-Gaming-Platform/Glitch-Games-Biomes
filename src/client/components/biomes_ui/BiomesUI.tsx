@@ -22,6 +22,8 @@ import type { TabShortcut } from "./shortcuts/BiomesShortcuts";
 import { BiomesUIOpenPrompt } from "./BiomesUIOpenPrompt";
 import { CurrentQuestObjectiveHUD } from "./CurrentQuestObjectiveHUD";
 import { QuestInviteHUD } from "./quest_invites/QuestInviteHUD";
+import { PlayerInviteModal } from "@/client/components/system/PlayerInviteModal";
+import { PLAYER_INVITE_HOTKEY_CODE } from "@/client/game/invites/player_invites";
 import { SnapshotGroveMapHUD } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import {
   type BiomesHUDVisibilitySnapshot,
@@ -102,12 +104,14 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
   hudVisibilityOverride,
 }) => {
   const { clientConfig } = useClientContext();
+  const phoneLayout = clientConfig.mobileDevice;
   const pointerLockManager = usePointerLockManager();
   const shouldReturnPointerLock = useRef<PointerLockUnlockWhileOpenReturnRef>({
     current: false,
   });
   const shortcuts = shortcutOverrides ?? DEFAULT_TAB_SHORTCUTS;
   const hudVisibility = useBiomesHUDVisibilitySnapshot(hudVisibilityOverride);
+  const [playerInviteOpen, setPlayerInviteOpen] = React.useState(false);
 
   useEffect(() => {
     installBiomesUITheme();
@@ -149,6 +153,9 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
   }, [activeTab, paneMode, pointerLockManager]);
 
   useEffect(() => {
+    if (playerInviteOpen) {
+      return;
+    }
     const cleanup = installTabShortcuts(
       shortcuts,
       (tab) => {
@@ -157,7 +164,28 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
       isTypingInInput
     );
     return cleanup;
-  }, [shortcuts, activeTab, onActiveTabChange]);
+  }, [shortcuts, activeTab, onActiveTabChange, playerInviteOpen]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.code !== PLAYER_INVITE_HOTKEY_CODE ||
+        event.repeat ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        isTypingInInput() ||
+        activeTab !== null
+      ) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      setPlayerInviteOpen((current) => !current);
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [activeTab]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -175,6 +203,7 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
         <BiomesUIOpenPrompt
           isOpen={activeTab !== null}
           onOpenMenu={() => onActiveTabChange("inventory")}
+          onOpenInvite={() => setPlayerInviteOpen(true)}
         />
       )}
       {hudVisibility.objectives && (
@@ -184,16 +213,30 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
         />
       )}
       <QuestInviteHUD adapter={adapters?.questInvites} />
+      <PlayerInviteModal
+        open={playerInviteOpen}
+        onClose={() => setPlayerInviteOpen(false)}
+      />
       {paneMode === "overlay" && activeTab !== null && (
         <div
           role="dialog"
           aria-label={`${TAB_DESCRIPTORS[activeTab].label} panel`}
+          className={
+            phoneLayout
+              ? "biomes-ui-overlay biomes-ui-overlay--mobile"
+              : "biomes-ui-overlay"
+          }
+          data-biomes-mobile-ui-overlay={phoneLayout ? "true" : undefined}
           style={{
             position: "fixed",
             inset: 0,
             display: "flex",
             flexDirection: "column",
-            padding: "20px 16px",
+            minWidth: 0,
+            minHeight: 0,
+            padding: phoneLayout
+              ? "calc(max(8px, env(safe-area-inset-top)) + 50px) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left))"
+              : "20px 16px",
             background:
               "radial-gradient(ellipse at center, rgba(7,12,26,0.55) 0%, rgba(7,12,26,0.92) 80%)",
             zIndex: 1100,
@@ -205,9 +248,9 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
             onClick={() => onActiveTabChange(null)}
             style={{
               position: "absolute",
-              top: 18,
-              right: 18,
-              zIndex: clientConfig.showVirtualJoystick ? 5 : undefined,
+              top: phoneLayout ? "max(8px, env(safe-area-inset-top))" : 18,
+              right: phoneLayout ? "max(8px, env(safe-area-inset-right))" : 18,
+              zIndex: phoneLayout ? 5 : undefined,
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
@@ -221,6 +264,7 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
               letterSpacing: "0.08em",
               textTransform: "uppercase",
               cursor: "pointer",
+              minHeight: phoneLayout ? 44 : undefined,
             }}
           >
             <span
@@ -244,17 +288,26 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
             activeTab={activeTab}
             onTabChange={onActiveTabChange}
             badges={badges}
+            mobile={phoneLayout}
           />
           <div
-            className="biomes-ui-panel"
+            className={`biomes-ui-panel biomes-ui-overlay__panel ${
+              phoneLayout ? "biomes-ui-overlay__panel--mobile" : ""
+            }`.trim()}
             style={{
               flex: 1,
-              marginTop: 12,
-              padding: "16px 18px",
+              minHeight: 0,
+              marginTop: phoneLayout ? 8 : 12,
+              padding: phoneLayout
+                ? "12px max(10px, env(safe-area-inset-right)) 12px max(10px, env(safe-area-inset-left))"
+                : "16px 18px",
               maxWidth: 1100,
               width: "100%",
+              boxSizing: "border-box",
               alignSelf: "center",
               overflow: "auto",
+              overscrollBehavior: phoneLayout ? "contain" : undefined,
+              WebkitOverflowScrolling: phoneLayout ? "touch" : undefined,
             }}
           >
             <ActiveTabPane
@@ -272,9 +325,7 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
               ? "biomes-ui-hotbar-hud--mobile"
               : ""
           }`.trim()}
-          data-biomes-mobile-hotbar={
-            clientConfig.showVirtualJoystick ? "true" : undefined
-          }
+          data-biomes-mobile-hotbar={phoneLayout ? "true" : undefined}
         >
           <div className="biomes-ui-hotbar-hud__content">
             <BiomesHotbar

@@ -1,9 +1,11 @@
 import {
   NPC_VOICE_AUDIO_CACHE_MANIFEST_VERSION,
   clearNpcVoiceAudioManifestCacheForTest,
+  findCommittedNpcVoiceAudio,
   findCachedNpcVoiceAudio,
   npcVoiceAudioCacheKey,
   npcVoiceRuntimeRelativePath,
+  npcVoiceTextHash,
   resolveNpcVoiceAudioUrl,
 } from "@/server/shared/npc_voice_audio_cache";
 import assert from "assert";
@@ -157,6 +159,50 @@ describe("NPC voice audio cache", () => {
       findCachedNpcVoiceAudio({
         cacheKey: alternateKey,
         provider: "elevenlabs",
+        root,
+      }),
+      `/${relativePath}`
+    );
+  });
+
+  it("reuses a legacy Jackie recording for the canonical persisted actor", () => {
+    const relativePath =
+      "harthmere/voices/generated/current/jackie/road-ahead.mp3";
+    fs.mkdirSync(path.join(root, "public", path.dirname(relativePath)), {
+      recursive: true,
+    });
+    fs.writeFileSync(path.join(root, "public", relativePath), "quest-audio");
+    const manifestPath = path.join(
+      root,
+      "public/harthmere/voices/generated/current/manifest.json"
+    );
+    fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
+    const text =
+      "The name is Jackie. I'm glad we found ya before the Muckers did.";
+    fs.writeFileSync(
+      manifestPath,
+      JSON.stringify({
+        version: NPC_VOICE_AUDIO_CACHE_MANIFEST_VERSION,
+        provider: "elevenlabs",
+        synthesisIdentity: "policy-v1",
+        generatedAt: new Date(0).toISOString(),
+        recordings: [
+          {
+            cacheKey: "e".repeat(64),
+            actorKey: "runtime_entity:8997551883502307:jackie",
+            textHash: npcVoiceTextHash(text),
+            path: relativePath,
+          },
+        ],
+      })
+    );
+
+    assert.equal(
+      findCommittedNpcVoiceAudio({
+        provider: "elevenlabs",
+        text,
+        voice:
+          "azure-speech|voice=en-US-JennyNeural|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie",
         root,
       }),
       `/${relativePath}`

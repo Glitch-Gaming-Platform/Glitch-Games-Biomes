@@ -265,6 +265,11 @@ const HARTHMERE_BUSINESS_JOB_MATERIAL_STOCK: Readonly<
   >
 > = {
   weapons_tools: [
+    // The Chapter 1 robot-repair quest explicitly routes players to this
+    // counter for Scrap Metal. Keep the public listing on the real quest item
+    // id; `metal_part` is private customer-service simulation stock and cannot
+    // be granted to native player inventory.
+    { itemId: "scrap_metal", buyPrice: 5 },
     { itemId: "iron_ingot", buyPrice: 14 },
     { itemId: "iron_ore", buyPrice: 6 },
     { itemId: "coal", buyPrice: 4 },

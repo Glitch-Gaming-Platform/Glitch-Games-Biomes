@@ -13,6 +13,7 @@
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import type { ClientResources } from "@/client/game/resources/types";
+import { createGltfLoader } from "@/client/game/util/gltf_helpers";
 import { harthmereGroundedFeetYWithMemory } from "@/client/game/util/harthmere_entity_grounding";
 import {
   activeLiveEntityHelperQuestMarkerId,
@@ -49,6 +50,15 @@ import * as THREE from "three";
 
 export const HARTHMERE_QUEST_OBJECT_MARKER_VERSION =
   "harthmere-quest-object-marker" as const;
+export const HARTHMERE_LUIS_REPAIR_CART_ASSET_URL =
+  "/assets/harthmere/glb/quest/luis_repair_cart.glb" as const;
+
+export type HarthmereRepairCartAssetLoader = {
+  loadAsync: (url: string) => Promise<{
+    scene?: THREE.Object3D;
+    scenes?: THREE.Object3D[];
+  }>;
+};
 
 // HARTHMERE_WORLD_QUEST_BEACON_ACTIVE_PIN_OVERRIDE:
 // The in-world quest beacon used to ALWAYS prefer the boss-prioritized
@@ -174,8 +184,8 @@ export function isRenderableHarthmereQuestObjectLandmark(
       HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_IDS.has(landmark.id) ||
       isHarthmereContainerObjectLabel({ label: landmark.label }) ||
       SNAPSHOT_GROVE_OBJECTIVE_MARKER_IDS.has(landmark.id)) &&
-      landmark.kind !== "npc" &&
-      !QUEST_OBJECT_MARKER_SKIP_IDS.has(landmark.id)
+    landmark.kind !== "npc" &&
+    !QUEST_OBJECT_MARKER_SKIP_IDS.has(landmark.id)
   );
 }
 
@@ -203,11 +213,11 @@ const resolvedJobsBoardQuestMarkers = () => {
         marker.source === "exotic_matter_deposit"
           ? ("resource" as const)
           : marker.source === "business_outpost" ||
-            marker.source === "business_outpost_jobs_board" ||
-            marker.source === "business_outpost_work_station" ||
-            marker.source === "business_template_target"
-          ? ("business" as const)
-          : ("interactable" as const),
+              marker.source === "business_outpost_jobs_board" ||
+              marker.source === "business_outpost_work_station" ||
+              marker.source === "business_template_target"
+            ? ("business" as const)
+            : ("interactable" as const),
       position: marker.position,
       dynamic: "jobs_board" as const,
     }));
@@ -443,9 +453,12 @@ export function createHarthmereQuestObjectMarkerMesh(
   const darkWood = 0x4f2e1c;
   const parchment = 0xf5e1b4;
   const stone = 0xaeb6bd;
+  const isRepairCart = /cart|wagon/.test(text);
 
-  const base = addCylinder(group, 0.62, 0.08, [0, 0.04, 0], accent, 18);
-  base.scale.z = 0.72;
+  if (!isRepairCart) {
+    const base = addCylinder(group, 0.62, 0.08, [0, 0.04, 0], accent, 18);
+    base.scale.z = 0.72;
+  }
 
   if (/paint/.test(text)) {
     addCylinder(group, 0.24, 0.38, [0, 0.28, 0], 0xd6488b, 12);
@@ -457,18 +470,80 @@ export function createHarthmereQuestObjectMarkerMesh(
     addBox(group, [0.12, 1.1, 0.12], [0.25, 0.58, 0.08], wood);
     addBox(group, [0.56, 0.32, 0.06], [0.04, 1.2, 0.04], accent);
     addBox(group, [0.44, 0.26, 0.06], [0.48, 0.95, 0.12], 0xff7a7a);
-  } else if (/cart|wagon/.test(text)) {
-    addBox(group, [1.35, 0.22, 0.82], [0, 0.58, 0], darkWood);
-    addBox(group, [1.18, 0.42, 0.12], [0, 0.8, -0.35], wood);
-    addBox(group, [1.18, 0.42, 0.12], [0, 0.8, 0.35], wood);
-    for (const x of [-0.46, 0.46]) {
-      const wheel = mesh(new THREE.TorusGeometry(0.3, 0.08, 8, 18), accent);
-      wheel.rotation.y = Math.PI / 2;
-      wheel.position.set(x, 0.34, 0.46);
-      group.add(wheel);
+  } else if (isRepairCart) {
+    group.userData.harthmereQuestObjectVisualKind = "repair_cart";
+    const cartPart = <T extends THREE.Object3D>(part: string, object: T): T => {
+      object.name = `repair-cart-${part}`;
+      object.userData.harthmereRepairCartPart = part;
+      return object;
+    };
+    const iron = 0x5d6670;
+    const toolSteel = 0xc6d1d8;
+
+    cartPart("deck", addBox(group, [2.15, 0.22, 1.08], [0, 0.72, 0], darkWood));
+    cartPart(
+      "left-rail",
+      addBox(group, [1.95, 0.46, 0.12], [-0.08, 1.0, -0.48], wood)
+    );
+    cartPart(
+      "right-rail",
+      addBox(group, [1.95, 0.46, 0.12], [-0.08, 1.0, 0.48], wood)
+    );
+    cartPart(
+      "tailgate",
+      addBox(group, [0.12, 0.46, 0.86], [-1.0, 1.0, 0], wood)
+    );
+
+    for (const x of [-0.72, 0.72]) {
+      cartPart(
+        `axle-${x < 0 ? "rear" : "front"}`,
+        addBox(group, [0.14, 0.14, 1.45], [x, 0.46, 0], iron)
+      );
+      for (const z of [-0.67, 0.67]) {
+        const wheel = cartPart(
+          `wheel-${x < 0 ? "rear" : "front"}-${z < 0 ? "left" : "right"}`,
+          mesh(new THREE.TorusGeometry(0.38, 0.09, 10, 24), iron)
+        );
+        wheel.position.set(x, 0.42, z);
+        group.add(wheel);
+      }
     }
-    addBox(group, [0.38, 0.26, 0.3], [-0.26, 0.96, 0], accent);
-    addBox(group, [0.3, 0.2, 0.24], [0.2, 0.94, -0.06], parchment);
+
+    for (const z of [-0.34, 0.34]) {
+      cartPart(
+        `handle-${z < 0 ? "left" : "right"}`,
+        addBox(group, [1.35, 0.11, 0.11], [1.62, 0.6, z], wood)
+      ).rotation.z = -0.08;
+    }
+    cartPart(
+      "repair-chest",
+      addBox(group, [0.72, 0.44, 0.62], [-0.5, 1.18, 0], 0x6b3d25)
+    );
+    cartPart(
+      "repair-chest-lid",
+      addBox(group, [0.78, 0.11, 0.68], [-0.5, 1.43, 0], iron)
+    );
+    cartPart(
+      "iron-ingots",
+      addBox(group, [0.5, 0.2, 0.34], [0.28, 0.98, 0.16], toolSteel)
+    );
+    const wrenchHandle = cartPart(
+      "wrench-handle",
+      addBox(group, [0.72, 0.1, 0.1], [0.34, 1.18, -0.26], toolSteel)
+    );
+    wrenchHandle.rotation.y = -0.55;
+    cartPart(
+      "wrench-head",
+      addBox(group, [0.24, 0.24, 0.08], [0.64, 1.18, -0.47], toolSteel)
+    ).rotation.y = -0.55;
+    cartPart(
+      "repair-flag-pole",
+      addBox(group, [0.1, 1.18, 0.1], [-0.9, 1.65, -0.36], wood)
+    );
+    cartPart(
+      "repair-flag",
+      addBox(group, [0.72, 0.36, 0.06], [-0.5, 2.05, -0.36], accent)
+    );
   } else if (/dummy|scratch|repair post/.test(text)) {
     addBox(group, [0.26, 1.35, 0.26], [0, 0.72, 0], wood);
     addBox(group, [1.0, 0.18, 0.18], [0, 1.18, 0], darkWood);
@@ -567,6 +642,55 @@ export function createHarthmereQuestObjectMarkerMesh(
   return group;
 }
 
+function disposeQuestMarkerFallbackObject(object: THREE.Object3D): void {
+  object.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return;
+    child.geometry.dispose();
+    const materials = Array.isArray(child.material)
+      ? child.material
+      : [child.material];
+    for (const material of materials) material.dispose();
+  });
+}
+
+export function replaceHarthmereRepairCartFallbackWithAsset(
+  markerGroup: THREE.Group,
+  prototype: THREE.Object3D
+): THREE.Object3D | undefined {
+  if (
+    markerGroup.userData.harthmereQuestObjectVisualKind !== "repair_cart" ||
+    markerGroup.userData.harthmereRepairCartAssetLoaded === true
+  ) {
+    return undefined;
+  }
+
+  // Preserve the director-owned active quest beacon. Only remove direct
+  // children tagged as procedural repair-cart fallback parts.
+  for (const child of [...markerGroup.children]) {
+    if (typeof child.userData.harthmereRepairCartPart !== "string") continue;
+    markerGroup.remove(child);
+    disposeQuestMarkerFallbackObject(child);
+  }
+
+  const asset = prototype.clone(true);
+  asset.name = "luis-repair-cart-authored-asset";
+  asset.userData.harthmereRepairCartAsset = true;
+  asset.userData.harthmereRepairCartAssetUrl =
+    HARTHMERE_LUIS_REPAIR_CART_ASSET_URL;
+  asset.traverse((child) => {
+    child.frustumCulled = false;
+    if (child instanceof THREE.Mesh) {
+      child.castShadow = false;
+      child.receiveShadow = true;
+    }
+  });
+  markerGroup.add(asset);
+  markerGroup.userData.harthmereRepairCartAssetLoaded = true;
+  markerGroup.userData.harthmereRepairCartAssetUrl =
+    HARTHMERE_LUIS_REPAIR_CART_ASSET_URL;
+  return asset;
+}
+
 export function createHarthmereQuestObjectMarkerAnchor(
   marker: HarthmereQuestObjectMarker
 ): THREE.Group {
@@ -627,8 +751,14 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
   private chapter1ObjectiveProjectionSignature: string | undefined;
   private activeQuestStateRefreshSeconds = 0;
   private elapsedSeconds = 0;
+  private repairCartPrototype: THREE.Object3D | undefined;
+  private repairCartAssetLoading: Promise<void> | undefined;
+  private repairCartAssetFailed = false;
 
-  constructor(private readonly resources?: ClientResources) {
+  constructor(
+    private readonly resources?: ClientResources,
+    private readonly repairCartAssetLoader: HarthmereRepairCartAssetLoader = createGltfLoader()
+  ) {
     this.root.name = `harthmere-quest-object-markers root ${HARTHMERE_QUEST_OBJECT_MARKER_VERSION}`;
     for (const marker of HARTHMERE_QUEST_OBJECT_MARKERS) {
       const isVisibleWorldObject = isVisibleHarthmereWorldObjectMarker(marker);
@@ -661,6 +791,47 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
     }
   }
 
+  private applyLoadedRepairCartAsset(): void {
+    if (!this.repairCartPrototype) return;
+    for (const markerMesh of this.markerMeshes.values()) {
+      replaceHarthmereRepairCartFallbackWithAsset(
+        markerMesh,
+        this.repairCartPrototype
+      );
+    }
+  }
+
+  private queueRepairCartAssetLoad(): void {
+    if (
+      this.repairCartPrototype ||
+      this.repairCartAssetLoading ||
+      this.repairCartAssetFailed ||
+      typeof document === "undefined"
+    ) {
+      this.applyLoadedRepairCartAsset();
+      return;
+    }
+    this.repairCartAssetLoading = this.repairCartAssetLoader
+      .loadAsync(HARTHMERE_LUIS_REPAIR_CART_ASSET_URL)
+      .then((gltf) => {
+        const prototype = gltf.scene ?? gltf.scenes?.[0];
+        if (!prototype) {
+          throw new Error("Luis repair cart GLB has no scene");
+        }
+        this.repairCartPrototype = prototype;
+        this.repairCartAssetFailed = false;
+        this.applyLoadedRepairCartAsset();
+      })
+      .catch(() => {
+        // The existing semantic procedural cart intentionally remains visible
+        // and interactable if an asset/CDN request fails.
+        this.repairCartAssetFailed = true;
+      })
+      .finally(() => {
+        this.repairCartAssetLoading = undefined;
+      });
+  }
+
   // HARTHMERE_ENTITY_GROUNDING: keep visible quest markers resting on the real
   // terrain surface (cave-safe + water-aware) instead of a flat authored Y.
   private groundVisibleMarkers(): void {
@@ -680,8 +851,7 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
         continue;
       }
       const xz = mesh.userData.harthmereMarkerWorldXZ as
-        | [number, number]
-        | undefined;
+        [number, number] | undefined;
       const hintY = mesh.userData.harthmereMarkerHintY as number | undefined;
       if (!xz || hintY === undefined) {
         continue;
@@ -815,6 +985,7 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
       this.markerMeshes.set(nextId, markerMesh);
       this.activeBeacons.set(nextId, beacon);
       this.root.add(markerMesh);
+      this.applyLoadedRepairCartAsset();
     }
     markerMesh.visible = true;
     this.activeBeacons.get(nextId)!.visible = true;
@@ -875,6 +1046,9 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
     }
     (window as any).__harthmereQuestObjectMarkerDebug = {
       version: HARTHMERE_QUEST_OBJECT_MARKER_VERSION,
+      repairCartAssetUrl: HARTHMERE_LUIS_REPAIR_CART_ASSET_URL,
+      repairCartAssetLoaded: Boolean(this.repairCartPrototype),
+      repairCartAssetFailed: this.repairCartAssetFailed,
       activeMarkerId: this.activeMarkerId,
       visibleSnapshotGroveMarkerIds: [...this.visibleSnapshotGroveMarkerIds],
       markers: () =>
@@ -901,6 +1075,7 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
     // large, so bypass addToScenes()'s per-frame classification/dependency
     // traversals and route the root directly to the stock-material pass.
     scenes.three.add(this.root);
+    this.queueRepairCartAssetLoad();
     this.activeQuestStateRefreshSeconds -= dt;
     if (this.activeQuestStateRefreshSeconds <= 0) {
       this.activeQuestStateRefreshSeconds = ACTIVE_QUEST_BEACON_REFRESH_SECONDS;
@@ -917,7 +1092,11 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
 }
 
 export function makeHarthmereQuestObjectMarkersRenderer(
-  resources?: ClientResources
+  resources?: ClientResources,
+  repairCartAssetLoader?: HarthmereRepairCartAssetLoader
 ) {
-  return new HarthmereQuestObjectMarkersRenderer(resources);
+  return new HarthmereQuestObjectMarkersRenderer(
+    resources,
+    repairCartAssetLoader
+  );
 }

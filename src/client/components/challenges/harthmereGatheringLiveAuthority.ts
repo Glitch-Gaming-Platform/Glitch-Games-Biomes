@@ -9,6 +9,27 @@ import {
   harthmereDialogueLiveModeUrl,
 } from "@/client/components/challenges/dialogueLiveModeReputation";
 
+export const HARTHMERE_GATHERING_NODE_VISUAL_RESPAWN_EVENT =
+  "biomes:harthmere-gathering-node-visual-respawn" as const;
+
+export function harthmereGatheringNodeRespawnAtMsFromResponse(
+  body: any,
+  nodeId: string
+): number | undefined {
+  const plan = body?.backendMutation?.nativeEcsMaterializationPlans?.find(
+    (candidate: any) =>
+      candidate?.kind === "drop" &&
+      candidate?.sourceKind === "harthmere_gathering_node" &&
+      String(candidate?.materializationKey ?? "").startsWith(
+        `gathering:${nodeId}:`
+      )
+  );
+  const respawnAtMs = Number(plan?.expiresAtMs);
+  return Number.isFinite(respawnAtMs) && respawnAtMs > Date.now()
+    ? Math.trunc(respawnAtMs)
+    : undefined;
+}
+
 /**
  * Production gathering never calls the localStorage simulator. The client sends
  * only the authored node id; the server reads ECS position, validates equipment,
@@ -60,6 +81,17 @@ export async function submitHarthmereGatheringNode(nodeId: string) {
         detail: { body },
       })
     );
+    const respawnAtMs = harthmereGatheringNodeRespawnAtMsFromResponse(
+      body,
+      nodeId
+    );
+    if (respawnAtMs) {
+      window.dispatchEvent(
+        new CustomEvent(HARTHMERE_GATHERING_NODE_VISUAL_RESPAWN_EVENT, {
+          detail: { nodeId, respawnAtMs },
+        })
+      );
+    }
   }
   return body;
 }

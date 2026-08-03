@@ -11,6 +11,7 @@ import {
   ch1ValidateTestimonyNpcSeeds,
 } from "@/shared/harthmere/ch1_testimony_npcs";
 import { ch1VoiceActorForSpeaker } from "@/shared/harthmere/ch1_voice";
+import { SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_POSITION } from "@/shared/harthmere/snapshot_grove_ids";
 
 describe("Chapter 1 testimony NPCs", () => {
   it("gives every witness one canonical native player-like NPC identity", () => {
@@ -35,15 +36,33 @@ describe("Chapter 1 testimony NPCs", () => {
       CH1_TESTIMONY_NPC_BY_NAME.get("Coretta")?.entityId,
       ch1NpcEntityId("coretta")
     );
-    assert.deepEqual(CH1_RETIRED_DUPLICATE_TESTIMONY_NPC_IDS.map(Number), [
-      8_810_000_000_020_511,
-    ]);
+    assert.deepEqual(
+      CH1_RETIRED_DUPLICATE_TESTIMONY_NPC_IDS.map(Number),
+      [8_810_000_000_020_511]
+    );
   });
 
   it("never borrows the real Emily player entity as an NPC performer", () => {
     assert.notEqual(
       Number(CH1_TESTIMONY_NPC_BY_NAME.get("Emily")?.entityId),
       8_957_584_202_628_667
+    );
+  });
+
+  it("keeps Grover left of and clearly separated from first-join Jackie", () => {
+    const grover = CH1_TESTIMONY_NPC_BY_NAME.get("Grover");
+    assert.ok(grover);
+    assert.ok(
+      grover.position[0] <=
+        SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_POSITION[0] - 8,
+      `Grover is not far enough west of Jackie: ${grover.position}`
+    );
+    assert.ok(
+      Math.hypot(
+        grover.position[0] - SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_POSITION[0],
+        grover.position[2] - SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_POSITION[2]
+      ) >= 8,
+      `Grover still overlaps Jackie's onboarding approach: ${grover.position}`
     );
   });
 

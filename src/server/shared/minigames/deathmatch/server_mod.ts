@@ -3,11 +3,14 @@ import { GameEvent } from "@/server/shared/api/game_event";
 import { deathmatchHandlers } from "@/server/shared/minigames/deathmatch/handlers";
 import { zDeathmatchSettings } from "@/server/shared/minigames/deathmatch/types";
 import {
-  PLAYER_WAIT_TIME_S,
   deathmatchNotReadyReason,
   handleDeathmatchTick,
+  requiredDeathmatchPlayerCount,
 } from "@/server/shared/minigames/deathmatch/util";
-import { mutMinigameComponentOfMetadataKind } from "@/server/shared/minigames/type_utils";
+import {
+  mutMinigameComponentOfMetadataKind,
+  parseMinigameSettings,
+} from "@/server/shared/minigames/type_utils";
 import type { ModLogicHooks, ServerMod } from "@/server/shared/minigames/types";
 import {
   closeMinigameInstance,
@@ -40,10 +43,14 @@ const logicHooks: ModLogicHooks = {
 
     minigameInstanceState.player_states.delete(player.id);
     const numPlayers = minigameInstanceState.player_states.size;
+    const settings = parseMinigameSettings(
+      minigameEntity.minigameComponent().minigame_settings,
+      zDeathmatchSettings
+    );
     if (numPlayers === 0) {
       closeMinigameInstance(minigameEntity, minigameInstanceEntity, context);
     } else if (
-      numPlayers === 1 &&
+      numPlayers < requiredDeathmatchPlayerCount(settings) &&
       minigameInstanceState.instance_state?.kind !== "finished"
     ) {
       minigameInstanceState.instance_state = {
@@ -52,7 +59,10 @@ const logicHooks: ModLogicHooks = {
     }
   },
 
-  onMinigamePlayerAdded({ player, minigameInstanceEntity }, _context) {
+  onMinigamePlayerAdded(
+    { player, minigameEntity, minigameInstanceEntity },
+    _context
+  ) {
     player.setInventory(newPlayerInventory());
     player.setBuffsComponent(BuffsComponent.create());
 
@@ -69,13 +79,22 @@ const logicHooks: ModLogicHooks = {
       playerId: player.id,
     });
 
+    const settings = parseMinigameSettings(
+      minigameEntity.minigameComponent().minigame_settings,
+      zDeathmatchSettings
+    );
+
     // Start the countdown
-    if (instanceState.instance_state?.kind === "waiting_for_players") {
+    if (
+      instanceState.instance_state?.kind === "waiting_for_players" &&
+      instanceState.player_states.size >=
+        requiredDeathmatchPlayerCount(settings)
+    ) {
       instanceState.instance_state = {
         kind: "play_countdown",
-        round_start: secondsSinceEpoch() + PLAYER_WAIT_TIME_S,
+        round_start: secondsSinceEpoch() + settings.countdownSeconds,
       };
-      scheduleMinigameTick(minigameInstanceEntity, PLAYER_WAIT_TIME_S);
+      scheduleMinigameTick(minigameInstanceEntity, settings.countdownSeconds);
     }
   },
 

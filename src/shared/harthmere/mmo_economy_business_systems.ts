@@ -37,6 +37,7 @@ import {
   type HarthmereBusinessMiniGameDecision,
   type HarthmereBusinessOutpostProceduralBuildingRecord,
 } from "./business_customer_simulator";
+import { harthmereBusinessCustomerSessionEntityId } from "./business_interior_runtime";
 import {
   generateHarthmereBusinessEmployeeCandidates,
   interviewHarthmereBusinessEmployeeCandidate,
@@ -509,7 +510,60 @@ export function normalizeHarthmereEconomyBusinessSystemsState(raw: unknown): Har
     menuByBusiness: { ...(value.menuByBusiness ?? {}) },
     unstableMagicItems: { ...(value.unstableMagicItems ?? {}) },
     serviceQuests: { ...((value as any).serviceQuests ?? {}) },
-    customerSessions: { ...((value as any).customerSessions ?? {}) },
+    customerSessions: Object.fromEntries(
+      Object.entries(
+        ((value as any).customerSessions ?? {}) as Record<string, any>
+      ).map(([sessionId, rawSession]) => {
+        const session = { ...rawSession, sessionId };
+        const queue = Array.isArray(session.queue) ? session.queue : [];
+        return [
+          sessionId,
+          {
+            ...session,
+            queue: queue.map((rawTicket: any, index: number) => {
+              const ticketId = String(
+                rawTicket.ticketId ?? `customer_ticket_legacy_${index}`
+              );
+              const status = rawTicket.status ?? "waiting";
+              return {
+                ...rawTicket,
+                ticketId,
+                entityId:
+                  rawTicket.entityId ??
+                  harthmereBusinessCustomerSessionEntityId({
+                    actorId: String(session.actorId ?? "legacy_actor"),
+                    sessionId,
+                    ticketId,
+                  }),
+                queueIndex: Number.isFinite(Number(rawTicket.queueIndex))
+                  ? Math.max(0, Math.trunc(Number(rawTicket.queueIndex)))
+                  : index,
+                spatialPhase:
+                  rawTicket.spatialPhase ??
+                  (status === "waiting"
+                    ? ticketId === session.currentTicketId
+                      ? "entering"
+                      : "queued"
+                    : status === "served" ||
+                        status === "failed" ||
+                        status === "left"
+                      ? "departing"
+                      : "despawned"),
+                reaction:
+                  rawTicket.reaction ??
+                  (status === "served"
+                    ? "payment"
+                    : status === "failed"
+                      ? "incorrect"
+                      : status === "left"
+                        ? "timeout"
+                        : "neutral"),
+              };
+            }),
+          },
+        ];
+      })
+    ),
     customerStats: Object.fromEntries(
       Object.entries(((value as any).customerStats ?? {}) as Record<string, unknown>).map(
         ([businessId, stats]) => [businessId, normalizeHarthmereBusinessCustomerStats(stats, businessId)],
@@ -1490,10 +1544,17 @@ function runBusinessEmployeeMoraleTick(state: BusinessSystemsEconomyState, reque
 }
 
 function advanceCustomerSession(session: HarthmereBusinessCustomerSession, nowMs?: number) {
-  const next = session.queue.find((ticket) => ticket.status === "waiting");
+  const waiting = session.queue.filter((ticket) => ticket.status === "waiting");
+  waiting.forEach((ticket, index) => {
+    ticket.queueIndex = index;
+    ticket.spatialPhase = index === 0 ? "approaching_counter" : "queued";
+    ticket.reaction = "neutral";
+  });
+  const next = waiting[0];
   session.currentTicketId = next?.ticketId;
   if (!next) {
     session.status = "completed";
+    session.endedAtMs = nowMs;
     return true;
   }
   if (typeof nowMs === "number") {
@@ -1521,6 +1582,8 @@ function expireImpatientCustomerTickets(
     if (ticket.patienceRemaining > 0) break;
 
     ticket.status = "left";
+    ticket.spatialPhase = "departing";
+    ticket.reaction = "timeout";
     leftTicketIds.push(ticket.ticketId);
     session.failedTicketIds.push(ticket.ticketId);
     session.streak = 0;
@@ -1557,6 +1620,8 @@ function startBusinessCustomerSession(state: BusinessSystemsEconomyState, reques
     businessId: b.businessId,
     typeId: b.typeId,
     sessionId,
+    actorId: request.actorId,
+    actorEntityId: context.actorEntityId,
     nowMs: request.nowMs,
     count: requestedCount,
     nextTicketNumber: systems.nextCustomerTicketNumber,
@@ -1573,6 +1638,7 @@ function startBusinessCustomerSession(state: BusinessSystemsEconomyState, reques
     businessId: b.businessId,
     typeId: b.typeId,
     actorId: request.actorId,
+    actorEntityId: context.actorEntityId,
     status: "active",
     startedAtMs: request.nowMs,
     expiresAtMs: request.nowMs + HARTHMERE_BUSINESS_CUSTOMER_SESSION_MS,
@@ -1641,6 +1707,16 @@ function serveBusinessCustomer(state: BusinessSystemsEconomyState, request: Hart
     ? session.queue.find((entry) => entry.ticketId === ticketId)
     : activeHarthmereBusinessCustomerTicket(session);
   if (!ticket || ticket.status !== "waiting") return reject(warnings, touched, "economy_rejected:waiting_business_customer_not_found");
+  if (
+    context.nativeBusinessCustomerRequired === true &&
+    request.nativeCustomerReady !== true
+  ) {
+    return reject(
+      warnings,
+      touched,
+      "economy_rejected:business_customer_not_at_counter"
+    );
+  }
   const offerId = str(request.offerId, ticket.requestedOfferId);
   const offer = definition.offers.find((entry) => entry.offerId === offerId);
   if (!offer) return reject(warnings, touched, "economy_rejected:business_customer_offer_not_found");
@@ -1654,6 +1730,8 @@ function serveBusinessCustomer(state: BusinessSystemsEconomyState, request: Hart
   const matched = offer.offerId === ticket.requestedOfferId;
   if (!matched) {
     ticket.status = "failed";
+    ticket.spatialPhase = "departing";
+    ticket.reaction = "incorrect";
     ticket.patienceRemaining = Math.max(0, ticket.patienceRemaining - 20);
     session.failedTicketIds.push(ticket.ticketId);
     session.streak = 0;
@@ -1687,6 +1765,8 @@ function serveBusinessCustomer(state: BusinessSystemsEconomyState, request: Hart
     });
     if (!minigameResult.ok) {
       ticket.status = "failed";
+      ticket.spatialPhase = "departing";
+      ticket.reaction = "incorrect";
       ticket.patienceRemaining = Math.max(0, ticket.patienceRemaining - 20);
       session.failedTicketIds.push(ticket.ticketId);
       session.streak = 0;
@@ -1713,7 +1793,15 @@ function serveBusinessCustomer(state: BusinessSystemsEconomyState, request: Hart
     touched.add("economy_business_inventory");
     shared.add(businessSharedKey(b.businessId));
   }
-  if (!requireInventory(b, warnings, touched, offer.requiredItems)) return;
+  if (!requireInventory(b, warnings, touched, offer.requiredItems)) {
+    ticket.reaction = "insufficient_stock";
+    session.notes.push(
+      `${npc?.displayName ?? "Customer"} is still waiting while stock is replenished.`
+    );
+    touched.add("economy_business_customer_session");
+    shared.add(systemsSharedKey("customer_session", session.sessionId));
+    return;
+  }
   consumeInventory(b, offer.requiredItems);
   if (offer.producedItems) produceInventory(b, offer.producedItems);
   const today = customerDay(request.nowMs);
@@ -1727,6 +1815,8 @@ function serveBusinessCustomer(state: BusinessSystemsEconomyState, request: Hart
   goldDelta.value += rewardGold;
   addNeed(state, b, offer.serviceNeed, ticket.needDelta, request.nowMs);
   ticket.status = "served";
+  ticket.spatialPhase = "departing";
+  ticket.reaction = "payment";
   session.servedTicketIds.push(ticket.ticketId);
   session.streak += 1;
   session.earnedGold += rewardGold;
@@ -1763,6 +1853,72 @@ function serveBusinessCustomer(state: BusinessSystemsEconomyState, request: Hart
   if (completed) b.flags.customer_service_shift_completed = true;
   touched.add("economy_business_customer_session");
   touched.add("economy_business_inventory");
+  shared.add(businessSharedKey(b.businessId));
+  shared.add(systemsSharedKey("customer_session", session.sessionId));
+}
+
+function tickBusinessCustomerSession(
+  state: BusinessSystemsEconomyState,
+  request: HarthmereEconomyMutationRequest,
+  warnings: string[],
+  touched: Set<string>,
+  shared: Set<string>
+) {
+  const b = business(state, request.businessId);
+  if (!b) return reject(warnings, touched, "economy_rejected:business_not_found");
+  const systems = state.businessSystems!;
+  const sessionId = str(request.sessionId, "");
+  const session = sessionId
+    ? systems.customerSessions[sessionId]
+    : activeCustomerSessionForBusiness(systems, b.businessId, request.nowMs);
+  if (!session || session.businessId !== b.businessId) return;
+  if (session.status === "active") {
+    expireImpatientCustomerTickets(
+      session,
+      b,
+      statsForCustomerBusiness(systems, b.businessId),
+      request.nowMs
+    );
+  }
+  touched.add("economy_business_customer_session");
+  shared.add(businessSharedKey(b.businessId));
+  shared.add(systemsSharedKey("customer_session", session.sessionId));
+}
+
+function endBusinessCustomerSession(
+  state: BusinessSystemsEconomyState,
+  request: HarthmereEconomyMutationRequest,
+  warnings: string[],
+  touched: Set<string>,
+  shared: Set<string>
+) {
+  const b = business(state, request.businessId);
+  if (!b) return reject(warnings, touched, "economy_rejected:business_not_found");
+  const systems = state.businessSystems!;
+  const sessionId = str(request.sessionId, "");
+  const session = sessionId
+    ? systems.customerSessions[sessionId]
+    : activeCustomerSessionForBusiness(systems, b.businessId, request.nowMs);
+  if (!session || session.businessId !== b.businessId) {
+    return reject(
+      warnings,
+      touched,
+      "economy_rejected:active_business_customer_session_not_found"
+    );
+  }
+  if (session.status !== "active") return;
+  for (const ticket of session.queue) {
+    if (ticket.status !== "waiting") continue;
+    ticket.status = "left";
+    ticket.spatialPhase = "cancelled";
+    ticket.reaction = "neutral";
+  }
+  session.currentTicketId = undefined;
+  session.status = "aborted";
+  session.endedAtMs = request.nowMs;
+  session.notes.push("Shift ended safely; remaining customers are leaving through the real exit.");
+  b.flags.customer_service_shift_ended = true;
+  touched.add("economy_business_customer_session");
   shared.add(businessSharedKey(b.businessId));
   shared.add(systemsSharedKey("customer_session", session.sessionId));
 }
@@ -2836,6 +2992,8 @@ export function reduceHarthmereEconomyBusinessSpecificMutation(
     "create_shelter_contract",
     "start_business_customer_session",
     "serve_business_customer",
+    "tick_business_customer_session",
+    "end_business_customer_session",
     "open_business_branch",
     "assign_business_automation",
     "assign_business_branch_manager",
@@ -2923,6 +3081,8 @@ export function reduceHarthmereEconomyBusinessSpecificMutation(
     case "create_shelter_contract": createShelterContract(next, request, typedContext, warnings, touched, shared); break;
     case "start_business_customer_session": startBusinessCustomerSession(next, request, typedContext, warnings, touched, shared); break;
     case "serve_business_customer": serveBusinessCustomer(next, request, typedContext, goldDelta, itemDeltas, warnings, touched, shared); break;
+    case "tick_business_customer_session": tickBusinessCustomerSession(next, request, warnings, touched, shared); break;
+    case "end_business_customer_session": endBusinessCustomerSession(next, request, warnings, touched, shared); break;
     case "open_business_branch": openBusinessBranch(next, request, typedContext, warnings, touched, shared); break;
     case "assign_business_automation": assignBusinessAutomation(next, request, typedContext, warnings, touched, shared); break;
     case "assign_business_branch_manager": assignBusinessBranchManager(next, request, typedContext, warnings, touched, shared); break;

@@ -6,6 +6,7 @@ import {
   type HarthmereBossAttackShapeVisualDefinition,
 } from "@/shared/harthmere/boss_attack_shape_visuals";
 import {
+  HARTHMERE_AUTHORITATIVE_IMPACT_EPSILON_SECS,
   HARTHMERE_PROJECTILE_VISUALS,
   HARTHMERE_PROJECTILE_VISUAL_VERSION,
   getHarthmereProjectileVisual,
@@ -23,7 +24,10 @@ import {
   type HarthmereMagicImpactProfile,
 } from "@/shared/harthmere/magic_impact";
 import * as THREE from "three";
-import type { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import type {
+  GLTF,
+  GLTFLoader,
+} from "three/examples/jsm/loaders/GLTFLoader.js";
 
 type ProjectilePrototype = {
   scene: THREE.Object3D;
@@ -206,6 +210,7 @@ export type HarthmereProjectileSpawnRequest = {
   hitRadius?: number;
   coneAngleDeg?: number;
   windupSecs?: number;
+  authoritativeImpactSecs?: number;
   visualScale?: number;
   damageType?: string;
 };
@@ -619,8 +624,8 @@ function makePremiumImpact(
     definition.family === "sonic" || definition.family === "boss"
       ? 3
       : definition.family === "holy" || definition.id === "consecrate"
-      ? 2
-      : 1;
+        ? 2
+        : 1;
   for (let index = 0; index < ringCount; index += 1) {
     addImpactRing(
       group,
@@ -634,10 +639,10 @@ function makePremiumImpact(
     phase === "launch"
       ? 5
       : definition.id === "meteor"
-      ? 18
-      : definition.family === "boss"
-      ? 16
-      : 10;
+        ? 18
+        : definition.family === "boss"
+          ? 16
+          : 10;
   for (let index = 0; index < count; index += 1) {
     const angle = (Math.PI * 2 * index) / count;
     const direction = new THREE.Vector3(
@@ -645,10 +650,10 @@ function makePremiumImpact(
       definition.family === "holy"
         ? 0.4 + (index % 3) * 0.18
         : definition.family === "fire"
-        ? 0.22 + (index % 4) * 0.12
-        : definition.family === "lightning"
-        ? (index % 3) * 0.3 - 0.25
-        : Math.sin(index * 1.9) * 0.16,
+          ? 0.22 + (index % 4) * 0.12
+          : definition.family === "lightning"
+            ? (index % 3) * 0.3 - 0.25
+            : Math.sin(index * 1.9) * 0.16,
       Math.sin(angle)
     ).normalize();
     const rootLike = definition.family === "nature";
@@ -656,12 +661,12 @@ function makePremiumImpact(
     const geometry = rootLike
       ? new THREE.ConeGeometry(0.045, 0.48, 4)
       : boltLike
-      ? new THREE.BoxGeometry(0.035, 0.035, 0.5)
-      : new THREE.BoxGeometry(
-          definition.family === "physical" ? 0.055 : 0.075,
-          definition.family === "physical" ? 0.055 : 0.075,
-          definition.family === "physical" ? 0.32 : 0.22
-        );
+        ? new THREE.BoxGeometry(0.035, 0.035, 0.5)
+        : new THREE.BoxGeometry(
+            definition.family === "physical" ? 0.055 : 0.075,
+            definition.family === "physical" ? 0.055 : 0.075,
+            definition.family === "physical" ? 0.32 : 0.22
+          );
     const shard = new THREE.Mesh(
       geometry,
       materials[definition.family === "fire" && index % 4 === 3 ? 2 : index % 2]
@@ -676,10 +681,10 @@ function makePremiumImpact(
         phase === "launch"
           ? 0.7
           : definition.id === "meteor"
-          ? 3.8
-          : definition.family === "boss"
-          ? 3.0
-          : 2.0
+            ? 3.8
+            : definition.family === "boss"
+              ? 3.0
+              : 2.0
       ),
       new THREE.Vector3(2 + (index % 3), 2.6 + (index % 4), 1.4)
     );
@@ -698,10 +703,10 @@ function makePremiumImpact(
     phase === "launch"
       ? 0.14
       : definition.id === "consecrate"
-      ? 1.0
-      : definition.id === "meteor" || definition.family === "boss"
-      ? 0.82
-      : THREE.MathUtils.clamp(0.3 + radius * 0.08, 0.34, 0.62);
+        ? 1.0
+        : definition.id === "meteor" || definition.family === "boss"
+          ? 0.82
+          : THREE.MathUtils.clamp(0.3 + radius * 0.08, 0.34, 0.62);
   return {
     kind: "basic",
     group,
@@ -1646,7 +1651,9 @@ export class HarthmereProjectileVisualRuntime {
       duration: harthmereProjectileFlightDurationSecs({
         distanceMeters: start.distanceTo(target),
         speedMetersPerSecond: definition.speed,
-        authoritativeImpactSecs: request.windupSecs,
+        authoritativeImpactSecs:
+          request.authoritativeImpactSecs ??
+          (Number(request.windupSecs) > 0 ? request.windupSecs : undefined),
       }),
       visualScale,
       damageType: request.damageType,
@@ -1801,13 +1808,21 @@ export class HarthmereProjectileVisualRuntime {
       elapsed: 0,
       // Area/beam telegraphs resolve when Anima resolves damage. The previous
       // extra 0.36 seconds let the graphic linger past the authoritative hit.
-      duration: THREE.MathUtils.clamp(
-        request.windupSecs && request.windupSecs > 0
-          ? request.windupSecs
-          : Math.max(0.7, distance / projectileDefinition.speed),
-        0.62,
-        2.15
-      ),
+      duration:
+        Number.isFinite(request.authoritativeImpactSecs) &&
+        Number(request.authoritativeImpactSecs) >= 0
+          ? THREE.MathUtils.clamp(
+              Number(request.authoritativeImpactSecs),
+              HARTHMERE_AUTHORITATIVE_IMPACT_EPSILON_SECS,
+              2.15
+            )
+          : THREE.MathUtils.clamp(
+              request.windupSecs && request.windupSecs > 0
+                ? request.windupSecs
+                : Math.max(0.7, distance / projectileDefinition.speed),
+              0.62,
+              2.15
+            ),
       damageType: request.damageType,
       impactRadius: hitRadius,
       result: request.result,
@@ -2119,14 +2134,20 @@ export class HarthmereProjectileVisualRuntime {
   }
 
   update(dt: number) {
-    const safeDt = THREE.MathUtils.clamp(dt, 0, 0.05);
+    // Lifecycle progress must follow wall time because Anima resolves damage
+    // on that same clock. Capping it to 50 ms per rendered frame made a
+    // one-second Fireball take about twenty seconds visually at 1 FPS while
+    // authoritative damage still landed after one second. Keep the cap only
+    // for mixer/particle integration so a stalled frame cannot explode trails.
+    const timelineDt = Number.isFinite(dt) ? Math.max(0, dt) : 0;
+    const safeDt = THREE.MathUtils.clamp(timelineDt, 0, 0.05);
     for (
       let index = this.activeMagicCharges.length - 1;
       index >= 0;
       index -= 1
     ) {
       const charge = this.activeMagicCharges[index];
-      charge.elapsed += safeDt;
+      charge.elapsed += timelineDt;
       charge.mixer?.update(safeDt);
       const progress = Math.min(1, charge.elapsed / charge.duration);
       this.updateMagicChargeTransform(charge, progress);
@@ -2138,7 +2159,7 @@ export class HarthmereProjectileVisualRuntime {
     }
     for (let index = this.active.length - 1; index >= 0; index -= 1) {
       const projectile = this.active[index];
-      projectile.elapsed += safeDt;
+      projectile.elapsed += timelineDt;
       projectile.mixer?.update(safeDt);
       const progress = Math.min(1, projectile.elapsed / projectile.duration);
       this.updateTransform(projectile, progress);
@@ -2163,7 +2184,7 @@ export class HarthmereProjectileVisualRuntime {
 
     for (let index = this.activeShapes.length - 1; index >= 0; index -= 1) {
       const effect = this.activeShapes[index];
-      effect.elapsed += safeDt;
+      effect.elapsed += timelineDt;
       effect.mixer?.update(safeDt);
       const progress = Math.min(1, effect.elapsed / effect.duration);
       this.updateAttackShapeTransform(effect, progress);

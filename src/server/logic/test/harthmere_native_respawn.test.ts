@@ -25,6 +25,7 @@ import {
 } from "@/shared/harthmere/harthmere_native_vitals";
 import { generateTestId } from "@/shared/test_helpers";
 import { harthmereRespawnPositionForDeath } from "@/shared/harthmere/harthmere_respawn_anchors";
+import { harthmereForestWildlifePlacements } from "@/shared/harthmere/harthmere_forest_wildlife";
 import { HARTHMERE_ADDITIVE_TOWN_OFFSET_X } from "@/shared/harthmere/world_extension";
 import { ch1ElsewhenSlot } from "@/shared/harthmere/ch1_elsewhen_region";
 import { readCh1NativeRunAdmission } from "@/shared/harthmere/ch1_native_run";
@@ -129,6 +130,44 @@ describe("Harthmere native ECS respawn", () => {
     );
     // Health still restores in the same transaction.
     assert.equal(player.health?.hp, 120);
+  });
+
+  it("returns a player who died in the Harthmere forest to Harthmere", async () => {
+    const logic = new TestLogicApi(voxeloo);
+    const forest = harthmereForestWildlifePlacements()[0];
+    assert.ok(forest);
+    const deathPosition: [number, number, number] = [
+      forest.authoredX + HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+      53,
+      forest.authoredZ,
+    ];
+    const playerId = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: deathPosition,
+      })
+    ).id;
+    editEntity(logic.world, playerId, (player) => {
+      player.mutableHealth().hp = 0;
+    });
+
+    await logic.publish(
+      new GameEvent(
+        playerId,
+        new WarpHomeEvent({
+          id: playerId,
+          position: [999, 999, 999],
+          orientation: [0, 0],
+          reason: "respawn",
+        })
+      )
+    );
+
+    const expected = harthmereRespawnPositionForDeath(deathPosition);
+    assert.equal(expected.region, "harthmere_extension");
+    assert.deepEqual(
+      logic.world.table.get(playerId)?.position?.v,
+      expected.position
+    );
   });
 
   it("keeps an admitted Chapter 1 death inside the portal-only dungeon", async () => {

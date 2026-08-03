@@ -1,6 +1,10 @@
 import { createHash } from "crypto";
 import fs from "fs";
 import path from "path";
+import {
+  canonicalSnapshotGroveNpcEntityId,
+  snapshotGroveNpcStableVoiceEntityId,
+} from "@/shared/harthmere/snapshot_grove_ids";
 
 export const NPC_VOICE_AUDIO_CACHE_MANIFEST_VERSION =
   "npc-voice-audio-cache-v1";
@@ -36,13 +40,15 @@ export interface NpcVoiceAudioManifest {
 
 const runtimeWrites = new Map<string, Promise<string>>();
 const runtimeGenerations = new Map<string, Promise<string>>();
-let staticManifestCache:
-  | {
-      manifestPath: string;
-      modifiedMs: number;
-      byCacheKey: Map<string, string>;
-    }
-  | undefined;
+interface StaticNpcVoiceManifestIndex {
+  manifestPath: string;
+  modifiedMs: number;
+  provider: string;
+  byCacheKey: Map<string, string>;
+  byActorAndTextHash: Map<string, string>;
+}
+
+let staticManifestCache: StaticNpcVoiceManifestIndex | undefined;
 
 function sha256(text: string) {
   return createHash("sha256").update(text).digest("hex");
@@ -95,25 +101,79 @@ function staticManifestPath(root = process.cwd()) {
   );
 }
 
+function actorKeyFromVoiceDescriptor(voice: string | undefined) {
+  for (const part of voice?.split("|") ?? []) {
+    const separator = part.indexOf("=");
+    if (separator < 0 || part.slice(0, separator) !== "actor") {
+      continue;
+    }
+    try {
+      return decodeURIComponent(part.slice(separator + 1));
+    } catch {
+      return part.slice(separator + 1);
+    }
+  }
+  return undefined;
+}
+
+function stableActorIdentity(actorKey: string | undefined) {
+  const normalized = actorKey?.trim().toLocaleLowerCase();
+  if (!normalized) {
+    return undefined;
+  }
+  for (const token of normalized.split(":")) {
+    if (!/^\d+$/.test(token)) {
+      continue;
+    }
+    const entityId = Number(token);
+    if (!Number.isSafeInteger(entityId)) {
+      continue;
+    }
+    const canonical = Number(canonicalSnapshotGroveNpcEntityId(entityId));
+    const stable = Number(snapshotGroveNpcStableVoiceEntityId(entityId));
+    if (canonical !== entityId || stable !== entityId) {
+      return `snapshot-grove-entity:${stable}`;
+    }
+  }
+  return `actor-key:${normalized}`;
+}
+
+function actorAndTextHashKey(input: {
+  actorKey: string | undefined;
+  textHash: string | undefined;
+}) {
+  const actorIdentity = stableActorIdentity(input.actorKey);
+  return actorIdentity && input.textHash
+    ? `${actorIdentity}|${input.textHash}`
+    : undefined;
+}
+
 function loadStaticManifest(root = process.cwd()) {
   const manifestPath = staticManifestPath(root);
   let stat: fs.Stats;
   try {
     stat = fs.statSync(manifestPath);
   } catch {
-    return new Map<string, string>();
+    return {
+      manifestPath,
+      modifiedMs: 0,
+      provider: "",
+      byCacheKey: new Map<string, string>(),
+      byActorAndTextHash: new Map<string, string>(),
+    } satisfies StaticNpcVoiceManifestIndex;
   }
   if (
     staticManifestCache?.manifestPath === manifestPath &&
     staticManifestCache.modifiedMs === stat.mtimeMs
   ) {
-    return staticManifestCache.byCacheKey;
+    return staticManifestCache;
   }
   try {
     const manifest = JSON.parse(
       fs.readFileSync(manifestPath, "utf8")
     ) as NpcVoiceAudioManifest;
     const byCacheKey = new Map<string, string>();
+    const byActorAndTextHash = new Map<string, string>();
     for (const recording of manifest.recordings ?? []) {
       if (!recording.path) {
         continue;
@@ -129,17 +189,32 @@ function loadStaticManifest(root = process.cwd()) {
           byCacheKey.set(cacheKey, recording.path);
         }
       }
+      const actorTextKey = actorAndTextHashKey({
+        actorKey: recording.actorKey,
+        textHash: recording.textHash,
+      });
+      if (actorTextKey && !byActorAndTextHash.has(actorTextKey)) {
+        byActorAndTextHash.set(actorTextKey, recording.path);
+      }
     }
     staticManifestCache = {
       manifestPath,
       modifiedMs: stat.mtimeMs,
+      provider: manifest.provider,
       byCacheKey,
+      byActorAndTextHash,
     };
-    return byCacheKey;
+    return staticManifestCache;
   } catch {
     // A missing or partially-written manifest must never break NPC dialogue;
     // the caller simply falls back to runtime synthesis and caching.
-    return new Map<string, string>();
+    return {
+      manifestPath,
+      modifiedMs: stat.mtimeMs,
+      provider: "",
+      byCacheKey: new Map<string, string>(),
+      byActorAndTextHash: new Map<string, string>(),
+    };
   }
 }
 
@@ -153,19 +228,31 @@ function audioDataUrl(audio: Buffer, extension = "mp3") {
     extension === "wav"
       ? "audio/wav"
       : extension === "ogg" || extension === "opus"
-      ? "audio/ogg"
-      : "audio/mpeg";
+        ? "audio/ogg"
+        : "audio/mpeg";
   return `data:${contentType};base64,${audio.toString("base64")}`;
 }
 
 export function findCachedNpcVoiceAudio(input: {
   cacheKey: string;
   provider: string;
+  text?: string;
+  voice?: string;
   extension?: string;
   root?: string;
 }) {
   const root = input.root ?? process.cwd();
-  const staticPath = loadStaticManifest(root).get(input.cacheKey);
+  const staticManifest = loadStaticManifest(root);
+  const staticPath =
+    staticManifest.provider === input.provider
+      ? (staticManifest.byCacheKey.get(input.cacheKey) ??
+        staticManifest.byActorAndTextHash.get(
+          actorAndTextHashKey({
+            actorKey: actorKeyFromVoiceDescriptor(input.voice),
+            textHash: input.text ? npcVoiceTextHash(input.text) : undefined,
+          }) ?? ""
+        ))
+      : undefined;
   if (staticPath && existingRelativePath(staticPath, root)) {
     return npcVoicePublicUrl(staticPath);
   }
@@ -181,6 +268,29 @@ export function findCachedNpcVoiceAudio(input: {
     fs.readFileSync(path.join(publicRoot(root), existingRuntimePath)),
     input.extension
   );
+}
+
+export function findCommittedNpcVoiceAudio(input: {
+  provider: string;
+  text: string;
+  voice: string;
+  root?: string;
+}) {
+  const root = input.root ?? process.cwd();
+  const staticManifest = loadStaticManifest(root);
+  if (staticManifest.provider !== input.provider) {
+    return undefined;
+  }
+  const actorTextKey = actorAndTextHashKey({
+    actorKey: actorKeyFromVoiceDescriptor(input.voice),
+    textHash: npcVoiceTextHash(input.text),
+  });
+  const staticPath = actorTextKey
+    ? staticManifest.byActorAndTextHash.get(actorTextKey)
+    : undefined;
+  return staticPath && existingRelativePath(staticPath, root)
+    ? npcVoicePublicUrl(staticPath)
+    : undefined;
 }
 
 export async function writeCachedNpcVoiceAudio(input: {
@@ -230,6 +340,8 @@ export async function writeCachedNpcVoiceAudio(input: {
 export async function resolveNpcVoiceAudioUrl(input: {
   cacheKey: string;
   provider: string;
+  text?: string;
+  voice?: string;
   extension?: string;
   root?: string;
   generate: () => Promise<

@@ -125,6 +125,14 @@ const harthmereInteriorVegetationClear = fs.readFileSync(
   ),
   "utf8"
 );
+const harthmereTownProductionRepair = fs.readFileSync(
+  path.join(root, "scripts/harthmere/repair-harthmere-town-production.cjs"),
+  "utf8"
+);
+const harthmereTownRepairAudit = fs.readFileSync(
+  path.join(root, "scripts/harthmere/audit-harthmere-town-repair.cjs"),
+  "utf8"
+);
 const runBuildChecks = script.slice(script.indexOf("run_build_checks()"));
 const pushAndDeploy = script.slice(
   script.indexOf("push_and_deploy()"),
@@ -1043,6 +1051,22 @@ ok(
   "deploy reports required production Redis seed-key presence during snapshot checks"
 );
 ok(
+  script.includes("verify_retained_local_browser_stack") &&
+    script.includes("LOCAL_POST_SMOKE_STABILITY_SECONDS") &&
+    script.includes("retained local app/Redis stack restarted") &&
+    script.includes(
+      "retained local Redis lost or incompletely retained its snapshot"
+    ) &&
+    script.indexOf("verify_retained_local_browser_stack") <
+      script.lastIndexOf("Local production image smoke passed."),
+  "local smoke cannot report a final pass after an app/Redis restart or lost snapshot"
+);
+ok(
+  script.includes("retained browser app omitted HARTHMERE_NATIVE_ECS_E2E=1") &&
+    script.includes("retained browser app has no HARTHMERE_E2E_CONTROL_TOKEN"),
+  "native browser smoke verifies its container-side E2E flag and token before handoff"
+);
+ok(
   stackRunner.includes("snapshot_redis_required_seeds_present"),
   "runtime verifies required world seed keys before accepting a snapshot hash"
 );
@@ -1153,6 +1177,7 @@ ok(
       "report_extension_terrain",
       "repair_extension_surface",
       "clear_building_interior_vegetation",
+      "repair_harthmere_town",
       "materialize_business_outposts",
       'run_node "Harthmere ECS and shared-state reconciliation" \\',
       "  scripts/harthmere/reconcile-production-world-sync.cjs",
@@ -1168,8 +1193,38 @@ ok(
     ) &&
     harthmereProductionReconciliation.includes(
       "reconcile-production-live-creature-grounding.cjs"
+    ) &&
+    harthmereProductionReconciliation.includes("verify_harthmere_town") &&
+    harthmereProductionReconciliation.indexOf("repair_harthmere_town\n") <
+      harthmereProductionReconciliation.indexOf("materialize_business_outposts\n") &&
+    harthmereProductionReconciliation.lastIndexOf("verify_harthmere_town\n") >
+      harthmereProductionReconciliation.indexOf("materialize_connector_route\n")
+    ,
+  "in-VNet reconciliation repairs persisted town terrain/NPCs before downstream writers and verifies the final world"
+);
+ok(
+  harthmereTownProductionRepair.includes(
+    "harthmere-town-production-repair-v1"
+  ) &&
+    harthmereTownProductionRepair.includes(
+      "HARTHMERE_TOWN_TARGETED_REPAIR_READY"
+    ) &&
+    harthmereTownProductionRepair.includes("entity.setShardSeed") &&
+    !harthmereTownProductionRepair.includes("setShardWater") &&
+    harthmereTownRepairAudit.includes("HARTHMERE_TOWN_REPAIR_READY") &&
+    harthmereProductionReconciliation.includes(
+      "HARTHMERE_TOWN_REPAIR_SKIP_WATER=1"
     ),
-  "in-VNet reconciliation repairs terrain, applies map/ECS and Chapter 1 building migration, writes the connector last, and verifies grounding"
+  "deployment packages a versioned overlay-preserving town repair and a focused fatal persisted-world audit"
+);
+ok(
+  script.includes("run_azure_world_sync_job town-only") &&
+    script.includes('HARTHMERE_TOWN_REPAIR_ONLY="$town_repair_only"') &&
+    harthmereProductionReconciliation.includes(
+      'if [ "${HARTHMERE_TOWN_REPAIR_ONLY:-0}" = "1" ]'
+    ) &&
+    harthmereProductionReconciliation.includes("mode=town-only"),
+  "targeted terrain deployments may skip broad reconciliation but cannot skip the persisted-town repair"
 );
 ok(
   harthmereInteriorVegetationClear.includes("await activeWorld?.stop?.()") &&
@@ -1259,10 +1314,25 @@ ok(
     shimMain.includes("shard_diff must never turn into a request"),
   "Harthmere seed wiring updates authored terrain only and audits seed solidity without interpreting player diffs as corruption"
 );
+const businessTerrainWrite = shimMain.indexOf("const businessOutpostEdits =");
+const finalWaterGeometryWrite = shimMain.indexOf(
+  "Authored water geometry must be the final owner of its channel/basin."
+);
+ok(
+  businessTerrainWrite >= 0 &&
+    finalWaterGeometryWrite > businessTerrainWrite &&
+    shimMain.includes("harthmereStillWaterCarvesAirAt(") &&
+    shimMain.includes("harthmereRiverCarvesAirAt(") &&
+    shimMain.includes("crossingDeck === undefined ? 0"),
+  "authored water geometry is reapplied after business terrain edits so the Brell cannot be buried while shard_water remains present"
+);
 ok(
   shimMain.includes("localDevTerrainShardHasAuthoredWater(") &&
     shimMain.includes("const authoredWaterOnlyIds = new Set<BiomesId>()") &&
     shimMain.includes("entity: { id, shard_water: shardWater }") &&
+    shimMain.includes(
+      "Authored-water-only migration requires an existing terrain shard."
+    ) &&
     shimMain.includes("terrainIdsToBuild.size === 0"),
   "ordinary terrain maintenance always reapplies authored Harthmere water with water-only existing-shard updates"
 );
@@ -1312,9 +1382,10 @@ ok(
 ok(
   script.includes("HARTHMERE_SKIP_RECONCILIATION_AFTER_TERRAIN") &&
     script.includes(
-      "Skipping broad Harthmere outpost/ECS/connector reconciliation after targeted terrain maintenance."
-    ),
-  "deploy can run targeted terrain maintenance without repeating broad reconciliation"
+      "Skipping broad Harthmere outpost/ECS/connector reconciliation after targeted terrain maintenance; the mandatory persisted-town repair still runs."
+    ) &&
+    script.includes("run_azure_world_sync_job town-only"),
+  "deploy can omit broad reconciliation without omitting the mandatory persisted-town repair"
 );
 ok(
   pushAndDeploy.indexOf(
@@ -1421,6 +1492,23 @@ ok(
     harthmereCreatureGrounding.includes("bodyCanStandAt") &&
     harthmereCreatureGrounding.includes("supportedSurfaceTargetNear") &&
     harthmereCreatureGrounding.includes("harthmereLiveEntityIsTownLivestock") &&
+    harthmereCreatureGrounding.includes(
+      "creatureUsesAuthoredEncounterPosition"
+    ) &&
+    harthmereCreatureGrounding.includes(
+      "isPositionInsideHarthmereIndiswormCave"
+    ) &&
+    harthmereCreatureGrounding.includes('startsWith("remote_corner_apex_")') &&
+    harthmereCreatureGrounding.includes("cavernIndisworms") &&
+    harthmereCreatureGrounding.includes("repairPlannedByFamily") &&
+    harthmereCreatureGrounding.includes("unresolvedByFamily") &&
+    harthmereCreatureGrounding.includes(
+      "HARTHMERE_CREATURE_GROUNDING_SEED_IDS"
+    ) &&
+    harthmereCreatureGrounding.includes("Unknown scoped creature seed ids") &&
+    harthmereCreatureGrounding.includes("dead_or_missing_health") &&
+    harthmereCreatureGrounding.includes("live_entity_expiring") &&
+    harthmereCreatureGrounding.includes("expires: null") &&
     harthmereCreatureGrounding.includes("verifyReadback") &&
     harthmereCreatureGrounding.includes("respawn_anchor_not_grounded"),
   "production deploy repairs real persisted creature bodies, footprints, and respawn anchors"

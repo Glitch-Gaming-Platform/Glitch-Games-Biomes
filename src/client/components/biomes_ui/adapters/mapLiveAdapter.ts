@@ -56,7 +56,11 @@ import {
   sharedQuestTrackableQuestsForBiomesUI,
 } from "./questInviteAdapter";
 // HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14).
-import { bibleQuestTrackableQuestsForBiomesUI } from "@/client/components/challenges/bibleQuestLiveAdapter";
+import {
+  HARTHMERE_BIBLE_QUEST_MARKER_SOURCE,
+  bibleQuestAcceptedLandmarksForBiomesUI,
+  bibleQuestTrackableQuestsForBiomesUI,
+} from "@/client/components/challenges/bibleQuestLiveAdapter";
 import { readableMapMarkerLabelForTest } from "./mapMarkerLabels";
 import { harthmereMapTerrainRegionsForBounds } from "./harthmereMapTerrainRegions";
 import {
@@ -440,7 +444,8 @@ export function buildBiomesUIMapAdapter(
       landmark?.source === HARTHMERE_HOE_QUEST_MARKER_SOURCE ||
       landmark?.source === CH1_BIOMES_UI_MAP_MARKER_SOURCE ||
       landmark?.source === BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE ||
-      landmark?.source === BIOMES_UI_SHARED_QUEST_MARKER_SOURCE
+      landmark?.source === BIOMES_UI_SHARED_QUEST_MARKER_SOURCE ||
+      landmark?.source === HARTHMERE_BIBLE_QUEST_MARKER_SOURCE
       ? id
       : normalizeMarkerId(id);
   };
@@ -465,6 +470,7 @@ export function buildBiomesUIMapAdapter(
           { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
         ),
         ...sharedQuestAcceptedLandmarksForBiomesUI(liveQuestState),
+        ...bibleQuestAcceptedLandmarksForBiomesUI(liveQuestState ?? {}),
         ...harthmereNativeCropMapLandmarks(farming?.getModel()),
         ...harthmereHoeQuestMapLandmarks(farming?.hoeQuestState ?? "loading"),
         ...harthmerePropertyMapLandmarksFromBuildingState(buildingState),

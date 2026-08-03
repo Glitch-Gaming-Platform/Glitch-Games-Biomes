@@ -2,6 +2,7 @@ import { useBiomesUIReplaceLegacyFlag } from "@/client/components/biomes_ui/Biom
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockUnlockWhileOpenActive } from "@/client/components/contexts/usePointerLockUnlockWhileOpenActive";
 import { containMobileControlEvent } from "@/client/components/mobileControlEvents";
+import { PLAYER_INVITE_HOTKEY_LABEL } from "@/client/game/invites/player_invites";
 import React from "react";
 import {
   BIOMES_UI_QUESTS_SHORTCUT,
@@ -30,8 +31,7 @@ function defaultBiomesUINonGameplayRoot(): BiomesUINonGameplayRoot | undefined {
 }
 
 function defaultBiomesUINonGameplayStyleReader():
-  | BiomesUINonGameplayStyleReader
-  | undefined {
+  BiomesUINonGameplayStyleReader | undefined {
   return typeof window === "undefined"
     ? undefined
     : (element) => window.getComputedStyle(element);
@@ -90,7 +90,8 @@ function useBiomesUINonGameplayScreenVisible() {
 export const BiomesUIOpenPrompt: React.FunctionComponent<{
   isOpen?: boolean;
   onOpenMenu?: () => void;
-}> = ({ isOpen = false, onOpenMenu }) => {
+  onOpenInvite?: () => void;
+}> = ({ isOpen = false, onOpenMenu, onOpenInvite }) => {
   const { audioManager, clientConfig, reactResources } = useClientContext();
   const replaceLegacy = useBiomesUIReplaceLegacyFlag();
   const nonGameplayScreenVisible = useBiomesUINonGameplayScreenVisible();
@@ -113,10 +114,16 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
       reactResources.set("/game_modal", { kind: "crafting" });
       audioManager.playSound("button_click");
     };
+    const openInvite = () => {
+      audioManager.playSound("button_click");
+      onOpenInvite?.();
+    };
 
     return (
       <div
-        className="biomes-ui-mobile-menu"
+        className={`biomes-ui-mobile-menu${
+          clientConfig.mobileDevice ? " biomes-ui-mobile-menu--phone" : ""
+        }`}
         data-biomes-mobile-menu="true"
         aria-label="Mobile game menu"
       >
@@ -158,6 +165,25 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
           </span>
           <span>Recipes</span>
         </button>
+        <button
+          type="button"
+          className="biomes-ui-mobile-menu__button biomes-ui-mobile-menu__button--invite"
+          data-biomes-mobile-action="invite"
+          aria-label="Invite friends"
+          onPointerDown={(event) => {
+            containMobileControlEvent(event);
+            openInvite();
+          }}
+          onClick={(event) => {
+            containMobileControlEvent(event);
+            if (event.detail === 0) openInvite();
+          }}
+        >
+          <span className="biomes-ui-mobile-menu__key" aria-hidden>
+            +
+          </span>
+          <span>Invite</span>
+        </button>
       </div>
     );
   }
@@ -168,7 +194,7 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
         className="biomes-ui-open-prompt"
         data-ui-id={UI_IDS.HUD_PROMPT_OPEN_MENU}
         data-biomes-ui-open={isOpen ? "true" : "false"}
-        aria-label={`Press ${BIOMES_UI_RECIPES_SHORTCUT} to open Recipes. Press ${BIOMES_UI_QUESTS_SHORTCUT} to open quests`}
+        aria-label={`Press ${BIOMES_UI_RECIPES_SHORTCUT} to open Recipes. Press ${BIOMES_UI_QUESTS_SHORTCUT} to open quests. Press ${PLAYER_INVITE_HOTKEY_LABEL} to invite friends`}
       >
         <div className="biomes-ui-open-prompt__row">
           <div className="biomes-ui-open-prompt__key">
@@ -192,6 +218,25 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
             </div>
           </div>
         </div>
+        <button
+          type="button"
+          className="biomes-ui-open-prompt__row biomes-ui-open-prompt__row--secondary biomes-ui-open-prompt__button"
+          aria-label={`Invite friends, press ${PLAYER_INVITE_HOTKEY_LABEL}`}
+          onClick={() => {
+            audioManager.playSound("button_click");
+            onOpenInvite?.();
+          }}
+        >
+          <div className="biomes-ui-open-prompt__key">
+            {PLAYER_INVITE_HOTKEY_LABEL}
+          </div>
+          <div className="biomes-ui-open-prompt__text">
+            <div className="biomes-ui-open-prompt__label">Invite Friends</div>
+            <div className="biomes-ui-open-prompt__hint">
+              Press {PLAYER_INVITE_HOTKEY_LABEL}
+            </div>
+          </div>
+        </button>
       </div>
     </Highlightable>
   );

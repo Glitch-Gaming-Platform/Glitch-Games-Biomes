@@ -11,12 +11,13 @@ import { groupOccupancyAt } from "@/client/game/helpers/occupancy";
 import { AttackDestroyInteractionError } from "@/client/game/interact/errors";
 import {
   actuallyDestroyPlaceable,
+  beginAttackInteraction,
   changeRadius,
   destroyBlueprint,
   destroyGroup,
   destroyTerrain,
-  handleAttackInteraction,
   handleInteractionError,
+  resolveAttackInteraction,
   shapeTerrain,
 } from "@/client/game/interact/helpers";
 import type { LegacyInteractOutput } from "@/client/game/interact/item_types/attack_destroy_delegate_item_helpers";
@@ -40,7 +41,6 @@ import { BikkieIds } from "@/shared/bikkie/ids";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import type { AclAction, Item } from "@/shared/ecs/gen/types";
 import {
-  attackIntervalSeconds,
   blockDestructionTimeMs,
   groupDestructionTimeMs,
   groupHardnessClass,
@@ -53,6 +53,7 @@ import {
 } from "@/shared/harthmere/premium_weapon_catalog";
 import { getHarthmereProjectileVisual } from "@/shared/harthmere/projectile_visual_manifest";
 import {
+  HARTHMERE_MAGIC_RELEASE_WINDUP_SECS,
   harthmereMagicChargeDurationSecs,
   harthmereMagicChargePower,
 } from "@/shared/harthmere/magic_charge";
@@ -70,6 +71,14 @@ import type { BiomesId } from "@/shared/ids";
 import type { ReadonlyVec3 } from "@/shared/math/types";
 import type { TimeWindow } from "@/shared/util/throttling";
 import { ok } from "assert";
+import { HARTHMERE_BODY_WEAPON_TIMING_PROFILES } from "@/client/game/util/player_animations";
+import { harthmereNativeItemCombatProfile } from "@/shared/harthmere/harthmere_native_combat";
+import {
+  HARTHMERE_ATTACK_INPUT_BUFFER_SECS,
+  HARTHMERE_PLAYER_ATTACK_TIMINGS,
+  harthmerePlayerAttackCommitmentSeconds,
+  type HarthmerePlayerAttackTimingClass,
+} from "@/shared/harthmere/deliberate_combat";
 
 export type AttackDestroyDelegateHandler = (
   itemInfo: ClickableItemInfo
@@ -151,6 +160,11 @@ export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
     chargeId: string;
     timeout: ReturnType<typeof setTimeout>;
   };
+  private pendingImpactAttack?: {
+    nonce: number;
+    timeout: ReturnType<typeof setTimeout>;
+  };
+  private nextImpactAttackNonce = 1;
 
   constructor(
     readonly deps: AttackDestroyDelegateDeps,
@@ -160,6 +174,7 @@ export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
   onUnselected(itemInfo: ClickableItemInfo) {
     this.queuedPrimaryAttack = undefined;
     this.cancelPendingMagicAttack("weapon_unselected");
+    this.cancelPendingImpactAttack();
     this.guardInteractionError(() => {
       this.attackDestroySpec.onUnselected?.(itemInfo);
     });
@@ -209,6 +224,31 @@ export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
     }
   }
 
+  /**
+   * Hold an attack press made during an existing attack's commitment.
+   *
+   * Only presses inside the buffer window at the tail of commitment are kept.
+   * An early press during windup is still discarded, so buffering cannot be
+   * used to queue a whole exchange from one input — it only rescues the press a
+   * player makes when they can already see recovery beginning.
+   */
+  private bufferPrimaryAttackDuringCommitment(nowSeconds: number) {
+    const attackInfo = this.attackInfo;
+    if (!attackInfo) {
+      return;
+    }
+    const commitmentEnd = attackInfo.start + attackInfo.duration;
+    if (!Number.isFinite(commitmentEnd)) {
+      return;
+    }
+    if (nowSeconds < commitmentEnd - HARTHMERE_ATTACK_INPUT_BUFFER_SECS) {
+      return;
+    }
+    this.queuedPrimaryAttack = {
+      expiresAt: commitmentEnd + HARTHMERE_ATTACK_INPUT_BUFFER_SECS,
+    };
+  }
+
   private flushQueuedPrimaryAttack(itemInfo: ClickableItemInfo) {
     const queued = this.queuedPrimaryAttack;
     if (!queued) {
@@ -217,6 +257,12 @@ export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
     const nowSeconds = this.deps.resources.get("/clock").time;
     if (nowSeconds > queued.expiresAt) {
       this.queuedPrimaryAttack = undefined;
+      return;
+    }
+
+    // A buffered attack waits for the previous attack's commitment to end. The
+    // evade-recovery path below owns the movement-action case.
+    if (isAttacking(this.attackInfo, nowSeconds)) {
       return;
     }
 
@@ -255,6 +301,7 @@ export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
         this.attackDestroySpec.allowsPrimaryDelegation?.(itemInfo) ?? true;
       if (allowsDelegate) {
         if (isAttacking(this.attackInfo, secondsSinceEpoch)) {
+          this.bufferPrimaryAttackDuringCommitment(secondsSinceEpoch);
           this.responsibleForPrimary = true;
           return;
         }
@@ -493,6 +540,11 @@ export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
         abilityId: magicCharge.projectileVisualId,
         castTime: secondsSinceEpoch,
       });
+      // Release is owned by the shared magic windup, not by the charge graphic.
+      // `chargeTimeSecs` still travels with the event so the VFX can size
+      // itself by spell power; only the timing is taken from combat.
+      const releaseTime =
+        secondsSinceEpoch + HARTHMERE_MAGIC_RELEASE_WINDUP_SECS;
       dispatchHarthmereMagicCharge({
         phase: "start",
         chargeId,
@@ -501,7 +553,7 @@ export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
         casterKind: "player",
         chargeStartedAt: secondsSinceEpoch,
         chargeTimeSecs: magicCharge.chargeTimeSecs,
-        releaseTime: secondsSinceEpoch + magicCharge.chargeTimeSecs,
+        releaseTime,
         power: magicCharge.power,
         source: "native_magic_weapon_attack",
       });
@@ -518,35 +570,71 @@ export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
           casterKind: "player",
           chargeStartedAt: secondsSinceEpoch,
           chargeTimeSecs: magicCharge.chargeTimeSecs,
-          releaseTime: secondsSinceEpoch + magicCharge.chargeTimeSecs,
+          releaseTime,
           power: magicCharge.power,
           source: "native_magic_weapon_release",
         });
-        const refreshedEntities = attackedEntities.map(
-          (entity) =>
-            this.deps.resources.get("/ecs/entity", entity.id) ?? entity
-        );
         const releasedAt = this.deps.resources.get("/clock").time;
-        handleAttackInteraction(this.deps, {
-          attackedEntities: refreshedEntities,
-          tool: itemInfo.item,
-          attackInfo: {
-            start: releasedAt,
-            duration: attackIntervalSeconds(itemInfo.item),
-          },
-        });
-      }, magicCharge.chargeTimeSecs * 1000);
+        this.beginAndScheduleAttackImpact(
+          attackedEntities,
+          itemInfo,
+          releasedAt
+        );
+      }, HARTHMERE_MAGIC_RELEASE_WINDUP_SECS * 1000);
       this.pendingMagicAttack = { chargeId, timeout };
       return;
     }
-    handleAttackInteraction(this.deps, {
+    this.beginAndScheduleAttackImpact(
+      attackedEntities,
+      itemInfo,
+      secondsSinceEpoch
+    );
+  }
+
+  private beginAndScheduleAttackImpact(
+    attackedEntities: ReadonlyEntity[],
+    itemInfo: ClickableItemInfo,
+    attackStart: number
+  ) {
+    this.cancelPendingImpactAttack();
+    const timingClass = harthmereAttackTimingClass(itemInfo.item);
+    const timing = HARTHMERE_PLAYER_ATTACK_TIMINGS[timingClass];
+    const interaction = {
       attackedEntities,
       tool: itemInfo.item,
       attackInfo: {
-        start: secondsSinceEpoch,
-        duration: attackIntervalSeconds(itemInfo.item),
+        start: attackStart,
+        duration: harthmerePlayerAttackCommitmentSeconds(timingClass),
+        movementScale: timing.movementScale,
       },
-    });
+    };
+    beginAttackInteraction(this.deps, interaction);
+
+    const nonce = this.nextImpactAttackNonce++;
+    const timeout = setTimeout(() => {
+      if (this.pendingImpactAttack?.nonce !== nonce) {
+        return;
+      }
+      this.pendingImpactAttack = undefined;
+      const melee = timingClass === "basic" || timingClass === "heavy";
+      const impactCandidates = melee
+        ? this.cursor.attackableEntities
+        : attackedEntities;
+      const refreshedEntities = impactCandidates.map(
+        (entity) => this.deps.resources.get("/ecs/entity", entity.id) ?? entity
+      );
+      resolveAttackInteraction(this.deps, {
+        ...interaction,
+        attackedEntities: refreshedEntities,
+      });
+    }, harthmereAttackImpactDelayMs(itemInfo.item));
+    this.pendingImpactAttack = { nonce, timeout };
+  }
+
+  private cancelPendingImpactAttack() {
+    if (!this.pendingImpactAttack) return;
+    clearTimeout(this.pendingImpactAttack.timeout);
+    this.pendingImpactAttack = undefined;
   }
 
   private cancelPendingMagicAttack(source: string) {
@@ -762,4 +850,44 @@ export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
       secondsSinceEpoch: this.deps.resources.get("/clock").time,
     } as const;
   }
+}
+
+export function harthmereAttackImpactDelayMs(item: Item | undefined): number {
+  return HARTHMERE_BODY_WEAPON_TIMING_PROFILES[harthmereAttackTimingClass(item)]
+    .impactMs;
+}
+
+export function harthmereAttackTimingClass(
+  item: Item | undefined
+): HarthmerePlayerAttackTimingClass {
+  const semanticItemId = item
+    ? harthmereNativeItemIdForBiomesId(Number(item.id))
+    : undefined;
+  const descriptor = `${semanticItemId ?? ""} ${item?.name ?? ""} ${
+    item?.displayName ?? ""
+  }`.toLowerCase();
+  if (
+    item?.twoHanded === true ||
+    /two.?hand|greatsword|maul|war.?axe/.test(descriptor)
+  ) {
+    return "heavy";
+  }
+  switch (harthmereNativeItemCombatProfile(item)?.kind) {
+    case "heavy":
+      return "heavy";
+    case "ranged":
+      return "ranged";
+    case "spell":
+      return "magic";
+    case "unarmed":
+    case "melee":
+      return "basic";
+  }
+  if (/staff|wand|tome|spell|scroll|focus/.test(descriptor)) {
+    return "magic";
+  }
+  if (/bow|crossbow|dart|throwing/.test(descriptor)) {
+    return "ranged";
+  }
+  return "basic";
 }

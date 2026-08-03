@@ -4,6 +4,7 @@ import {
   HARTHMERE_BOSS_MINIMUM_TELEGRAPH_SECS,
   harthmereBossAttackForAbility,
   harthmereBossAttacksForLabel,
+  harthmereBossTelegraphFloorSecs,
   validateHarthmereBossAttackCatalog,
 } from "@/shared/harthmere/boss_attack_catalog";
 import { getHarthmereBossAttackShapeVisual } from "@/shared/harthmere/boss_attack_shape_visuals";
@@ -72,8 +73,21 @@ describe("Harthmere boss attack catalog", () => {
         );
         assert.ok(
           attack.castTimeSecs >=
-            HARTHMERE_BOSS_MINIMUM_TELEGRAPH_SECS[attack.attackShape],
+            harthmereBossTelegraphFloorSecs(
+              attack.attackShape,
+              attack.fastTelegraph
+            ),
           `${boss} ${attack.displayName} needs a readable dodge window`
+        );
+        // The catalog clamps below-floor values silently, so an authored number
+        // under the floor does nothing while still reading in source like live
+        // tuning. Require the authored value to be honest: use `fastTelegraph`
+        // to intentionally go faster, don't leave a dead number behind.
+        assert.ok(
+          attack.castTimeSecs >=
+            HARTHMERE_BOSS_MINIMUM_TELEGRAPH_SECS[attack.attackShape] ||
+            attack.fastTelegraph === true,
+          `${boss} ${attack.displayName} authors a cast time below its ${attack.attackShape} floor without opting into fastTelegraph`
         );
       }
     }

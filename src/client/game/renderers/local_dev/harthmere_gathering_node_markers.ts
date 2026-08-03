@@ -1,194 +1,422 @@
-// HARTHMERE_GATHERING_NODE_MARKERS: small procedural, terrain-grounded
-// resource nodes drawn at every Harthmere gathering position. Before this, the
-// gathering "nodes" only existed as rows in a HUD menu — a quest marker would
-// point a player at empty ground. These give each node a real, visible body the
-// player can walk up to and harvest (the F-prompt lives in
-// HarthmereGatheringNodeWorldInteraction). Grounding mirrors the quest-object
-// marker renderer so nodes rest on the surface instead of floating/sinking.
+// Blender-authored, terrain-grounded resource graphics for every authoritative
+// Harthmere gathering node. F interaction, tool/skill validation, yields,
+// respawn, and ownership remain in the existing server authority and
+// HarthmereGatheringNodeWorldInteraction; this renderer is presentation only.
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
+import { freezeStaticObjectMatrices } from "@/client/game/renderers/static_object_matrices";
 import type { ClientResources } from "@/client/game/resources/types";
 import { harthmereGroundedFeetYWithMemory } from "@/client/game/util/harthmere_entity_grounding";
+import { loadGltf } from "@/client/game/util/gltf_helpers";
 import {
   HARTHMERE_GATHERING_NODE_WORLD_TARGETS,
   type HarthmereGatheringNodeWorldTarget,
 } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
+import { HARTHMERE_GATHERING_NODE_VISUAL_RESPAWN_EVENT } from "@/client/components/challenges/harthmereGatheringLiveAuthority";
+import {
+  HARTHMERE_GATHERING_NODE_GRAPHIC_LOD_POLICY,
+  HARTHMERE_GATHERING_NODE_GROW_IN_SECONDS,
+  harthmereGatheringNodeGrowInTransform,
+  harthmereGatheringNodeGraphic,
+  harthmereWorldInteractionGraphicLod,
+  type HarthmereWorldInteractionGraphicLod,
+} from "@/shared/harthmere/world_interaction_graphics";
+import { log } from "@/shared/logging";
 import * as THREE from "three";
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 export const HARTHMERE_GATHERING_NODE_MARKER_VERSION =
-  "harthmere-gathering-node-markers" as const;
+  "harthmere-gathering-node-blender-lod-grow-in-v2" as const;
 
-// Accent per profession so a player can read what a node is from a distance.
-const GATHERING_PROFESSION_ACCENTS: Record<string, number> = {
-  mining: 0x9da6ad,
-  woodcutting: 0x8ce99a,
-  herbalism: 0x7bd88f,
-  fishing: 0x4cc9ff,
-  scavenging: 0xffb74d,
-  archaeology: 0xe5c78d,
-  magical_harvesting: 0xb197fc,
-  skinning: 0xff8fab,
+type GatheringNodeVisual = {
+  target: HarthmereGatheringNodeWorldTarget;
+  anchor: THREE.Group;
+  content: THREE.Group;
+  lod0?: THREE.Object3D;
+  lod1?: THREE.Object3D;
+  fallback?: THREE.Group;
+  activeLod: HarthmereWorldInteractionGraphicLod;
+  groundKnown: boolean;
+  requested: Set<"lod0" | "lod1">;
+  failed: boolean;
+  growInElapsedSeconds?: number;
+  growInComplete: boolean;
+  respawnAtMs?: number;
 };
 
-function material(color: number, opacity = 1) {
-  return new THREE.MeshBasicMaterial({
+function fallbackMaterial(color: number) {
+  return new THREE.MeshStandardMaterial({
     color,
-    opacity,
-    transparent: opacity < 1,
+    roughness: 0.72,
+    metalness: 0.05,
   });
 }
 
-function box(
+function fallbackBox(
   group: THREE.Group,
   name: string,
   size: [number, number, number],
   position: [number, number, number],
-  mat: THREE.MeshBasicMaterial
+  material: THREE.Material
 ) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), mat);
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
   mesh.name = name;
   mesh.position.set(...position);
-  // These nodes are spread across the world. Let Three.js reject meshes that
-  // are outside the camera frustum instead of submitting every node globally.
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
   mesh.frustumCulled = true;
   group.add(mesh);
-  return mesh;
 }
 
+/** Cheap load-failure fallback. It is never the normal presentation path. */
 export function createHarthmereGatheringNodeMesh(
   target: HarthmereGatheringNodeWorldTarget
 ): THREE.Group {
   const group = new THREE.Group();
-  group.name = `${target.name} ${HARTHMERE_GATHERING_NODE_MARKER_VERSION}`;
-  group.position.set(target.position[0], target.position[1], target.position[2]);
-
-  const accentHex =
-    GATHERING_PROFESSION_ACCENTS[target.profession] ?? 0xffd54f;
-  const accent = new THREE.Color(accentHex);
-  const mats = {
-    stone: material(0x7c7f86),
-    dark: material(0x2a2f3a),
-    accent: material(accentHex),
-    glow: material(accent.clone().lerp(new THREE.Color(0xffffff), 0.45).getHex()),
+  group.name = `${target.name} gathering load-failure fallback`;
+  const base = fallbackMaterial(0x6d7478);
+  const professionColor: Record<string, number> = {
+    mining: 0xb6a06d,
+    logging: 0x6f9a5a,
+    herbalism: 0x83b76d,
+    fishing: 0x4f9fbd,
+    farming: 0xc8a457,
+    scavenging: 0xb56f42,
+    archaeology: 0xd0b77a,
+    magical_harvesting: 0x9a67cf,
+    skinning: 0xa86d60,
+    monster_harvesting: 0x748b52,
   };
-
-  // Low rocky base + a short stalk capped by a glowing accent crystal. Small
-  // enough not to block movement, tall enough to spot from the marker beacon.
-  box(group, "Gathering node base", [0.9, 0.24, 0.9], [0, 0.12, 0], mats.stone);
-  box(group, "Gathering node rim", [0.62, 0.12, 0.62], [0, 0.3, 0], mats.dark);
-  box(group, "Gathering node stalk", [0.22, 0.62, 0.22], [0, 0.62, 0], mats.accent);
-  const crystal = box(
-    group,
-    "Gathering node crystal",
-    [0.34, 0.34, 0.34],
-    [0, 1.04, 0],
-    mats.glow
+  const accent = fallbackMaterial(
+    professionColor[target.profession] ?? 0xd3a84f
   );
-  crystal.rotation.set(0.6, 0.4, 0.3);
-
-  const light = new THREE.PointLight(accentHex, 0.55, 6, 1.8);
-  light.name = "Gathering node glow";
-  light.position.set(0, 1.0, 0);
-  group.add(light);
-
-  // World XZ + authored Y hint used by per-frame terrain grounding.
-  group.userData.harthmereGatheringNodeId = target.id;
-  group.userData.harthmereGatheringNodeWorldXZ = [
-    target.position[0],
-    target.position[2],
-  ];
-  group.userData.harthmereGatheringNodeHintY = target.position[1];
-  group.traverse((child) => {
-    child.userData.harthmereGatheringNodeId = target.id;
-  });
+  fallbackBox(group, "fallback base", [1.2, 0.18, 1.0], [0, 0.09, 0], base);
+  fallbackBox(
+    group,
+    "fallback identity",
+    [0.62, 0.52, 0.62],
+    [0, 0.43, 0],
+    accent
+  );
+  group.userData.harthmereGatheringNodeFallback = true;
   return group;
+}
+
+function prepareLoadedNode(
+  target: HarthmereGatheringNodeWorldTarget,
+  root: THREE.Object3D,
+  lod: "lod0" | "lod1"
+) {
+  root.name = `${target.name} Blender ${lod}`;
+  root.visible = false;
+  root.userData.harthmereGatheringNodeId = target.id;
+  root.userData.harthmereGatheringNodeLod = lod;
+  root.userData.harthmereGatheringGraphicSource = "blender_glb";
+  root.traverse((child) => {
+    child.userData.harthmereGatheringNodeId = target.id;
+    child.userData.harthmereGatheringNodeLod = lod;
+    if (child instanceof THREE.Mesh) {
+      child.castShadow = false;
+      child.receiveShadow = true;
+      child.frustumCulled = true;
+    }
+  });
+  freezeStaticObjectMatrices(root);
+  return root;
 }
 
 export class HarthmereGatheringNodeMarkerRenderer implements Renderer {
   public readonly name = HARTHMERE_GATHERING_NODE_MARKER_VERSION;
   private readonly root = new THREE.Group();
-  private readonly meshes = new Map<string, THREE.Group>();
-  // Per-column last-grounded surface memory (same grounder as NPCs/items): keeps
-  // a node resting on the real surface instead of burying at the flat authored Y
-  // when its terrain shard briefly unloads.
+  private readonly visuals = new Map<string, GatheringNodeVisual>();
   private readonly groundedFeetYByColumn = new Map<string, number>();
   private groundRefreshSeconds = 0;
+  private lodRefreshSeconds = 0;
 
-  constructor(private readonly resources?: ClientResources) {
-    this.root.name = `harthmere-gathering-node-markers root ${HARTHMERE_GATHERING_NODE_MARKER_VERSION}`;
+  constructor(
+    private readonly resources?: ClientResources,
+    private readonly load: (url: string) => Promise<GLTF> = loadGltf
+  ) {
+    this.root.name = `harthmere gathering graphics ${HARTHMERE_GATHERING_NODE_MARKER_VERSION}`;
     for (const target of HARTHMERE_GATHERING_NODE_WORLD_TARGETS) {
-      const mesh = createHarthmereGatheringNodeMesh(target);
-      this.meshes.set(target.id, mesh);
-      this.root.add(mesh);
+      const anchor = new THREE.Group();
+      const content = new THREE.Group();
+      anchor.name = `${target.name} gathering anchor`;
+      content.name = `${target.name} gathering grow-in content`;
+      anchor.position.set(
+        target.position[0],
+        target.position[1],
+        target.position[2]
+      );
+      anchor.visible = false;
+      anchor.userData.harthmereGatheringNodeId = target.id;
+      anchor.userData.harthmereGatheringNodeWorldXZ = [
+        target.position[0],
+        target.position[2],
+      ];
+      anchor.userData.harthmereGatheringNodeHintY = target.position[1];
+      anchor.add(content);
+      this.root.add(anchor);
+      this.visuals.set(target.id, {
+        target,
+        anchor,
+        content,
+        activeLod: "hidden",
+        groundKnown: !resources,
+        requested: new Set(),
+        failed: false,
+        growInComplete: false,
+      });
     }
+    if (typeof window !== "undefined") {
+      window.addEventListener(
+        HARTHMERE_GATHERING_NODE_VISUAL_RESPAWN_EVENT,
+        this.onVisualRespawn
+      );
+    }
+    this.publishDebugBridge();
   }
 
   draw(scenes: Scenes, dt: number): void {
-    // Gathering nodes use only stock Three.js materials. Direct routing avoids
-    // recursively classifying every node hierarchy twice per rendered frame.
     scenes.three.add(this.root);
-
-    // Nodes are static world objects. Terrain edits/streaming do not require a
-    // probe on every animation frame; 4 Hz keeps grounding responsive while
-    // removing dozens of repeated terrain/WASM lookups per second.
     this.groundRefreshSeconds -= Math.min(dt, 0.25);
+    this.lodRefreshSeconds -= Math.min(dt, 0.25);
     if (this.groundRefreshSeconds <= 0) {
       this.groundRefreshSeconds = 0.25;
       this.groundNodes();
     }
+    if (this.lodRefreshSeconds <= 0) {
+      this.lodRefreshSeconds = 0.1;
+      this.updateLods();
+    }
+    this.updateGrowIn(dt);
   }
 
-  // Rest each node on the real terrain surface (cave-safe + water-aware). If the
-  // terrain at a node hasn't streamed in yet, hide it for that frame rather than
-  // showing it at the flat authored Y (which is what made props float/sink).
-  private groundNodes(): void {
-    if (!this.resources) {
+  private onVisualRespawn = (event: Event) => {
+    const detail = (event as CustomEvent).detail as
+      { nodeId?: string; respawnAtMs?: number } | undefined;
+    const visual = detail?.nodeId ? this.visuals.get(detail.nodeId) : undefined;
+    const respawnAtMs = Number(detail?.respawnAtMs);
+    if (!visual || !Number.isFinite(respawnAtMs) || respawnAtMs <= Date.now()) {
       return;
     }
-    const camera = this.resources.get("/scene/camera").three.position;
-    const drawDistance = this.resources.get(
-      "/settings/graphics/dynamic"
-    ).drawDistance;
-    const maxDistanceSq = drawDistance * drawDistance;
-    for (const mesh of this.meshes.values()) {
-      const xz = mesh.userData.harthmereGatheringNodeWorldXZ as
-        | [number, number]
-        | undefined;
-      const hintY = mesh.userData.harthmereGatheringNodeHintY as
-        | number
-        | undefined;
-      if (!xz || hintY === undefined) {
+    visual.respawnAtMs = Math.trunc(respawnAtMs);
+    visual.growInElapsedSeconds = undefined;
+    visual.growInComplete = false;
+    visual.anchor.visible = false;
+  };
+
+  private updateGrowIn(dt: number) {
+    const step = Math.min(Math.max(dt, 0), 0.1);
+    for (const visual of this.visuals.values()) {
+      if (
+        visual.growInElapsedSeconds === undefined ||
+        visual.growInComplete ||
+        !visual.anchor.visible
+      ) {
         continue;
       }
-      const dx = xz[0] - camera.x;
-      const dz = xz[1] - camera.z;
+      visual.growInElapsedSeconds = Math.min(
+        HARTHMERE_GATHERING_NODE_GROW_IN_SECONDS,
+        visual.growInElapsedSeconds + step
+      );
+      const progress =
+        visual.growInElapsedSeconds / HARTHMERE_GATHERING_NODE_GROW_IN_SECONDS;
+      const transform = harthmereGatheringNodeGrowInTransform(progress);
+      visual.content.position.y = transform.y;
+      visual.content.scale.set(
+        transform.scaleXZ,
+        transform.scaleY,
+        transform.scaleXZ
+      );
+      if (progress >= 1) {
+        visual.content.position.y = 0;
+        visual.content.scale.set(1, 1, 1);
+        visual.growInComplete = true;
+      }
+    }
+  }
+
+  private cameraPosition() {
+    return this.resources?.get("/scene/camera").three.position;
+  }
+
+  private drawDistance() {
+    return (
+      this.resources?.get("/settings/graphics/dynamic").drawDistance ??
+      HARTHMERE_GATHERING_NODE_GRAPHIC_LOD_POLICY.hiddenBeyondMeters
+    );
+  }
+
+  private groundNodes() {
+    if (!this.resources) return;
+    const camera = this.cameraPosition();
+    if (!camera) return;
+    const maxDistance = Math.min(
+      this.drawDistance(),
+      HARTHMERE_GATHERING_NODE_GRAPHIC_LOD_POLICY.hiddenBeyondMeters
+    );
+    const maxDistanceSq = maxDistance * maxDistance;
+    for (const visual of this.visuals.values()) {
+      const [x, , z] = visual.target.position;
+      const dx = x - camera.x;
+      const dz = z - camera.z;
       if (dx * dx + dz * dz > maxDistanceSq) {
-        // Hiding the group also excludes its local PointLight from Three.js's
-        // global light collection. Terrain and landmarks can still render at
-        // the full draw distance; only interaction markers outside it are cut.
-        mesh.visible = false;
+        visual.groundKnown = false;
+        visual.anchor.visible = false;
         continue;
       }
-      // Use THE shared world-placement grounder muckers/animals/items use: one
-      // tri-state probe + keep-last-surface memory. A defined feetY is the real
-      // (or last-known real) surface; undefined means terrain is unknown here.
       const feetY = harthmereGroundedFeetYWithMemory(
         this.resources,
         this.groundedFeetYByColumn,
-        xz[0],
-        xz[1],
-        hintY,
+        x,
+        z,
+        visual.target.position[1],
         true
       );
-      if (feetY !== undefined) {
-        mesh.position.y = feetY;
-        mesh.visible = true;
-      } else {
-        // Terrain hasn't streamed in and there's no remembered surface yet: hide
-        // for this frame rather than showing at the flat authored Y (buried).
-        mesh.visible = false;
-      }
+      visual.groundKnown = feetY !== undefined;
+      if (feetY !== undefined) visual.anchor.position.y = feetY;
     }
+  }
+
+  private updateLods() {
+    const camera = this.cameraPosition();
+    if (!camera) return;
+    const hiddenBeyond = Math.min(
+      this.drawDistance(),
+      HARTHMERE_GATHERING_NODE_GRAPHIC_LOD_POLICY.hiddenBeyondMeters
+    );
+    for (const visual of this.visuals.values()) {
+      const nowMs = Date.now();
+      const depleted =
+        visual.respawnAtMs !== undefined && visual.respawnAtMs > nowMs;
+      if (visual.respawnAtMs !== undefined && !depleted) {
+        visual.respawnAtMs = undefined;
+        visual.growInElapsedSeconds = 0;
+        visual.growInComplete = false;
+        const transform = harthmereGatheringNodeGrowInTransform(0);
+        visual.content.position.y = transform.y;
+        visual.content.scale.set(
+          transform.scaleXZ,
+          transform.scaleY,
+          transform.scaleXZ
+        );
+      }
+      const distance = Math.hypot(
+        visual.target.position[0] - camera.x,
+        visual.target.position[2] - camera.z
+      );
+      const desired =
+        distance > hiddenBeyond
+          ? "hidden"
+          : harthmereWorldInteractionGraphicLod(
+              distance,
+              HARTHMERE_GATHERING_NODE_GRAPHIC_LOD_POLICY
+            );
+      if (desired !== "hidden") void this.ensureLod(visual, desired);
+      const available =
+        desired === "lod0"
+          ? (visual.lod0 ?? visual.lod1)
+          : desired === "lod1"
+            ? (visual.lod1 ?? visual.lod0)
+            : undefined;
+      visual.activeLod = available
+        ? available === visual.lod0
+          ? "lod0"
+          : "lod1"
+        : desired;
+      visual.anchor.visible =
+        !depleted &&
+        desired !== "hidden" &&
+        visual.groundKnown &&
+        !!(available || visual.fallback);
+      if (
+        visual.anchor.visible &&
+        !visual.growInComplete &&
+        visual.growInElapsedSeconds === undefined
+      ) {
+        visual.growInElapsedSeconds = 0;
+        const transform = harthmereGatheringNodeGrowInTransform(0);
+        visual.content.position.y = transform.y;
+        visual.content.scale.set(
+          transform.scaleXZ,
+          transform.scaleY,
+          transform.scaleXZ
+        );
+      }
+      if (visual.lod0) visual.lod0.visible = available === visual.lod0;
+      if (visual.lod1) visual.lod1.visible = available === visual.lod1;
+      if (visual.fallback) visual.fallback.visible = !available;
+    }
+  }
+
+  private async ensureLod(visual: GatheringNodeVisual, lod: "lod0" | "lod1") {
+    if (visual.requested.has(lod) || visual.failed || visual[lod]) return;
+    const graphic = harthmereGatheringNodeGraphic(visual.target.id);
+    if (!graphic) {
+      this.installFallback(visual, "missing_manifest_record");
+      return;
+    }
+    visual.requested.add(lod);
+    try {
+      const gltf = await this.load(graphic.assets[lod]);
+      const root = prepareLoadedNode(visual.target, gltf.scene, lod);
+      visual[lod] = root;
+      visual.content.add(root);
+      this.updateLods();
+    } catch (error) {
+      this.installFallback(visual, "load_failed", error);
+    }
+  }
+
+  private installFallback(
+    visual: GatheringNodeVisual,
+    reason: string,
+    error?: unknown
+  ) {
+    visual.failed = true;
+    if (!visual.fallback) {
+      visual.fallback = createHarthmereGatheringNodeMesh(visual.target);
+      visual.content.add(visual.fallback);
+    }
+    log.error("Failed to load Harthmere gathering-node Blender graphic", {
+      nodeId: visual.target.id,
+      reason,
+      error,
+    });
+  }
+
+  private publishDebugBridge() {
+    if (typeof window === "undefined") return;
+    (window as any).__harthmereGatheringNodeGraphics = {
+      version: HARTHMERE_GATHERING_NODE_MARKER_VERSION,
+      expectedCount: HARTHMERE_GATHERING_NODE_WORLD_TARGETS.length,
+      nodes: () =>
+        [...this.visuals.values()].map((visual) => ({
+          nodeId: visual.target.id,
+          name: visual.target.name,
+          profession: visual.target.profession,
+          activeLod: visual.activeLod,
+          visible: visual.anchor.visible,
+          grounded: visual.groundKnown,
+          lod0Loaded: !!visual.lod0,
+          lod1Loaded: !!visual.lod1,
+          fallback: !!visual.fallback,
+          growInComplete: visual.growInComplete,
+          growInProgress:
+            visual.growInElapsedSeconds === undefined
+              ? 0
+              : Math.min(
+                  1,
+                  visual.growInElapsedSeconds /
+                    HARTHMERE_GATHERING_NODE_GROW_IN_SECONDS
+                ),
+          depleted:
+            visual.respawnAtMs !== undefined && visual.respawnAtMs > Date.now(),
+          respawnAtMs: visual.respawnAtMs,
+          worldPosition: visual.anchor.position.toArray(),
+        })),
+    };
   }
 }
 

@@ -95,8 +95,8 @@ document.body.innerHTML = `
         <p class="eyebrow">Native ECS / Anima boss magic lifecycle audit</p>
         <h1>${boss.displayName}</h1>
         <p>${boss.worldSize.join(" × ")} metres · ${
-  attacks.length
-} magic attacks · charge → travel/shape → hit explosion</p>
+          attacks.length
+        } magic attacks · charge → travel/shape → hit explosion → low-FPS contact</p>
       </div>
       <div id="status" class="status">Loading boss and spell assets…</div>
     </header>
@@ -483,6 +483,43 @@ async function renderAttack(
   const impactFrame = copyFrame();
   const impactSnapshot = window.__harthmereProjectileVisuals;
 
+  const lowFpsScene = makeScene(gltf, target, attackClips, 0.82);
+  focusCameraOnTarget(
+    lowFpsScene.camera,
+    attack.attackShape === "self_aoe" ? new THREE.Vector3(0, 0.5, 0) : target,
+    "impact"
+  );
+  renderer.render(lowFpsScene.scene, lowFpsScene.camera);
+  const lowFpsBaseline = copyFrame();
+  const lowFpsRuntime = new HarthmereProjectileVisualRuntime(
+    lowFpsScene.root,
+    new GLTFLoader()
+  );
+  lowFpsRuntime.spawn({
+    projectileId: projectile.id,
+    origin,
+    target,
+    originGround: new THREE.Vector3(0, 0.03, 0),
+    targetGround: new THREE.Vector3(target.x, 0.03, target.z),
+    result: "hit",
+    finalDamage: attack.attackDamage,
+    damageType: attack.damageType,
+    attackShape: attack.attackShape,
+    attackDistance: attack.attackDistance,
+    hitRadius: attack.hitRadius,
+    coneAngleDeg: attack.coneAngleDeg,
+    windupSecs: attack.castTimeSecs,
+    authoritativeImpactSecs: attack.castTimeSecs,
+    visualScale: presentation.projectileVisualScale,
+  });
+  // Simulate one rendered frame arriving exactly at authoritative impact.
+  // Before the wall-time fix this advanced only 50 ms and left damage nearly
+  // a full second ahead of the projectile at production's recorded 1 FPS.
+  lowFpsRuntime.update(attack.castTimeSecs);
+  renderer.render(lowFpsScene.scene, lowFpsScene.camera);
+  const lowFpsFrame = copyFrame();
+  const lowFpsSnapshot = window.__harthmereProjectileVisuals;
+
   const chargeVisibilityScore = pixelDifference(
     chargeBaseline.imageData,
     chargeFrame.imageData
@@ -494,6 +531,10 @@ async function renderAttack(
   const impactVisibilityScore = pixelDifference(
     impactBaseline.imageData,
     impactFrame.imageData
+  );
+  const lowFpsImpactVisibilityScore = pixelDifference(
+    lowFpsBaseline.imageData,
+    lowFpsFrame.imageData
   );
   const activeProjectile = travelSnapshot?.active?.[0];
   const activeShape = travelSnapshot?.activeShapes?.[0];
@@ -521,6 +562,15 @@ async function renderAttack(
   if ((impactSnapshot?.magicExplosionCount ?? 0) !== 1)
     failures.push("magic explosion counter did not advance once");
   if (!explosion) failures.push("no active hit explosion");
+  if (lowFpsImpactVisibilityScore < MINIMUM_VISIBILITY_SCORE)
+    failures.push("low-FPS impact not visible");
+  if ((lowFpsSnapshot?.magicExplosionCount ?? 0) !== 1)
+    failures.push("low-FPS wall-time frame did not resolve contact");
+  if (
+    (lowFpsSnapshot?.active?.length ?? 0) > 0 ||
+    (lowFpsSnapshot?.activeShapes?.length ?? 0) > 0
+  )
+    failures.push("low-FPS projectile remained behind authoritative impact");
   if ((impactSnapshot?.failedIds?.length ?? 0) > 0)
     failures.push(`asset failures: ${impactSnapshot?.failedIds?.join(", ")}`);
   const loadedRealProjectile =
@@ -536,12 +586,12 @@ async function renderAttack(
       <div>
         <h2>${attack.displayName}</h2>
         <div class="meta">${attack.abilityId} · ${attack.attackShape} · ${
-    attack.damageType
-  } · ${projectile.id} · charge ${chargeTimeSecs.toFixed(
-    2
-  )}s · scale ${presentation.chargeVisualScale.toFixed(
-    2
-  )} / projectile ${presentation.projectileVisualScale.toFixed(2)}</div>
+          attack.damageType
+        } · ${projectile.id} · charge ${chargeTimeSecs.toFixed(
+          2
+        )}s · scale ${presentation.chargeVisualScale.toFixed(
+          2
+        )} / projectile ${presentation.projectileVisualScale.toFixed(2)}</div>
       </div>
       <div class="score">${
         failures.length
@@ -559,7 +609,12 @@ async function renderAttack(
       travelFrame.canvas,
       travelVisibilityScore
     ),
-    phaseFigure("3 · hit explosion", impactFrame.canvas, impactVisibilityScore)
+    phaseFigure("3 · hit explosion", impactFrame.canvas, impactVisibilityScore),
+    phaseFigure(
+      "4 · one-frame low-FPS contact",
+      lowFpsFrame.canvas,
+      lowFpsImpactVisibilityScore
+    )
   );
   document.querySelector("#grid")!.append(article);
 
@@ -575,6 +630,7 @@ async function renderAttack(
     chargeVisibilityScore,
     travelVisibilityScore,
     impactVisibilityScore,
+    lowFpsImpactVisibilityScore,
     pathMovesTowardPlayer,
     magicExplosionCount: impactSnapshot?.magicExplosionCount ?? 0,
     explosionRadius: explosion?.radius ?? 0,

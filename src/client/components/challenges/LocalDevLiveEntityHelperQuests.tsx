@@ -250,21 +250,13 @@ async function acceptQuest(
   context: LiveEntityHelperQuestEntityContext,
   nativeBossDefeats = 0
 ) {
-  try {
-    const snapshot = await submitLiveEntityHelperQuestMutation(
-      "live_entity_helper_accept",
-      quest,
-      context
-    );
-    markQuestActiveLocally(quest, context.position, nativeBossDefeats);
-    return snapshot;
-  } catch (error) {
-    if (isLiveEntityHelperLiveModeRejectionError(error)) {
-      return undefined;
-    }
-    markQuestActiveLocally(quest, context.position, nativeBossDefeats);
-    return undefined;
-  }
+  const snapshot = await submitLiveEntityHelperQuestMutation(
+    "live_entity_helper_accept",
+    quest,
+    context
+  );
+  markQuestActiveLocally(quest, context.position, nativeBossDefeats);
+  return snapshot;
 }
 
 function storedObjectiveBaseline(
@@ -421,14 +413,14 @@ export function contextForLiveEntityHelperQuest(input: {
     input.npcMetadata?.type_id === BikkieIds.adminRobot;
   const hasTalkableDialog = Boolean(
     input.defaultDialog ||
-      input.entityDescription ||
-      input.questGiver ||
-      typeof input.relevantBiscuit?.npcDefaultDialog === "string" ||
-      typeof npcType?.npcDefaultDialog === "string" ||
-      input.relevantBiscuit?.isPlayerLikeAppearance ||
-      npcType?.isPlayerLikeAppearance ||
-      input.relevantBiscuit?.isRobot ||
-      npcType?.isRobot
+    input.entityDescription ||
+    input.questGiver ||
+    typeof input.relevantBiscuit?.npcDefaultDialog === "string" ||
+    typeof npcType?.npcDefaultDialog === "string" ||
+    input.relevantBiscuit?.isPlayerLikeAppearance ||
+    npcType?.isPlayerLikeAppearance ||
+    input.relevantBiscuit?.isRobot ||
+    npcType?.isRobot
   );
   // current: derive "mount-only" — the entity has no other talkable signal
   // besides being a mount. Mount-only entities use the "Sing Song" path
@@ -638,11 +630,11 @@ export function useLiveEntityHelperQuestDialog(talkingToNPCId: BiomesId) {
 
   const isCompleted = Boolean(
     state.completed[quest.questId] ||
-      liveQuestSnapshot?.quests.completed[quest.questId] !== undefined
+    liveQuestSnapshot?.quests.completed[quest.questId] !== undefined
   );
   const isActive = Boolean(
     state.active[quest.questId] ||
-      liveQuestSnapshot?.quests.active[quest.questId] !== undefined
+    liveQuestSnapshot?.quests.active[quest.questId] !== undefined
   );
   const evidence = completionEvidence(
     quest,
@@ -661,15 +653,14 @@ export function useLiveEntityHelperQuestDialog(talkingToNPCId: BiomesId) {
       type: "primary",
       tooltip: quest.taskHint,
       followUpText: textBlock(quest.activeText),
-      onPerformed: () => {
-        void acceptQuest(quest, questContext, nativeBossDefeats).then(
-          (snapshot) => {
-            if (snapshot) {
-              setLiveQuestSnapshot(snapshot);
-            }
-            setRefreshToken((old) => old + 1);
-          }
+      onPerformed: async () => {
+        const snapshot = await acceptQuest(
+          quest,
+          questContext,
+          nativeBossDefeats
         );
+        setLiveQuestSnapshot(snapshot);
+        setRefreshToken((old) => old + 1);
       },
     });
   }
@@ -766,10 +757,10 @@ export function useLiveEntityHelperQuestDialog(talkingToNPCId: BiomesId) {
   const questStatusText = isCompleted
     ? `Completed: ${quest.title}. ${quest.completionText}`
     : isActive
-    ? completionCheck.ok
-      ? quest.readyText
-      : quest.activeText
-    : quest.offerText;
+      ? completionCheck.ok
+        ? quest.readyText
+        : quest.activeText
+      : quest.offerText;
   const robotEnergyText = robotEnergyDisplay
     ? ` Robot charge: [${robotEnergyDisplay.barText}] ${
         robotEnergyDisplay.statusText

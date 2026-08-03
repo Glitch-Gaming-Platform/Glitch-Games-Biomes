@@ -24,6 +24,28 @@ describe("HarthmereMaterialAcquisitionGuide", () => {
     );
     assert.ok(html.includes("grid-column:1 / -1"));
     assert.ok(html.includes("Show on map"));
+    assert.ok(html.includes("Map coordinates: X"));
+    assert.ok(html.includes("data-material-route-world-position="));
+  });
+
+  it("shows the live grounded coordinates for Chapter 1 Grove suppliers", () => {
+    const html = renderToStaticMarkup(
+      <HarthmereMaterialAcquisitionGuide
+        itemId="scrap_metal"
+        itemName="Scrap Metal"
+        count={4}
+        ownerQuestId="ch1_a1_q03_stand_him_up"
+        ownerStepId="gather_parts"
+      />
+    );
+
+    assert.ok(html.includes("Buy Scrap Metal at Luis"));
+    assert.ok(html.includes("Map coordinates: X 486, Y 70, Z -209"));
+    assert.ok(
+      html.includes(
+        'aria-label="Show Luis for Scrap Metal at X 486, Y 70, Z -209 on map"'
+      )
+    );
   });
 
   it("allows the guide to wrap onto its own row in the native crafting detail", () => {

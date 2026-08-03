@@ -52,6 +52,10 @@ export const NATIVE_GIMME_SHELTER_ROBOT_SETUP_STEP_IDS = Object.freeze({
  */
 export const NATIVE_GET_THE_MUCK_OUT_MUCKLING_STEP_ID =
   4794743509650569 as BiomesId;
+export const NATIVE_GET_THE_MUCK_OUT_RACE_STEP_ID =
+  6297666130307789 as BiomesId;
+export const NATIVE_GET_THE_MUCK_OUT_RACE_MINIGAME_ID =
+  7414693901088426 as BiomesId;
 export const NATIVE_GET_THE_MUCK_OUT_MOSSY_MUCKLING_TYPE_ID =
   2992752380341653 as BiomesId;
 export const NATIVE_GET_THE_MUCK_OUT_WEST_BREACH_MUCKLING_TYPE_ID =
@@ -764,8 +768,8 @@ export function nativeRoadAheadContainerClaimForItem(
       originalRewardIndex >= 0
         ? originalRewardIndex
         : legacyRewardIndex >= 0
-        ? 0
-        : -1;
+          ? 0
+          : -1;
     if (chosenRewardIndex >= 0) {
       return {
         sourceEntityId: spec.sourceEntityId,

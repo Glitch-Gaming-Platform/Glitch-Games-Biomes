@@ -43,16 +43,24 @@ import { Box, CreatedBy } from "@/shared/ecs/gen/components";
 import type { Delta, DeltaWith } from "@/shared/ecs/gen/delta";
 import { aabbToBox } from "@/shared/game/group";
 import type { ItemPayload } from "@/shared/game/item";
-import { placeableOrientationToPlayerOrientation } from "@/shared/game/placeables";
+import {
+  getAabbForPlaceableEntity,
+  placeableOrientationToPlayerOrientation,
+} from "@/shared/game/placeables";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import {
   add,
   integerAABB,
   pointsToAABB,
+  unionAABB,
   volumeAABB,
 } from "@/shared/math/linear";
-import type { OptionallyOrientedPoint } from "@/shared/math/types";
+import type {
+  OptionallyOrientedPoint,
+  ReadonlyAABB,
+  ReadonlyVec3,
+} from "@/shared/math/types";
 import { ok } from "assert";
 import { compact, sample } from "lodash";
 
@@ -62,6 +70,22 @@ export function defaultMinigameItemAttributes(
   return {
     [attribs.minigameId.id]: minigameId,
   };
+}
+
+export function arenaBoundaryFromMarkerPoints(
+  markerPoints: ReadonlyVec3[],
+  placeableAabbs: ReadonlyAABB[]
+) {
+  ok(markerPoints.length >= 2, "Unable to determine arena size");
+  const markerAabb = pointsToAABB(...markerPoints);
+  let aabb: ReadonlyAABB = [
+    [markerAabb[0][0] - 0.5, markerAabb[0][1], markerAabb[0][2] - 0.5],
+    [markerAabb[1][0] + 0.5, markerAabb[1][1], markerAabb[1][2] + 0.5],
+  ];
+  for (const placeableAabb of placeableAabbs) {
+    aabb = unionAABB(aabb, placeableAabb);
+  }
+  return integerAABB(aabb);
 }
 
 export function determineArenaBoundary(minigameElements: LazyEntity[]) {
@@ -75,8 +99,13 @@ export function determineArenaBoundary(minigameElements: LazyEntity[]) {
     "Unable to determine arena size, need at least two markers"
   );
 
-  const aabb = integerAABB(
-    pointsToAABB(...bboxMarkers.map((e) => e.position()!.v))
+  const aabb = arenaBoundaryFromMarkerPoints(
+    bboxMarkers.map((e) => e.position()!.v),
+    compact(
+      minigameElements.map((entity) =>
+        getAabbForPlaceableEntity(entity.materialize())
+      )
+    )
   );
   ok(volumeAABB(aabb) > 0, "Arena has 0 volume");
   ok(
@@ -503,11 +532,9 @@ export function serverRuleset(
   },
   player: LazyEntity | Delta,
   minigame?:
-    | LazyEntityWith<"minigame_component">
-    | DeltaWith<"minigame_component">,
+    LazyEntityWith<"minigame_component"> | DeltaWith<"minigame_component">,
   minigameInstance?:
-    | LazyEntityWith<"minigame_instance">
-    | DeltaWith<"minigame_instance">
+    LazyEntityWith<"minigame_instance"> | DeltaWith<"minigame_instance">
 ): ServerRuleset {
   const metagameBase = buildMetagameServerRuleset();
   const serverMods = deps.serverMods ?? ALL_SERVER_MODS;
@@ -581,8 +608,7 @@ export async function resolveMinigameWarpPosition(
     player,
     minigame: minigame as LazyEntityWith<"minigame_component">,
     minigameInstance: minigameInstance as
-      | LazyEntityWith<"minigame_instance">
-      | undefined,
+      LazyEntityWith<"minigame_instance"> | undefined,
     minigameElements:
       allMinigameElements as LazyEntityWith<"minigame_element">[],
   });
@@ -600,13 +626,28 @@ export async function handleCreateOrJoinWebRequest(
 ) {
   const minigame = await deps.worldApi.get(minigameId);
   ok(minigame, "No minigame found");
+  const minigameComponent = minigame.minigameComponent();
+  ok(minigameComponent, "Entity is not a minigame");
+  ok(!minigame.hasIced(), "Minigame is unavailable");
+  ok(minigameComponent.ready, "Minigame is not ready");
 
   const activeInstanceIds =
     minigame.minigameComponent()?.active_instance_ids ?? new Set();
 
   const activeInstances = compact(
     await deps.worldApi.get([...activeInstanceIds])
-  );
+  ).filter((entity) => {
+    const instance = entity.minigameInstance();
+    return (
+      instance &&
+      !instance.finished &&
+      !entity.hasIced() &&
+      !(
+        instance.state.kind === "deathmatch" &&
+        instance.state.instance_state?.kind === "finished"
+      )
+    );
+  });
 
   const minigameElements = (await deps.askApi.getByKeys({
     kind: "minigameElementByMinigameId",
@@ -614,7 +655,7 @@ export async function handleCreateOrJoinWebRequest(
   })) as LazyEntityWith<"minigame_element">[];
 
   return serverModFor(
-    minigame.minigameComponent()!.metadata.kind,
+    minigameComponent.metadata.kind,
     deps.serverMods
   ).handleCreateOrJoinWebRequest(
     deps,

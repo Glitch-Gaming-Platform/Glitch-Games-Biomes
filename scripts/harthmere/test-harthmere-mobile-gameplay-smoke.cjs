@@ -84,16 +84,18 @@ async function sampleAnimationFrames(page, durationMs) {
 async function gameplayDiagnostics(page) {
   return page.evaluate(() => {
     const context = globalThis.clientContext;
-    const position = context?.resources
-      .get("/scene/local_player")
-      ?.player?.position;
+    const position = context?.resources.get("/scene/local_player")?.player
+      ?.position;
     let supportingShard;
     if (position) {
       const [x, y, z] = position.map((value, index) =>
         Math.floor((value - (index === 1 ? 1 : 0)) / 32)
       );
       supportingShard = String.fromCharCode(
-        (5 & 0x1f) | (x < 0 ? 0x80 : 0) | (y < 0 ? 0x40 : 0) | (z < 0 ? 0x20 : 0),
+        (5 & 0x1f) |
+          (x < 0 ? 0x80 : 0) |
+          (y < 0 ? 0x40 : 0) |
+          (z < 0 ? 0x20 : 0),
         Math.abs(x) & 0xff,
         Math.abs(y) & 0xff,
         Math.abs(z) & 0xff
@@ -266,6 +268,89 @@ async function exerciseMovementJoystick(page) {
   return { active, released };
 }
 
+async function exerciseMovementButtons(page) {
+  const selectors = {
+    crouch: '[data-biomes-mobile-crouch="true"]',
+    jump: '[data-biomes-mobile-jump="true"]',
+  };
+  const boxes = {};
+  for (const [name, selector] of Object.entries(selectors)) {
+    const button = await page.$(selector);
+    assert(button, `${name} button is mounted`);
+    const box = await button.boundingBox();
+    assert(
+      box && box.width >= 44 && box.height >= 44,
+      `${name} button keeps a touch-safe target; got ${JSON.stringify(box)}`
+    );
+    boxes[name] = box;
+  }
+
+  const joystick = await page.$('[aria-label="Movement joystick"]');
+  const joystickBox = await joystick.boundingBox();
+  assert(
+    boxes.crouch.y >= joystickBox.y + joystickBox.height - 1 &&
+      boxes.jump.y >= joystickBox.y + joystickBox.height - 1,
+    `crouch and jump sit below the joystick; got ${JSON.stringify({
+      joystickBox,
+      boxes,
+    })}`
+  );
+
+  const client = await page.target().createCDPSession();
+  const touchPoint = (box, id) => ({
+    x: box.x + box.width / 2,
+    y: box.y + box.height / 2,
+    radiusX: 6,
+    radiusY: 6,
+    force: 1,
+    id,
+  });
+
+  await client.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [touchPoint(boxes.crouch, 2)],
+  });
+  await sleep(100);
+  const crouchHeld = await page.evaluate(() =>
+    globalThis.clientContext.input.syntheticMotion(
+      "crouch",
+      "mobile-crouch-button"
+    )
+  );
+  assert(crouchHeld > 0, "crouch touch reaches synthetic movement input");
+  await client.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  });
+  await sleep(100);
+
+  await client.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [touchPoint(boxes.jump, 3)],
+  });
+  await sleep(100);
+  const jumpHeld = await page.evaluate(() =>
+    globalThis.clientContext.input.action("jump")
+  );
+  assert.equal(jumpHeld, true, "jump touch reaches the shared jump action");
+  await client.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  });
+  await sleep(100);
+  const released = await page.evaluate(() => ({
+    crouch: globalThis.clientContext.input.syntheticMotion(
+      "crouch",
+      "mobile-crouch-button"
+    ),
+    jump: globalThis.clientContext.input.action("jump"),
+  }));
+  assert.equal(released.crouch, 0, "crouch releases after touchend");
+  assert.equal(released.jump, false, "jump releases after touchend");
+
+  return { boxes, crouchHeld, jumpHeld, released };
+}
+
 async function exerciseMobileHud(page) {
   try {
     await page.waitForSelector('[data-biomes-mobile-menu="true"]', {
@@ -340,6 +425,8 @@ async function exerciseMobileHud(page) {
         '[data-biomes-mobile-hotbar="true"] [aria-label="Action hotbar"]'
       ),
       joystick: rect('[aria-label="Movement joystick"]'),
+      crouch: rect('[data-biomes-mobile-crouch="true"]'),
+      jump: rect('[data-biomes-mobile-jump="true"]'),
       objective: rect(".biomes-ui-current-objective-hud"),
       vitals: rect(".biomes-ui-vitals-panel--mobile"),
       visibleVitalIcons: vitals
@@ -360,6 +447,8 @@ async function exerciseMobileHud(page) {
   assert(layout.menu, "mobile Menu and Recipes controls are visible");
   assert(layout.hotbar, "mobile hotbar is visible");
   assert(layout.joystick, "movement joystick is visible for layout checks");
+  assert(layout.crouch, "mobile crouch button is visible");
+  assert(layout.jump, "mobile jump button is visible");
   assert(
     layout.menu.top >= layout.minimap.bottom + 2,
     `mobile menu is below the mini map; got ${JSON.stringify(layout)}`
@@ -381,6 +470,11 @@ async function exerciseMobileHud(page) {
     `hotbar does not overlap the movement joystick; got ${JSON.stringify(
       layout
     )}`
+  );
+  assert(
+    !rectanglesOverlap(layout.hotbar, layout.crouch) &&
+      !rectanglesOverlap(layout.hotbar, layout.jump),
+    `hotbar does not overlap crouch or jump; got ${JSON.stringify(layout)}`
   );
   assert(
     !rectanglesOverlap(layout.hotbar, layout.objective),
@@ -440,9 +534,7 @@ async function exerciseMobileHud(page) {
   }, targetIndex);
   const hotbarTargetBox = await hotbarButtons[targetIndex].boundingBox();
   assert(
-    hotbarTargetBox &&
-      hotbarTargetBox.width > 0 &&
-      hotbarTargetBox.height > 0,
+    hotbarTargetBox && hotbarTargetBox.width > 0 && hotbarTargetBox.height > 0,
     `target hotbar slot is visible after horizontal scrolling; got ${JSON.stringify(
       hotbarTargetBox
     )}`
@@ -469,6 +561,49 @@ async function exerciseMobileHud(page) {
   await page.waitForSelector('[role="dialog"][aria-label$=" panel"]', {
     timeout: 10000,
   });
+  const biomesUILayout = await page.evaluate(() => {
+    const rect = (selector) => {
+      const element = document.querySelector(selector);
+      if (!element) return undefined;
+      const bounds = element.getBoundingClientRect();
+      return {
+        left: bounds.left,
+        right: bounds.right,
+        top: bounds.top,
+        bottom: bounds.bottom,
+        width: bounds.width,
+        height: bounds.height,
+      };
+    };
+    return {
+      viewport: { width: innerWidth, height: innerHeight },
+      overlay: rect('[data-biomes-mobile-ui-overlay="true"]'),
+      nav: rect('[data-biomes-mobile-nav="true"]'),
+      panel: rect(".biomes-ui-overlay__panel--mobile"),
+      close: rect('[aria-label="Close Biomes UI"]'),
+    };
+  });
+  assert(biomesUILayout.overlay, "mobile BiomesUI overlay is visible");
+  assert(biomesUILayout.nav, "mobile BiomesUI navigation is visible");
+  assert(biomesUILayout.panel, "mobile BiomesUI panel is visible");
+  assert(biomesUILayout.close, "mobile BiomesUI close control is visible");
+  assert(
+    biomesUILayout.overlay.width <= biomesUILayout.viewport.width + 1 &&
+      biomesUILayout.overlay.height <= biomesUILayout.viewport.height + 1,
+    `BiomesUI stays inside the viewport; got ${JSON.stringify(biomesUILayout)}`
+  );
+  assert(
+    biomesUILayout.close.width >= 44 && biomesUILayout.close.height >= 44,
+    `BiomesUI close control is touch-safe; got ${JSON.stringify(
+      biomesUILayout
+    )}`
+  );
+  assert(
+    biomesUILayout.nav.height <= 64,
+    `BiomesUI tabs stay in one scrollable row; got ${JSON.stringify(
+      biomesUILayout
+    )}`
+  );
   await page.tap('[aria-label="Close Biomes UI"]');
   await page.waitForSelector('[role="dialog"][aria-label$=" panel"]', {
     hidden: true,
@@ -494,6 +629,7 @@ async function exerciseMobileHud(page) {
 
   return {
     layout,
+    biomesUILayout,
     selectedIndexBefore: selectedIndex,
     selectedIndexAfter: targetIndex,
     menuOpened: true,
@@ -563,7 +699,9 @@ async function main() {
         "rendered world behind loading overlay",
         () =>
           globalThis.clientContext?.rendererController?.renderedFrames > 30 &&
-          Boolean(document.querySelector('[data-biomes-mobile-controls="true"]')),
+          Boolean(
+            document.querySelector('[data-biomes-mobile-controls="true"]')
+          ),
         timeoutMs
       );
       startupOverlayDiagnostics = await gameplayDiagnostics(page);
@@ -596,6 +734,7 @@ async function main() {
 
     const hud = await exerciseMobileHud(page);
     const joystick = await exerciseMovementJoystick(page);
+    const movementButtons = await exerciseMovementButtons(page);
     const state = await page.evaluate(() => {
       const context = globalThis.clientContext;
       return {
@@ -604,6 +743,7 @@ async function main() {
         voxelooMemoryMb: context.clientConfig.voxelooMemoryMb,
         dynamicMinDrawDistance: context.clientConfig.dynamicMinDrawDistance,
         graphics: context.resources.get("/settings/graphics/dynamic"),
+        resolvedGraphics: context.resources.get("/settings/graphics/resolved"),
         rendererPixelRatio:
           context.rendererController.passRenderer?.pixelRatio(),
         renderedFrames: context.rendererController.renderedFrames,
@@ -629,6 +769,25 @@ async function main() {
       state.showVirtualJoystick,
       true,
       "mobile uses virtual joystick controls"
+    );
+    assert(
+      state.voxelooMemoryMb <= 256,
+      `mobile Voxeloo memory stays within the phone budget; got ${state.voxelooMemoryMb}MB`
+    );
+    assert(
+      state.resolvedGraphics.quality === "low" ||
+        state.resolvedGraphics.quality === "safeMode",
+      `mobile ignores stored high graphics settings; got ${state.resolvedGraphics.quality}`
+    );
+    assert.equal(
+      state.resolvedGraphics.postprocesses.bloom,
+      false,
+      "mobile disables bloom"
+    );
+    assert.equal(
+      state.resolvedGraphics.postprocesses.waterReflection,
+      false,
+      "mobile disables water reflections"
     );
     if (diagnosticBypassLoadingOverlay) {
       assert.equal(
@@ -674,6 +833,7 @@ async function main() {
           state,
           frameSample,
           joystick,
+          movementButtons,
           hud,
           startupOverlayDiagnostics,
         },

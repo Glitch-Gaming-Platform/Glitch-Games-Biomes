@@ -10,6 +10,10 @@ import {
   liveEntityRobotDefaultRobotIdForArea,
   liveEntityRobotProtectionAreaForPosition,
 } from "@/shared/harthmere/live_entity_robot_energy_protection";
+import {
+  HarthmereQuestActionError,
+  type HarthmereQuestActionErrorContext,
+} from "@/client/components/challenges/questActionError";
 
 export const LIVE_ENTITY_HELPER_LIVE_MODE_RESPONSE_EVENT =
   "biomes:live-entity-helper-live-mode-response" as const;
@@ -24,13 +28,13 @@ export interface LiveEntityHelperQuestLiveSnapshot {
   body?: any;
 }
 
-export class LiveEntityHelperLiveModeRejectionError extends Error {
-  readonly warnings: string[];
-
-  constructor(warnings: string[]) {
-    super(warnings.join(",") || "live_entity_helper_rejected");
+export class LiveEntityHelperLiveModeRejectionError extends HarthmereQuestActionError {
+  constructor(
+    warnings: string[],
+    context: HarthmereQuestActionErrorContext = {}
+  ) {
+    super(warnings, context);
     this.name = "LiveEntityHelperLiveModeRejectionError";
-    this.warnings = warnings;
   }
 }
 
@@ -264,18 +268,34 @@ export async function submitLiveEntityHelperQuestMutation(
     extraPayload?: Record<string, unknown>;
   } = {}
 ) {
-  const snapshot = await submitLiveEntityHelperLiveModeAction(
-    {
-      ...liveEntityHelperQuestPayloadForLiveMode(quest, context, operation),
-      ...(options.extraPayload ?? {}),
-    },
-    {
-      ...options,
-      targetId: quest.entityId,
-    }
-  );
+  const errorContext: HarthmereQuestActionErrorContext = {
+    action: operation === "live_entity_helper_accept" ? "accept" : "update",
+    questTitle: quest.title,
+  };
+  let snapshot: LiveEntityHelperQuestLiveSnapshot;
+  try {
+    snapshot = await submitLiveEntityHelperLiveModeAction(
+      {
+        ...liveEntityHelperQuestPayloadForLiveMode(quest, context, operation),
+        ...(options.extraPayload ?? {}),
+      },
+      {
+        ...options,
+        targetId: quest.entityId,
+      }
+    );
+  } catch (error) {
+    if (isLiveEntityHelperLiveModeRejectionError(error)) throw error;
+    throw new LiveEntityHelperLiveModeRejectionError(
+      ["live_entity_helper_rejected:request_failed"],
+      errorContext
+    );
+  }
   if (liveEntityHelperLiveSnapshotHasRejection(snapshot)) {
-    throw new LiveEntityHelperLiveModeRejectionError(snapshot.warnings);
+    throw new LiveEntityHelperLiveModeRejectionError(
+      snapshot.warnings,
+      errorContext
+    );
   }
   return snapshot;
 }
@@ -305,7 +325,9 @@ export async function submitLiveEntityRobotRechargeMutation(
       "live_entity_robot_rejected:"
     )
   ) {
-    throw new LiveEntityHelperLiveModeRejectionError(snapshot.warnings);
+    throw new LiveEntityHelperLiveModeRejectionError(snapshot.warnings, {
+      action: "update",
+    });
   }
   return snapshot;
 }

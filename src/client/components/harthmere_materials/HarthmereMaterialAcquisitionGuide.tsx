@@ -11,6 +11,13 @@ const KIND_LABEL: Record<HarthmereMaterialAcquisitionRoute["kind"], string> = {
   gather: "Gather",
 };
 
+export function harthmereMaterialRouteCoordinatesForTest(
+  position: readonly number[]
+): string {
+  const [x, y, z] = position.map((value) => Math.round(Number(value)));
+  return `X ${x}, Y ${y}, Z ${z}`;
+}
+
 export const HarthmereMaterialAcquisitionGuide: React.FunctionComponent<{
   itemId: string | number | undefined;
   itemName?: string;
@@ -67,83 +74,106 @@ export const HarthmereMaterialAcquisitionGuide: React.FunctionComponent<{
           marginTop: 7,
         }}
       >
-        {plan.routes.map((route) => (
-          <div
-            key={route.id}
-            data-material-route-kind={route.kind}
-            data-material-route-id={route.id}
-            data-material-route-layout="readable"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "max-content minmax(0, 1fr)",
-              alignItems: "start",
-              gap: 7,
-              minWidth: 0,
-              padding: compact ? 5 : 7,
-              borderRadius: 5,
-              background: "rgba(255, 255, 255, 0.045)",
-            }}
-          >
-            <strong style={{ color: "#9cd8ff" }}>
-              {KIND_LABEL[route.kind]}
-            </strong>
-            <span
+        {plan.routes.map((route) => {
+          const coordinates = route.markerPosition
+            ? harthmereMaterialRouteCoordinatesForTest(route.markerPosition)
+            : undefined;
+          return (
+            <div
+              key={route.id}
+              data-material-route-kind={route.kind}
+              data-material-route-id={route.id}
+              data-material-route-layout="readable"
+              data-material-route-world-position={coordinates}
               style={{
+                display: "grid",
+                gridTemplateColumns: "max-content minmax(0, 1fr)",
+                alignItems: "start",
+                gap: 7,
                 minWidth: 0,
-                overflowWrap: "break-word",
-                wordBreak: "normal",
+                padding: compact ? 5 : 7,
+                borderRadius: 5,
+                background: "rgba(255, 255, 255, 0.045)",
               }}
             >
-              <span
-                style={{ display: "block", fontWeight: 700, lineHeight: 1.25 }}
-              >
-                {route.title}
-              </span>
+              <strong style={{ color: "#9cd8ff" }}>
+                {KIND_LABEL[route.kind]}
+              </strong>
               <span
                 style={{
-                  display: "block",
-                  marginTop: 2,
-                  color: "rgba(220, 232, 244, 0.78)",
-                  lineHeight: 1.3,
-                }}
-              >
-                {route.description}
-                {route.purpose ? ` ${route.purpose}.` : ""}
-              </span>
-            </span>
-            {route.markerPosition ? (
-              <button
-                type="button"
-                className="biomes-ui-tab"
-                aria-label={`Show ${route.sourceName} on map`}
-                onClick={() =>
-                  requestBiomesUILocateOnMap({
-                    markerId:
-                      route.markerId ??
-                      `material_source:${route.kind}:${route.itemId}:${route.id}`,
-                    label: route.sourceName,
-                    kind: route.kind === "buy" ? "store" : "resource",
-                    worldPosition: [...route.markerPosition!],
-                    description: route.description,
-                    ownerQuestId,
-                    ownerStepId,
-                    setAtMs: Date.now(),
-                  })
-                }
-                style={{
-                  gridColumn: "1 / -1",
-                  width: "100%",
                   minWidth: 0,
-                  whiteSpace: "normal",
-                  fontSize: compact ? 9 : 10,
-                  lineHeight: 1.2,
+                  overflowWrap: "break-word",
+                  wordBreak: "normal",
                 }}
               >
-                Show on map
-              </button>
-            ) : null}
-          </div>
-        ))}
+                <span
+                  style={{
+                    display: "block",
+                    fontWeight: 700,
+                    lineHeight: 1.25,
+                  }}
+                >
+                  {route.title}
+                </span>
+                <span
+                  style={{
+                    display: "block",
+                    marginTop: 2,
+                    color: "rgba(220, 232, 244, 0.78)",
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {route.description}
+                  {route.purpose ? ` ${route.purpose}.` : ""}
+                </span>
+                {coordinates ? (
+                  <span
+                    style={{
+                      display: "block",
+                      marginTop: 3,
+                      color: "#bef264",
+                      fontWeight: 750,
+                      letterSpacing: "0.01em",
+                    }}
+                  >
+                    Map coordinates: {coordinates}
+                  </span>
+                ) : null}
+              </span>
+              {route.markerPosition ? (
+                <button
+                  type="button"
+                  className="biomes-ui-tab"
+                  aria-label={`Show ${route.sourceName} for ${plan.itemName} at ${coordinates} on map`}
+                  onClick={() =>
+                    requestBiomesUILocateOnMap({
+                      markerId:
+                        route.markerId ??
+                        `material_source:${route.kind}:${route.itemId}:${route.id}`,
+                      label: route.sourceName,
+                      kind: route.kind === "buy" ? "store" : "resource",
+                      worldPosition: [...route.markerPosition!],
+                      description: route.description,
+                      ownerQuestId,
+                      ownerStepId,
+                      setAtMs: Date.now(),
+                    })
+                  }
+                  style={{
+                    gridColumn: "1 / -1",
+                    width: "100%",
+                    minWidth: 0,
+                    whiteSpace: "normal",
+                    fontSize: compact ? 9 : 10,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  Show on map · {coordinates}
+                </button>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
     </details>
   );

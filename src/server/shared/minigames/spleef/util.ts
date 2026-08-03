@@ -3,7 +3,10 @@ import {
   forcePlayerWarp,
   newPlayerInventory,
 } from "@/server/logic/utils/players";
-import { zSpleefSettings } from "@/server/shared/minigames/spleef/types";
+import {
+  zSpleefSettings,
+  type SpleefSettings,
+} from "@/server/shared/minigames/spleef/types";
 import {
   instanceOfStateKind,
   mutInstanceOfStateKind,
@@ -31,6 +34,14 @@ import type { BiomesId } from "@/shared/ids";
 import { onlySetValue } from "@/shared/util/collections";
 import { ok } from "assert";
 import { sample } from "lodash";
+
+export function requiredSpleefPlayerCount(
+  settings: Pick<SpleefSettings, "minPlayers">
+) {
+  // The shipped setting is the historical number of *additional* players.
+  // Keep its persisted meaning while giving the lifecycle an explicit count.
+  return Math.max(1, Math.floor(settings.minPlayers) + 1);
+}
 
 export function spleefNotReadyReason(
   component: ReadonlyMinigameComponent
@@ -66,7 +77,8 @@ export function handleSpleefTick(
     minigameEntity.minigameComponent().minigame_settings,
     zSpleefSettings
   );
-  if (currentInstance.active_players.size <= settings.minPlayers) {
+  const requiredPlayers = requiredSpleefPlayerCount(settings);
+  if (currentInstance.active_players.size < requiredPlayers) {
     mutInstanceOfStateKind(
       minigameInstanceEntity,
       "spleef"
@@ -78,7 +90,7 @@ export function handleSpleefTick(
 
   switch (instanceState.kind) {
     case "waiting_for_players":
-      if (currentInstance.active_players.size > settings.minPlayers) {
+      if (currentInstance.active_players.size >= requiredPlayers) {
         mutInstanceOfStateKind(
           minigameInstanceEntity,
           "spleef"
@@ -92,10 +104,9 @@ export function handleSpleefTick(
     case "round_countdown":
       if (secondsSinceEpoch() > instanceState.round_start) {
         // Start round
-        mutInstanceOfStateKind(
-          minigameInstanceEntity,
-          "spleef"
-        ).state.instance_state = {
+        const mut = mutInstanceOfStateKind(minigameInstanceEntity, "spleef");
+        mut.state.round_number += 1;
+        mut.state.instance_state = {
           kind: "playing_round",
           round_expires: secondsSinceEpoch() + settings.roundLengthSeconds,
           alive_round_players: new Set([
@@ -125,7 +136,14 @@ export function handleSpleefTick(
         }
 
         if (spawnPoints.length === 0) {
-          spawnPoints = [...minigameElements];
+          spawnPoints = minigameElements.filter(
+            (e) => e.placeableComponent()?.item_id === BikkieIds.spleefSpawn
+          );
+        }
+        if (spawnPoints.length === 0) {
+          spawnPoints = minigameElements.filter(
+            (e) => e.placeableComponent()?.item_id === BikkieIds.spleefStart
+          );
         }
 
         for (const [playerId, playerInfo] of currentInstance.active_players) {
@@ -150,7 +168,8 @@ export function handleSpleefTick(
     case "playing_round":
       if (
         secondsSinceEpoch() > instanceState.round_expires ||
-        instanceState.alive_round_players.size <= 1
+        (currentInstance.active_players.size > 1 &&
+          instanceState.alive_round_players.size <= 1)
       ) {
         const mut = mutInstanceOfStateKind(minigameInstanceEntity, "spleef");
 

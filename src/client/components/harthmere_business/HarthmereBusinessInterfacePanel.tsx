@@ -1,4 +1,5 @@
 import * as React from "react";
+import { HarthmereBusinessShiftControlPane } from "./HarthmereBusinessShiftHUD";
 import { usePointerLockManager } from "../contexts/PointerLockContext";
 import {
   closePointerLockUnlockWhileOpen,
@@ -1359,7 +1360,7 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
       break;
     case "customers":
       activePane = (
-        <CustomerMiniGamePane
+        <HarthmereBusinessShiftControlPane
           adapter={businessAdapter}
           businessId={activeBusinessId}
         />

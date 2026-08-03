@@ -41,6 +41,8 @@ const bridgePath = "src/client/game/glitch/harthmere_glitch_bridge.ts";
 const harthmereEventsPath =
   "src/client/components/challenges/harthmereEvents.ts";
 const proxyPath = "src/pages/api/glitch/harthmere.ts";
+const storeSaveResponsePath =
+  "src/server/glitch/harthmere_store_save_response.ts";
 const payloadPath = "src/server/harthmere/glitch_cloud_save_payload.ts";
 const rehydrationPath = "src/server/harthmere/glitch_cloud_save_rehydration.ts";
 const kvTransportPath =
@@ -52,6 +54,9 @@ const harthmereEvents = exists(harthmereEventsPath)
   ? read(harthmereEventsPath)
   : "";
 const proxy = exists(proxyPath) ? read(proxyPath) : "";
+const storeSaveResponse = exists(storeSaveResponsePath)
+  ? read(storeSaveResponsePath)
+  : "";
 const payloadRules = exists(payloadPath) ? read(payloadPath) : "";
 const rehydration = exists(rehydrationPath) ? read(rehydrationPath) : "";
 const kvTransport = exists(kvTransportPath) ? read(kvTransportPath) : "";
@@ -868,12 +873,18 @@ check(
     )
 );
 check(
-  "server storeSave forwards Glitch response to client",
-  sectionBetween(
-    proxy,
-    'if (op === "storeSave")',
-    'if (op === "submitProgression")'
-  ).includes(".json(response.json ?? response)")
+  "server storeSave returns save identity/version without echoing the payload",
+  includesAll(storeSaveResponse, [
+    "compactHarthmereStoreSaveResponse",
+    "HARTHMERE_STORE_SAVE_RESPONSE_FIELDS",
+    '"version"',
+    '"slot_index"',
+  ]) &&
+    includesAll(proxy, [
+      "compactHarthmereStoreSaveResponse",
+      "compactHarthmereStoreSaveResponse(response.json)",
+    ]) &&
+    !storeSaveResponse.includes('data["payload"]')
 );
 const autoLoginRoute = sectionBetween(
   proxy,

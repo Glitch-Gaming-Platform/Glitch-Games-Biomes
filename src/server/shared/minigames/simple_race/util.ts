@@ -4,7 +4,10 @@ import type {
   ClientResourceDeps,
   ClientResources,
 } from "@/client/game/resources/types";
+import { RollbackError } from "@/server/logic/events/core";
 import type { QueriedEntityWith } from "@/server/logic/events/query";
+import { isSimpleRaceCheckpointItemId } from "@/server/shared/minigames/simple_race/items";
+import { BikkieIds } from "@/shared/bikkie/ids";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import type {
   ReadonlyMinigameComponent,
@@ -16,8 +19,45 @@ import {
   ReachStartSimpleRaceMinigameEvent,
 } from "@/shared/ecs/gen/events";
 import type { BiomesId } from "@/shared/ids";
+import { dist } from "@/shared/math/linear";
 import { fireAndForget } from "@/shared/util/async";
 import { ok } from "assert";
+
+export const SIMPLE_RACE_ELEMENT_INTERACTION_DISTANCE = 8;
+
+export function assertValidSimpleRaceElement(
+  minigame: QueriedEntityWith<"id" | "minigame_component">,
+  player: QueriedEntityWith<"id" | "position">,
+  element: QueriedEntityWith<
+    "id" | "minigame_element" | "placeable_component" | "position"
+  >,
+  expected: "start" | "checkpoint" | "finish"
+) {
+  const component = minigame.minigameComponent();
+  if (component.metadata.kind !== "simple_race") {
+    throw new RollbackError("Not a simple race");
+  }
+  if (
+    element.minigameElement().minigame_id !== minigame.id ||
+    !component.minigame_element_ids.has(element.id)
+  ) {
+    throw new RollbackError("Element does not belong to this race");
+  }
+  const itemId = element.placeableComponent().item_id;
+  if (!(
+    (expected === "start" && itemId === BikkieIds.simpleRaceStart) ||
+    (expected === "finish" && itemId === BikkieIds.simpleRaceFinish) ||
+    (expected === "checkpoint" && isSimpleRaceCheckpointItemId(itemId))
+  )) {
+    throw new RollbackError(`Element is not a race ${expected}`);
+  }
+  if (
+    dist(player.position().v, element.position().v) >
+    SIMPLE_RACE_ELEMENT_INTERACTION_DISTANCE
+  ) {
+    throw new RollbackError("Player is too far from race element");
+  }
+}
 
 export function simpleRaceNotReadyReason(
   component: ReadonlyMinigameComponent
@@ -129,7 +169,7 @@ export function reachCheckpointEagerly(
     if (!currentInstance.state.reached_checkpoints.has(checkpointId)) {
       const totalCount =
         currentMinigame?.metadata.kind === "simple_race"
-          ? currentMinigame?.metadata.checkpoint_ids.size ?? 0
+          ? (currentMinigame?.metadata.checkpoint_ids.size ?? 0)
           : 0;
       const amt = currentInstance.state.reached_checkpoints.size + 1;
       addToast(deps.resources, {
@@ -184,7 +224,10 @@ export function reachedAllCheckpoints(
   return (
     minigame.metadata.kind === "simple_race" &&
     minigameInstance.state.kind === "simple_race" &&
-    minigameInstance.state.reached_checkpoints.size ===
-      minigame.metadata.checkpoint_ids.size
+    [...minigame.metadata.checkpoint_ids].every((checkpointId) =>
+      minigameInstance.state.kind === "simple_race"
+        ? minigameInstance.state.reached_checkpoints.has(checkpointId)
+        : false
+    )
   );
 }

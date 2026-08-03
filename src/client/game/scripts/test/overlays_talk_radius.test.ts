@@ -2,6 +2,7 @@ import assert from "assert";
 import {
   HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS,
   HARTHMERE_NPC_TALK_FALLBACK_RADIUS,
+  harthmereNpcTalkCandidatePassesInspectDepthForTest,
   harthmereNpcTalkCandidateScoreForTest,
 } from "../overlays";
 
@@ -98,6 +99,39 @@ describe("Harthmere NPC talk fallback radius", () => {
     assert.equal(
       score([0, 70, -1], { facingView: [Number.NaN, 0, 0] }),
       undefined
+    );
+  });
+
+  it("lets only a projected NPC at the aimed terrain depth recover Talk", () => {
+    assert.equal(
+      harthmereNpcTalkCandidatePassesInspectDepthForTest({
+        playerPosition: PLAYER_POSITION,
+        npcPosition: [0, 70, -2.5],
+        maxDistance: 3,
+        projectedOnly: true,
+        projected: true,
+      }),
+      true
+    );
+    assert.equal(
+      harthmereNpcTalkCandidatePassesInspectDepthForTest({
+        playerPosition: PLAYER_POSITION,
+        npcPosition: [0, 70, -3.01],
+        maxDistance: 3,
+        projectedOnly: true,
+        projected: true,
+      }),
+      false
+    );
+    assert.equal(
+      harthmereNpcTalkCandidatePassesInspectDepthForTest({
+        playerPosition: PLAYER_POSITION,
+        npcPosition: [0, 70, -2.5],
+        maxDistance: 3,
+        projectedOnly: true,
+        projected: false,
+      }),
+      false
     );
   });
 });

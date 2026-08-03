@@ -1,7 +1,8 @@
 /// <reference types="mocha" />
 
 import assert from "assert";
-import { CH1_ANCHORS } from "@/shared/harthmere/ch1_ids";
+import { CH1_ANCHORS, CH1_FLAGS } from "@/shared/harthmere/ch1_ids";
+import { CH1_NEW_CAST } from "@/shared/harthmere/ch1_cast";
 import { defaultCh1LiveGateRuntimeState } from "@/shared/harthmere/ch1_live_gate";
 import {
   Ch1ObjectiveIncomplete,
@@ -18,7 +19,10 @@ import {
 import { ch1ObjectiveTarget } from "@/shared/harthmere/ch1_objective_targets";
 import { allCh1NativeQuestBiscuits } from "@/shared/harthmere/ch1_native_quests";
 import { CH1_QUESTS, type Ch1QuestStep } from "@/shared/harthmere/ch1_quests";
-import { ch1StageDirectionFor } from "@/shared/harthmere/ch1_staging";
+import {
+  ch1StageDirectionFor,
+  ch1StageDirections,
+} from "@/shared/harthmere/ch1_staging";
 import { CH1_WORLD_BUILDING_PLANS } from "@/shared/harthmere/ch1_world_buildings";
 
 function step(stepId: string): Ch1QuestStep {
@@ -226,6 +230,50 @@ describe("Chapter 1 objective evidence and canonical world", () => {
       ch1ObjectiveTarget("ch1_a3_q03_three_days", "the_flinch")?.position,
       CH1_ANCHORS.gate_desert
     );
+  });
+
+  it("keeps every cast-targeted objective on the one active per-player body", () => {
+    const flags = new Set<string>([CH1_FLAGS.started]);
+    const castById = new Map(
+      CH1_NEW_CAST.map((member) => [Number(member.entityId), member])
+    );
+    for (const quest of CH1_QUESTS) {
+      for (const step of quest.steps) {
+        const runtime = {
+          ...defaultCh1LiveGateRuntimeState(),
+          flags: [...flags],
+        };
+        const target = ch1ObjectiveTarget(quest.id, step.id, { runtime });
+        const member = target?.entityId
+          ? castById.get(Number(target.entityId))
+          : undefined;
+        if (!target || !member) continue;
+        const staged = ch1StageDirections({
+          flags: runtime.flags,
+          activeQuestId: quest.id,
+          activeStepId: step.id,
+        }).find((candidate) => candidate.key === member.key);
+        assert.ok(staged, `${quest.id}/${step.id}: missing ${member.key}`);
+        assert.equal(
+          staged.present,
+          true,
+          `${quest.id}/${step.id}: targets absent ${member.displayName}`
+        );
+        if (staged.position) {
+          assert.deepEqual(
+            target.position,
+            staged.position,
+            `${quest.id}/${step.id}: target and visible ${member.displayName} disagree`
+          );
+        }
+        for (const flag of step.setsFlags ?? []) {
+          flags.add(flag);
+        }
+      }
+      for (const flag of quest.setsFlags ?? []) {
+        flags.add(flag);
+      }
+    }
   });
 
   it("auto-starts every native quest and leaves navigation to the dynamic target bridge", () => {

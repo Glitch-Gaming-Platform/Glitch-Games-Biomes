@@ -333,6 +333,8 @@ RUN set -eux; \
     chmod 755 scripts/glitch/prepare-glitch-image.sh 2>/dev/null || true; \
     chmod 755 scripts/glitch/healthcheck-glitch-web.cjs 2>/dev/null || true; \
     bash -n scripts/glitch/run-harthmere-production-reconciliation.sh; \
+    node --check scripts/harthmere/repair-harthmere-town-production.cjs; \
+    node --check scripts/harthmere/audit-harthmere-town-repair.cjs; \
     find scripts -type f -name '*.sh' -exec chmod 755 {} \; || true
 
 

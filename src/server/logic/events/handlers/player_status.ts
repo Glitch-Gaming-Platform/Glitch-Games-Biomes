@@ -15,11 +15,17 @@ import { movementActionIsInvulnerable } from "@/shared/game/movement_actions";
 import { degToRad, diffAngle } from "@/shared/math/angles";
 import { distSqToAABB, sub, yaw } from "@/shared/math/linear";
 import {
+  ATTACK_VERTICAL_REACH_METERS,
   bodyVerticalGap,
   horizontalDistance,
-  withinAttackReach,
 } from "@/shared/npc/behavior/combat_geometry";
-import { rangedAttackShape } from "@/shared/npc/behavior/chase_attack";
+import {
+  canAttackTarget,
+  effectiveAttackStrikeDelaySecs,
+  enhancedNightMuckerHexCombatParams,
+  isNightForNpcAggro,
+  rangedAttackShape,
+} from "@/shared/npc/behavior/chase_attack";
 import {
   readCreatureProgression,
   scaleCreatureCombatStats,
@@ -27,6 +33,7 @@ import {
 import { deserializeNpcCustomState } from "@/shared/npc/serde";
 import {
   applyHarthmereNativeAttackStats,
+  harthmereNativeNpcChaseAttackParams,
   harthmereNativeItemCombatProfile,
   harthmereNativeItemDefinitionForBiomesId,
   mitigateHarthmereNativeIncomingDamage,
@@ -47,7 +54,7 @@ import {
   harthmereNativeShieldSkillAwards,
 } from "@/shared/harthmere/harthmere_skill_progression";
 
-const HARTHMERE_NPC_RANGED_REPLAY_LEDGER_LIMIT = 160;
+const HARTHMERE_NPC_ATTACK_REPLAY_LEDGER_LIMIT = 160;
 
 function sameImpactPoint(
   a: readonly number[] | undefined,
@@ -55,13 +62,35 @@ function sameImpactPoint(
 ) {
   return Boolean(
     a &&
-      b &&
-      a.length >= 3 &&
-      b.length >= 3 &&
-      Math.abs(a[0] - b[0]) <= 0.001 &&
-      Math.abs(a[1] - b[1]) <= 0.001 &&
-      Math.abs(a[2] - b[2]) <= 0.001
+    b &&
+    a.length >= 3 &&
+    b.length >= 3 &&
+    Math.abs(a[0] - b[0]) <= 0.001 &&
+    Math.abs(a[1] - b[1]) <= 0.001 &&
+    Math.abs(a[2] - b[2]) <= 0.001
   );
+}
+
+function recordNpcAttackReceipt(
+  player: {
+    mutableHarthmereEcsTransactionLedger(): { transaction_ids: string[] };
+  },
+  replayKey: string
+) {
+  const ledger = player.mutableHarthmereEcsTransactionLedger();
+  if (ledger.transaction_ids.includes(replayKey)) {
+    return false;
+  }
+  ledger.transaction_ids.push(replayKey);
+  if (
+    ledger.transaction_ids.length > HARTHMERE_NPC_ATTACK_REPLAY_LEDGER_LIMIT
+  ) {
+    ledger.transaction_ids.splice(
+      0,
+      ledger.transaction_ids.length - HARTHMERE_NPC_ATTACK_REPLAY_LEDGER_LIMIT
+    );
+  }
+  return true;
 }
 
 export const playerInitEventHandler = makeEventHandler("playerInitEvent", {
@@ -141,6 +170,10 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
         }
 
         const npcTypeId = attacker?.npcMetadata()?.type_id;
+        const serializedNpcState = attacker?.npcState()?.data;
+        const npcCustomState = serializedNpcState?.length
+          ? deserializeNpcCustomState(serializedNpcState)
+          : undefined;
         const nativeProfile = npcTypeId
           ? harthmereNativeNpcCombatProfileForEntity({
               entityId: attacker?.id,
@@ -149,30 +182,96 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
               maxHp: attacker?.health()?.maxHp,
             })
           : undefined;
+        const attackerPosition = attacker?.position()?.v;
+        const attackerSize = attacker?.size()?.v;
+        const playerPosition = player.position()?.v;
+        const playerAabb = getAabbForEntity(player.asReadonlyEntity());
+        const attackerHeight = attacker?.size()?.v[1] ?? 1.8;
+        const playerHeight = playerAabb
+          ? playerAabb[1][1] - playerAabb[0][1]
+          : 1.8;
+        const meleeReceipt =
+          npcTypeId !== undefined && event.attackAbilityId === undefined
+            ? npcCustomState?.chaseAttack?.meleeAttack
+            : undefined;
+        if (npcTypeId !== undefined && event.attackAbilityId === undefined) {
+          const now = secondsSinceEpoch();
+          const direction =
+            meleeReceipt && playerPosition
+              ? yaw(sub(playerPosition, meleeReceipt.originPoint))
+              : undefined;
+          const validReceipt = Boolean(
+            meleeReceipt &&
+            attackerPosition &&
+            playerPosition &&
+            playerAabb &&
+            event.attackTime !== undefined &&
+            event.impactPoint &&
+            npcCustomState?.chaseAttack?.attackTarget === player.id &&
+            meleeReceipt.targetId === player.id &&
+            Math.abs(meleeReceipt.attackTime - event.attackTime) <= 0.001 &&
+            sameImpactPoint(meleeReceipt.impactPoint, event.impactPoint) &&
+            meleeReceipt.result === "hit" &&
+            meleeReceipt.lineOfSightAtImpact === true &&
+            meleeReceipt.resolvedAt !== undefined &&
+            meleeReceipt.resolvedAt + 0.1 >= meleeReceipt.impactTime &&
+            meleeReceipt.resolvedAt <= meleeReceipt.expiresAt + 0.1 &&
+            meleeReceipt.expiresAt - meleeReceipt.impactTime <= 0.5 &&
+            now + 0.1 >= meleeReceipt.impactTime &&
+            now - meleeReceipt.resolvedAt <= 2 &&
+            meleeReceipt.attackDamage > 0 &&
+            meleeReceipt.attackDistance >= 0 &&
+            meleeReceipt.attackDistance <= 50 &&
+            meleeReceipt.attackFovDeg >= 0 &&
+            meleeReceipt.attackFovDeg <= 360 &&
+            meleeReceipt.verticalReach >= 0 &&
+            meleeReceipt.verticalReach <= 10 &&
+            distSqToAABB(event.impactPoint, playerAabb) <= 0.75 * 0.75 &&
+            direction !== undefined &&
+            canAttackTarget({
+              horizontalDistance: horizontalDistance(
+                meleeReceipt.originPoint,
+                playerPosition
+              ),
+              verticalGap: bodyVerticalGap({
+                attackerFeetY: meleeReceipt.originPoint[1],
+                attackerHeight,
+                targetFeetY: playerAabb[0][1],
+                targetHeight: playerHeight,
+              }),
+              targetOrientationDiff: diffAngle(direction, meleeReceipt.castYaw),
+              attackRadius: meleeReceipt.attackDistance,
+              attackFovDeg: meleeReceipt.attackFovDeg,
+              verticalReach: meleeReceipt.verticalReach,
+              attackerPosition: meleeReceipt.originPoint,
+              attackerSize,
+              targetPosition: playerPosition,
+            })
+          );
+          if (!validReceipt) {
+            log.debug(
+              "Rejected NPC melee damage without a current impact receipt",
+              {
+                attackerId: attacker?.id,
+                playerId: player.id,
+              }
+            );
+            return;
+          }
+        }
         if (nativeProfile) {
           if (nativeProfile.attackDamage <= 0) return;
-          const attackerPosition = attacker?.position()?.v;
-          const playerPosition = player.position()?.v;
-          const playerAabb = getAabbForEntity(player.asReadonlyEntity());
-          const attackerHeight = attacker?.size()?.v[1] ?? 1.8;
-          const playerHeight = playerAabb
-            ? playerAabb[1][1] - playerAabb[0][1]
-            : 1.8;
           const rangedAttack = event.attackAbilityId
             ? nativeProfile.rangedAttacks?.find(
                 ({ abilityId }) => abilityId === event.attackAbilityId
               )
             : undefined;
           if (event.attackAbilityId) {
-            const serializedNpcState = attacker?.npcState()?.data;
-            const rangedState = serializedNpcState?.length
-              ? deserializeNpcCustomState(serializedNpcState).chaseAttack
-                  ?.rangedAttack
-              : undefined;
+            const rangedState = npcCustomState?.chaseAttack?.rangedAttack;
             const now = secondsSinceEpoch();
             const rangedReleaseTime = rangedState
-              ? rangedState.releaseTime ??
-                rangedState.castTime + (rangedState.chargeTimeSecs ?? 0)
+              ? (rangedState.releaseTime ??
+                rangedState.castTime + (rangedState.chargeTimeSecs ?? 0))
               : undefined;
             const shape = rangedAttack
               ? rangedAttackShape(rangedAttack)
@@ -180,8 +279,8 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
             const attackOrigin = rangedState?.originPoint ?? attackerPosition;
             const recordedHit = Boolean(
               rangedState?.hitTargetIds?.includes(player.id) ??
-                ((shape === "projectile" || shape === "beam") &&
-                  rangedState?.targetId === player.id)
+              ((shape === "projectile" || shape === "beam") &&
+                rangedState?.targetId === player.id)
             );
             const playerInsideAttack = (() => {
               if (
@@ -243,46 +342,75 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
               });
               return;
             }
-            const replayKey = `npc-ranged:${attacker.id}:${event.attackAbilityId}:${event.attackTime}`;
-            const ledger = player.mutableHarthmereEcsTransactionLedger();
-            if (ledger.transaction_ids.includes(replayKey)) {
+            if (
+              !recordNpcAttackReceipt(
+                player,
+                `npc-ranged:${attacker.id}:${event.attackAbilityId}:${event.attackTime}`
+              )
+            ) {
               return;
             }
-            ledger.transaction_ids.push(replayKey);
-            if (
-              ledger.transaction_ids.length >
-              HARTHMERE_NPC_RANGED_REPLAY_LEDGER_LIMIT
-            ) {
-              ledger.transaction_ids.splice(
-                0,
-                ledger.transaction_ids.length -
-                  HARTHMERE_NPC_RANGED_REPLAY_LEDGER_LIMIT
-              );
-            }
-          } else if (
-            !attackerPosition ||
-            !playerPosition ||
-            !playerAabb ||
-            !withinAttackReach({
-              horizontalDistance: horizontalDistance(
-                attackerPosition,
-                playerPosition
-              ),
-              verticalGap: bodyVerticalGap({
-                attackerFeetY: attackerPosition[1],
-                attackerHeight,
-                targetFeetY: playerAabb[0][1],
-                targetHeight: playerHeight,
-              }),
-              attackRadius: nativeProfile.attackDistance,
-            })
-          ) {
-            log.debug("Rejected out-of-range native NPC damage", {
-              attackerId: attacker?.id,
-              playerId: player.id,
-              attackDistance: nativeProfile.attackDistance,
+          } else {
+            const baseMeleeParams =
+              harthmereNativeNpcChaseAttackParams(nativeProfile);
+            if (!baseMeleeParams || !meleeReceipt) return;
+            const effectiveMeleeParams =
+              enhancedNightMuckerHexCombatParams(
+                attacker?.label()?.text ?? nativeProfile.displayName,
+                isNightForNpcAggro(meleeReceipt.attackTime),
+                baseMeleeParams,
+                baseMeleeParams
+              ) ?? baseMeleeParams;
+            const creatureProgression = readCreatureProgression(npcCustomState);
+            const expectedMeleeStats = scaleCreatureCombatStats(
+              {
+                maxHp: nativeProfile.maxHp,
+                attackDamage: effectiveMeleeParams.attackDamage,
+                attackIntervalSecs: effectiveMeleeParams.attackIntervalSecs,
+                walkSpeed: nativeProfile.walkSpeed,
+                runSpeed: nativeProfile.runSpeed,
+                killXp: nativeProfile.killXp,
+              },
+              creatureProgression.level
+            );
+            const expectedStrikeDelay = effectiveAttackStrikeDelaySecs({
+              attackStrikeMomentSecs:
+                effectiveMeleeParams.attackStrikeMomentSecs,
+              attackAnimationMultiplier:
+                effectiveMeleeParams.attackAnimationMultiplier,
+              attackIntervalSecs: expectedMeleeStats.attackIntervalSecs,
             });
-            return;
+            const dynamicEncounterMelee = /gilded bull|ninth winter/i.test(
+              attacker?.label()?.text ?? ""
+            );
+            if (
+              (!dynamicEncounterMelee &&
+                (meleeReceipt.attackDistance >
+                  effectiveMeleeParams.attackDistance + 0.001 ||
+                  meleeReceipt.attackFovDeg >
+                    effectiveMeleeParams.attackFovDeg + 0.001 ||
+                  meleeReceipt.attackDamage >
+                    expectedMeleeStats.attackDamage + 0.001 ||
+                  meleeReceipt.verticalReach >
+                    ATTACK_VERTICAL_REACH_METERS + 0.001 ||
+                  Math.abs(
+                    meleeReceipt.impactTime -
+                      (meleeReceipt.attackTime + expectedStrikeDelay)
+                  ) > 0.001)) ||
+              !recordNpcAttackReceipt(
+                player,
+                `npc-melee:${attacker!.id}:${meleeReceipt.attackTime}`
+              )
+            ) {
+              log.debug(
+                "Rejected mismatched or replayed native NPC melee damage",
+                {
+                  attackerId: attacker?.id,
+                  playerId: player.id,
+                }
+              );
+              return;
+            }
           }
 
           const worn = [...(player.wearing()?.items.values() ?? [])];
@@ -290,12 +418,7 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
           const defender = readHarthmereNativeCombatProgression(
             player.triggerState()
           );
-          const serializedNpcState = attacker?.npcState()?.data;
-          const creatureProgression = readCreatureProgression(
-            serializedNpcState?.length
-              ? deserializeNpcCustomState(serializedNpcState)
-              : undefined
-          );
+          const creatureProgression = readCreatureProgression(npcCustomState);
           const scaledNpcStats = scaleCreatureCombatStats(
             {
               maxHp: nativeProfile.maxHp,
@@ -311,7 +434,10 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
           const defenderStats = harthmereNativeLevelStats(defender.level);
           const attackerStats = harthmereNativeLevelStats(nativeProfile.level);
           const damage = mitigateHarthmereNativeIncomingDamage({
-            rawDamage: scaledNpcStats.attackDamage,
+            rawDamage:
+              rangedAttack?.attackDamage !== undefined
+                ? scaledNpcStats.attackDamage
+                : (meleeReceipt?.attackDamage ?? scaledNpcStats.attackDamage),
             armor: armor.armor + defenderStats.armor,
             defense: armor.defense + defenderStats.defense,
             magicResistance:
@@ -344,6 +470,20 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
               );
             }
           }
+        } else if (npcTypeId !== undefined && meleeReceipt) {
+          if (
+            !recordNpcAttackReceipt(
+              player,
+              `npc-melee:${attacker!.id}:${meleeReceipt.attackTime}`
+            )
+          ) {
+            return;
+          }
+          authoritativeHp = undefined;
+          authoritativeHpDelta = -Math.max(
+            1,
+            Math.round(meleeReceipt.attackDamage)
+          );
         } else if (attacker?.playerStatus()) {
           const attackerProgress = readHarthmereNativeCombatProgression(
             attacker.triggerState()
@@ -363,32 +503,38 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
             const itemProfile = harthmereNativeItemCombatProfile(
               selected?.item
             );
-            if (!itemProfile || (definition && itemProfile.damagePerHit <= 0)) {
+            // Harthmere-native items must have an explicit combat profile, but
+            // original Biomes minigames still author their loadouts with
+            // legacy Bikkie weapons (for example Mega Axe). Migrating a player
+            // must not make those server-issued ECS weapons harmless. Keep the
+            // native authority boundary while deriving legacy weapon damage
+            // from the selected ECS item instead of trusting the client delta.
+            if (definition && (!itemProfile || itemProfile.damagePerHit <= 0)) {
               return;
             }
-            if (attackerProgress.level < itemProfile.levelRequirement) {
+            if (attackerProgress.level < (itemProfile?.levelRequirement ?? 1)) {
               return;
             }
             const attackerVitals = readHarthmereNativeVitals(
               attacker.triggerState()
             );
-            if (itemProfile.manaCost > attackerVitals.mana) {
+            if ((itemProfile?.manaCost ?? 0) > attackerVitals.mana) {
               return;
             }
             const attackerPosition = attacker.position()?.v;
             const playerAabb = getAabbForEntity(player.asReadonlyEntity());
+            const reach = itemProfile?.reach ?? 3.5;
             if (
               !attackerPosition ||
               !playerAabb ||
-              distSqToAABB(attackerPosition, playerAabb) >
-                itemProfile.reach * itemProfile.reach
+              distSqToAABB(attackerPosition, playerAabb) > reach * reach
             ) {
               return;
             }
             const nowMs = Date.now();
             const intervalMs = Math.round(
               1000 *
-                (itemProfile.intervalSecs ??
+                (itemProfile?.intervalSecs ??
                   attackIntervalSeconds(selected?.item))
             );
             if (nowMs - attackerProgress.lastAttackMs < intervalMs) {
@@ -398,9 +544,9 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
               attacker.mutableTriggerState(),
               { lastAttackMs: nowMs }
             );
-            if (itemProfile.manaCost > 0) {
+            if ((itemProfile?.manaCost ?? 0) > 0) {
               writeHarthmereNativeVitals(attacker.mutableTriggerState(), {
-                mana: attackerVitals.mana - itemProfile.manaCost,
+                mana: attackerVitals.mana - itemProfile!.manaCost,
               });
             }
 
@@ -414,8 +560,13 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
             );
             const defenderStats = harthmereNativeLevelStats(defender.level);
             const statDamage = applyHarthmereNativeAttackStats({
-              baseDamage: itemProfile.damagePerHit,
-              kind: itemProfile.kind,
+              baseDamage:
+                itemProfile?.damagePerHit ??
+                Math.max(
+                  1,
+                  Math.round(((selected?.item.dps ?? 16) * intervalMs) / 1000)
+                ),
+              kind: itemProfile?.kind ?? "melee",
               stats: attackerStats,
               criticalSeed: [
                 attacker.id,
@@ -438,16 +589,16 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
             awardHarthmereNativeSkillXp(
               attacker.mutableTriggerState(),
               harthmereNativeCombatSkillAwards({
-                itemId: itemProfile.itemId,
-                kind: itemProfile.kind,
+                itemId: itemProfile?.itemId,
+                kind: itemProfile?.kind ?? "melee",
                 damage,
               })
             );
-            if (selected && itemProfile.durabilityCostMs > 0) {
+            if (selected && (itemProfile?.durabilityCostMs ?? 0) > 0) {
               decrementItemDurability(
                 attackerInventory,
                 selectedRef,
-                itemProfile.durabilityCostMs
+                itemProfile!.durabilityCostMs
               );
             }
           }

@@ -6,10 +6,15 @@ import type {
   Vec3f,
 } from "@/shared/ecs/gen/types";
 import { normalizeAngle } from "@/shared/math/angles";
+import { HARTHMERE_SPECIAL_MOVEMENT_STAMINA } from "@/shared/harthmere/deliberate_combat";
 
 export const RESERVED_MOVEMENT_KEY_CODES = ["KeyZ", "KeyX", "KeyC"] as const;
-export const MOVEMENT_ACTION_STAMINA_COST = 3;
-export const DOUBLE_JUMP_STAMINA_COST = 4;
+export const MOVEMENT_ACTION_STAMINA_COST =
+  HARTHMERE_SPECIAL_MOVEMENT_STAMINA.dodgeCost;
+export const EVADE_MOVEMENT_ACTION_STAMINA_COST =
+  HARTHMERE_SPECIAL_MOVEMENT_STAMINA.evadeCost;
+export const DOUBLE_JUMP_STAMINA_COST =
+  HARTHMERE_SPECIAL_MOVEMENT_STAMINA.doubleJumpCost;
 export const BASE_PLAYER_JUMP_COUNT = 2;
 export const PLAYER_MOVEMENT_ACTION_ANIMATION_NAMES = [
   "dodgeLeft",
@@ -139,9 +144,10 @@ export function playerEvadeLateralDirection({
   lateralVelocity: number;
   fallbackSide?: PlayerEvadeLateralSide;
 }): { direction: Vec3f; side: PlayerEvadeLateralSide } {
-  const normalizedRight = normalizeMovementActionDirection(rightDirection, [
-    1, 0, 0,
-  ]);
+  const normalizedRight = normalizeMovementActionDirection(
+    rightDirection,
+    [1, 0, 0]
+  );
   const inputSide = Math.sign(Number(lateralInput));
   const velocitySide =
     Math.abs(Number(lateralVelocity)) >= 0.05
@@ -155,8 +161,11 @@ export function playerEvadeLateralDirection({
 }
 
 export function movementActionStaminaCost(action: MovementActionType): number {
-  return action === "doubleJump"
-    ? DOUBLE_JUMP_STAMINA_COST
+  if (action === "doubleJump") {
+    return DOUBLE_JUMP_STAMINA_COST;
+  }
+  return action === "evade"
+    ? EVADE_MOVEMENT_ACTION_STAMINA_COST
     : MOVEMENT_ACTION_STAMINA_COST;
 }
 
@@ -175,10 +184,7 @@ export const PLAYER_EVADE_ATTACK_TRANSITION = {
 } as const;
 
 export type MovementActionAttackTransition =
-  | "none"
-  | "blocked"
-  | "queue"
-  | "open";
+  "none" | "blocked" | "queue" | "open";
 
 /**
  * Preserve the readable roll through rotation, buffer attack input during the
@@ -253,8 +259,8 @@ export function playerMovementActionAnimationName({
       ? "dodgeRight"
       : "dodgeLeft"
     : forwardAmount >= 0
-    ? "dodgeForward"
-    : "dodgeBack";
+      ? "dodgeForward"
+      : "dodgeBack";
 }
 
 /**
@@ -445,11 +451,11 @@ export function movementActionLocksControl({
   });
   return Boolean(
     progress !== undefined &&
-      progress <
-        movementActionTimingProgress(
-          action,
-          PLAYER_MOVEMENT_ACTION_TIMING[action].controlLockSeconds
-        )
+    progress <
+      movementActionTimingProgress(
+        action,
+        PLAYER_MOVEMENT_ACTION_TIMING[action].controlLockSeconds
+      )
   );
 }
 
@@ -513,8 +519,8 @@ export function movementActionCameraEffects({
     progress < movementStart
       ? smoothstep01(progress / movementStart)
       : progress <= recoveryStart
-      ? 1
-      : 1 - smoothstep01((progress - recoveryStart) / (1 - recoveryStart));
+        ? 1
+        : 1 - smoothstep01((progress - recoveryStart) / (1 - recoveryStart));
   return {
     fovBoostDegrees: timing.cameraFovBoostDegrees * amount,
     pullbackMeters: timing.cameraPullbackMeters * amount,
@@ -547,7 +553,7 @@ export function movementActionYaw(
 }
 
 export function movementActionEnvironmentForTick<
-  T extends { friction: number; airResistance: number }
+  T extends { friction: number; airResistance: number },
 >(environment: T, movementActionActive: boolean): T {
   if (!movementActionActive) {
     return environment;
@@ -731,10 +737,35 @@ export function movementActionIsActive(
 ): boolean {
   return Boolean(
     state?.action &&
-      nowSeconds >= state.action_start_time &&
-      nowSeconds < state.action_expiry_time
+    nowSeconds >= state.action_start_time &&
+    nowSeconds < state.action_expiry_time
   );
 }
+
+/**
+ * Fraction of a movement action that elapses before invulnerability begins.
+ *
+ * Every authored player action already sits exactly on this ratio
+ * (dodge 0.10/0.50, evade 0.15/0.75), so applying it universally reproduces the
+ * documented player windows precisely while giving NPC evades the same
+ * property.
+ *
+ * That symmetry is the point. Previously the start offset was selected by
+ * float-comparing the replicated duration against the player table: any action
+ * whose duration did not match got invulnerability from frame zero. NPC evade
+ * profiles never match, so a reacting NPC became immune the instant it decided
+ * to dodge and could not be baited-and-punished, while the player was held to a
+ * strict commitment test on the same mechanic. Deriving the delay from a
+ * proportion of the action's own duration removes both the fairness gap and the
+ * fragile numeric coupling (NPC_EVADE_PROFILES.swim already shares dodge's
+ * 0.5 s duration, so the old equality check was one retune away from silently
+ * flipping a creature's i-frame semantics).
+ *
+ * Actions with no authored invulnerability are unaffected: double jump writes
+ * an invulnerability expiry equal to its start time, so the window stays empty
+ * regardless of where it would have begun.
+ */
+export const MOVEMENT_ACTION_INVULNERABILITY_START_RATIO = 0.2;
 
 export function movementActionIsInvulnerable(
   state: ReadonlyMovementState | undefined,
@@ -743,19 +774,13 @@ export function movementActionIsInvulnerable(
   if (!state?.action || !movementActionIsActive(state, nowSeconds)) {
     return false;
   }
-  const timing = PLAYER_MOVEMENT_ACTION_TIMING[state.action];
   const actionDuration = state.action_expiry_time - state.action_start_time;
-  // NPC evade families intentionally keep their existing immediate protection
-  // and use shorter custom durations. The delayed i-frame belongs to the
-  // choreographed player clips, whose replicated duration matches this table.
-  const usesPlayerTiming =
-    Math.abs(actionDuration - timing.durationSeconds) < 1e-3;
+  if (!Number.isFinite(actionDuration) || actionDuration <= 0) {
+    return false;
+  }
   const invulnerabilityStart =
     state.action_start_time +
-    (usesPlayerTiming
-      ? actionDuration *
-        (timing.invulnerabilityStartSeconds / timing.durationSeconds)
-      : 0);
+    actionDuration * MOVEMENT_ACTION_INVULNERABILITY_START_RATIO;
   return (
     nowSeconds >= invulnerabilityStart &&
     nowSeconds < state.invulnerability_expiry_time
@@ -769,10 +794,7 @@ export function movementActionIsOnCooldown(
   return nowSeconds < (state?.cooldown_expiry_time ?? 0);
 }
 
-export function npcEvadeFamilyForDescriptor(
-  ...descriptors: Array<string | undefined>
-): NpcEvadeFamily {
-  const text = descriptors.filter(Boolean).join(" ").toLowerCase();
+function matchNpcEvadeFamily(text: string): NpcEvadeFamily | undefined {
   if (/\bhex(?:er)?\b|witch|warlock|cloak/.test(text)) return "hexer";
   if (/fish|turtle|eel|shark|ray|aquatic|swim/.test(text)) return "swim";
   if (/rabbit|hare|bunny/.test(text)) return "rabbit";
@@ -783,6 +805,42 @@ export function npcEvadeFamilyForDescriptor(
   if (/wolf|dog|hound|cat|deer|stag|doe|fawn/.test(text)) return "sideLeap";
   if (/robot|bot|chrominer|sentinel/.test(text)) return "robot";
   if (/muck|muckling|mucker|muckwad/.test(text)) return "mucker";
+  return undefined;
+}
+
+/**
+ * Resolve an evade profile from authored identity, in priority order.
+ *
+ * Descriptors are matched one at a time rather than concatenated. The evade
+ * profile sets `invulnerabilitySeconds`, so it decides how long a creature is
+ * immune to damage — that is behaviour, not presentation, and
+ * `HARTHMERE_NATIVE_ECS_COMBAT.md` reserves those decisions for authored type
+ * identity: "No label regex is allowed to decide the behavior, damageability,
+ * drops, or quest kill identity of a native Harthmere NPC."
+ *
+ * Concatenating every descriptor let a display name outvote the NPC type. That
+ * is the same hazard the boss entity-identity rule exists to prevent: several
+ * production actors carry labels that misdescribe them (`Old Wood Mucker 1` is
+ * Alpha Mucker, `Gravewood Pale Hexer 7` is Hex Wraith), and
+ * `Gravewood Pale Hexer 7` matches the hexer pattern purely on label text,
+ * awarding it the fastest evade and longest i-frames in the table.
+ *
+ * Callers should therefore pass type-derived descriptors first. A label may be
+ * supplied last as a migration fallback for actors with no usable type, and is
+ * consulted only when nothing authored matched.
+ */
+export function npcEvadeFamilyForDescriptor(
+  ...descriptors: Array<string | undefined>
+): NpcEvadeFamily {
+  for (const descriptor of descriptors) {
+    if (!descriptor) {
+      continue;
+    }
+    const family = matchNpcEvadeFamily(descriptor.toLowerCase());
+    if (family) {
+      return family;
+    }
+  }
   return "generic";
 }
 

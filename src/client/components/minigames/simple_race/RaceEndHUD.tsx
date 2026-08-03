@@ -4,7 +4,6 @@ import {
   useCachedEntity,
   useLatestAvailableComponents,
 } from "@/client/components/hooks/client_hooks";
-import { useTopScoreUser } from "@/client/components/minigames/helpers";
 import type { GardenHoseEventOfKind } from "@/client/events/api";
 import { durationToClockFormat } from "@/client/util/text_helpers";
 import { zSimpleRaceSettings } from "@/server/shared/minigames/simple_race/types";
@@ -20,7 +19,6 @@ export const RaceEndHUD: React.FunctionComponent<{
   event: GardenHoseEventOfKind<"minigame_simple_race_finish">;
 }> = ({ event }) => {
   const clientContext = useClientContext();
-  const [topScoreValue, _topScoreUser] = useTopScoreUser(event.minigameId);
   const instance = useCachedEntity(event.minigameInstanceId, true);
 
   useEffect(() => {
@@ -68,56 +66,54 @@ export const RaceEndHUD: React.FunctionComponent<{
 
   return (
     <div className="minigames-center-hud">
-      {topScoreValue && (
-        <motion.div
-          transition={{ staggerChildren: 0.1 }}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          className="minigame-end-hud"
-        >
-          <motion.div variants={variants} className="complete">
-            Finished!
-          </motion.div>
-
-          {settings.twoStarTimeSeconds > 0 &&
-            settings.threeStarTimeSeconds > 0 && (
-              <motion.div
-                variants={variants}
-                transition={{ staggerChildren: 0.3, delayChildren: 0.3 }}
-                className="flex gap-0"
-              >
-                <motion.img
-                  variants={starVariants}
-                  className="w-6"
-                  src={raceStarFilled.src}
-                />
-                <motion.img
-                  variants={starVariants}
-                  className="w-6"
-                  src={
-                    raceTimeSeconds < settings.twoStarTimeSeconds
-                      ? raceStarFilled.src
-                      : raceStarUnfilled.src
-                  }
-                />
-                <motion.img
-                  variants={starVariants}
-                  className="w-6"
-                  src={
-                    raceTimeSeconds < settings.threeStarTimeSeconds
-                      ? raceStarFilled.src
-                      : raceStarUnfilled.src
-                  }
-                />
-              </motion.div>
-            )}
-          <motion.div variants={variants} className="time-row">
-            <div>Your Time</div>
-            <div>{durationToClockFormat(1000 * raceTimeSeconds)}</div>
-          </motion.div>
+      <motion.div
+        transition={{ staggerChildren: 0.1 }}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        className="minigame-end-hud"
+      >
+        <motion.div variants={variants} className="complete">
+          Finished!
         </motion.div>
-      )}
+
+        {settings.twoStarTimeSeconds > 0 &&
+          settings.threeStarTimeSeconds > 0 && (
+            <motion.div
+              variants={variants}
+              transition={{ staggerChildren: 0.3, delayChildren: 0.3 }}
+              className="flex gap-0"
+            >
+              <motion.img
+                variants={starVariants}
+                className="w-6"
+                src={raceStarFilled.src}
+              />
+              <motion.img
+                variants={starVariants}
+                className="w-6"
+                src={
+                  raceTimeSeconds < settings.twoStarTimeSeconds
+                    ? raceStarFilled.src
+                    : raceStarUnfilled.src
+                }
+              />
+              <motion.img
+                variants={starVariants}
+                className="w-6"
+                src={
+                  raceTimeSeconds < settings.threeStarTimeSeconds
+                    ? raceStarFilled.src
+                    : raceStarUnfilled.src
+                }
+              />
+            </motion.div>
+          )}
+        <motion.div variants={variants} className="time-row">
+          <div>Your Time</div>
+          <div>{durationToClockFormat(1000 * raceTimeSeconds)}</div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 };

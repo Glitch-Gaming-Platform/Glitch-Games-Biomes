@@ -10,20 +10,49 @@ export const HARTHMERE_BOSS_ATTACK_CATALOG_VERSION =
   "harthmere-boss-attack-catalog-v1" as const;
 
 export const HARTHMERE_BOSS_MINIMUM_TELEGRAPH_SECS = Object.freeze({
-  projectile: 0.9,
-  beam: 0.85,
-  ground_aoe: 1.1,
-  self_aoe: 0.9,
-  cone: 0.9,
-} satisfies Record<NonNullable<BehaviorRangedAttackParams["attackShape"]>, number>);
+  projectile: 1.15,
+  beam: 1.1,
+  ground_aoe: 1.35,
+  self_aoe: 1.2,
+  cone: 1.15,
+} satisfies Record<
+  NonNullable<BehaviorRangedAttackParams["attackShape"]>,
+  number
+>);
 
-export interface HarthmereBossAttackDefinition
-  extends BehaviorRangedAttackParams {
+/**
+ * Floor for attacks explicitly authored as fast mixups.
+ *
+ * Still above the practical reaction threshold for a cue the player is already
+ * watching for, but low enough that a feint reads as a different beat from the
+ * boss's committed attacks.
+ */
+export const HARTHMERE_BOSS_FAST_TELEGRAPH_SECS = 0.45;
+
+export interface HarthmereBossAttackDefinition extends BehaviorRangedAttackParams {
   displayName: string;
   attackShape: NonNullable<BehaviorRangedAttackParams["attackShape"]>;
   damageType: NonNullable<BehaviorRangedAttackParams["damageType"]>;
   animationClip: NonNullable<BehaviorRangedAttackParams["animationClip"]>;
   lore: string;
+  /**
+   * Opt out of the shape telegraph floor for a deliberate fast mixup.
+   *
+   * The shape floors exist so a player can read and answer an attack, and they
+   * should stay the default. But applying them uniformly also flattened every
+   * boss kit into a single 1.15-1.35 s band: `vyrahel_tail_feint` is authored
+   * and lored as a feint that punishes a premature dodge, and at the cone floor
+   * it telegraphed exactly as slowly as the same boss's committed breath
+   * attack. A boss needs a spread of beats to be readable as a fight rather
+   * than as five interchangeable attacks.
+   *
+   * Attacks that set this are held to `HARTHMERE_BOSS_FAST_TELEGRAPH_SECS`
+   * instead. Everything else must author at or above its shape floor — see the
+   * assertion in `boss_attack_catalog.test.ts`, which exists because a value
+   * below the floor is silently discarded and reads in source as if it were
+   * live tuning.
+   */
+  fastTelegraph?: boolean;
 }
 
 export interface HarthmereBossNativeCombatTuning {
@@ -48,6 +77,15 @@ type AttackInput = Omit<HarthmereBossAttackDefinition, "projectileVisualId"> & {
   projectileVisualId: string;
 };
 
+export function harthmereBossTelegraphFloorSecs(
+  attackShape: NonNullable<BehaviorRangedAttackParams["attackShape"]>,
+  fastTelegraph?: boolean
+): number {
+  return fastTelegraph
+    ? HARTHMERE_BOSS_FAST_TELEGRAPH_SECS
+    : HARTHMERE_BOSS_MINIMUM_TELEGRAPH_SECS[attackShape];
+}
+
 function attack(input: AttackInput): HarthmereBossAttackDefinition {
   const projectileVisualId =
     getHarthmereProjectileVisual(input.projectileVisualId)?.id ??
@@ -57,7 +95,7 @@ function attack(input: AttackInput): HarthmereBossAttackDefinition {
     projectileVisualId,
     castTimeSecs: Math.max(
       input.castTimeSecs,
-      HARTHMERE_BOSS_MINIMUM_TELEGRAPH_SECS[input.attackShape]
+      harthmereBossTelegraphFloorSecs(input.attackShape, input.fastTelegraph)
     ),
   });
 }
@@ -71,8 +109,8 @@ const catalogs: Readonly<
     maxHp: 1800,
     attackDamage: 140,
     attackDistance: 4.2,
-    attackIntervalSecs: 1.8,
-    attackStrikeMomentSecs: 0.48,
+    attackIntervalSecs: 3.2,
+    attackStrikeMomentSecs: 1.1,
     attackFovDeg: 170,
     aggroTrigger: "proximity",
     aggroDistance: 20,
@@ -93,7 +131,7 @@ const catalogs: Readonly<
         minimumDistance: 0,
         attackDistance: 5.2,
         attackDamage: 125,
-        castTimeSecs: 0.8,
+        castTimeSecs: 1.2,
         cooldownSecs: 8,
         sharedCooldownSecs: 1.9,
         hitRadius: 4.3,
@@ -110,7 +148,7 @@ const catalogs: Readonly<
         minimumDistance: 4,
         attackDistance: 22,
         attackDamage: 88,
-        castTimeSecs: 0.72,
+        castTimeSecs: 1.15,
         cooldownSecs: 9,
         sharedCooldownSecs: 1.9,
         hitRadius: 1.35,
@@ -127,7 +165,7 @@ const catalogs: Readonly<
         minimumDistance: 3,
         attackDistance: 24,
         attackDamage: 105,
-        castTimeSecs: 0.95,
+        castTimeSecs: 1.1,
         cooldownSecs: 11,
         sharedCooldownSecs: 2,
         hitRadius: 1.1,
@@ -144,7 +182,7 @@ const catalogs: Readonly<
         minimumDistance: 2,
         attackDistance: 20,
         attackDamage: 76,
-        castTimeSecs: 1.05,
+        castTimeSecs: 1.35,
         cooldownSecs: 12,
         sharedCooldownSecs: 2,
         hitRadius: 3.2,
@@ -175,8 +213,8 @@ const catalogs: Readonly<
     maxHp: 420,
     attackDamage: 28,
     attackDistance: 3.6,
-    attackIntervalSecs: 1.9,
-    attackStrikeMomentSecs: 0.5,
+    attackIntervalSecs: 3.05,
+    attackStrikeMomentSecs: 1.05,
     attackFovDeg: 120,
     aggroTrigger: "proximity",
     aggroDistance: 24,
@@ -197,7 +235,7 @@ const catalogs: Readonly<
         minimumDistance: 2,
         attackDistance: 15,
         attackDamage: 34,
-        castTimeSecs: 0.75,
+        castTimeSecs: 1.15,
         cooldownSecs: 8,
         sharedCooldownSecs: 1.7,
         hitRadius: 1,
@@ -215,7 +253,7 @@ const catalogs: Readonly<
         minimumDistance: 1,
         attackDistance: 17,
         attackDamage: 30,
-        castTimeSecs: 1.05,
+        castTimeSecs: 1.35,
         cooldownSecs: 10,
         sharedCooldownSecs: 1.8,
         hitRadius: 3.1,
@@ -232,7 +270,7 @@ const catalogs: Readonly<
         minimumDistance: 3,
         attackDistance: 22,
         attackDamage: 29,
-        castTimeSecs: 0.9,
+        castTimeSecs: 1.1,
         cooldownSecs: 11,
         sharedCooldownSecs: 1.8,
         hitRadius: 1.05,
@@ -249,7 +287,7 @@ const catalogs: Readonly<
         minimumDistance: 0,
         attackDistance: 6,
         attackDamage: 26,
-        castTimeSecs: 0.85,
+        castTimeSecs: 1.2,
         cooldownSecs: 9,
         sharedCooldownSecs: 1.8,
         hitRadius: 5.2,
@@ -266,7 +304,7 @@ const catalogs: Readonly<
         minimumDistance: 1,
         attackDistance: 20,
         attackDamage: 42,
-        castTimeSecs: 1.25,
+        castTimeSecs: 1.35,
         cooldownSecs: 14,
         sharedCooldownSecs: 2,
         hitRadius: 4,
@@ -280,8 +318,8 @@ const catalogs: Readonly<
     maxHp: 560,
     attackDamage: 32,
     attackDistance: 4,
-    attackIntervalSecs: 2.1,
-    attackStrikeMomentSecs: 0.62,
+    attackIntervalSecs: 3.35,
+    attackStrikeMomentSecs: 1.2,
     attackFovDeg: 210,
     aggroTrigger: "proximity",
     aggroDistance: 28,
@@ -302,7 +340,7 @@ const catalogs: Readonly<
         minimumDistance: 0,
         attackDistance: 10,
         attackDamage: 38,
-        castTimeSecs: 0.95,
+        castTimeSecs: 1.15,
         cooldownSecs: 8,
         sharedCooldownSecs: 1.9,
         hitRadius: 1,
@@ -319,7 +357,7 @@ const catalogs: Readonly<
         minimumDistance: 3,
         attackDistance: 23,
         attackDamage: 31,
-        castTimeSecs: 0.8,
+        castTimeSecs: 1.15,
         cooldownSecs: 8.5,
         sharedCooldownSecs: 1.9,
         hitRadius: 1.2,
@@ -336,7 +374,7 @@ const catalogs: Readonly<
         minimumDistance: 1,
         attackDistance: 24,
         attackDamage: 29,
-        castTimeSecs: 1.15,
+        castTimeSecs: 1.35,
         cooldownSecs: 11,
         sharedCooldownSecs: 2,
         hitRadius: 4.2,
@@ -384,8 +422,8 @@ const catalogs: Readonly<
     maxHp: 760,
     attackDamage: 38,
     attackDistance: 3.5,
-    attackIntervalSecs: 1.85,
-    attackStrikeMomentSecs: 0.5,
+    attackIntervalSecs: 3.15,
+    attackStrikeMomentSecs: 1.08,
     attackFovDeg: 175,
     aggroTrigger: "proximity",
     aggroDistance: 20,
@@ -400,6 +438,7 @@ const catalogs: Readonly<
         lore: "The broken Apprentice's Bell becomes a bronze striking hand.",
         projectileVisualId: "judgment",
         attackShape: "cone",
+        fastTelegraph: true,
         damageType: "blunt",
         animationClip: "HeavyAttack",
         specialAnimationClip: "BellFist",
@@ -424,7 +463,7 @@ const catalogs: Readonly<
         minimumDistance: 3,
         attackDistance: 20,
         attackDamage: 36,
-        castTimeSecs: 0.65,
+        castTimeSecs: 1.15,
         cooldownSecs: 8,
         sharedCooldownSecs: 1.7,
         hitRadius: 1.1,
@@ -441,7 +480,7 @@ const catalogs: Readonly<
         minimumDistance: 0,
         attackDistance: 6,
         attackDamage: 32,
-        castTimeSecs: 0.9,
+        castTimeSecs: 1.2,
         cooldownSecs: 10,
         sharedCooldownSecs: 1.8,
         hitRadius: 5.4,
@@ -458,7 +497,7 @@ const catalogs: Readonly<
         minimumDistance: 2,
         attackDistance: 22,
         attackDamage: 35,
-        castTimeSecs: 1,
+        castTimeSecs: 1.35,
         cooldownSecs: 11,
         sharedCooldownSecs: 1.9,
         hitRadius: 3.4,
@@ -489,8 +528,8 @@ const catalogs: Readonly<
     maxHp: 900,
     attackDamage: 36,
     attackDistance: 3.5,
-    attackIntervalSecs: 1.9,
-    attackStrikeMomentSecs: 0.52,
+    attackIntervalSecs: 3.25,
+    attackStrikeMomentSecs: 1.12,
     attackFovDeg: 220,
     aggroTrigger: "proximity",
     aggroDistance: 22,
@@ -511,7 +550,7 @@ const catalogs: Readonly<
         minimumDistance: 2,
         attackDistance: 22,
         attackDamage: 34,
-        castTimeSecs: 0.95,
+        castTimeSecs: 1.35,
         cooldownSecs: 9,
         sharedCooldownSecs: 1.8,
         hitRadius: 3.2,
@@ -527,7 +566,7 @@ const catalogs: Readonly<
         minimumDistance: 0,
         attackDistance: 8,
         attackDamage: 42,
-        castTimeSecs: 0.75,
+        castTimeSecs: 1.15,
         cooldownSecs: 8,
         sharedCooldownSecs: 1.8,
         hitRadius: 1,
@@ -545,7 +584,7 @@ const catalogs: Readonly<
         minimumDistance: 3,
         attackDistance: 21,
         attackDamage: 31,
-        castTimeSecs: 0.62,
+        castTimeSecs: 1.15,
         cooldownSecs: 7.5,
         sharedCooldownSecs: 1.8,
         hitRadius: 1.15,
@@ -562,7 +601,7 @@ const catalogs: Readonly<
         minimumDistance: 1,
         attackDistance: 23,
         attackDamage: 38,
-        castTimeSecs: 1.1,
+        castTimeSecs: 1.35,
         cooldownSecs: 11,
         sharedCooldownSecs: 2,
         hitRadius: 3.7,
@@ -593,8 +632,8 @@ const catalogs: Readonly<
     maxHp: 1100,
     attackDamage: 44,
     attackDistance: 4,
-    attackIntervalSecs: 1.7,
-    attackStrikeMomentSecs: 0.45,
+    attackIntervalSecs: 3.05,
+    attackStrikeMomentSecs: 1.02,
     attackFovDeg: 200,
     aggroTrigger: "proximity",
     aggroDistance: 24,
@@ -609,6 +648,7 @@ const catalogs: Readonly<
         lore: "The Singer reflects the player's last close strike through mirrored tuning blades.",
         projectileVisualId: "quick_shot",
         attackShape: "cone",
+        fastTelegraph: true,
         damageType: "slashing",
         animationClip: "HeavyAttack",
         specialAnimationClip: "CopyMelee",
@@ -627,6 +667,7 @@ const catalogs: Readonly<
         lore: "A mirrored mask reproduces the player's projectile with impossible precision.",
         projectileVisualId: "aimed_shot",
         attackShape: "projectile",
+        fastTelegraph: true,
         damageType: "piercing",
         animationClip: "RangedAttack",
         specialAnimationClip: "CopyRanged",
@@ -644,6 +685,7 @@ const catalogs: Readonly<
         lore: "The third mask samples the strongest nearby spell and returns an arcane imitation.",
         projectileVisualId: "spark",
         attackShape: "beam",
+        fastTelegraph: true,
         damageType: "arcane",
         animationClip: "RangedAttack",
         minimumDistance: 2,
@@ -666,7 +708,7 @@ const catalogs: Readonly<
         minimumDistance: 1,
         attackDistance: 23,
         attackDamage: 39,
-        castTimeSecs: 1.15,
+        castTimeSecs: 1.35,
         cooldownSecs: 10,
         sharedCooldownSecs: 1.8,
         hitRadius: 3.1,
@@ -683,7 +725,7 @@ const catalogs: Readonly<
         minimumDistance: 0,
         attackDistance: 9,
         attackDamage: 61,
-        castTimeSecs: 1.15,
+        castTimeSecs: 1.2,
         cooldownSecs: 14,
         sharedCooldownSecs: 2,
         hitRadius: 8,
@@ -697,8 +739,8 @@ const catalogs: Readonly<
     maxHp: 1800,
     attackDamage: 56,
     attackDistance: 4.2,
-    attackIntervalSecs: 1.55,
-    attackStrikeMomentSecs: 0.4,
+    attackIntervalSecs: 2.95,
+    attackStrikeMomentSecs: 0.98,
     attackFovDeg: 180,
     aggroTrigger: "proximity",
     aggroDistance: 25,
@@ -713,6 +755,7 @@ const catalogs: Readonly<
         lore: "A clever half-turn hides the real mineral-tail strike until the last instant.",
         projectileVisualId: "quick_shot",
         attackShape: "cone",
+        fastTelegraph: true,
         damageType: "slashing",
         animationClip: "Attack",
         specialAnimationClip: "TailFeint",
@@ -737,7 +780,7 @@ const catalogs: Readonly<
         minimumDistance: 1,
         attackDistance: 15,
         attackDamage: 53,
-        castTimeSecs: 0.75,
+        castTimeSecs: 1.15,
         cooldownSecs: 8,
         sharedCooldownSecs: 1.55,
         hitRadius: 1,
@@ -755,7 +798,7 @@ const catalogs: Readonly<
         minimumDistance: 0,
         attackDistance: 7,
         attackDamage: 48,
-        castTimeSecs: 0.65,
+        castTimeSecs: 1.2,
         cooldownSecs: 9,
         sharedCooldownSecs: 1.6,
         hitRadius: 6.2,
@@ -772,7 +815,7 @@ const catalogs: Readonly<
         minimumDistance: 2,
         attackDistance: 21,
         attackDamage: 57,
-        castTimeSecs: 0.95,
+        castTimeSecs: 1.35,
         cooldownSecs: 10,
         sharedCooldownSecs: 1.7,
         hitRadius: 3.3,
@@ -789,7 +832,7 @@ const catalogs: Readonly<
         minimumDistance: 2,
         attackDistance: 23,
         attackDamage: 69,
-        castTimeSecs: 1.05,
+        castTimeSecs: 1.1,
         cooldownSecs: 13,
         sharedCooldownSecs: 1.9,
         hitRadius: 1.45,
@@ -803,8 +846,8 @@ const catalogs: Readonly<
     maxHp: 4000,
     attackDamage: 160,
     attackDistance: 8,
-    attackIntervalSecs: 1.8,
-    attackStrikeMomentSecs: 0.5,
+    attackIntervalSecs: 3.4,
+    attackStrikeMomentSecs: 1.25,
     attackFovDeg: 220,
     aggroTrigger: "onlyIfAttacked",
     aggroDistance: 0,
@@ -825,7 +868,7 @@ const catalogs: Readonly<
         minimumDistance: 0,
         attackDistance: 16,
         attackDamage: 145,
-        castTimeSecs: 1,
+        castTimeSecs: 1.15,
         cooldownSecs: 8,
         sharedCooldownSecs: 2,
         hitRadius: 1,
@@ -843,7 +886,7 @@ const catalogs: Readonly<
         minimumDistance: 2,
         attackDistance: 30,
         attackDamage: 112,
-        castTimeSecs: 1.15,
+        castTimeSecs: 1.35,
         cooldownSecs: 10,
         sharedCooldownSecs: 2,
         hitRadius: 5,
@@ -878,7 +921,7 @@ const catalogs: Readonly<
         minimumDistance: 0,
         attackDistance: 14,
         attackDamage: 118,
-        castTimeSecs: 1,
+        castTimeSecs: 1.2,
         cooldownSecs: 12,
         sharedCooldownSecs: 2.1,
         hitRadius: 13,
@@ -910,8 +953,8 @@ const catalogs: Readonly<
     maxHp: 1250,
     attackDamage: 52,
     attackDistance: 4.5,
-    attackIntervalSecs: 1.75,
-    attackStrikeMomentSecs: 0.5,
+    attackIntervalSecs: 3.1,
+    attackStrikeMomentSecs: 1.08,
     attackFovDeg: 220,
     aggroTrigger: "proximity",
     aggroDistance: 27,
@@ -932,7 +975,7 @@ const catalogs: Readonly<
         minimumDistance: 3,
         attackDistance: 25,
         attackDamage: 49,
-        castTimeSecs: 0.72,
+        castTimeSecs: 1.15,
         cooldownSecs: 7.5,
         sharedCooldownSecs: 1.65,
         hitRadius: 1.25,
@@ -948,7 +991,7 @@ const catalogs: Readonly<
         minimumDistance: 2,
         attackDistance: 23,
         attackDamage: 58,
-        castTimeSecs: 0.9,
+        castTimeSecs: 1.1,
         cooldownSecs: 9,
         sharedCooldownSecs: 1.7,
         hitRadius: 1.2,
@@ -964,7 +1007,7 @@ const catalogs: Readonly<
         minimumDistance: 0,
         attackDistance: 8,
         attackDamage: 46,
-        castTimeSecs: 0.9,
+        castTimeSecs: 1.2,
         cooldownSecs: 9.5,
         sharedCooldownSecs: 1.75,
         hitRadius: 7.2,
@@ -980,7 +1023,7 @@ const catalogs: Readonly<
         minimumDistance: 2,
         attackDistance: 22,
         attackDamage: 54,
-        castTimeSecs: 1.1,
+        castTimeSecs: 1.35,
         cooldownSecs: 11,
         sharedCooldownSecs: 1.85,
         hitRadius: 3.5,
@@ -997,7 +1040,7 @@ const catalogs: Readonly<
         minimumDistance: 0,
         attackDistance: 9,
         attackDamage: 66,
-        castTimeSecs: 0.9,
+        castTimeSecs: 1.15,
         cooldownSecs: 12,
         sharedCooldownSecs: 1.9,
         hitRadius: 1,
@@ -1012,8 +1055,8 @@ const catalogs: Readonly<
     maxHp: 3200,
     attackDamage: 92,
     attackDistance: 9,
-    attackIntervalSecs: 2.15,
-    attackStrikeMomentSecs: 0.72,
+    attackIntervalSecs: 3.5,
+    attackStrikeMomentSecs: 1.3,
     attackFovDeg: 210,
     aggroTrigger: "proximity",
     aggroDistance: 32,
@@ -1034,7 +1077,7 @@ const catalogs: Readonly<
         minimumDistance: 0,
         attackDistance: 13,
         attackDamage: 105,
-        castTimeSecs: 1.05,
+        castTimeSecs: 1.15,
         cooldownSecs: 8,
         sharedCooldownSecs: 2.05,
         hitRadius: 1,
@@ -1052,7 +1095,7 @@ const catalogs: Readonly<
         minimumDistance: 6,
         attackDistance: 30,
         attackDamage: 76,
-        castTimeSecs: 0.9,
+        castTimeSecs: 1.15,
         cooldownSecs: 8.5,
         sharedCooldownSecs: 2.05,
         hitRadius: 1.8,
@@ -1069,7 +1112,7 @@ const catalogs: Readonly<
         minimumDistance: 2,
         attackDistance: 27,
         attackDamage: 94,
-        castTimeSecs: 1.25,
+        castTimeSecs: 1.35,
         cooldownSecs: 10,
         sharedCooldownSecs: 2.1,
         hitRadius: 4.8,
@@ -1117,8 +1160,8 @@ const catalogs: Readonly<
     maxHp: 2600,
     attackDamage: 62,
     attackDistance: 4.5,
-    attackIntervalSecs: 1.9,
-    attackStrikeMomentSecs: 0.55,
+    attackIntervalSecs: 3.3,
+    attackStrikeMomentSecs: 1.18,
     attackFovDeg: 210,
     aggroTrigger: "proximity",
     aggroDistance: 30,
@@ -1139,7 +1182,7 @@ const catalogs: Readonly<
         minimumDistance: 1,
         attackDistance: 24,
         attackDamage: 58,
-        castTimeSecs: 1,
+        castTimeSecs: 1.35,
         cooldownSecs: 8,
         sharedCooldownSecs: 1.8,
         hitRadius: 4.1,
@@ -1155,7 +1198,7 @@ const catalogs: Readonly<
         minimumDistance: 0,
         attackDistance: 10,
         attackDamage: 67,
-        castTimeSecs: 0.75,
+        castTimeSecs: 1.15,
         cooldownSecs: 7,
         sharedCooldownSecs: 1.8,
         hitRadius: 1,
@@ -1172,7 +1215,7 @@ const catalogs: Readonly<
         minimumDistance: 3,
         attackDistance: 23,
         attackDamage: 55,
-        castTimeSecs: 0.85,
+        castTimeSecs: 1.1,
         cooldownSecs: 9,
         sharedCooldownSecs: 1.9,
         hitRadius: 1.25,
@@ -1188,7 +1231,7 @@ const catalogs: Readonly<
         minimumDistance: 4,
         attackDistance: 26,
         attackDamage: 52,
-        castTimeSecs: 0.7,
+        castTimeSecs: 1.15,
         cooldownSecs: 8.5,
         sharedCooldownSecs: 1.9,
         hitRadius: 1.4,

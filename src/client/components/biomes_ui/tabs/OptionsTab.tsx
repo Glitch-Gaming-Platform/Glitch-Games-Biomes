@@ -68,6 +68,14 @@ export const OptionsTab: React.FunctionComponent<{
     "settings.volume.voice",
     50
   );
+  const [playerVoiceVolume, setPlayerVoiceVolume] = useTypedStorageItem(
+    "settings.volume.playerVoice",
+    80
+  );
+  const [playerVoiceEnabled, setPlayerVoiceEnabled] = useTypedStorageItem(
+    "settings.voice.playerVoiceEnabled",
+    false
+  );
   const [npcSpeechEnabled, setNpcSpeechEnabled] = useTypedStorageItem(
     "settings.voice.npcSpeechEnabled",
     true
@@ -200,6 +208,10 @@ export const OptionsTab: React.FunctionComponent<{
         onMusicVolumeChange={setMusicVolume}
         voiceVolume={voiceVolume}
         onVoiceVolumeChange={setVoiceVolume}
+        playerVoiceVolume={playerVoiceVolume}
+        onPlayerVoiceVolumeChange={setPlayerVoiceVolume}
+        playerVoiceEnabled={playerVoiceEnabled}
+        onPlayerVoiceEnabledChange={setPlayerVoiceEnabled}
         npcSpeechEnabled={npcSpeechEnabled}
         onNpcSpeechEnabledChange={setNpcSpeechEnabled}
         npcSpeechProvider={npcSpeechProvider}

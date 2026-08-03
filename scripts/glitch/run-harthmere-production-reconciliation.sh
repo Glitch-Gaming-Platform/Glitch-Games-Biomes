@@ -105,6 +105,26 @@ clear_building_interior_vegetation() {
   log "PASS Harthmere building interior vegetation clear"
 }
 
+repair_harthmere_town() {
+  if [ "${HARTHMERE_SKIP_TOWN_PRODUCTION_REPAIR:-0}" = "1" ]; then
+    log "Skipping persisted Harthmere town surface, roof, and NPC repair by request."
+    return
+  fi
+  # Ordinary deploys use additive terrain mode, which correctly preserves
+  # existing shards but therefore cannot migrate previously-authored town
+  # surfaces or roofs. This narrow writer reconstructs only the 14 affected
+  # canonical shard seeds, preserves all mutable ECS overlays (including
+  # shard_diff and shard_water), applies the reviewed town-style overrides,
+  # and retires only the audited generic/customer NPC ids.
+  log "START persisted Harthmere town surface, roof, and NPC repair"
+  APPLY=1 \
+    APPLY_SHARD_BATCH_SIZE="${HARTHMERE_TOWN_REPAIR_APPLY_SHARD_BATCH_SIZE:-4}" \
+    timeout --signal=TERM --kill-after=30s \
+      "${HARTHMERE_TOWN_REPAIR_TIMEOUT_SECONDS:-300}" \
+      node scripts/harthmere/repair-harthmere-town-production.cjs
+  log "PASS persisted Harthmere town surface, roof, and NPC repair"
+}
+
 verify_extension_terrain() {
   if [ "${HARTHMERE_SKIP_EXTENSION_TERRAIN_AUDIT:-0}" = "1" ]; then
     log "Skipping additive Harthmere terrain verification by request."
@@ -113,6 +133,21 @@ verify_extension_terrain() {
   # Gate armed. This is the phase that can stop a bad deploy.
   run_node "additive Harthmere terrain verification" \
     scripts/harthmere/audit-production-extension-terrain.cjs
+}
+
+verify_harthmere_town() {
+  if [ "${HARTHMERE_SKIP_TOWN_REPAIR_AUDIT:-0}" = "1" ]; then
+    log "Skipping persisted Harthmere town repair verification by request."
+    return
+  fi
+  # Water has its own authored-water deployment gate. Keep this town gate
+  # focused on the user-reported surface, building, and population defects.
+  log "START persisted Harthmere town surface, roof, and NPC verification"
+  HARTHMERE_TOWN_REPAIR_SKIP_WATER=1 \
+    timeout --signal=TERM --kill-after=30s \
+      "${HARTHMERE_TOWN_REPAIR_AUDIT_TIMEOUT_SECONDS:-300}" \
+      node scripts/harthmere/audit-harthmere-town-repair.cjs
+  log "PASS persisted Harthmere town surface, roof, and NPC verification"
 }
 
 materialize_business_outposts() {
@@ -188,9 +223,18 @@ materialize_chapter1_world_buildings() {
   log "PASS Chapter 1 Road-House and Watch House"
 }
 
+if [ "${HARTHMERE_TOWN_REPAIR_ONLY:-0}" = "1" ]; then
+  repair_harthmere_town
+  verify_harthmere_town
+  printf 'HARTHMERE_PRODUCTION_RECONCILIATION_READY tag=%s redis=%s:%s mode=town-only\n' \
+    "${HARTHMERE_DEPLOY_TAG:-unknown}" "$REDIS_HOST" "$REDIS_PORT"
+  exit 0
+fi
+
 report_extension_terrain
 repair_extension_surface
 clear_building_interior_vegetation
+repair_harthmere_town
 materialize_business_outposts
 run_node "Harthmere ECS and shared-state reconciliation" \
   scripts/harthmere/reconcile-production-world-sync.cjs
@@ -215,6 +259,7 @@ fi
 # it verifies the world the player will actually load rather than an
 # intermediate state.
 verify_extension_terrain
+verify_harthmere_town
 
 printf 'HARTHMERE_PRODUCTION_RECONCILIATION_READY tag=%s redis=%s:%s\n' \
   "${HARTHMERE_DEPLOY_TAG:-unknown}" "$REDIS_HOST" "$REDIS_PORT"

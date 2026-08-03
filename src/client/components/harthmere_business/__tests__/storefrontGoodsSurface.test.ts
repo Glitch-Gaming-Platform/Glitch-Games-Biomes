@@ -5,6 +5,7 @@ import { HarthmereBusinessInterfacePanel } from "../HarthmereBusinessInterfacePa
 import {
   createHarthmereBusinessInterfaceAdapter,
   getHarthmereBusinessShopfront,
+  harthmereBusinessItemDisplayName,
   normalizeHarthmereBusinessEconomySnapshot,
 } from "../businessInterfaceLiveAdapter";
 import {
@@ -16,6 +17,7 @@ import {
   HARTHMERE_ENERGY_WEAPON_VENDOR_ID,
 } from "@/shared/harthmere/energy_weapon_catalog";
 import { HARTHMERE_RECIPE_BOOKS } from "@/shared/harthmere/harthmere_recipe_books";
+import { HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG } from "@/shared/harthmere/business_customer_simulator";
 
 function openBusiness(id: string, typeId: string) {
   return {
@@ -55,6 +57,79 @@ function openBusiness(id: string, typeId: string) {
 }
 
 describe("business shopfront surfaces blocks, furnishings, and recipe books", () => {
+  it("gives every internal business service item a player-readable label", () => {
+    for (const itemId of Object.keys(HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG)) {
+      const label = harthmereBusinessItemDisplayName(itemId);
+      assert.ok(label.length >= 3, itemId);
+      assert.equal(
+        /[a-z]+_[a-z]+/.test(label),
+        false,
+        `${itemId} leaked snake case as ${label}`
+      );
+      assert.equal(
+        /[a-z][A-Z][a-z]/.test(label),
+        false,
+        `${itemId} leaked camel case as ${label}`
+      );
+    }
+  });
+
+  it("keeps internal service ids out of the customer shop and sells the real quest material", () => {
+    const forge = openBusiness("biz_forge", "weapons_tools");
+    forge.flags = { canonical_outpost_business: true };
+    forge.inventory = {
+      repair_tool: { itemId: "repair_tool", count: 2 },
+      metal_part: { itemId: "metal_part", count: 5 },
+      iron_ingot: { itemId: "iron_ingot", count: 6 },
+      whetstone: { itemId: "whetstone", count: 6 },
+      crystal_lens: { itemId: "crystal_lens", count: 3 },
+    };
+    const snapshot = normalizeHarthmereBusinessEconomySnapshot({
+      actorId: "customer_a",
+      businesses: { biz_forge: forge },
+    } as any);
+    const shop = getHarthmereBusinessShopfront(
+      snapshot,
+      "biz_forge",
+      "customer"
+    );
+
+    assert.deepEqual(shop.inventory, []);
+    const scrap = shop.storefrontGoods?.find(
+      (good) => good.itemId === "scrap_metal"
+    );
+    assert.ok(scrap, "Cinderlane must sell the quest's actual Scrap Metal");
+    assert.equal(scrap!.displayName, "Scrap Metal");
+    assert.equal(harthmereBusinessItemDisplayName("metal_part"), "Metal Part");
+
+    const adapter = createHarthmereBusinessInterfaceAdapter({
+      state: snapshot,
+      hydrated: true,
+      refresh: async () => snapshot,
+      submit: async () => ({ ok: true, economyState: snapshot }),
+    });
+    const html = renderToStaticMarkup(
+      React.createElement(HarthmereBusinessInterfacePanel, {
+        adapter,
+        nearbyBusinessId: "biz_forge",
+        compact: true,
+        initialTab: "shopfront",
+      })
+    );
+    const visibleText = html
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    assert.ok(visibleText.includes("Scrap Metal"));
+    assert.equal(visibleText.includes("metal_part"), false);
+    assert.equal(visibleText.includes("crystal_lens"), false);
+    assert.equal(
+      /[a-z]+_[a-z]+/.test(visibleText),
+      false,
+      `customer shop leaked a developer id: ${visibleText}`
+    );
+  });
+
   it("customer-mode storefrontGoods includes the 5 blocks, 4 furnishings, and 1 recipe book", () => {
     const snapshot = normalizeHarthmereBusinessEconomySnapshot({
       businesses: { biz_clinic: openBusiness("biz_clinic", "medical_doctor") },

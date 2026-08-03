@@ -1,6 +1,7 @@
 import type { PermissionsManager } from "@/client/game/context_managers/permissions_manager";
 import {
   AttackDestroyDelegateItemSpec,
+  harthmereAttackImpactDelayMs,
   harthmereMagicWeaponCharge,
 } from "@/client/game/interact/item_types/attack_destroy_delegate_item_spec";
 import type {
@@ -25,7 +26,9 @@ import { hitExistingTerrain } from "@/shared/game/spatial";
 import { harthmereNativeBiomesIdForItemId } from "@/shared/harthmere/harthmere_native_item_ids";
 import { HARTHMERE_MAGIC_CHARGE_MIN_SECS } from "@/shared/harthmere/magic_charge";
 import type { BiomesId } from "@/shared/ids";
+import { LOCAL_DEV_HUMAN_NPC_TYPE_ID } from "@/shared/npc/bikkie";
 import assert from "assert";
+import sinon from "sinon";
 import type { StubbedInstance } from "ts-sinon";
 
 describe("Attack and Destroy Spec", () => {
@@ -40,6 +43,22 @@ describe("Attack and Destroy Spec", () => {
     assert.equal(staffCharge.projectileVisualId, "spark");
     assert.ok(staffCharge.chargeTimeSecs >= HARTHMERE_MAGIC_CHARGE_MIN_SECS);
     assert.equal(harthmereMagicWeaponCharge(anItem(swordId)), undefined);
+  });
+
+  it("uses the authored body-contact frame for every player combat class", () => {
+    const swordId = harthmereNativeBiomesIdForItemId("iron_longsword");
+    const bowId = harthmereNativeBiomesIdForItemId("hunter_bow");
+    const staffId = harthmereNativeBiomesIdForItemId("arcane_staff");
+    const heavyId = harthmereNativeBiomesIdForItemId("two_handed_axe");
+    const toolId = harthmereNativeBiomesIdForItemId("woodcutters_axe");
+    assert.ok(swordId && bowId && staffId && heavyId && toolId);
+
+    assert.equal(harthmereAttackImpactDelayMs(undefined), 400);
+    assert.equal(harthmereAttackImpactDelayMs(anItem(swordId)), 400);
+    assert.equal(harthmereAttackImpactDelayMs(anItem(toolId)), 400);
+    assert.equal(harthmereAttackImpactDelayMs(anItem(heavyId)), 720);
+    assert.equal(harthmereAttackImpactDelayMs(anItem(bowId)), 520);
+    assert.equal(harthmereAttackImpactDelayMs(anItem(staffId)), 700);
   });
 
   before(async () => {
@@ -73,6 +92,40 @@ describe("Attack and Destroy Spec", () => {
 
   it("attacks on primary if cursor empty", async () => {
     assert.ok(!localPlayer.startAttack.calledOnce);
+  });
+
+  it("starts the melee animation immediately but publishes damage only at impact", async () => {
+    const fakeTime = sinon.useFakeTimers();
+    try {
+      const target = {
+        id: 44 as BiomesId,
+        position: { v: [1.5, 0, 0] },
+        size: { v: [1, 2, 1] },
+        health: { hp: 100, maxHp: 100 },
+        npc_metadata: {
+          type_id: LOCAL_DEV_HUMAN_NPC_TYPE_ID,
+          created_time: 0,
+          spawn_position: [1.5, 0, 0],
+          spawn_orientation: [0, 0],
+        },
+      } as any;
+      const cursor = resources.get("/scene/cursor");
+      stubClientResourceValue(resources, "/scene/cursor", {
+        ...cursor,
+        attackableEntities: [target],
+      });
+
+      itemSpec.onAttackStart([target], hotbarItemInfo());
+      assert.equal(localPlayer.startAttack.callCount, 1);
+      assert.equal(deps.events.publish.callCount, 0);
+
+      await fakeTime.tickAsync(399);
+      assert.equal(deps.events.publish.callCount, 0);
+      await fakeTime.tickAsync(1);
+      assert.equal(deps.events.publish.callCount, 1);
+    } finally {
+      fakeTime.restore();
+    }
   });
 
   it("preserves the evade's strong pose before accepting an attack", () => {

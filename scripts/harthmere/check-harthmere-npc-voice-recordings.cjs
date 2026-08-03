@@ -6,8 +6,12 @@ require("ts-node/register");
 require("tsconfig-paths/register");
 
 const {
+  findCommittedNpcVoiceAudio,
   npcVoiceAudioCacheKey,
 } = require("../../src/server/shared/npc_voice_audio_cache");
+const {
+  pinnedElevenLabsVoiceIdForActor,
+} = require("../../src/server/shared/elevenlabs");
 const {
   harthmereVoiceProfileForActor,
 } = require("../../src/shared/harthmere/npc_voice_profiles");
@@ -213,12 +217,47 @@ function main() {
   if (!harRecording) {
     fail("Attached-HAR Jackie line does not resolve to committed voice audio");
   }
+  const exactHarVoice =
+    "azure-speech|voice=en-US-JennyNeural|gender=female|kind=humanoid|style=hopeful|styleDegree=1.05|rate=%2B0%25|pitch=%2B2%25|volume=default|break=146|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie";
+  const exactHarUrl = findCommittedNpcVoiceAudio({
+    provider: "elevenlabs",
+    text: harText,
+    voice: exactHarVoice,
+    root,
+  });
+  if (exactHarUrl !== `/${harRecording.path}`) {
+    fail(
+      `Exact attached-HAR Jackie voice resolved to ${exactHarUrl || "nothing"}`
+    );
+  }
+  const jackieRecordings = manifest.recordings.filter((recording) =>
+    /jackie/i.test(
+      [recording.actorKey, recording.actorId, recording.path]
+        .filter(Boolean)
+        .join(" ")
+    )
+  );
+  if (jackieRecordings.length < 1) {
+    fail("Voice manifest has no Jackie recordings");
+  }
+  for (const recording of jackieRecordings) {
+    const pinnedVoiceId = pinnedElevenLabsVoiceIdForActor(recording.voice);
+    if (!pinnedVoiceId || recording.voiceId !== pinnedVoiceId) {
+      fail(
+        `Jackie recording ${recording.path} uses ${
+          recording.voiceId || "no voice"
+        }, expected ${pinnedVoiceId || "a pinned voice"}`
+      );
+    }
+  }
 
   console.log(
     `PASS NPC voice recordings: ${manifest.recordings.length} MP3s, ` +
       `${chapterPaths.length} Chapter 1 cutscene lines, ` +
       `${objectivePaths.length} Chapter 1 objective lines, ` +
-      `${nativeRobotStoryCount} native robot-story lines, HAR cache hit ${harRecording.path}`
+      `${nativeRobotStoryCount} native robot-story lines, ` +
+      `${jackieRecordings.length} Jackie lines on one saved voice, ` +
+      `HAR cache hit ${harRecording.path}`
   );
 }
 

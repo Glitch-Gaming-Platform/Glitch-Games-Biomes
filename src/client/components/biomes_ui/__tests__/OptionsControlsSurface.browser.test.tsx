@@ -10,6 +10,8 @@ declare global {
     __selectedMicrophoneDeviceId: string;
     __microphoneInputEnabled: boolean;
     __npcSpeechProvider: string;
+    __playerVoiceEnabled: boolean;
+    __playerVoiceVolume: number;
   }
 }
 
@@ -52,17 +54,23 @@ describe("BiomesUI Options browser voice controls", () => {
         window.__selectedMicrophoneDeviceId = "";
         window.__microphoneInputEnabled = true;
         window.__npcSpeechProvider = "elevenlabs";
+        window.__playerVoiceEnabled = false;
+        window.__playerVoiceVolume = 80;
 
         function Harness() {
           const [selectedMicrophoneDeviceId, setSelectedMicrophoneDeviceId] = React.useState("");
           const [microphoneInputEnabled, setMicrophoneInputEnabled] = React.useState(true);
           const [npcSpeechEnabled, setNpcSpeechEnabled] = React.useState(true);
           const [npcSpeechProvider, setNpcSpeechProvider] = React.useState("elevenlabs");
+          const [playerVoiceEnabled, setPlayerVoiceEnabled] = React.useState(false);
+          const [playerVoiceVolume, setPlayerVoiceVolume] = React.useState(80);
           React.useEffect(() => {
             window.__selectedMicrophoneDeviceId = selectedMicrophoneDeviceId;
             window.__microphoneInputEnabled = microphoneInputEnabled;
             window.__npcSpeechProvider = npcSpeechProvider;
-          }, [selectedMicrophoneDeviceId, microphoneInputEnabled, npcSpeechProvider]);
+            window.__playerVoiceEnabled = playerVoiceEnabled;
+            window.__playerVoiceVolume = playerVoiceVolume;
+          }, [selectedMicrophoneDeviceId, microphoneInputEnabled, npcSpeechProvider, playerVoiceEnabled, playerVoiceVolume]);
           return (
             <OptionsControlsSurfaceForTest
               showPerformanceHUD={true}
@@ -70,6 +78,10 @@ describe("BiomesUI Options browser voice controls", () => {
               effectsVolume={100}
               musicVolume={50}
               voiceVolume={50}
+              playerVoiceVolume={playerVoiceVolume}
+              onPlayerVoiceVolumeChange={setPlayerVoiceVolume}
+              playerVoiceEnabled={playerVoiceEnabled}
+              onPlayerVoiceEnabledChange={setPlayerVoiceEnabled}
               npcSpeechEnabled={npcSpeechEnabled}
               onNpcSpeechEnabledChange={setNpcSpeechEnabled}
               npcSpeechProvider={npcSpeechProvider}
@@ -143,6 +155,20 @@ describe("BiomesUI Options browser voice controls", () => {
 
       const microphoneSelect = page.getByLabel("Microphone", { exact: true });
       const voiceProviderSelect = page.getByLabel("NPC Voice Provider");
+      const playerVoiceToggle = page.getByLabel("Nearby Player Voice Chat");
+
+      assert.equal(await playerVoiceToggle.isChecked(), false);
+      await playerVoiceToggle.check();
+      assert.equal(
+        await page.evaluate(() => window.__playerVoiceEnabled),
+        true
+      );
+      const playerVoiceSlider = page
+        .getByText("Player Voice", { exact: true })
+        .locator("..")
+        .getByRole("slider");
+      await playerVoiceSlider.fill("65");
+      assert.equal(await page.evaluate(() => window.__playerVoiceVolume), 65);
 
       assert.equal(await voiceProviderSelect.inputValue(), "elevenlabs");
       await voiceProviderSelect.selectOption("openai");

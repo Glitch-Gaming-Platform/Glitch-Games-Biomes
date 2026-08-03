@@ -12,6 +12,10 @@ import { zNpcScheduleComponent } from "@/shared/npc/behavior/schedule";
 import { zSocializeComponent } from "@/shared/npc/behavior/socialize";
 import { zEscortComponent } from "@/shared/npc/behavior/escort";
 import type { EscortState } from "@/shared/npc/behavior/escort";
+import {
+  zBusinessCustomerComponent,
+  type BusinessCustomerState,
+} from "@/shared/npc/behavior/business_customer";
 import type { BiomesId } from "@/shared/ids";
 import { zNpcMemoryComponent } from "@/shared/npc/memory";
 import { zThreatTableComponent } from "@/shared/npc/threat";
@@ -94,6 +98,7 @@ export const zDeserializedNpcState = zNpcStateBase
   .merge(zCreatureProgressionComponent)
   .merge(zCreatureGroupComponent)
   .merge(zEscortComponent)
+  .merge(zBusinessCustomerComponent)
   .partial()
   .default({}) as z.ZodTypeAny;
 
@@ -163,6 +168,22 @@ export type DeserializedNpcState = {
     attackTime?: number;
     attackTarget?: BiomesId;
     strikeTime?: number;
+    meleeAttack?: {
+      targetId: BiomesId;
+      attackTime: number;
+      impactTime: number;
+      expiresAt: number;
+      originPoint: [number, number, number];
+      impactPoint?: [number, number, number];
+      castYaw: number;
+      attackDistance: number;
+      attackFovDeg: number;
+      verticalReach: number;
+      attackDamage: number;
+      lineOfSightAtImpact?: boolean;
+      result?: "hit" | "miss" | "cancelled";
+      resolvedAt?: number;
+    };
     rangedAttack?: {
       abilityId: string;
       projectileVisualId: string;
@@ -212,10 +233,7 @@ export type DeserializedNpcState = {
     meetingDuration?: number;
     pathfinding?: PathfindingComponent;
     state:
-      | "with-friend"
-      | "moving-towards-friend"
-      | "friendless"
-      | "finding-a-path";
+      "with-friend" | "moving-towards-friend" | "friendless" | "finding-a-path";
   };
   memory?: NpcMemoryState;
   threat?: {
@@ -243,6 +261,8 @@ export type DeserializedNpcState = {
   groupAlert?: GroupAlert;
   /** HARTHMERE_ESCORT: the single unified escort assignment. */
   escort?: EscortState;
+  /** Session-only in-world business customer intent executed by Anima. */
+  businessCustomer?: BusinessCustomerState;
 };
 
 export function deserializeNpcCustomState(

@@ -191,10 +191,10 @@ export function emitHarthmereNativeNpcAttackContact({
         typeof labelRecord.text === "string"
           ? labelRecord.text
           : typeof labelRecord.label === "string"
-          ? labelRecord.label
-          : typeof record.name === "string"
-          ? record.name
-          : undefined;
+            ? labelRecord.label
+            : typeof record.name === "string"
+              ? record.name
+              : undefined;
       return {
         id,
         label,
@@ -237,8 +237,8 @@ export function emitHarthmereNativeNpcAttackContact({
   const semanticToolId =
     rawToolId === undefined
       ? undefined
-      : harthmereNativeItemIdForBiomesId(Number(rawToolId)) ??
-        String(rawToolId);
+      : (harthmereNativeItemIdForBiomesId(Number(rawToolId)) ??
+        String(rawToolId));
   const projectileVisual = getHarthmereProjectileVisual(semanticToolId);
   const at = Date.now();
   const detail =
@@ -377,8 +377,8 @@ function emitHarthmereNativeTerrainBlockPlaced(input: {
     typeof window.CustomEvent === "function"
       ? window.CustomEvent
       : typeof globalThis.CustomEvent === "function"
-      ? globalThis.CustomEvent
-      : undefined;
+        ? globalThis.CustomEvent
+        : undefined;
   if (CustomEventConstructor) {
     window.dispatchEvent(
       new CustomEventConstructor(HARTHMERE_NATIVE_TERRAIN_BLOCK_PLACED_EVENT, {
@@ -398,18 +398,19 @@ function emitHarthmereNativeTerrainBlockPlaced(input: {
   ].slice(0, 80);
 }
 
-export function handleAttackInteraction(
-  deps: {
-    table: ClientTable;
-    resources: ClientResources;
-    events: Events;
-    audioManager: AudioManager;
-  },
-  { attackedEntities, tool }: AttackInteraction
+type AttackInteractionDeps = {
+  table: ClientTable;
+  resources: ClientResources;
+  events: Events;
+  audioManager: AudioManager;
+};
+
+export function beginAttackInteraction(
+  deps: AttackInteractionDeps,
+  { tool, attackInfo }: Pick<AttackInteraction, "tool" | "attackInfo">
 ) {
   const clock = deps.resources.get("/clock");
   const player = deps.resources.get("/scene/local_player");
-
   if (!player.isAttacking(clock.time)) {
     player.startAttack(
       clock.time,
@@ -418,8 +419,18 @@ export function handleAttackInteraction(
       deps.events,
       deps.audioManager
     );
+    player.attackInfo = { ...attackInfo };
   }
+}
 
+export function resolveAttackInteraction(
+  deps: AttackInteractionDeps,
+  { attackedEntities, tool }: AttackInteraction
+) {
+  const player = deps.resources.get("/scene/local_player");
+
+  // This bridge applies local-mode contact damage, so it belongs at the
+  // authored impact frame alongside the native ECS events, not at button-down.
   emitHarthmereNativeNpcAttackContact({ attackedEntities, tool });
 
   const playerDamageBuff =
@@ -433,8 +444,8 @@ export function handleAttackInteraction(
   const semanticToolId =
     rawToolId === undefined
       ? undefined
-      : harthmereNativeItemIdForBiomesId(Number(rawToolId)) ??
-        String(rawToolId);
+      : (harthmereNativeItemIdForBiomesId(Number(rawToolId)) ??
+        String(rawToolId));
   const energyWeapon = getHarthmereEnergyWeapon(semanticToolId);
   const primaryEnergyTarget = energyWeapon
     ? attackedEntities.find(
@@ -556,6 +567,19 @@ export function handleAttackInteraction(
       );
     }
   }
+}
+
+export function handleAttackInteraction(
+  deps: {
+    table: ClientTable;
+    resources: ClientResources;
+    events: Events;
+    audioManager: AudioManager;
+  },
+  interaction: AttackInteraction
+) {
+  beginAttackInteraction(deps, interaction);
+  resolveAttackInteraction(deps, interaction);
 }
 
 export function shapeTerrain(

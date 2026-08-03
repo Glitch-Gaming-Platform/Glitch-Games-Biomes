@@ -77,6 +77,9 @@ for (const field of ['step_label', 'step_description', 'event_label', 'event_des
   assert(api.includes(field), `Glitch event payload missing human-readable field: ${field}`);
 }
 assert(api.includes('missing_server_title_token'), 'API must skip safely when title token/config is not present.');
+assert(api.includes('GLITCH_HARTHMERE_TELEMETRY_DRAIN_CONCURRENCY'), 'Telemetry outbox drain must use bounded concurrency.');
+assert(api.includes('runTelemetryBatch') && api.includes('Math.min(telemetryConcurrency, calls.length)'), 'Telemetry outbox concurrency must remain bounded by the batch size.');
+assert(!api.includes('GLITCH_HARTHMERE_ASYNC_OUTBOX_KEY,\n        GLITCH_HARTHMERE_ASYNC_OUTBOX_KEY'), 'Outbox enqueue must not push the Redis key as a malformed queue item.');
 assert(bridge.includes('error.status = response.status'), 'Bridge request errors must expose HTTP status for telemetry backoff.');
 
 const game = read('src/client/components/Game.tsx');

@@ -353,7 +353,17 @@ const cvalAggregators: CvalAggregator[] = [
     ["metrics", "performanceTiming", "scriptController"],
     exponentialBuckets(0.5, 2, 8)
   ),
+  averageCval(["metrics", "performanceTiming", "draw"]),
   averageCval(["metrics", "performanceTiming", "render + postprocessing"]),
+  averageCval(["metrics", "performanceTiming", "react emitter invalidate"]),
+  averageCval([
+    "metrics",
+    "performanceTiming",
+    "renderers:harthmereRuntimeAssets",
+  ]),
+  averageCval(["metrics", "performanceTiming", "renderers:terrain"]),
+  averageCval(["metrics", "performanceTiming", "renderers:npcs"]),
+  averageCval(["metrics", "performanceTiming", "renderers:players"]),
   averageCval(["renderer", "players", "numPlayers"]),
   averageCval(["renderer", "players", "numRenderedPlayers"]),
   averageCval(["renderer", "npcs", "numNpcs"]),

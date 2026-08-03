@@ -13,15 +13,32 @@ The catalog covers:
   115 human NPCs;
 - 198 additive-town lines: intro, story, and location for 66 humans;
 - 60 Snapshot Grove ambient lines for 20 humans;
-- 50 Snapshot Grove quest `sampleDialogue` lines with human givers.
+- 50 Snapshot Grove quest `sampleDialogue` lines with human givers;
+- 205 unique human dialogue pages from the 11 native onboarding quests. The
+  authored story contains 206 human page occurrences; Muck vs. Machine repeats
+  the exact Jackie page `...check!` with the same expression, so the runtime
+  stores it once.
 
 Robots, animals, hostile creatures, props, and generated chat receive no human
-dialogue expression. Chapter 1 keeps its separately authored page expressions
-and uses the same nonce-guarded presentation bridge.
+dialogue expression. This explicitly excludes the Mucked/assembled Robot,
+player-robot transmissions, Clothing Crate, Billy's Toolbag, Muck Buster Crate,
+statue inscriptions, and Spare Robot Parts. Parcel Pursuit has no physically
+present human dialogue page, so it intentionally adds no expression. Chapter 1
+keeps its separately authored page expressions and uses the same nonce-guarded
+presentation bridge.
+
+Native quest records also pin the authoritative snapshot entity id and quest
+step id. Pages containing `{username}` or `{robotName}` use a narrowly scoped
+template match only after both the actor and step match; all other pages remain
+exact-text lookups. This prevents the shared `{username}!` page used by Sophia
+and Anne from selecting the wrong expression.
 
 ## Editing the catalog
 
-1. Update `src/shared/harthmere/npc_dialogue_expression_plan.ts`.
+1. Update `src/shared/harthmere/npc_dialogue_expression_plan.ts` for ambient,
+   compendium, additive-town, or Grove quest dialogue. Update
+   `src/shared/harthmere/native_quest_dialogue_expression_plan.ts` for the
+   native onboarding quest pages.
 2. Regenerate the compact exact-text lookup:
 
    ```sh
@@ -40,5 +57,6 @@ and uses the same nonce-guarded presentation bridge.
 
 The runtime client imports only the generated text hashes and expression
 metadata. The contract test imports the complete authored corpus, rebuilds all
-768 records, rejects collisions or stale output, and verifies the explicit
+973 records, rejects accidental collisions or stale output, verifies the one
+intentional actor-disambiguated template duplicate, and verifies the explicit
 non-human exclusions.

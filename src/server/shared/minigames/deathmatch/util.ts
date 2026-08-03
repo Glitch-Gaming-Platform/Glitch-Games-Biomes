@@ -1,4 +1,10 @@
 import type { EventContext } from "@/server/logic/events/core";
+import { newPlayerInventory } from "@/server/logic/utils/players";
+import {
+  zDeathmatchSettings,
+  type DeathmatchSettings,
+} from "@/server/shared/minigames/deathmatch/types";
+import { parseMinigameSettings } from "@/server/shared/minigames/type_utils";
 import type { NextTick, OnTickInfo } from "@/server/shared/minigames/types";
 import type { AddPlayerToMinigameInstanceInfo } from "@/server/shared/minigames/util";
 import {
@@ -8,6 +14,7 @@ import {
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import type { ReadonlyMinigameComponent } from "@/shared/ecs/gen/components";
 import { MinigameInstance } from "@/shared/ecs/gen/components";
+import { countOf } from "@/shared/game/items";
 
 import type { BiomesId } from "@/shared/ids";
 import { mutUpdateMap } from "@/shared/util/collections";
@@ -15,6 +22,12 @@ import { ok } from "assert";
 
 export const ROUND_TIME_S = 60 * 2;
 export const PLAYER_WAIT_TIME_S = 10;
+
+export function requiredDeathmatchPlayerCount(
+  settings: Pick<DeathmatchSettings, "minPlayers">
+) {
+  return Math.max(1, Math.floor(settings.minPlayers));
+}
 
 export function deathmatchNotReadyReason(
   component: ReadonlyMinigameComponent
@@ -28,20 +41,33 @@ export function deathmatchNotReadyReason(
 }
 
 export function handleDeathmatchTick(
-  { minigameInstanceEntity }: OnTickInfo,
+  { minigameEntity, minigameInstanceEntity, activePlayers }: OnTickInfo,
   _context: EventContext<{}>,
   _dt: number
 ): NextTick {
   const currentState = minigameInstanceEntity.minigameInstance().state;
   ok(currentState.kind === "deathmatch");
+  const settings = parseMinigameSettings(
+    minigameEntity.minigameComponent().minigame_settings,
+    zDeathmatchSettings
+  );
 
   if (currentState.instance_state?.kind === "play_countdown") {
+    if (
+      minigameInstanceEntity.minigameInstance().active_players.size <
+      requiredDeathmatchPlayerCount(settings)
+    ) {
+      const mutInstance = minigameInstanceEntity.mutableMinigameInstance();
+      ok(mutInstance.state.kind === "deathmatch");
+      mutInstance.state.instance_state = { kind: "waiting_for_players" };
+      return "stop_tick";
+    }
     const mutInstance = minigameInstanceEntity.mutableMinigameInstance();
     const mutState = mutInstance.state;
     ok(mutState.kind === currentState.kind);
     mutState.instance_state = {
       kind: "playing",
-      round_end: secondsSinceEpoch() + ROUND_TIME_S,
+      round_end: secondsSinceEpoch() + settings.roundLengthSeconds,
     };
 
     // Start the round
@@ -55,7 +81,16 @@ export function handleDeathmatchTick(
       };
     });
 
-    return ROUND_TIME_S;
+    for (const player of activePlayers) {
+      const desiredLoadout = newPlayerInventory();
+      for (let i = 0; i < settings.loadOut.length; i += 1) {
+        const [id, count] = settings.loadOut[i];
+        desiredLoadout.hotbar[i] = countOf(id, BigInt(Math.floor(count)));
+      }
+      player.setInventory(desiredLoadout);
+    }
+
+    return settings.roundLengthSeconds;
   } else if (currentState.instance_state?.kind === "playing") {
     const mutInstance = minigameInstanceEntity.mutableMinigameInstance();
     ok(mutInstance.state.kind === currentState.kind);

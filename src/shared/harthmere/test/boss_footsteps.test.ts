@@ -85,4 +85,17 @@ describe("Harthmere giant boss footsteps", () => {
     );
     assert.equal(state.distanceSinceStomp, 0);
   });
+
+  it("keeps giant stomps audible across a boss-sized combat arena", () => {
+    const profile = harthmereBossStompProfileForEntity(
+      "Muck-Scarred Helix",
+      undefined
+    );
+    assert.ok(profile);
+    assert.ok(profile.soundVolumeMultiplier >= 3);
+    assert.ok(profile.soundRefDistance >= 8);
+    assert.ok(profile.soundMaxDistance >= 96);
+    assert.ok(profile.soundRolloffFactor > 0);
+    assert.ok(profile.soundRolloffFactor <= 1);
+  });
 });

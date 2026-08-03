@@ -10,6 +10,27 @@ const NPC_ID = 8101 as BiomesId;
 const PLAYER_ID = 8102 as BiomesId;
 
 describe("SimulatedNpc public combat state", () => {
+  it("never publishes a non-finite orientation", () => {
+    const entity = Npc.from(
+      npcEntity(
+        {
+          id: NPC_ID,
+          typeId: BikkieIds.dMucker,
+          position: [0, 0, 0],
+          orientation: [0.2, -0.4],
+        },
+        100
+      )
+    );
+    assert.ok(entity);
+    const npc = new SimulatedNpc(entity);
+
+    npc.setOrientation([NaN, Infinity]);
+
+    assert.deepEqual(npc.orientation, [0.2, -0.4]);
+    assert.deepEqual(npc.finish()?.state[0]?.orientation?.v, [0.2, -0.4]);
+  });
+
   it("publishes and clears the active chase target without exposing private NPC state", () => {
     const entity = Npc.from(
       npcEntity(
@@ -94,6 +115,33 @@ describe("SimulatedNpc public combat state", () => {
     assert.equal(event.attackTime, 100);
     assert.deepEqual(event.impactPoint, [8, 1, 0]);
     assert.equal(event.hpDelta, -42);
+  });
+
+  it("publishes the same swing timestamp and contact point for melee validation", () => {
+    const entity = Npc.from(
+      npcEntity(
+        {
+          id: NPC_ID,
+          typeId: BikkieIds.dMucker,
+          position: [0, 0, 0],
+        },
+        100
+      )
+    );
+    assert.ok(entity);
+    const npc = new SimulatedNpc(entity);
+    npc.attack(PLAYER_ID, 18, {
+      attackTime: 100,
+      impactPoint: [1.5, 0.9, 0],
+    });
+
+    const event = npc.finish()?.events[0];
+    assert.equal(event?.kind, "updatePlayerHealthEvent");
+    if (event?.kind !== "updatePlayerHealthEvent") return;
+    assert.equal(event.attackAbilityId, undefined);
+    assert.equal(event.attackTime, 100);
+    assert.deepEqual(event.impactPoint, [1.5, 0.9, 0]);
+    assert.equal(event.hpDelta, -18);
   });
 
   it("projects only the active ranged cast into public combat state", () => {

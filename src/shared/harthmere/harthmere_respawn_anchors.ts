@@ -40,10 +40,12 @@
 // spawn already IS the town spawn in that mode, a short walk away.
 //
 // Production runs the extension. That is the case the player hit, and it is the
-// only one this changes. Keying on the extension bounds alone also means the
-// anchor can never come back in the wrong frame — the failure mode where a
-// death in the live town teleports you into empty authored space 1,600 blocks
-// west, which is the bug in a new costume.
+// only one this changes. Keying on the complete extension terrain bounds also
+// includes the forest, wilds, Muck Breach, roads, and underground spaces owned
+// by Harthmere instead of recognizing only the central town rectangle. It also
+// guarantees the anchor can never come back in the wrong frame — the failure
+// mode where a death in the live town teleports you into empty authored space
+// 1,600 blocks west, which is the bug in a new costume.
 
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 import {
@@ -52,12 +54,15 @@ import {
   SNAPSHOT_HARTHMERE_SHIFTED_LIVE_BOUNDS,
   snapshotPointInBounds,
 } from "@/shared/harthmere/snapshot_live_debug";
-import { HARTHMERE_ADDITIVE_TOWN_OFFSET_X } from "@/shared/harthmere/world_extension";
+import {
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+  isHarthmereExtensionWorldPosition,
+} from "@/shared/harthmere/world_extension";
 import { HARTHMERE_GROVE_RESPAWN_POSITION } from "@/shared/harthmere/harthmere_native_vitals";
 import { SNAPSHOT_GROVE_NPC_FEET_Y } from "@/shared/harthmere/snapshot_grove_content";
 
 export const HARTHMERE_RESPAWN_ANCHORS_VERSION =
-  "harthmere-region-respawn-anchors-v1" as const;
+  "harthmere-region-respawn-anchors-v2-full-extension" as const;
 
 /**
  * Temple Green, on the chapel's own green rather than inside the building.
@@ -96,8 +101,9 @@ export function harthmereShiftedChapelRespawnPosition(
 /**
  * Which Harthmere frame, if either, contains this position.
  *
- * Deliberately reuses the same bounds `snapshotAreaForPosition` uses, so "am I
- * in Harthmere" has one definition across diagnostics, the HUD and respawn.
+ * Harthmere ownership is the complete additive terrain band, not just the
+ * central town rectangle used by town-only diagnostics. This keeps forest and
+ * wilds deaths in Harthmere, including caves below the ordinary surface Y.
  */
 export function harthmereRespawnRegionForPosition(
   position: ReadonlyVec3 | undefined
@@ -111,7 +117,7 @@ export function harthmereRespawnRegionForPosition(
   if (snapshotPointInBounds(position, SNAPSHOT_GROVE_LIVE_BOUNDS)) {
     return "grove";
   }
-  if (snapshotPointInBounds(position, SNAPSHOT_HARTHMERE_SHIFTED_LIVE_BOUNDS)) {
+  if (isHarthmereExtensionWorldPosition(position)) {
     return "harthmere_extension";
   }
   return "grove";

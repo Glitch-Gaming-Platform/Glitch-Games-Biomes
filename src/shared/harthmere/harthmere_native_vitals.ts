@@ -71,6 +71,11 @@ export function readHarthmereNativeVitals(
   );
   const maxMana = Math.max(1, finite(values?.get(MAX_MANA_KEY), 100));
   const maxStamina = Math.max(1, finite(values?.get(MAX_STAMINA_KEY), 100));
+  const stamina = clamp(
+    finite(values?.get(STAMINA_KEY), maxStamina),
+    0,
+    maxStamina
+  );
   const storedMaxBreath = Math.max(
     1,
     finite(values?.get(MAX_BREATH_KEY), HARTHMERE_NATIVE_MAX_BREATH_SECONDS)
@@ -90,7 +95,7 @@ export function readHarthmereNativeVitals(
   return {
     mana: clamp(finite(values?.get(MANA_KEY), maxMana), 0, maxMana),
     maxMana,
-    stamina: clamp(finite(values?.get(STAMINA_KEY), maxStamina), 0, maxStamina),
+    stamina,
     maxStamina,
     breath: clamp(
       finite(values?.get(BREATH_KEY), storedMaxBreath) + breathUpgrade,
@@ -185,6 +190,23 @@ export interface HarthmereNativeVitalsTickResult {
   elapsedSeconds: number;
   damage: number;
   deathCause?: "stamina" | "drowning";
+}
+
+export function spendHarthmereNativeStamina(state: TriggerState, cost: number) {
+  const before = readHarthmereNativeVitals(state);
+  const finiteCost = Math.max(0, Number(cost) || 0);
+  if (finiteCost === 0) {
+    return { spent: true, vitals: before };
+  }
+  if (finiteCost > before.stamina) {
+    return { spent: false, vitals: before };
+  }
+  return {
+    spent: true,
+    vitals: writeHarthmereNativeVitals(state, {
+      stamina: before.stamina - finiteCost,
+    }),
+  };
 }
 
 /**

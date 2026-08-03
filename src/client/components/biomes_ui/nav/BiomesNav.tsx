@@ -21,6 +21,8 @@ interface BiomesNavProps {
   onTabChange: (tab: TabKey) => void;
   /** Optional badge counts per tab (e.g. inbox unread count) */
   badges?: Partial<Record<TabKey, number>>;
+  /** Keep the tab rail to one touch-scrollable row on phone viewports. */
+  mobile?: boolean;
 }
 
 const tabIdMap: Record<TabKey, string> = {
@@ -46,6 +48,7 @@ export const BiomesNav: React.FunctionComponent<BiomesNavProps> = ({
   activeTab,
   onTabChange,
   badges,
+  mobile = false,
 }) => {
   const [focusedIndex, setFocusedIndex] = useState<number>(() =>
     Math.max(0, TAB_ORDER.indexOf(activeTab))
@@ -102,13 +105,22 @@ export const BiomesNav: React.FunctionComponent<BiomesNavProps> = ({
       ref={railRef}
       onKeyDown={onKeyDown}
       className="biomes-ui-panel"
+      data-biomes-mobile-nav={mobile ? "true" : undefined}
       style={{
         display: "flex",
-        flexWrap: "wrap",
+        flexWrap: mobile ? "nowrap" : "wrap",
         gap: 2,
-        padding: "6px 10px",
+        padding: mobile ? "6px 8px" : "6px 10px",
         margin: "0 auto",
         maxWidth: 980,
+        width: mobile ? "100%" : undefined,
+        minWidth: 0,
+        boxSizing: "border-box",
+        overflowX: mobile ? "auto" : undefined,
+        overflowY: mobile ? "hidden" : undefined,
+        overscrollBehaviorX: mobile ? "contain" : undefined,
+        WebkitOverflowScrolling: mobile ? "touch" : undefined,
+        touchAction: mobile ? "pan-x" : undefined,
       }}
     >
       {TAB_ORDER.map((tab, idx) => {
@@ -146,7 +158,7 @@ export const BiomesNav: React.FunctionComponent<BiomesNavProps> = ({
                 style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
               >
                 {desc.code}
-                {desc.shortcut && (
+                {desc.shortcut && !mobile && (
                   <span
                     style={{
                       fontSize: 9,

@@ -6,6 +6,7 @@ import {
   MOBILE_JOYSTICK_ACTION_PULSE_MS,
   MOBILE_JOYSTICK_ACTION_SOURCE,
   MOBILE_JOYSTICK_CROUCH_SOURCE,
+  MOBILE_JOYSTICK_JUMP_SOURCE,
   MOBILE_JOYSTICK_RUN_SOURCE,
   mobileJoystickDoubleTapDirectionForTest,
   mobileJoystickHardTapForTest,
@@ -39,9 +40,10 @@ export const MaybeJoystickInput: React.FunctionComponent<{}> = React.memo(
 );
 
 export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
-  const { input, userId } = useClientContext();
+  const { clientConfig, input, userId } = useClientContext();
   const touchDevice = isTouchDevice();
   const [mobileCrouchHeld, setMobileCrouchHeld] = useState(false);
+  const [mobileJumpHeld, setMobileJumpHeld] = useState(false);
   const [joystickSize, setJoystickSize] = useState(() =>
     responsiveJoystickSize()
   );
@@ -60,6 +62,7 @@ export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
   const lastHardTapRef = useRef<MobileJoystickHardTap>(undefined);
   const movementActionPulseNonceRef = useRef(0);
   const crouchPointerIdRef = useRef<number>(undefined);
+  const jumpPointerIdRef = useRef<number>(undefined);
 
   const nowMs = () =>
     typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -81,6 +84,14 @@ export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
     input.setSyntheticMotion("crouch", MOBILE_JOYSTICK_CROUCH_SOURCE, 0);
     if (updateUi) {
       setMobileCrouchHeld(false);
+    }
+  };
+
+  const releaseMobileJump = (updateUi = true) => {
+    jumpPointerIdRef.current = undefined;
+    input.setSyntheticAction("jump", MOBILE_JOYSTICK_JUMP_SOURCE, false);
+    if (updateUi) {
+      setMobileJumpHeld(false);
     }
   };
 
@@ -163,6 +174,7 @@ export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
       resetLeftJoystick();
       resetJoystickTapGesture();
       releaseMobileCrouch();
+      releaseMobileJump();
     };
     const resetWhenHidden = () => {
       if (document.visibilityState !== "visible") {
@@ -177,6 +189,7 @@ export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
       resetLeftJoystick();
       resetJoystickTapGesture();
       releaseMobileCrouch(false);
+      releaseMobileJump(false);
     };
   }, [input]);
 
@@ -193,7 +206,14 @@ export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
   });
 
   return (
-    <div className="joysticks" data-biomes-mobile-controls="true">
+    <div
+      className={`joysticks${
+        clientConfig.mobileDevice ? " joysticks--mobile" : ""
+      }`}
+      data-biomes-mobile-controls={
+        clientConfig.mobileDevice ? "true" : undefined
+      }
+    >
       {userId && (
         <div className="mobile-movement-controls">
           <div
@@ -230,52 +250,148 @@ export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
               }}
             />
           </div>
-          <button
-            type="button"
-            className={`mobile-crouch-button${
-              mobileCrouchHeld ? " mobile-crouch-button--held" : ""
-            }`}
-            aria-label="Hold C to crouch"
-            aria-pressed={mobileCrouchHeld}
-            data-biomes-mobile-crouch="true"
-            onPointerDown={(event) => {
-              containMobileControlEvent(event);
-              if (crouchPointerIdRef.current !== undefined) {
-                return;
-              }
-              crouchPointerIdRef.current = event.pointerId;
-              event.currentTarget.setPointerCapture?.(event.pointerId);
-              input.setSyntheticMotion(
-                "crouch",
-                MOBILE_JOYSTICK_CROUCH_SOURCE,
-                1
-              );
-              setMobileCrouchHeld(true);
-            }}
-            onPointerUp={(event) => {
-              containMobileControlEvent(event);
-              if (crouchPointerIdRef.current === event.pointerId) {
-                releaseMobileCrouch();
-              }
-            }}
-            onPointerCancel={(event) => {
-              containMobileControlEvent(event);
-              if (crouchPointerIdRef.current === event.pointerId) {
-                releaseMobileCrouch();
-              }
-            }}
-            onLostPointerCapture={(event) => {
-              containMobileControlEvent(event);
-              if (crouchPointerIdRef.current === event.pointerId) {
-                releaseMobileCrouch();
-              }
-            }}
-            onClick={containMobileControlEvent}
-            onContextMenu={containMobileControlEvent}
-          >
-            <span className="mobile-crouch-button__key">C</span>
-            <span className="mobile-crouch-button__label">Crouch</span>
-          </button>
+          {clientConfig.mobileDevice ? (
+            <div className="mobile-movement-buttons">
+              <button
+                type="button"
+                className={`mobile-movement-button mobile-crouch-button${
+                  mobileCrouchHeld ? " mobile-crouch-button--held" : ""
+                }`}
+                aria-label="Hold C to crouch"
+                aria-pressed={mobileCrouchHeld}
+                data-biomes-mobile-crouch="true"
+                onPointerDown={(event) => {
+                  containMobileControlEvent(event);
+                  if (crouchPointerIdRef.current !== undefined) {
+                    return;
+                  }
+                  crouchPointerIdRef.current = event.pointerId;
+                  event.currentTarget.setPointerCapture?.(event.pointerId);
+                  input.setSyntheticMotion(
+                    "crouch",
+                    MOBILE_JOYSTICK_CROUCH_SOURCE,
+                    1
+                  );
+                  setMobileCrouchHeld(true);
+                }}
+                onPointerUp={(event) => {
+                  containMobileControlEvent(event);
+                  if (crouchPointerIdRef.current === event.pointerId) {
+                    releaseMobileCrouch();
+                  }
+                }}
+                onPointerCancel={(event) => {
+                  containMobileControlEvent(event);
+                  if (crouchPointerIdRef.current === event.pointerId) {
+                    releaseMobileCrouch();
+                  }
+                }}
+                onLostPointerCapture={(event) => {
+                  containMobileControlEvent(event);
+                  if (crouchPointerIdRef.current === event.pointerId) {
+                    releaseMobileCrouch();
+                  }
+                }}
+                onClick={containMobileControlEvent}
+                onContextMenu={containMobileControlEvent}
+              >
+                <span className="mobile-movement-button__key">C</span>
+                <span className="mobile-movement-button__label">Crouch</span>
+              </button>
+              <button
+                type="button"
+                className={`mobile-movement-button mobile-jump-button${
+                  mobileJumpHeld ? " mobile-jump-button--held" : ""
+                }`}
+                aria-label="Jump or hold to rise"
+                aria-pressed={mobileJumpHeld}
+                data-biomes-mobile-jump="true"
+                onPointerDown={(event) => {
+                  containMobileControlEvent(event);
+                  if (jumpPointerIdRef.current !== undefined) {
+                    return;
+                  }
+                  jumpPointerIdRef.current = event.pointerId;
+                  event.currentTarget.setPointerCapture?.(event.pointerId);
+                  input.setSyntheticAction(
+                    "jump",
+                    MOBILE_JOYSTICK_JUMP_SOURCE,
+                    true
+                  );
+                  setMobileJumpHeld(true);
+                }}
+                onPointerUp={(event) => {
+                  containMobileControlEvent(event);
+                  if (jumpPointerIdRef.current === event.pointerId) {
+                    releaseMobileJump();
+                  }
+                }}
+                onPointerCancel={(event) => {
+                  containMobileControlEvent(event);
+                  if (jumpPointerIdRef.current === event.pointerId) {
+                    releaseMobileJump();
+                  }
+                }}
+                onLostPointerCapture={(event) => {
+                  containMobileControlEvent(event);
+                  if (jumpPointerIdRef.current === event.pointerId) {
+                    releaseMobileJump();
+                  }
+                }}
+                onClick={containMobileControlEvent}
+                onContextMenu={containMobileControlEvent}
+              >
+                <span className="mobile-movement-button__key">↑</span>
+                <span className="mobile-movement-button__label">Jump</span>
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className={`mobile-crouch-button${
+                mobileCrouchHeld ? " mobile-crouch-button--held" : ""
+              }`}
+              aria-label="Hold C to crouch"
+              aria-pressed={mobileCrouchHeld}
+              onPointerDown={(event) => {
+                containMobileControlEvent(event);
+                if (crouchPointerIdRef.current !== undefined) {
+                  return;
+                }
+                crouchPointerIdRef.current = event.pointerId;
+                event.currentTarget.setPointerCapture?.(event.pointerId);
+                input.setSyntheticMotion(
+                  "crouch",
+                  MOBILE_JOYSTICK_CROUCH_SOURCE,
+                  1
+                );
+                setMobileCrouchHeld(true);
+              }}
+              onPointerUp={(event) => {
+                containMobileControlEvent(event);
+                if (crouchPointerIdRef.current === event.pointerId) {
+                  releaseMobileCrouch();
+                }
+              }}
+              onPointerCancel={(event) => {
+                containMobileControlEvent(event);
+                if (crouchPointerIdRef.current === event.pointerId) {
+                  releaseMobileCrouch();
+                }
+              }}
+              onLostPointerCapture={(event) => {
+                containMobileControlEvent(event);
+                if (crouchPointerIdRef.current === event.pointerId) {
+                  releaseMobileCrouch();
+                }
+              }}
+              onClick={containMobileControlEvent}
+              onContextMenu={containMobileControlEvent}
+            >
+              <span className="mobile-crouch-button__key">C</span>
+              <span className="mobile-crouch-button__label">Crouch</span>
+            </button>
+          )}
         </div>
       )}
       <div className="spacer" />

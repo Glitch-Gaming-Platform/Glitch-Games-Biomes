@@ -40,6 +40,14 @@ const CLEAR = path.join(
   ROOT,
   "scripts/harthmere/clear-harthmere-building-interior-vegetation.cjs"
 );
+const TOWN_REPAIR = path.join(
+  ROOT,
+  "scripts/harthmere/repair-harthmere-town-production.cjs"
+);
+const TOWN_AUDIT = path.join(
+  ROOT,
+  "scripts/harthmere/audit-harthmere-town-repair.cjs"
+);
 
 let failures = 0;
 function check(label, fn) {
@@ -58,17 +66,24 @@ const audit = fs.readFileSync(AUDIT, "utf8");
 /** Index of the phase CALL, not its function definition. */
 function callIndex(name) {
   const lines = reconcile.split("\n");
+  let found = -1;
   for (let i = 0; i < lines.length; i += 1) {
     if (lines[i].trim() === name) {
-      return i;
+      found = i;
     }
   }
-  return -1;
+  return found;
 }
 
 check("every terrain phase script exists", () => {
-  for (const file of [AUDIT, REPAIR, CLEAR]) {
+  for (const file of [AUDIT, REPAIR, CLEAR, TOWN_REPAIR, TOWN_AUDIT]) {
     assert.ok(fs.existsSync(file), `missing ${path.relative(ROOT, file)}`);
+  }
+});
+
+check("the deploy calls the persisted town repair and fatal audit", () => {
+  for (const phase of ["repair_harthmere_town", "verify_harthmere_town"]) {
+    assert.ok(callIndex(phase) >= 0, `${phase} is never called`);
   }
 });
 
@@ -117,6 +132,45 @@ check("verification is the last terrain phase", () => {
       `${phase} runs after the gate, so the gate checks a stale world`
     );
   }
+});
+
+check("the town repair runs before every downstream town writer and audit", () => {
+  const repair = callIndex("repair_harthmere_town");
+  const verify = callIndex("verify_harthmere_town");
+  assert.ok(repair >= 0 && verify > repair, "town audit does not follow repair");
+  for (const phase of [
+    "materialize_business_outposts",
+    "materialize_connector_route",
+    "materialize_chapter1_world_buildings",
+    "verify_extension_terrain",
+  ]) {
+    const index = callIndex(phase);
+    assert.ok(
+      index > repair && index < verify,
+      `${phase} must run after town repair and before its final audit`
+    );
+  }
+});
+
+check("the town repair is armed and its audit ignores only the separate water gate", () => {
+  const repairBody = reconcile.slice(
+    reconcile.indexOf("repair_harthmere_town() {"),
+    reconcile.indexOf("verify_extension_terrain() {")
+  );
+  const auditBody = reconcile.slice(
+    reconcile.indexOf("verify_harthmere_town() {"),
+    reconcile.indexOf("materialize_business_outposts() {")
+  );
+  assert.ok(repairBody.includes("APPLY=1"), "town repair runs as a dry run");
+  assert.ok(
+    repairBody.includes("repair-harthmere-town-production.cjs"),
+    "town repair script is not invoked"
+  );
+  assert.ok(
+    auditBody.includes("HARTHMERE_TOWN_REPAIR_SKIP_WATER=1") &&
+      auditBody.includes("audit-harthmere-town-repair.cjs"),
+    "town verification is not the focused persisted-world audit"
+  );
 });
 
 check("the report phase is non-fatal and the gate phase is not", () => {
@@ -176,6 +230,8 @@ check("every phase keeps a documented skip switch", () => {
     "HARTHMERE_SKIP_EXTENSION_TERRAIN_AUDIT",
     "HARTHMERE_SKIP_EXTENSION_SURFACE_REPAIR",
     "HARTHMERE_SKIP_INTERIOR_VEGETATION_CLEAR",
+    "HARTHMERE_SKIP_TOWN_PRODUCTION_REPAIR",
+    "HARTHMERE_SKIP_TOWN_REPAIR_AUDIT",
   ]) {
     assert.ok(reconcile.includes(flag), `${flag} has no escape hatch`);
   }

@@ -216,7 +216,10 @@ export const CH1_ANCHORS = {
   // the next uncollected account becomes the active target and map aid.
   testimony_alva: [500, 70, -140],
   testimony_helsa: [483, 70, -133],
-  testimony_grover: [486, 70, -143],
+  // Keep Grover on the lower path, but west of the first-join sightline so a
+  // new player sees and approaches Road Ahead Jackie without two overlapping
+  // NPC labels or competing nearby talk targets.
+  testimony_grover: [477, 70, -143],
   testimony_coretta: [470, 70, -129],
   testimony_emily: [407, 74, -126],
   testimony_patsy: [498, 64, -216],

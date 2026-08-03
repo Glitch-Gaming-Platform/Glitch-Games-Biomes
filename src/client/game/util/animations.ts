@@ -42,6 +42,15 @@ export type CharacterAnimations = {
 
 const IDLE_SPEED = 0.5;
 
+export function animationLocomotionIsIdle(
+  speed: number,
+  idleSpeed = IDLE_SPEED
+) {
+  const threshold =
+    Number.isFinite(idleSpeed) && idleSpeed >= 0 ? idleSpeed : IDLE_SPEED;
+  return !Number.isFinite(speed) || speed < threshold;
+}
+
 // Given the provided speed, determines how to split the animation weights
 // between walk and run animations.
 function splitWalkRunTransition(speed: number, runSpeed: number) {
@@ -60,19 +69,22 @@ function splitWalkRunTransition(speed: number, runSpeed: number) {
 
 export function getVelocityBasedWeights<
   L extends { [K in string]: LayerDefinition },
-  A extends CharacterAnimations
+  A extends CharacterAnimations,
 >({
   velocity,
   orientation,
   movementType,
   runSpeed,
   characterSystem,
+  idleSpeed,
 }: {
   velocity: ReadonlyVec3;
   orientation: ReadonlyVec2;
   movementType: MovementType;
   runSpeed: number; // The speed at which we switch walk -> run.
   characterSystem: AnimationSystem<A, L>;
+  /** NPCs use a lower threshold so slow uphill motion visibly plays Walk. */
+  idleSpeed?: number;
 }): AnimationAction<AnimationSystem<A, L>> {
   const speed3d = length(velocity);
   const velocity2d = new THREE.Vector2(velocity[0], -velocity[2]);
@@ -94,7 +106,7 @@ export function getVelocityBasedWeights<
   if (movementType === "flying") {
     const weights = characterSystem.createEmptyAnimationWeights();
 
-    if (speed3d < IDLE_SPEED) {
+    if (animationLocomotionIsIdle(speed3d, idleSpeed)) {
       weights.flyIdle = 1;
     } else {
       weights.flyForwards = 1;
@@ -110,7 +122,7 @@ export function getVelocityBasedWeights<
   if (movementType === "swimming") {
     const weights = characterSystem.createEmptyAnimationWeights();
 
-    if (speed3d < IDLE_SPEED) {
+    if (animationLocomotionIsIdle(speed3d, idleSpeed)) {
       weights.swimIdle = 1;
     } else if (forwardVelocity > 0) {
       weights.swimForwards = 1;
@@ -128,7 +140,7 @@ export function getVelocityBasedWeights<
   if (movementType === "crouching") {
     const weights = characterSystem.createEmptyAnimationWeights();
 
-    if (speed2d < IDLE_SPEED) {
+    if (animationLocomotionIsIdle(speed2d, idleSpeed)) {
       weights.crouchIdle = 1;
     } else {
       weights.crouchWalking = 1;
@@ -144,7 +156,7 @@ export function getVelocityBasedWeights<
 
   // Handle the walking/running/strafing case.
   const weights = characterSystem.createEmptyAnimationWeights();
-  if (speed2d < IDLE_SPEED) {
+  if (animationLocomotionIsIdle(speed2d, idleSpeed)) {
     weights.idle = 1;
   } else {
     if (forwardVelocity > 0) {

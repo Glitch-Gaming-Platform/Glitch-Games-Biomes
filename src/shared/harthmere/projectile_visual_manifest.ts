@@ -9,6 +9,25 @@ export const HARTHMERE_PROJECTILE_VISUAL_EVENT =
 // authoritative impact time; player/test shots fall back to distance / speed.
 export const HARTHMERE_PROJECTILE_MIN_FLIGHT_SECS = 0.4;
 export const HARTHMERE_PROJECTILE_MAX_FLIGHT_SECS = 1.8;
+export const HARTHMERE_AUTHORITATIVE_IMPACT_EPSILON_SECS = 1 / 240;
+
+export function harthmereAuthoritativeImpactRemainingSecs(input: {
+  releaseTime: number;
+  impactDelaySecs: number;
+  now: number;
+}) {
+  const releaseTime = Number(input.releaseTime);
+  const impactDelaySecs = Number(input.impactDelaySecs);
+  const now = Number(input.now);
+  if (
+    !Number.isFinite(releaseTime) ||
+    !Number.isFinite(impactDelaySecs) ||
+    !Number.isFinite(now)
+  ) {
+    return undefined;
+  }
+  return Math.max(0, releaseTime + Math.max(0, impactDelaySecs) - now);
+}
 
 export function harthmereProjectileFlightDurationSecs(input: {
   distanceMeters: number;
@@ -22,10 +41,29 @@ export function harthmereProjectileFlightDurationSecs(input: {
     ? Math.max(0.01, input.speedMetersPerSecond)
     : 0.01;
   const authoritativeImpactSecs = Number(input.authoritativeImpactSecs);
-  const rawDuration =
-    Number.isFinite(authoritativeImpactSecs) && authoritativeImpactSecs > 0
-      ? authoritativeImpactSecs
-      : distance / speed;
+  if (
+    Number.isFinite(authoritativeImpactSecs) &&
+    authoritativeImpactSecs >= 0
+  ) {
+    // The authoritative value is the impact time *remaining* measured against
+    // the client's clock at the moment it observes the release. Anima tick
+    // latency, npc_state serialization, and Sync replication have already
+    // consumed part of the authored flight before this runs, so under load the
+    // remainder trends toward zero.
+    //
+    // Clamping only to the frame epsilon meant a laggy session rendered the
+    // projectile for a single frame and then dealt damage, which is precisely
+    // the case where the player needs the most warning. The readability floor
+    // therefore applies to BOTH branches: a projectile that lands slightly
+    // after its authoritative impact is a cosmetic desync, while a 4 ms
+    // projectile is an unreadable mechanic. Damage stays server-resolved from
+    // the receipt either way, so the visual is free to under-run it.
+    return Math.min(
+      HARTHMERE_PROJECTILE_MAX_FLIGHT_SECS,
+      Math.max(HARTHMERE_PROJECTILE_MIN_FLIGHT_SECS, authoritativeImpactSecs)
+    );
+  }
+  const rawDuration = distance / speed;
   return Math.min(
     HARTHMERE_PROJECTILE_MAX_FLIGHT_SECS,
     Math.max(HARTHMERE_PROJECTILE_MIN_FLIGHT_SECS, rawDuration)

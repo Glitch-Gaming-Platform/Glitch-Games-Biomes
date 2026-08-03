@@ -16,6 +16,7 @@ import {
 } from "@/shared/harthmere/harthmere_native_combat_catalog";
 import { harthmereNativeNpcChaseAttackParams } from "@/shared/harthmere/harthmere_native_combat";
 import type { BiomesId } from "@/shared/ids";
+import { log } from "@/shared/logging";
 import {
   add,
   anchorAndSizeToAABB,
@@ -29,6 +30,7 @@ import type { AABB, ReadonlyVec3 } from "@/shared/math/types";
 import {
   applyCreatureLevelToChaseAttackParams,
   boundedHarthmereNpcChaseSpeed,
+  cancelPendingMeleeAttack,
   chapter1EncounterChaseAttackParams,
   chaseAttackTargetTick,
   isHarthmereFightSpeedBoostNpc,
@@ -41,6 +43,10 @@ import {
   npcHasEscortAssignment,
   updateEscortCombatTarget,
 } from "@/shared/npc/behavior/escort_tick";
+import {
+  businessCustomerTick,
+  npcHasBusinessCustomerAssignment,
+} from "@/shared/npc/behavior/business_customer_tick";
 import { scheduleFollowTick } from "@/shared/npc/behavior/schedule_follow";
 import { drownTick } from "@/shared/npc/behavior/drown";
 import { farFromHomeTick } from "@/shared/npc/behavior/far_from_home";
@@ -58,6 +64,15 @@ import {
   npcGlobals,
 } from "@/shared/npc/bikkie";
 import type { Environment } from "@/shared/npc/environment";
+import {
+  npcGroundLocomotionAabb,
+  npcGroundTraversalProfile,
+} from "@/shared/npc/ground_locomotion";
+import {
+  finiteNpcOrientation,
+  hasFiniteNpcMotionDirection,
+  isFiniteNpcOrientation,
+} from "@/shared/npc/motion_safety";
 import type { MovementType } from "@/shared/npc/npc_types";
 import type { BehaviorChaseAttackParams } from "@/shared/npc/npc_types";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
@@ -79,6 +94,8 @@ import _ from "lodash";
 
 export const ATTACKED_NPC_RETALIATION_FALLBACK =
   "ATTACKED_NPC_RETALIATION_FALLBACK";
+
+const focusedBusinessCustomerMovementProbes = new Set<BiomesId>();
 
 /**
  * Anima owns the timing of persistent NPC status effects. Damage remains a
@@ -219,6 +236,7 @@ export type NpcLocomotionChoice =
   | "flee"
   | "returnHome"
   | "chaseAttack"
+  | "businessCustomer"
   | "escort"
   | "schedule"
   | "meander"
@@ -235,6 +253,8 @@ export interface NpcLocomotionInputs {
   hasActiveSchedule: boolean;
   hasChaseAttack: boolean;
   hasAttackTarget: boolean;
+  /** Session-only customer route intent outranks ordinary civilian behavior. */
+  hasBusinessCustomerAssignment?: boolean;
   /** HARTHMERE_ESCORT: this NPC has a live `npc_state.escort` assignment. */
   hasEscortAssignment?: boolean;
   canMeander: boolean;
@@ -271,6 +291,9 @@ export function selectNpcLocomotion(
   // because the stay-home branch short-circuited before combat was considered.
   if (inputs.hasChaseAttack && inputs.hasAttackTarget) {
     return "chaseAttack";
+  }
+  if (inputs.hasBusinessCustomerAssignment) {
+    return "businessCustomer";
   }
   if (inputs.hasEscortAssignment) {
     return "escort";
@@ -347,11 +370,14 @@ function maybeStartNpcCombatEvade(
   }
 
   const movementType = getMovementTypeByNpcType(npc.type);
+  // Authored type identity decides the evade profile because that profile sets
+  // invulnerability duration. `npc.label` is presentation and is passed last so
+  // it only applies to actors with no usable type descriptor.
   const profile = npcEvadeProfileForDescriptor(
-    npc.label,
     npc.type.name,
     npc.type.displayName,
-    movementType
+    movementType,
+    npc.label
   );
   const away = normalizev(sub(npc.position, target.position.v));
   const direction =
@@ -373,6 +399,9 @@ function maybeStartNpcCombatEvade(
       cooldownSeconds: profile.cooldownSeconds,
     })
   );
+  if (npc.state.chaseAttack) {
+    cancelPendingMeleeAttack(npc.mutableState().chaseAttack!, nowSeconds);
+  }
 }
 
 export function npcGroundWalkingForceCoefficient(input: {
@@ -380,6 +409,18 @@ export function npcGroundWalkingForceCoefficient(input: {
   fightSpeedBoostEligible: boolean;
   forwardSpeed: number;
 }): number {
+  // Business customer routes author their pace in metres per second, just like
+  // chase and escort behavior. `forwardWalkingForce` consumes acceleration,
+  // however, and a raw 2-4 value is completely cancelled by the ordinary
+  // ground friction at Anima's fixed tick rate. Convert this route explicitly
+  // so customers actually move while leaving every historical locomotion path
+  // unchanged.
+  if (input.locomotion === "businessCustomer") {
+    return horizontalForceForTargetSpeed(
+      input.forwardSpeed,
+      DEFAULT_ENVIRONMENT_PARAMS
+    );
+  }
   if (input.locomotion !== "chaseAttack" || !input.fightSpeedBoostEligible) {
     return input.forwardSpeed;
   }
@@ -435,6 +476,11 @@ export function npcTickLogic(
   npc: SimulatedNpc,
   dtSecs: number
 ) {
+  if (!isFiniteNpcOrientation(npc.orientation)) {
+    npc.setOrientation(
+      finiteNpcOrientation(npc.orientation, npc.metadata.spawn_orientation)
+    );
+  }
   if (npcCinematicPauseActive(npc.state, secondsSinceEpoch())) {
     npc.setVelocity([0, 0, 0]);
     return;
@@ -469,6 +515,7 @@ export function npcTickLogic(
   // griefing tool. `updateEscortCombatTarget` writes into the same `chaseAttack`
   // slot, so the ordinary chase/attack tick executes the fight.
   const hasEscortAssignment = npcHasEscortAssignment(npc);
+  const hasBusinessCustomerAssignment = npcHasBusinessCustomerAssignment(npc);
   if (hasEscortAssignment) {
     updateEscortCombatTarget(env, npc);
   } else if (chaseAttack) {
@@ -505,6 +552,7 @@ export function npcTickLogic(
     // biscuit never declared chaseAttack (the Chapter 1 companions do not).
     hasChaseAttack: Boolean(chaseAttack) || hasEscortAssignment,
     hasAttackTarget: Boolean(npc.state.chaseAttack?.attackTarget),
+    hasBusinessCustomerAssignment,
     hasEscortAssignment,
     canMeander: Boolean(behavior.meander),
     canSocialize: Boolean(behavior.socialize),
@@ -523,8 +571,8 @@ export function npcTickLogic(
         movementType === "swimming"
           ? NPC_SWIMMING_ENVIRONMENT_PARAMS
           : movementType === "flying"
-          ? NPC_FLYING_ENVIRONMENT_PARAMS
-          : DEFAULT_ENVIRONMENT_PARAMS;
+            ? NPC_FLYING_ENVIRONMENT_PARAMS
+            : DEFAULT_ENVIRONMENT_PARAMS;
       const forceCoefficient = horizontalForceForTargetSpeed(
         profile.speedMetersPerSecond,
         movementEnvironment
@@ -555,6 +603,9 @@ export function npcTickLogic(
         npc,
         chaseAttack ?? ATTACKED_NPC_RETALIATION_CHASE_ATTACK_PARAMS
       ));
+      break;
+    case "businessCustomer":
+      ({ forwardSpeed } = businessCustomerTick(env, npc));
       break;
     case "escort":
       ({ forwardSpeed } = escortTick(env, npc));
@@ -598,8 +649,31 @@ export function npcTickLogic(
   });
   // Compute the NPC's AABB which is needed for physics and drowning logic.
   const aabb = anchorAndSizeToAABB(npc.position, npc.size);
+  const movementType = getMovementTypeByNpcType(npc.type);
+  const focusedBusinessProbe =
+    locomotion === "businessCustomer" &&
+    process.env.GLITCH_FOCUSED_NATIVE_E2E_STACK === "1" &&
+    !focusedBusinessCustomerMovementProbes.has(npc.id)
+      ? {
+          type: {
+            id: npc.type.id,
+            name: npc.type.name,
+            runSpeed: npc.type.runSpeed,
+            rotateSpeed: npc.type.rotateSpeed,
+          },
+          size: [...npc.size],
+          position: [...npc.position],
+          orientation: [...npc.orientation],
+          velocity: [...npc.velocity],
+          rotateTarget: npc.state.rotateTarget,
+          forwardSpeed,
+        }
+      : undefined;
 
   rotateTargetTick(npc, getNpcRotateSpeed(npc.type), dtSecs);
+  const focusedOrientationAfterRotate = focusedBusinessProbe
+    ? [...npc.orientation]
+    : undefined;
 
   if (behavior.damageable) {
     drownTick(env.resources, npc, aabb, {
@@ -639,26 +713,46 @@ export function npcTickLogic(
     };
   }
 
+  const walkingForceCoefficient = npcGroundWalkingForceCoefficient({
+    locomotion,
+    fightSpeedBoostEligible: isHarthmereFightSpeedBoostNpc(npc),
+    forwardSpeed,
+  });
   const walkingForce = forwardWalkingForce(
-    npcGroundWalkingForceCoefficient({
-      locomotion,
-      fightSpeedBoostEligible: isHarthmereFightSpeedBoostNpc(npc),
-      forwardSpeed,
-    }),
+    walkingForceCoefficient,
     npc.orientation[1]
   );
 
   force = addForce(force, walkingForce);
 
-  applyNpcPhysics({
+  const focusedPhysics = applyNpcPhysics({
     env,
     npc,
     dtSecs,
     aabb,
     lastDamageForce,
     force,
-    movementType: getMovementTypeByNpcType(npc.type),
+    movementType,
+    captureDebug: focusedBusinessProbe !== undefined,
   });
+
+  if (focusedBusinessProbe) {
+    focusedBusinessCustomerMovementProbes.add(npc.id);
+    log.info("Focused business customer physics result", {
+      id: npc.id,
+      dtSecs,
+      walkingForceCoefficient,
+      before: focusedBusinessProbe,
+      movementType,
+      orientationAfterRotate: focusedOrientationAfterRotate,
+      physics: focusedPhysics,
+      after: {
+        position: [...npc.position],
+        orientation: [...npc.orientation],
+        velocity: [...npc.velocity],
+      },
+    });
+  }
 
   if (behavior.meander?.stayDistanceFromSpawn) {
     // If the NPC is far from its home for more than 5 minutes, it will
@@ -681,6 +775,7 @@ function applyNpcPhysics({
   lastDamageForce,
   force,
   movementType,
+  captureDebug = false,
 }: {
   env: Environment;
   npc: SimulatedNpc;
@@ -689,8 +784,13 @@ function applyNpcPhysics({
   lastDamageForce: ReadonlyVec3 | undefined;
   force: Force;
   movementType: MovementType;
+  captureDebug?: boolean;
 }) {
   const metadata = env.resources.get("/ecs/metadata");
+  const collisionHits: Array<{
+    hit: AABB;
+    entityId?: BiomesId;
+  }> = [];
   // Define the intersection testing routine.
   const collisionIndex = ([v0, v1]: AABB, fn: HitFn) => {
     CollisionHelper.intersect(
@@ -701,6 +801,15 @@ function applyNpcPhysics({
       (hit: AABB, entity?: ReadonlyEntity) => {
         // Avoid self-intersections.
         if (!entity || entity.id !== npc.id) {
+          if (captureDebug && collisionHits.length < 40) {
+            collisionHits.push({
+              hit: [
+                [...hit[0]],
+                [...hit[1]],
+              ],
+              entityId: entity?.id,
+            });
+          }
           return fn(hit);
         }
       }
@@ -708,7 +817,12 @@ function applyNpcPhysics({
   };
 
   // Define a routine to test if an NPC can climb on collision.
-  const climbableIndex = toClimbableIndex(collisionIndex);
+  const traversalProfile = npcGroundTraversalProfile(npc.size);
+  const climbableIndex = toClimbableIndex(
+    collisionIndex,
+    traversalProfile.maxStepHeight
+  );
+  const groundLocomotionAabb = npcGroundLocomotionAabb(npc.position, npc.size);
 
   const forces = [force];
   const globals = npcGlobals();
@@ -739,7 +853,7 @@ function applyNpcPhysics({
         )
       : moveBodyWithClimbing(
           dtSecs,
-          { aabb: aabb, velocity: [...npc.velocity] },
+          { aabb: groundLocomotionAabb, velocity: [...npc.velocity] },
           { ...DEFAULT_ENVIRONMENT_PARAMS, gravity: globals.gravity },
           collisionIndex,
           climbableIndex,
@@ -748,7 +862,9 @@ function applyNpcPhysics({
         );
 
   if (movementType === "swimming" || movementType === "flying") {
-    npc.setOrientation(pitchAndYaw(npc.velocity));
+    if (hasFiniteNpcMotionDirection(result.movement.velocity)) {
+      npc.setOrientation(pitchAndYaw(result.movement.velocity));
+    }
   }
 
   if (!_.isEqual(result.movement.impulse, [0, 0, 0])) {
@@ -757,4 +873,17 @@ function applyNpcPhysics({
   if (!_.isEqual(result.movement.velocity, npc.velocity)) {
     npc.setVelocity([...result.movement.velocity]);
   }
+  return captureDebug
+    ? {
+        groundLocomotionAabb: [
+          [...groundLocomotionAabb[0]],
+          [...groundLocomotionAabb[1]],
+        ] as AABB,
+        movement: {
+          impulse: [...result.movement.impulse],
+          velocity: [...result.movement.velocity],
+        },
+        collisionHits,
+      }
+    : undefined;
 }

@@ -64,7 +64,7 @@ export function harthmereNativeNpcCombatProfileForEntity(input: {
   const apex = base?.key.endsWith("_apex") === true;
   const maxHp = Number.isFinite(input.maxHp)
     ? Math.max(1, Math.trunc(input.maxHp!))
-    : base?.maxHp ?? tuning.maxHp;
+    : (base?.maxHp ?? tuning.maxHp);
   return {
     key: `boss_${tuning.bossId}`,
     id: input.typeId,
@@ -80,13 +80,13 @@ export function harthmereNativeNpcCombatProfileForEntity(input: {
       ? Math.max(base?.attackDistance ?? 0, tuning.attackDistance)
       : tuning.attackDistance,
     attackIntervalSecs: apex
-      ? Math.min(
+      ? Math.max(
           base?.attackIntervalSecs ?? tuning.attackIntervalSecs,
           tuning.attackIntervalSecs
         )
       : tuning.attackIntervalSecs,
     attackStrikeMomentSecs: apex
-      ? Math.min(
+      ? Math.max(
           base?.attackStrikeMomentSecs ?? tuning.attackStrikeMomentSecs,
           tuning.attackStrikeMomentSecs
         )
@@ -105,8 +105,8 @@ export function harthmereNativeNpcCombatProfileForEntity(input: {
           ),
         }
       : tuning.aggroTrigger === "onlyIfAttacked"
-      ? { kind: "onlyIfAttacked" }
-      : { kind: "proximity", distance: tuning.aggroDistance },
+        ? { kind: "onlyIfAttacked" }
+        : { kind: "proximity", distance: tuning.aggroDistance },
     disengageDistance: apex
       ? Math.max(base?.disengageDistance ?? 0, tuning.disengageDistance)
       : tuning.disengageDistance,

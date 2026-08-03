@@ -5,6 +5,7 @@ require("tsconfig-paths/register");
 process.env.IS_SERVER = process.env.IS_SERVER || "1";
 
 const { chunk } = require("lodash");
+const { execFileSync } = require("node:child_process");
 const { Redis } = require("ioredis");
 const {
   buildHarthmereLiveCreatureEntity,
@@ -36,6 +37,9 @@ const {
   harthmereOpenWildsGroundingPositionIsValidForSeed,
   harthmereRespawningLiveCreatureSeeds,
 } = require("../../src/shared/harthmere/live_entity_production_seed");
+const {
+  isPositionInsideHarthmereIndiswormCave,
+} = require("../../src/shared/harthmere/indisworm_spawns");
 const {
   muckMonsterAreaForPosition,
 } = require("../../src/shared/harthmere/muck_monster_aggression_ai");
@@ -69,6 +73,13 @@ const PROBE_BOTTOM_Y = -16;
 const PROBE_TOP_Y = 180;
 const POSITION_TOLERANCE = 0.25;
 const SIZE_TOLERANCE = 0.01;
+const FRESH_READBACK_MARKER = "HARTHMERE_CREATURE_FRESH_READBACK=";
+const SCOPED_SEED_IDS = new Set(
+  String(process.env.HARTHMERE_CREATURE_GROUNDING_SEED_IDS || "")
+    .split(",")
+    .map((value) => Number(value.trim()))
+    .filter(Number.isFinite)
+);
 
 function redisOptions() {
   return { host: REDIS_HOST, port: REDIS_PORT, lazyConnect: true };
@@ -104,8 +115,17 @@ function creatureUsesFlatExtensionSurface(seed) {
   );
 }
 
+function creatureUsesAuthoredEncounterPosition(seed) {
+  return (
+    seed.caveId !== undefined || seed.areaId?.startsWith("remote_corner_apex_")
+  );
+}
+
 function validCreatureXZ(seed, position) {
   if (!position) return false;
+  if (seed.caveId !== undefined) {
+    return isPositionInsideHarthmereIndiswormCave(seed.caveId, position);
+  }
   if (creatureUsesFlatExtensionSurface(seed)) {
     return isHarthmereExtensionWorldPosition(position);
   }
@@ -351,6 +371,18 @@ function supportedSurfaceTargetNear(
 
 function resolveTarget(row, solid, targetColumnIsAvailable) {
   const size = harthmereLiveEntitySizeForSeed(row.seed);
+  // Cavern Indisworms are authored inside enclosed underground encounter
+  // volumes, and remote-corner apex bosses use audited production spawn
+  // points outside the canonical terrain-shard domain. Neither class should
+  // be projected onto the highest outdoor surface by this grounding repair.
+  if (creatureUsesAuthoredEncounterPosition(row.seed)) {
+    const target = [...row.seed.position];
+    return {
+      target: validCreatureXZ(row.seed, target) ? target : undefined,
+      size,
+      relocatedToCanonical: true,
+    };
+  }
   const candidates = [row.sourcePosition, row.seed.position];
   for (let index = 0; index < candidates.length; index += 1) {
     const target = supportedSurfaceTargetNear(
@@ -458,14 +490,75 @@ async function applyRepairs(rows, resolutions) {
   return { repairPlans, applied };
 }
 
-async function verifyReadback(redis, seeds, targetById, solid) {
-  const rows = await loadCreatureRows(redis, seeds);
+async function emitFreshReadback() {
+  const allSeeds = harthmereRespawningLiveCreatureSeeds();
+  const seeds = SCOPED_SEED_IDS.size
+    ? allSeeds.filter((seed) => SCOPED_SEED_IDS.has(Number(seed.entityId)))
+    : allSeeds;
+  const redis = new Redis(redisOptions());
+  await redis.connect();
+  try {
+    const rows = await loadCreatureRows(redis, seeds);
+    console.log(
+      FRESH_READBACK_MARKER +
+        JSON.stringify(
+          rows.map((row) => ({
+            id: Number(row.seed.entityId),
+            entityExists: Boolean(row.entity),
+            current: row.current,
+            spawn: row.spawn,
+            size: row.size,
+            hp: row.hp,
+            hasExpires: row.hasExpires,
+          }))
+        )
+    );
+  } finally {
+    redis.disconnect();
+  }
+}
+
+function loadFreshReadbackRows(seeds) {
+  const output = execFileSync(process.execPath, [__filename], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      HARTHMERE_CREATURE_GROUNDING_FRESH_READBACK: "1",
+    },
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  const markerIndex = output.lastIndexOf(FRESH_READBACK_MARKER);
+  if (markerIndex < 0) {
+    throw new Error("Fresh creature readback subprocess returned no payload");
+  }
+  const rowsById = new Map(
+    JSON.parse(
+      output.slice(markerIndex + FRESH_READBACK_MARKER.length).trim()
+    ).map((row) => [Number(row.id), row])
+  );
+  return seeds.map((seed) => ({
+    seed,
+    ...rowsById.get(Number(seed.entityId)),
+    currentXZIsValid: validCreatureXZ(
+      seed,
+      rowsById.get(Number(seed.entityId))?.current
+    ),
+  }));
+}
+
+async function verifyReadbackOnce(seeds, targetById, solid) {
+  // Decode fatal post-apply evidence in a fresh process. The exact-r2 fixture
+  // exposed a process-local stale component view immediately after Lua apply:
+  // HP/expiry were new while position/size were from the pre-repair entity.
+  // A clean process read the same persisted key correctly. The deployment gate
+  // must validate persisted Redis, not fail on that mixed in-process decode.
+  const rows = loadFreshReadbackRows(seeds);
   const failures = [];
   for (const row of rows) {
     const target = targetById.get(Number(row.seed.entityId));
     const expectedSize = harthmereLiveEntitySizeForSeed(row.seed);
     if (
-      !row.entity ||
+      !row.entityExists ||
       !row.current ||
       !target ||
       row.hp === undefined ||
@@ -474,7 +567,8 @@ async function verifyReadback(redis, seeds, targetById, solid) {
       distance3(row.spawn, target) > POSITION_TOLERANCE ||
       !sameSize(row.size, expectedSize) ||
       !validCreatureXZ(row.seed, row.current) ||
-      !bodyCanStandAt(solid, row.current, row.current[1], expectedSize) ||
+      (!creatureUsesAuthoredEncounterPosition(row.seed) &&
+        !bodyCanStandAt(solid, row.current, row.current[1], expectedSize)) ||
       row.hasExpires
     ) {
       failures.push({
@@ -492,8 +586,28 @@ async function verifyReadback(redis, seeds, targetById, solid) {
   return failures;
 }
 
+async function verifyReadback(seeds, targetById, solid) {
+  return verifyReadbackOnce(seeds, targetById, solid);
+}
+
 async function main() {
-  const seeds = harthmereRespawningLiveCreatureSeeds();
+  const allSeeds = harthmereRespawningLiveCreatureSeeds();
+  const seeds = SCOPED_SEED_IDS.size
+    ? allSeeds.filter((seed) => SCOPED_SEED_IDS.has(Number(seed.entityId)))
+    : allSeeds;
+  if (SCOPED_SEED_IDS.size && seeds.length !== SCOPED_SEED_IDS.size) {
+    const found = new Set(seeds.map((seed) => Number(seed.entityId)));
+    const missing = [...SCOPED_SEED_IDS].filter((id) => !found.has(id));
+    throw new Error(`Unknown scoped creature seed ids: ${missing.join(",")}`);
+  }
+  if (SCOPED_SEED_IDS.size) {
+    console.error(
+      JSON.stringify({
+        phase: "creature_grounding_scope",
+        seedIds: seeds.map((seed) => Number(seed.entityId)),
+      })
+    );
+  }
   const redis = new Redis(redisOptions());
   await redis.connect();
   const voxeloo = await loadVoxeloo();
@@ -537,7 +651,7 @@ async function main() {
       ])
     );
     const result = await applyRepairs(rows, resolutions);
-    const failures = await verifyReadback(redis, seeds, targetById, solid);
+    const failures = await verifyReadback(seeds, targetById, solid);
     const byReason = {};
     for (const plan of result.repairPlans) {
       for (const reason of plan.reasons) {
@@ -551,10 +665,19 @@ async function main() {
     const hexes = hostileSeeds.filter((seed) => seed.combatKind === "hex");
     const animals = seeds.filter((seed) => seed.kind === "ambient_livestock");
     const bandits = seeds.filter((seed) => seed.kind === "ambient_bandit");
+    const cavernIndisworms = seeds.filter((seed) => seed.caveId !== undefined);
     const townAnimals = animals.filter(harthmereLiveEntityIsTownLivestock);
     const wildAnimals = animals.filter(
       (seed) => !harthmereLiveEntityIsTownLivestock(seed)
     );
+    const familyCounts = (plans) => ({
+      cavernIndisworms: plans.filter(
+        (entry) => (entry.row?.seed ?? entry.seed)?.caveId !== undefined
+      ).length,
+      otherCreatures: plans.filter(
+        (entry) => (entry.row?.seed ?? entry.seed)?.caveId === undefined
+      ).length,
+    });
     console.log(
       JSON.stringify(
         {
@@ -567,11 +690,20 @@ async function main() {
             wildAnimals: wildAnimals.length,
             townAnimals: townAnimals.length,
             bandits: bandits.length,
+            cavernIndisworms: cavernIndisworms.length,
           },
           repairPlanned: result.repairPlans.length,
+          repairPlannedByFamily: familyCounts(result.repairPlans),
           repairApplied: result.applied,
           repairReasons: byReason,
           unresolvedAfterReadback: failures.length,
+          unresolvedByFamily: familyCounts(
+            failures.map((failure) => ({
+              seed: seeds.find(
+                (seed) => Number(seed.entityId) === Number(failure.id)
+              ),
+            }))
+          ),
           failureSamples: failures.slice(0, 8),
         },
         null,
@@ -600,7 +732,12 @@ async function main() {
   }
 }
 
-main().catch((error) => {
+const entrypoint =
+  process.env.HARTHMERE_CREATURE_GROUNDING_FRESH_READBACK === "1"
+    ? emitFreshReadback
+    : main;
+
+entrypoint().catch((error) => {
   console.error(error.stack || error.message || String(error));
   process.exit(1);
 });

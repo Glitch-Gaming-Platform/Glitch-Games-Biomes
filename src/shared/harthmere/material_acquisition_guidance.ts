@@ -24,8 +24,12 @@ import {
   type HarthmereCraftingRecipe,
 } from "./mmo_inventory_authority";
 import { harthmereJobsBoardQuestMarkerRuntimePositionForId } from "./jobs_board_quest_marker_positions";
-import { SNAPSHOT_GROVE_NPCS } from "./snapshot_grove_content";
+import {
+  SNAPSHOT_GROVE_NPCS,
+  snapshotGroveGroundedPosition,
+} from "./snapshot_grove_content";
 import { HARTHMERE_TOWN_BUILDING_MAP_MARKERS } from "./harthmere_town_map_markers";
+import { resolveHarthmereProductionMarkerPosition } from "./production_terrain_placement_map";
 import type { Vec3 } from "../math/types";
 
 export type HarthmereMaterialAcquisitionKind = "buy" | "craft" | "gather";
@@ -79,6 +83,18 @@ function itemName(itemId: string) {
   return getHarthmereItemDefinition(itemId)?.displayName ?? words(itemId);
 }
 
+export function resolveHarthmereMaterialRoutePositionForTest(
+  markerId: string | undefined,
+  fallback: readonly [number, number, number]
+): Vec3 {
+  return [
+    ...resolveHarthmereProductionMarkerPosition({
+      markerId,
+      fallback: [...fallback] as Vec3,
+    }),
+  ] as Vec3;
+}
+
 export function normalizeHarthmereMaterialItemId(
   itemId: string | number | undefined,
   displayName?: string
@@ -104,7 +120,12 @@ export function normalizeHarthmereMaterialItemId(
 function outpostPosition(
   outpost: (typeof HARTHMERE_BUSINESS_OUTPOSTS)[number]
 ): Vec3 {
-  return [outpost.position.x, outpost.position.y + 1, outpost.position.z];
+  const markerId = harthmereBusinessOutpostMapMarkerId(outpost.outpostId);
+  return resolveHarthmereMaterialRoutePositionForTest(markerId, [
+    outpost.position.x,
+    outpost.position.y + 1,
+    outpost.position.z,
+  ]);
 }
 
 function vendorDestination(profile: {
@@ -130,7 +151,10 @@ function vendorDestination(profile: {
   if (groveNpc) {
     return {
       markerId: groveNpc.id,
-      position: [...groveNpc.authoredPosition] as Vec3,
+      position: resolveHarthmereMaterialRoutePositionForTest(
+        groveNpc.id,
+        snapshotGroveGroundedPosition(groveNpc.authoredPosition)
+      ),
     };
   }
 
@@ -138,7 +162,13 @@ function vendorDestination(profile: {
     (candidate) => candidate.buildingName === profile.vendorId
   );
   return building
-    ? { markerId: building.id, position: [...building.position] as Vec3 }
+    ? {
+        markerId: building.id,
+        position: resolveHarthmereMaterialRoutePositionForTest(
+          building.id,
+          building.position
+        ),
+      }
     : undefined;
 }
 
@@ -240,7 +270,10 @@ function gatherRoutes(
       }`,
       sourceName: node.name,
       markerId: node.id,
-      markerPosition: [...node.position] as Vec3,
+      markerPosition: resolveHarthmereMaterialRoutePositionForTest(
+        node.id,
+        node.position
+      ),
       requirements,
       requiredToolItemIds: node.requiredTool ? [node.requiredTool] : [],
       purpose,
@@ -272,7 +305,10 @@ function craftingDestinations(
         id: marker.markerId,
         name: marker.label,
         markerId: marker.markerId,
-        position: [...marker.position] as Vec3,
+        position: resolveHarthmereMaterialRoutePositionForTest(
+          marker.markerId,
+          marker.position
+        ),
       });
     }
   }
@@ -295,7 +331,10 @@ function craftingDestinations(
       id: seed.stationSeedId,
       name: `${seed.businessName} ${seed.stationName}`,
       markerId: harthmereBusinessOutpostMapMarkerId(seed.outpostId),
-      position: [...seed.position] as Vec3,
+      position: resolveHarthmereMaterialRoutePositionForTest(
+        harthmereBusinessOutpostMapMarkerId(seed.outpostId),
+        seed.position
+      ),
     });
   }
 

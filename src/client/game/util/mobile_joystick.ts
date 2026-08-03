@@ -3,6 +3,7 @@ export const MOBILE_JOYSTICK_RUN_RELEASE_THRESHOLD = 0.72;
 export const MOBILE_JOYSTICK_ACTIVE_THRESHOLD = 0.01;
 export const MOBILE_JOYSTICK_RUN_SOURCE = "mobile-joystick";
 export const MOBILE_JOYSTICK_CROUCH_SOURCE = "mobile-crouch-button";
+export const MOBILE_JOYSTICK_JUMP_SOURCE = "mobile-jump-button";
 export const MOBILE_JOYSTICK_ACTION_SOURCE = "mobile-joystick-double-tap";
 export const MOBILE_JOYSTICK_HARD_TAP_THRESHOLD = 0.82;
 export const MOBILE_JOYSTICK_HARD_TAP_MAX_DURATION_MS = 220;
@@ -107,8 +108,8 @@ export function mobileJoystickMovementActionForDirectionForTest(
     Math.abs(value) < MOBILE_JOYSTICK_DIRECTION_AXIS_THRESHOLD
       ? 0
       : value < 0
-      ? -1
-      : 1;
+        ? -1
+        : 1;
   const lateral = axis(direction[0]);
   const forward = axis(direction[1]);
   return {

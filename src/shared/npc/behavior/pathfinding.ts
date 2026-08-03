@@ -97,7 +97,7 @@ export interface Graph {
 export class GraphImpl implements Graph {
   private adj: Map<string, [Edge, Node][]>;
 
-  constructor() {
+  constructor(private readonly maxStepHeight = 1) {
     this.adj = new Map();
   }
 
@@ -112,7 +112,10 @@ export class GraphImpl implements Graph {
     // detour around every diagonal step, which on rolling ground turned into
     // permanent zig-zag and repeated "no progress" stuck declarations. Diagonals
     // are same-height only and additionally corner-checked in `neighbors`.
-    return npcMovementOffsets({ onFullBlock });
+    return npcMovementOffsets({
+      onFullBlock,
+      maxStepHeight: this.maxStepHeight,
+    });
   }
 
   neighbors(node: Node, resources: BlockResources): [Edge, Node][] {
@@ -155,10 +158,7 @@ export class GraphImpl implements Graph {
    * return `undefined` when there is none, so "unreachable" is reported honestly
    * instead of being disguised as a failed search.
    */
-  closestNode(
-    pos: ReadonlyVec3,
-    resources?: BlockResources
-  ): Node | undefined {
+  closestNode(pos: ReadonlyVec3, resources?: BlockResources): Node | undefined {
     if (!resources) {
       return {
         position: [Math.round(pos[0]), Math.round(pos[1]), Math.round(pos[2])],
@@ -367,7 +367,9 @@ export function repairPathDestinationIfConnected(
 
 /** Final node of a path, or `undefined` for an empty path. */
 export function pathDestination(path: Path): Vec3 | undefined {
-  return path.nodes.length ? path.nodes[path.nodes.length - 1].position : undefined;
+  return path.nodes.length
+    ? path.nodes[path.nodes.length - 1].position
+    : undefined;
 }
 
 function isFullHeightBlockAtPosition(

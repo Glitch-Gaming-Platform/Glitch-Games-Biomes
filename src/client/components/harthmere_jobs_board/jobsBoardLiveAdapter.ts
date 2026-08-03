@@ -4,11 +4,16 @@ import {
 } from "../../../shared/harthmere/business_customer_simulator";
 import {
   formatHarthmereJobTimeRemaining,
+  HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS,
   HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION,
 } from "../../../shared/harthmere/mmo_jobs_board_authority";
 import { completeHarthmereDailyTask } from "@/client/components/challenges/harthmereDailyTasks";
 import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
 import { HARTHMERE_LIVE_INVENTORY_SYNC_EVENT } from "@/client/components/challenges/harthmereEvents";
+import {
+  HarthmereQuestActionError,
+  harthmereQuestRejectionWarningsFromResponse,
+} from "@/client/components/challenges/questActionError";
 
 export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID =
   "harthmere_grove_market_jobs_board" as const;
@@ -17,6 +22,7 @@ export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_MARKER_ID =
 export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS = 3.25;
 export const HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT =
   "biomes:harthmere-jobs-board-state-updated" as const;
+export const HARTHMERE_JOBS_BOARD_STATE_CACHE_TTL_MS = 15_000;
 
 const HARTHMERE_BUSINESS_OUTPOST_PHYSICAL_JOB_BOARDS =
   HARTHMERE_BUSINESS_OUTPOSTS.map((outpost) => {
@@ -115,12 +121,7 @@ export type HarthmereJobsBoardJobKind =
   | "service";
 
 export type HarthmereJobsBoardStatus =
-  | "open"
-  | "active"
-  | "completed"
-  | "failed"
-  | "cancelled"
-  | "expired";
+  "open" | "active" | "completed" | "failed" | "cancelled" | "expired";
 
 export interface HarthmereJobsBoardPosting {
   jobId: string;
@@ -273,6 +274,58 @@ export interface HarthmereJobsBoardSnapshot {
     inventory?: Record<string, { itemId: string; count: number }>;
   }>;
   lawSummary?: HarthmereJobsBoardLawSummary;
+}
+
+type HarthmereJobsBoardStateCacheEntry = {
+  snapshot?: HarthmereJobsBoardSnapshot;
+  cachedAtMs: number;
+  inFlight?: Promise<HarthmereJobsBoardSnapshot>;
+};
+
+const HARTHMERE_JOBS_BOARD_STATE_CACHE = new WeakMap<
+  typeof fetch,
+  Map<string, HarthmereJobsBoardStateCacheEntry>
+>();
+
+function harthmereJobsBoardStateCacheFor(fetchImpl: typeof fetch) {
+  let cache = HARTHMERE_JOBS_BOARD_STATE_CACHE.get(fetchImpl);
+  if (!cache) {
+    cache = new Map();
+    HARTHMERE_JOBS_BOARD_STATE_CACHE.set(fetchImpl, cache);
+  }
+  return cache;
+}
+
+function rememberHarthmereJobsBoardState(
+  snapshot: HarthmereJobsBoardSnapshot,
+  fetchImpl: typeof fetch,
+  search?: string,
+  cachedAtMs = Date.now()
+) {
+  const url = harthmereJobsBoardStateUrl(search);
+  const cache = harthmereJobsBoardStateCacheFor(fetchImpl);
+  const previous = cache.get(url);
+  cache.set(url, {
+    snapshot,
+    cachedAtMs,
+    inFlight: previous?.inFlight,
+  });
+  return snapshot;
+}
+
+export function cachedHarthmereJobsBoardState(
+  fetchImpl: typeof fetch = fetch,
+  search?: string
+) {
+  return harthmereJobsBoardStateCacheFor(fetchImpl).get(
+    harthmereJobsBoardStateUrl(search)
+  )?.snapshot;
+}
+
+export function resetHarthmereJobsBoardStateCacheForTest(
+  fetchImpl: typeof fetch
+) {
+  HARTHMERE_JOBS_BOARD_STATE_CACHE.delete(fetchImpl);
 }
 
 function safeWhole(value: unknown, fallback = 0) {
@@ -674,8 +727,23 @@ export function getHarthmereAvailableJobsPanel(
   boardId = snapshot.defaultBoardId,
   nowMs = Date.now()
 ) {
+  if (
+    snapshot.myAcceptedJobs.filter((job) => job.status === "active").length >=
+      snapshot.safety.maxActiveAcceptedPerSeeker ||
+    (snapshot.cooldown.lastAcceptAtMs ?? 0) +
+      HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS >
+      nowMs
+  ) {
+    return [];
+  }
   return snapshot.openJobs
-    .filter((job) => job.boardId === boardId)
+    .filter(
+      (job) =>
+        job.boardId === boardId &&
+        job.status === "open" &&
+        job.deadlineAtMs > nowMs &&
+        !(job.issuerKind === "player" && job.issuerId === snapshot.actorId)
+    )
     .sort(
       (a, b) => b.rewardGold - a.rewardGold || a.deadlineAtMs - b.deadlineAtMs
     )
@@ -759,7 +827,7 @@ export function getHarthmereJobsBoardSafetyPanel(
 function harthmereJobsBoardLocationSearch(search?: string) {
   return (
     search ??
-    (typeof window !== "undefined" ? window.location?.search ?? "" : "")
+    (typeof window !== "undefined" ? (window.location?.search ?? "") : "")
   );
 }
 
@@ -797,23 +865,62 @@ function harthmereJobsBoardMutationHeaders(search?: string) {
 }
 
 export async function fetchHarthmereJobsBoardState(
-  fetchImpl: typeof fetch = fetch
+  fetchImpl: typeof fetch = fetch,
+  options: {
+    force?: boolean;
+    locationSearch?: string;
+    nowMs?: number;
+  } = {}
 ) {
-  const response = await fetchHarthmereLiveWithTimeout(
-    fetchImpl,
-    harthmereJobsBoardStateUrl(),
-    {
+  const url = harthmereJobsBoardStateUrl(options.locationSearch);
+  const cache = harthmereJobsBoardStateCacheFor(fetchImpl);
+  const cached = cache.get(url);
+  const nowMs = options.nowMs ?? Date.now();
+  if (
+    !options.force &&
+    cached?.snapshot &&
+    nowMs - cached.cachedAtMs <= HARTHMERE_JOBS_BOARD_STATE_CACHE_TTL_MS
+  ) {
+    dispatchHarthmereJobsBoardStateUpdated(cached.snapshot);
+    return cached.snapshot;
+  }
+  if (cached?.inFlight) {
+    return cached.inFlight;
+  }
+
+  const request = (async () => {
+    const response = await fetchHarthmereLiveWithTimeout(fetchImpl, url, {
       method: "GET",
       credentials: "same-origin",
+    });
+    if (!response.ok) {
+      throw new Error(`Jobs board state request failed: ${response.status}`);
     }
-  );
-  if (!response.ok)
-    throw new Error(`Jobs board state request failed: ${response.status}`);
-  const json = await response.json();
-  if (!json?.ok) throw new Error("Jobs board state request was rejected");
-  const snapshot = normalizeHarthmereJobsBoardSnapshot(json.jobsBoardState);
-  dispatchHarthmereJobsBoardStateUpdated(snapshot);
-  return snapshot;
+    const json = await response.json();
+    if (!json?.ok) throw new Error("Jobs board state request was rejected");
+    const snapshot = rememberHarthmereJobsBoardState(
+      normalizeHarthmereJobsBoardSnapshot(json.jobsBoardState),
+      fetchImpl,
+      options.locationSearch,
+      options.nowMs ?? Date.now()
+    );
+    dispatchHarthmereJobsBoardStateUpdated(snapshot);
+    return snapshot;
+  })();
+
+  cache.set(url, {
+    snapshot: cached?.snapshot,
+    cachedAtMs: cached?.cachedAtMs ?? 0,
+    inFlight: request,
+  });
+  try {
+    return await request;
+  } finally {
+    const latest = cache.get(url);
+    if (latest?.inFlight === request) {
+      cache.set(url, { ...latest, inFlight: undefined });
+    }
+  }
 }
 
 export async function submitHarthmereJobsBoardMutation(
@@ -833,6 +940,11 @@ export async function submitHarthmereJobsBoardMutation(
   const boardId =
     options.boardId ??
     String(payload.boardId ?? HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID);
+  const errorContext = {
+    action:
+      operation === "accept_job" ? ("accept" as const) : ("update" as const),
+    questTitle: typeof payload.title === "string" ? payload.title : undefined,
+  };
   const body = {
     requestId,
     idempotencyKey: requestId,
@@ -849,37 +961,41 @@ export async function submitHarthmereJobsBoardMutation(
       operation,
     },
   };
-  const response = await fetchHarthmereLiveWithTimeout(
-    fetchImpl,
-    harthmereJobsBoardMutationUrl(options.locationSearch),
-    {
-      method: "POST",
-      credentials: "same-origin",
-      headers: harthmereJobsBoardMutationHeaders(options.locationSearch),
-      body: JSON.stringify(body),
-    }
-  );
-  const json = await response.json();
-  if (!response.ok || json?.ok === false) {
-    const backendWarnings = Array.isArray(json?.backendMutation?.warnings)
-      ? json.backendMutation.warnings.join(",")
-      : undefined;
-    throw new Error(
-      json?.error ??
-        json?.validation?.errors?.join(",") ??
-        json?.validation?.warnings?.join(",") ??
-        backendWarnings ??
-        "Jobs board mutation failed"
+  let response: Response;
+  try {
+    response = await fetchHarthmereLiveWithTimeout(
+      fetchImpl,
+      harthmereJobsBoardMutationUrl(options.locationSearch),
+      {
+        method: "POST",
+        credentials: "same-origin",
+        headers: harthmereJobsBoardMutationHeaders(options.locationSearch),
+        body: JSON.stringify(body),
+      }
+    );
+  } catch {
+    throw new HarthmereQuestActionError(
+      ["jobs_board_rejected:network_error"],
+      errorContext
     );
   }
-  const warnings = json?.backendMutation?.warnings ?? [];
-  const rejected = warnings.find((warning: string) =>
-    warning.startsWith("jobs_board_rejected:")
-  );
-  if (rejected) throw new Error(rejected);
+  const json = await response.json().catch(() => undefined);
+  const rejectionWarnings = harthmereQuestRejectionWarningsFromResponse(json);
+  if (!json || !response.ok || json?.ok === false) {
+    throw new HarthmereQuestActionError(
+      rejectionWarnings.length
+        ? rejectionWarnings
+        : ["jobs_board_rejected:request_failed"],
+      errorContext
+    );
+  }
+  if (rejectionWarnings.length) {
+    throw new HarthmereQuestActionError(rejectionWarnings, errorContext);
+  }
   const snapshot = normalizeHarthmereJobsBoardSnapshot(
     json.jobsBoardState ?? json.economyState?.jobsBoardState ?? {}
   );
+  rememberHarthmereJobsBoardState(snapshot, fetchImpl, options.locationSearch);
   dispatchHarthmereJobsBoardStateUpdated(snapshot);
   dispatchHarthmereJobsBoardInventoryLootUpdated(json);
   return snapshot;

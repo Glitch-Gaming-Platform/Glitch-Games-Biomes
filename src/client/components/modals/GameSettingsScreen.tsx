@@ -341,6 +341,14 @@ export const GamePage: React.FunctionComponent<{
     "settings.volume.voice",
     0
   );
+  const [playerVoiceVolume, setPlayerVoiceVolume] = useTypedStorageItem(
+    "settings.volume.playerVoice",
+    80
+  );
+  const [playerVoiceEnabled, setPlayerVoiceEnabled] = useTypedStorageItem(
+    "settings.voice.playerVoiceEnabled",
+    false
+  );
 
   const [togglePrimary, setTogglePrimary] = useTypedStorageItem(
     "settings.mouse.togglePrimaryClick",
@@ -465,6 +473,19 @@ export const GamePage: React.FunctionComponent<{
           >
             Voices Volume
           </DialogSlider>
+          <DialogSlider
+            min={0}
+            max={100}
+            value={playerVoiceVolume}
+            onChange={setPlayerVoiceVolume}
+          >
+            Nearby Player Voice Volume
+          </DialogSlider>
+          <DialogCheckbox
+            label="Nearby Player Voice Chat (toggle microphone with F8)"
+            checked={playerVoiceEnabled}
+            onCheck={() => setPlayerVoiceEnabled(!playerVoiceEnabled)}
+          />
         </div>
       </SettingsSection>
 

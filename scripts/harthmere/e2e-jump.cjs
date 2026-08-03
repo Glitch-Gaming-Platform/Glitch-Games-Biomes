@@ -24,8 +24,11 @@ USAGE NOTES
   * `url` emits an /at/<x>/<y>/<z>/<pitch>/<yaw> deep link. The observer route
     parses the first three slug segments as coordinates, so you spawn AT the
     thing under test instead of walking there.
-  * `ready` requires lifecycle-ready web/logic/sync/trigger services, a real
-    web HTTP response, and a sync TCP connection. The sync port is
+  * `ready` requires the lifecycle services enabled in the inspected container,
+    including web/logic/sync and Trigger when stream workers are enabled, a real
+    web HTTP response, a sync TCP connection, and Redis PING/PONG. Set
+    HARTHMERE_E2E_REDIS_CONTAINER for a retained Docker-only Redis that is not
+    published to the host. The sync port is
     WebSocket-only and is NEVER sent an HTTP request: an early listening socket
     appears roughly forty seconds before `sync now running` on the large local
     snapshot, and starting Chromium in that gap produces handshake-reset loops.
@@ -58,8 +61,8 @@ const DEFAULT_SYNC_PORT = Number(
     (process.env.HARTHMERE_E2E_SYNC_BASE_URL
       ? configuredPort(process.env.HARTHMERE_E2E_SYNC_BASE_URL, 3100)
       : DEFAULT_WEB_PORT === 3017
-      ? 4907
-      : 3100)
+        ? 4907
+        : 3100)
 );
 const DEFAULT_SYNC_BASE_URL =
   process.env.HARTHMERE_E2E_SYNC_BASE_URL ||
@@ -73,6 +76,7 @@ const DEFAULT_REDIS_PORT = Number(
     process.env.REDIS_PORT ||
     (DEFAULT_WEB_PORT === 3017 ? 6390 : 6379)
 );
+const DEFAULT_REDIS_CONTAINER = process.env.HARTHMERE_E2E_REDIS_CONTAINER || "";
 const DEFAULT_STACK_CONTAINER =
   process.env.HARTHMERE_E2E_STACK_CONTAINER || "biomes-prod-smoke-app";
 const REQUIRED_STACK_SERVICES = String(
@@ -102,6 +106,27 @@ const STACK_SERVICE_READY_PORTS = Object.freeze({
 // only adds a false negative when the production image is busy serving assets.
 const EXTERNALLY_PROBED_STACK_SERVICES = new Set(["web"]);
 
+function effectiveRequiredStackServices(containerEnv) {
+  return REQUIRED_STACK_SERVICES.filter((service) => {
+    if (
+      ["trigger", "notify"].includes(service) &&
+      containerEnv.get("GLITCH_ENABLE_STREAM_WORKERS") === "0"
+    ) {
+      return false;
+    }
+    if (
+      service === "anima" &&
+      containerEnv.get("GLITCH_ENABLE_ANIMA") === "0"
+    ) {
+      return false;
+    }
+    if (service === "gaia" && containerEnv.get("GLITCH_ENABLE_GAIA") === "0") {
+      return false;
+    }
+    return true;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Checkpoints — authored anchors, kept in sync with the shipped contracts.
 // ---------------------------------------------------------------------------
@@ -112,8 +137,7 @@ const CHECKPOINTS = {
     pos: [485.5432697798402, 71, -140.51973378625254],
     look: [-0.15, 0.05],
     what: "Jackie at her original Grove stores approach. Road Ahead step 1.",
-    source:
-      "May snapshot entity 8997551883502307 npc_metadata.spawn_position",
+    source: "May snapshot entity 8997551883502307 npc_metadata.spawn_position",
   },
   billy: {
     pos: [500, 71, -140],
@@ -281,6 +305,39 @@ function redisReady(host, port, timeoutMs = 1500) {
   });
 }
 
+function redisContainerReady(containerName) {
+  const inspect = spawnSync(
+    "docker",
+    [
+      "inspect",
+      "-f",
+      "{{.State.Running}} {{.State.OOMKilled}} {{.RestartCount}}",
+      containerName,
+    ],
+    { encoding: "utf8", timeout: 10_000 }
+  );
+  if (inspect.error || inspect.status !== 0) {
+    return { up: false, note: `container ${containerName} unavailable` };
+  }
+  const [running, oomKilled, restartCount] = inspect.stdout.trim().split(/\s+/);
+  if (running !== "true" || oomKilled !== "false" || restartCount !== "0") {
+    return {
+      up: false,
+      note: `container ${containerName} running=${running} OOMKilled=${oomKilled} RestartCount=${restartCount}`,
+    };
+  }
+  const ping = spawnSync(
+    "docker",
+    ["exec", containerName, "redis-cli", "--raw", "PING"],
+    { encoding: "utf8", timeout: 10_000 }
+  );
+  const up = !ping.error && ping.status === 0 && ping.stdout.trim() === "PONG";
+  return {
+    up,
+    note: `container ${containerName} RESP PING${up ? "" : " failed"}`,
+  };
+}
+
 function httpReady(urlValue, timeoutMs = 10_000) {
   return new Promise((resolve) => {
     const url = new URL("/api/auth/check", urlValue);
@@ -302,7 +359,12 @@ function httpReady(urlValue, timeoutMs = 10_000) {
 function lifecycleReady(containerName) {
   const inspect = spawnSync(
     "docker",
-    ["inspect", "-f", "{{.State.Running}}", containerName],
+    [
+      "inspect",
+      "-f",
+      "{{.State.Running}}\n{{json .Config.Env}}",
+      containerName,
+    ],
     { encoding: "utf8" }
   );
   if (inspect.error || inspect.status !== 0) {
@@ -312,7 +374,7 @@ function lifecycleReady(containerName) {
       missing: REQUIRED_STACK_SERVICES,
     };
   }
-  const running = inspect.stdout.trim();
+  const [running, serializedEnv = "[]"] = inspect.stdout.trim().split(/\n/, 2);
   if (running !== "true") {
     return {
       available: true,
@@ -320,14 +382,33 @@ function lifecycleReady(containerName) {
       missing: ["container-running"],
     };
   }
-  const requestedServices = REQUIRED_STACK_SERVICES.flatMap((name) => {
+  let containerEnv;
+  try {
+    containerEnv = new Map(
+      JSON.parse(serializedEnv).map((entry) => {
+        const separator = entry.indexOf("=");
+        return separator < 0
+          ? [entry, ""]
+          : [entry.slice(0, separator), entry.slice(separator + 1)];
+      })
+    );
+  } catch {
+    return {
+      available: true,
+      ready: false,
+      missing: ["container-environment"],
+      required: REQUIRED_STACK_SERVICES,
+    };
+  }
+  const requiredServices = effectiveRequiredStackServices(containerEnv);
+  const requestedServices = requiredServices.flatMap((name) => {
     if (EXTERNALLY_PROBED_STACK_SERVICES.has(name)) {
       return [];
     }
     const port = STACK_SERVICE_READY_PORTS[name];
     return port ? [{ name, port }] : [];
   });
-  const unknownServices = REQUIRED_STACK_SERVICES.filter(
+  const unknownServices = requiredServices.filter(
     (name) =>
       !EXTERNALLY_PROBED_STACK_SERVICES.has(name) &&
       !STACK_SERVICE_READY_PORTS[name]
@@ -391,12 +472,22 @@ Promise.all(services.map(({ name, port }) => new Promise((resolve) => {
       .map(({ name }) => name)
       .filter((service) => !readyServices.has(service)),
   ];
-  return { available: true, ready: missing.length === 0, missing };
+  return {
+    available: true,
+    ready: missing.length === 0,
+    missing,
+    required: requiredServices,
+  };
 }
 
 async function ready() {
   const webHttpReady = await httpReady(DEFAULT_ORIGIN);
-  const redisPingReady = await redisReady("127.0.0.1", DEFAULT_REDIS_PORT);
+  const redisProbe = DEFAULT_REDIS_CONTAINER
+    ? redisContainerReady(DEFAULT_REDIS_CONTAINER)
+    : {
+        up: await redisReady("127.0.0.1", DEFAULT_REDIS_PORT),
+        note: "RESP PING",
+      };
   // The sync port is intentionally probed by TCP only. Its internal metrics
   // `/ready` endpoint proves registry/bootstrap completion; TCP proves the
   // external mapping works without sending HTTP to the WebSocket listener.
@@ -414,19 +505,18 @@ async function ready() {
     },
     {
       name: "redis",
-      port: DEFAULT_REDIS_PORT,
-      note: "RESP PING",
-      up: redisPingReady,
+      port: DEFAULT_REDIS_CONTAINER ? undefined : DEFAULT_REDIS_PORT,
+      note: redisProbe.note,
+      up: redisProbe.up,
     },
   ];
   let allUp = true;
   for (const svc of services) {
     const up = svc.up ?? (await tcpReady("127.0.0.1", svc.port));
     allUp = allUp && up;
+    const endpoint = svc.port ? `:${svc.port}` : "(docker)";
     console.log(
-      `${up ? "UP  " : "DOWN"} ${svc.name.padEnd(6)} :${svc.port}  (${
-        svc.note
-      })`
+      `${up ? "UP  " : "DOWN"} ${svc.name.padEnd(6)} ${endpoint}  (${svc.note})`
     );
   }
   const lifecycle = lifecycleReady(DEFAULT_STACK_CONTAINER);
@@ -436,7 +526,7 @@ async function ready() {
         lifecycle.ready ? "UP  " : "DOWN"
       } lifecycle ${DEFAULT_STACK_CONTAINER}  (${
         lifecycle.ready
-          ? REQUIRED_STACK_SERVICES.join(", ")
+          ? lifecycle.required.join(", ")
           : `missing: ${lifecycle.missing.join(", ")}`
       })`
     );

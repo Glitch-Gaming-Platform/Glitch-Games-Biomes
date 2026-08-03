@@ -102,9 +102,67 @@ describe("mmo economy business customer sessions", function () {
     assert.equal(session.status, "active");
     assert.ok(session.currentTicketId);
     assert.ok(session.dailyBonusGold > 0);
+    assert.ok(session.queue.every((ticket) => Number(ticket.entityId) > 0));
+    assert.ok(session.queue.every((ticket) => ticket.spatialPhase === "entering"));
 
     const duplicate = mutate(result.economy, "start_business_customer_session", { businessId: setup.businessId });
     assert.ok(duplicate.warnings.includes("economy_rejected:business_customer_session_already_active"));
+  });
+
+  it("ends a live shift safely and sends every remaining customer to the exit", () => {
+    const setup = createOpenBusiness("courier");
+    let result = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 4,
+    });
+    const session = sessions(result.economy)[0];
+    result = mutate(result.economy, "end_business_customer_session", {
+      businessId: setup.businessId,
+      sessionId: session.sessionId,
+    });
+    assert.deepEqual(result.warnings, []);
+    const ended = sessions(result.economy)[0];
+    assert.equal(ended.status, "aborted");
+    assert.equal(ended.currentTicketId, undefined);
+    assert.ok(ended.endedAtMs);
+    assert.ok(ended.queue.every((ticket) => ticket.status === "left"));
+    assert.ok(
+      ended.queue.every((ticket) => ticket.spatialPhase === "cancelled")
+    );
+  });
+
+  it("ticks timeout authority and advances the spatial queue one position", () => {
+    const setup = createOpenBusiness("general_trader");
+    let result = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 3,
+    });
+    const started = sessions(result.economy)[0];
+    const first = started.queue[0];
+    result = mutate(
+      result.economy,
+      "tick_business_customer_session",
+      {
+        businessId: setup.businessId,
+        sessionId: started.sessionId,
+      },
+      ctx()
+    );
+    // The helper uses NOW_MS. Force the first arrival far enough into the past
+    // before the authoritative tick so this case does not sleep.
+    const beforeTimeout = sessions(result.economy)[0];
+    beforeTimeout.queue[0].arrivedAtMs = NOW_MS - 120_000;
+    result = mutate(result.economy, "tick_business_customer_session", {
+      businessId: setup.businessId,
+      sessionId: beforeTimeout.sessionId,
+    });
+    const advanced = sessions(result.economy)[0];
+    assert.equal(advanced.queue[0].ticketId, first.ticketId);
+    assert.equal(advanced.queue[0].status, "left");
+    assert.equal(advanced.queue[0].spatialPhase, "departing");
+    assert.equal(advanced.queue[0].reaction, "timeout");
+    assert.equal(advanced.queue[1].spatialPhase, "approaching_counter");
+    assert.equal(advanced.queue[1].queueIndex, 0);
   });
 
   it("starts and successfully serves every ask template for every production business mini-game", () => {

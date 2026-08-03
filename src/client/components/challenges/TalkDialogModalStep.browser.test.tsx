@@ -4,7 +4,6 @@ import { mkdtemp, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import path from "path";
 import { chromium } from "playwright";
-import { SNAPSHOT_GROVE_AMBIENT_DIALOGUE } from "@/shared/harthmere/snapshot_grove_ambient_dialogue";
 
 declare global {
   interface Window {
@@ -23,7 +22,7 @@ declare global {
 describe("TalkDialogModalStep rendered voice conversation flow", () => {
   it("checks every rendered voice scene for one-shot audio and clickability", async function () {
     this.timeout(45_000);
-    const mappedFirstLine = SNAPSHOT_GROVE_AMBIENT_DIALOGUE.jackie[0];
+    const mappedFirstLine = "Right then! Nice to meet ya BrowserTester!";
 
     const tempDir = await mkdtemp(path.join(tmpdir(), "biomes-talk-flow-"));
     const entryPath = path.join(tempDir, "entry.tsx");
@@ -97,9 +96,9 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
           return (
             <div data-rerender-count={rerenderCount}>
               <GenericTalkDialogModalStep
-                entityId={8810000000010001}
-                title="Jackie"
-                id="jackie-rendered-flow"
+                entityId={7520125886856339}
+                title="Billy Rhodes"
+                id={166072605041642}
                 dialog={dialog}
                 voiceInput={{
                   disabled: voiceQuerying,
@@ -399,13 +398,19 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
         await expressionDialog.getAttribute(
           "data-harthmere-dialogue-expression"
         ),
-        "thinking"
+        "gratitude"
       );
       assert.equal(
         await expressionDialog.getAttribute(
           "data-harthmere-dialogue-expression-actor"
         ),
-        "jackie"
+        "billy_rhodes"
+      );
+      assert.equal(
+        await expressionDialog.getAttribute(
+          "data-harthmere-dialogue-expression-source"
+        ),
+        "native_quest"
       );
       assert.deepEqual(
         await page.evaluate(() => {
@@ -414,7 +419,7 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
             ? { actorId: cue.actorId, expression: cue.expression }
             : undefined;
         }),
-        { actorId: 8810000000010001, expression: "thinking" }
+        { actorId: 7520125886856339, expression: "gratitude" }
       );
       await page.waitForFunction(() => window.__ttsRequests.length === 1);
       await page.waitForTimeout(120);

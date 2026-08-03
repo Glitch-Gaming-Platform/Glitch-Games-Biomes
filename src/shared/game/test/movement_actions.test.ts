@@ -2,6 +2,7 @@ import { MovementState } from "@/shared/ecs/gen/components";
 import {
   BASE_PLAYER_JUMP_COUNT,
   DOUBLE_JUMP_STAMINA_COST,
+  EVADE_MOVEMENT_ACTION_STAMINA_COST,
   MOVEMENT_ACTION_STAMINA_COST,
   PLAYER_EVADE_ATTACK_TRANSITION,
   PLAYER_MOVEMENT_ACTION_TIMING,
@@ -34,12 +35,13 @@ import {
 import assert from "assert";
 
 describe("movement actions", () => {
-  it("reserves Z/X/C and charges exactly three stamina", () => {
+  it("reserves Z/X/C and gives committed movement actions distinct costs", () => {
     assert.deepEqual(RESERVED_MOVEMENT_KEY_CODES, ["KeyZ", "KeyX", "KeyC"]);
     assert.equal(MOVEMENT_ACTION_STAMINA_COST, 3);
+    assert.equal(EVADE_MOVEMENT_ACTION_STAMINA_COST, 2);
     assert.equal(DOUBLE_JUMP_STAMINA_COST, 4);
     assert.equal(movementActionStaminaCost("dodge"), 3);
-    assert.equal(movementActionStaminaCost("evade"), 3);
+    assert.equal(movementActionStaminaCost("evade"), 2);
     assert.equal(movementActionStaminaCost("doubleJump"), 4);
     assert.equal(BASE_PLAYER_JUMP_COUNT, 2);
     assert.equal(playerJumpCount(0), 2);

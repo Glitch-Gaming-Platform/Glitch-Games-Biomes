@@ -8,6 +8,7 @@ import {
   questInviteOptionsFromTrackableQuests,
   sharedQuestAcceptedLandmarksForBiomesUI,
   sharedQuestTrackableQuestsForBiomesUI,
+  submitHarthmereQuestInviteMutation,
 } from "../questInviteAdapter";
 
 const NOW_MS = 1_702_100_000_000;
@@ -130,5 +131,32 @@ describe("BiomesUI quest invite adapter", () => {
         markerWorldPosition: undefined,
       },
     ]);
+  });
+
+  it("turns invite authority rejections into player-readable errors", async () => {
+    const fetchImpl = (async () =>
+      new Response(
+        JSON.stringify({
+          ok: true,
+          backendMutation: {
+            warnings: ["quest_invite_rejected:not_nearby"],
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )) as typeof fetch;
+    await assert.rejects(
+      () =>
+        submitHarthmereQuestInviteMutation(
+          {
+            operation: "invite_to_quest",
+            questId: "grove_buttons",
+            questTitle: "Buttons Before the Road",
+          },
+          fetchImpl
+        ),
+      (error: any) =>
+        error?.message === "Move closer to that player and try again." &&
+        !error.message.includes("quest_invite_rejected")
+    );
   });
 });

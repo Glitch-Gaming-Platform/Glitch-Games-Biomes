@@ -2,6 +2,24 @@ import crypto from "crypto";
 import type { IncomingMessage, ServerResponse } from "http";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  harthmereVoiceRoomsFromResponse,
+  makeHarthmereVoiceRoomCreateBody,
+  normalizeHarthmereVoiceTokenResponse,
+  parseHarthmereVoiceIceServers,
+  selectHarthmereVoiceRoomCandidates,
+} from "@/server/glitch/harthmere_voice";
+import { compactHarthmereStoreSaveResponse } from "@/server/glitch/harthmere_store_save_response";
+import {
+  HarthmerePlayerInviteError,
+  MemoryHarthmerePlayerInviteStore,
+  createHarthmerePlayerInvite,
+  formatHarthmerePlayerInviteCode,
+  joinHarthmerePlayerInvite,
+  normalizeHarthmerePlayerInviteCode,
+  type HarthmerePlayerInviteRecord,
+  type HarthmerePlayerInviteStore,
+} from "@/server/glitch/harthmere_player_invites";
 import { ensurePlayerExists } from "@/server/logic/utils/players";
 import { readHarthmereRedisStrings } from "@/server/harthmere/live_mode_state_read_helpers";
 import {
@@ -15,6 +33,7 @@ import {
   validateHarthmerePreEncodedCloudSavePayload,
 } from "@/server/harthmere/glitch_cloud_save_payload";
 import { connectToRedis } from "@/server/shared/redis/connection";
+import { GameEvent } from "@/server/shared/api/game_event";
 import { editWorldWithRetry } from "@/server/shared/world/edit_retry";
 import {
   connectForeignAuth,
@@ -43,6 +62,8 @@ import {
 } from "@/shared/harthmere/live_mode_actor_identity";
 import { harthmereLiveModePlayerStateKey } from "@/shared/harthmere/live_mode_backend";
 import { isAcceptedHarthmereCloudSavePayloadVersion } from "@/shared/harthmere/harthmere_cloud_save_rehydration";
+import { isInsideCh1PortalOnlyRegion } from "@/shared/harthmere/ch1_elsewhen_region";
+import { WarpEvent } from "@/shared/ecs/gen/events";
 import { parseBiomesId, type BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import { Timer } from "@/shared/metrics/timer";
@@ -141,6 +162,7 @@ const globalForHarthmere = globalThis as typeof globalThis & {
   __harthmereGlitchSessionRedis?: ReturnType<typeof connectToRedis>;
   __harthmereGlitchAsyncOutboxDrain?: boolean;
   __harthmereGlitchTelemetryAuthBackoffUntil?: number;
+  __harthmerePlayerInviteMemoryStore?: MemoryHarthmerePlayerInviteStore;
 };
 
 const sessionStore: HarthmereSessionStore =
@@ -157,6 +179,118 @@ sessionStore.validationsByKey ??= new Map<string, HarthmereCachedValidation>();
 function harthmereGlitchRedis() {
   return (globalForHarthmere.__harthmereGlitchSessionRedis ??=
     connectToRedis("firehose"));
+}
+
+const playerInviteMemoryStore =
+  globalForHarthmere.__harthmerePlayerInviteMemoryStore ??
+  (globalForHarthmere.__harthmerePlayerInviteMemoryStore =
+    new MemoryHarthmerePlayerInviteStore());
+
+function playerInviteRedisKey(code: string) {
+  return `${GLITCH_HARTHMERE_SESSION_REDIS_PREFIX}:player_invite:${code}`;
+}
+
+function playerInviteActiveRedisKey(titleId: string, inviterPlayerId: string) {
+  const digest = crypto
+    .createHash("sha1")
+    .update(`${titleId}:${inviterPlayerId}`)
+    .digest("hex");
+  return `${GLITCH_HARTHMERE_SESSION_REDIS_PREFIX}:player_invite_active:${digest}`;
+}
+
+function playerInviteClaimRedisKey(code: string, playerId: string) {
+  const digest = crypto
+    .createHash("sha1")
+    .update(`${code}:${playerId}`)
+    .digest("hex");
+  return `${GLITCH_HARTHMERE_SESSION_REDIS_PREFIX}:player_invite_claim:${digest}`;
+}
+
+function playerInviteRecordFromRedis(raw: string | null) {
+  if (!raw) return undefined;
+  try {
+    const record = JSON.parse(raw) as HarthmerePlayerInviteRecord;
+    return record?.version === 1 && typeof record.code === "string"
+      ? record
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function playerInviteStore(): HarthmerePlayerInviteStore {
+  if (!shouldUseRedisHarthmereSessionStore()) {
+    return playerInviteMemoryStore;
+  }
+  const withRedis = async <T>(operation: () => Promise<T>) => {
+    try {
+      return await operation();
+    } catch (error) {
+      log.warn("GLITCH_HARTHMERE_PLAYER_INVITE_REDIS_FAILED", { error });
+      throw new HarthmerePlayerInviteError("INVITE_SERVICE_UNAVAILABLE", 503);
+    }
+  };
+  return {
+    getInvite: (code) =>
+      withRedis(async () => {
+        const redis = await harthmereGlitchRedis();
+        return playerInviteRecordFromRedis(
+          await redis.primary.get(playerInviteRedisKey(code))
+        );
+      }),
+    setInvite: (record, ttlSeconds) =>
+      withRedis(async () => {
+        const redis = await harthmereGlitchRedis();
+        await redis.primary.set(
+          playerInviteRedisKey(record.code),
+          JSON.stringify(record),
+          "EX",
+          ttlSeconds
+        );
+      }),
+    deleteInvite: (code) =>
+      withRedis(async () => {
+        const redis = await harthmereGlitchRedis();
+        await redis.primary.del(playerInviteRedisKey(code));
+      }),
+    getActiveCode: (titleId, inviterPlayerId) =>
+      withRedis(async () => {
+        const redis = await harthmereGlitchRedis();
+        return (
+          (await redis.primary.get(
+            playerInviteActiveRedisKey(titleId, inviterPlayerId)
+          )) ?? undefined
+        );
+      }),
+    setActiveCode: (titleId, inviterPlayerId, code, ttlSeconds) =>
+      withRedis(async () => {
+        const redis = await harthmereGlitchRedis();
+        await redis.primary.set(
+          playerInviteActiveRedisKey(titleId, inviterPlayerId),
+          code,
+          "EX",
+          ttlSeconds
+        );
+      }),
+    tryClaim: (code, playerId, ttlSeconds) =>
+      withRedis(async () => {
+        const redis = await harthmereGlitchRedis();
+        return (
+          (await redis.primary.set(
+            playerInviteClaimRedisKey(code, playerId),
+            "1",
+            "EX",
+            ttlSeconds,
+            "NX"
+          )) === "OK"
+        );
+      }),
+    releaseClaim: (code, playerId) =>
+      withRedis(async () => {
+        const redis = await harthmereGlitchRedis();
+        await redis.primary.del(playerInviteClaimRedisKey(code, playerId));
+      }),
+  };
 }
 
 function envString(name: string) {
@@ -416,10 +550,12 @@ async function callGlitchApi(
     query?: URLSearchParams;
     timeoutMs?: number;
     label?: string;
+    authorization?: "title" | "none";
   } = {}
 ): Promise<GlitchProxyResponse> {
-  const token = requireServerConfig();
-  if (!token) {
+  const authorization = options.authorization ?? "title";
+  const token = authorization === "title" ? requireServerConfig() : undefined;
+  if (authorization === "title" && !token) {
     return {
       ok: true,
       disabled: true,
@@ -442,7 +578,7 @@ async function callGlitchApi(
       method: options.method ?? "GET",
       headers: {
         Accept: "application/json",
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(options.body === undefined
           ? {}
           : { "Content-Type": "application/json" }),
@@ -501,7 +637,7 @@ async function callGlitchApi(
         error: timedOut ? "GLITCH_API_TIMEOUT" : "GLITCH_API_REQUEST_FAILED",
         message: timedOut
           ? `Glitch API timed out after ${timeoutMs}ms`
-          : error?.message ?? String(error),
+          : (error?.message ?? String(error)),
       },
     };
   } finally {
@@ -587,27 +723,22 @@ async function drainGlitchAsyncOutbox() {
   const redis = await harthmereGlitchRedis();
   const maxPerDrain = Math.max(
     1,
-    Math.trunc(
-      Number(process.env.GLITCH_HARTHMERE_ASYNC_OUTBOX_DRAIN_MAX ?? 25)
+    Math.trunc(envNumber("GLITCH_HARTHMERE_ASYNC_OUTBOX_DRAIN_MAX", 25))
+  );
+  const telemetryConcurrency = Math.max(
+    1,
+    Math.min(
+      8,
+      Math.trunc(envNumber("GLITCH_HARTHMERE_TELEMETRY_DRAIN_CONCURRENCY", 4))
     )
   );
-  for (let i = 0; i < maxPerDrain; i += 1) {
-    const raw = await redis.primary.lpop(GLITCH_HARTHMERE_ASYNC_OUTBOX_KEY);
-    if (!raw) {
-      break;
-    }
-    let queued: QueuedGlitchApiCall | undefined;
-    try {
-      queued = JSON.parse(raw) as QueuedGlitchApiCall;
-    } catch (error) {
-      log.warn("GLITCH_HARTHMERE_ASYNC_OUTBOX_BAD_ITEM", { error });
-      continue;
-    }
+
+  const runQueuedCall = async (queued: QueuedGlitchApiCall) => {
     if (
       isBehaviorTelemetryCall(queued) &&
       behaviorTelemetryAuthBackoffRemainingMs() > 0
     ) {
-      continue;
+      return;
     }
     const response = await callGlitchApi(queued.path, {
       label: queued.label,
@@ -618,6 +749,54 @@ async function drainGlitchAsyncOutbox() {
     if (isBehaviorTelemetryCall(queued)) {
       noteBehaviorTelemetryAuthFailure(response.status);
     }
+  };
+
+  const runTelemetryBatch = async (calls: QueuedGlitchApiCall[]) => {
+    let nextIndex = 0;
+    await Promise.all(
+      Array.from(
+        { length: Math.min(telemetryConcurrency, calls.length) },
+        async () => {
+          while (nextIndex < calls.length) {
+            const call = calls[nextIndex++];
+            await runQueuedCall(call);
+          }
+        }
+      )
+    );
+  };
+
+  for (;;) {
+    const batch: QueuedGlitchApiCall[] = [];
+    for (let i = 0; i < maxPerDrain; i += 1) {
+      const raw = await redis.primary.lpop(GLITCH_HARTHMERE_ASYNC_OUTBOX_KEY);
+      if (!raw) break;
+      try {
+        batch.push(JSON.parse(raw) as QueuedGlitchApiCall);
+      } catch (error) {
+        log.warn("GLITCH_HARTHMERE_ASYNC_OUTBOX_BAD_ITEM", { error });
+      }
+    }
+    if (batch.length === 0) return;
+
+    // Preserve ordering barriers around saves/progression, but let consecutive
+    // best-effort behavior events use a small worker pool. Production upstream
+    // event calls were taking roughly two seconds each; strict serialization
+    // left dozens of promises and Redis items alive for nearly a minute.
+    for (let i = 0; i < batch.length;) {
+      if (!isBehaviorTelemetryCall(batch[i])) {
+        await runQueuedCall(batch[i++]);
+        continue;
+      }
+      const telemetryBatch: QueuedGlitchApiCall[] = [];
+      while (i < batch.length && isBehaviorTelemetryCall(batch[i])) {
+        telemetryBatch.push(batch[i++]);
+      }
+      await runTelemetryBatch(telemetryBatch);
+    }
+
+    if (batch.length < maxPerDrain) return;
+    await new Promise<void>((resolve) => setImmediate(resolve));
   }
 }
 
@@ -762,10 +941,10 @@ function normalizeIdentityFromValidateResponse(
     raw?.ok === true ||
     Boolean(
       root.user ||
-        root.user_id ||
-        root.username ||
-        root.user_name ||
-        install.user_id
+      root.user_id ||
+      root.username ||
+      root.user_name ||
+      install.user_id
     );
 
   const guestIdentity = looksLikeGuestIdentity(root, user, install);
@@ -810,10 +989,10 @@ function normalizeIdentityFromValidateResponse(
     !guestIdentity && glitchUserId
       ? `glitch:${glitchUserId}`
       : !guestIdentity &&
-        responseGameUserId &&
-        !isGuestLikeString(responseGameUserId)
-      ? responseGameUserId
-      : `install:${installId}`;
+          responseGameUserId &&
+          !isGuestLikeString(responseGameUserId)
+        ? responseGameUserId
+        : `install:${installId}`;
 
   // A guest is any install that does NOT resolve to a stable Glitch account
   // (explicit guest markers, or simply no glitch user id and no stable account
@@ -1264,6 +1443,95 @@ async function authenticatedCloudSaveActor(
   };
 }
 
+async function authenticatedBiomesPlayerIdentity(
+  req: IncomingMessage,
+  authError: string
+) {
+  const webReq = req as WebServerRequest;
+  if (!webReq.context?.sessionStore) {
+    throw new Error("MISSING_BIOMES_WEB_CONTEXT");
+  }
+  const authResult = await verifyAuthenticatedRequest(
+    webReq.context.sessionStore,
+    req
+  );
+  if (authResult.error) {
+    throw new Error(authError);
+  }
+  return {
+    userId: authResult.auth.userId,
+    playerId: String(authResult.auth.userId),
+  };
+}
+
+async function authenticatedPlayerVoiceIdentity(req: IncomingMessage) {
+  const identity = await authenticatedBiomesPlayerIdentity(
+    req,
+    "PLAYER_VOICE_AUTH_REQUIRED"
+  );
+  const displayName =
+    firstString((req as NextApiRequest).body?.display_name)?.slice(0, 255) ??
+    `Player ${identity.playerId}`;
+  return { ...identity, displayName };
+}
+
+function voiceTokenFromBody(body: JsonMap) {
+  const voiceToken = firstString(body.voice_token);
+  if (!voiceToken) {
+    throw new Error("MISSING_VOICE_TOKEN");
+  }
+  return voiceToken;
+}
+
+const GLITCH_VOICE_PACKET_TYPES = new Set([
+  "audio",
+  "speaking",
+  "mute_state",
+  "offer",
+  "answer",
+  "ice",
+  "control",
+]);
+
+function playerInviteRouteDependencies(req: IncomingMessage) {
+  const webReq = req as WebServerRequest;
+  if (!webReq.context?.worldApi || !webReq.context?.logicApi) {
+    throw new Error("MISSING_BIOMES_WEB_CONTEXT");
+  }
+  return {
+    store: playerInviteStore(),
+    readPlayer: async (playerId: string) => {
+      const entity = await webReq.context.worldApi.get(parseBiomesId(playerId));
+      if (!entity) return undefined;
+      return {
+        playerId,
+        name: entity.label()?.text,
+        position: entity.position()?.v,
+        orientation: entity.orientation()?.v,
+      };
+    },
+    publishWarp: async (
+      playerId: string,
+      position: [number, number, number],
+      orientation?: [number, number]
+    ) => {
+      const userId = parseBiomesId(playerId);
+      await webReq.context.logicApi.publish(
+        new GameEvent(
+          userId,
+          new WarpEvent({
+            id: userId,
+            position,
+            orientation,
+          })
+        )
+      );
+    },
+    destinationAllowed: (position: [number, number, number]) =>
+      !isInsideCh1PortalOnlyRegion(position),
+  };
+}
+
 export function harthmereBiomesAuthSessionMatchesIdentity(input: {
   authenticatedBiomesUserId: string;
   linkedBiomesUserId?: string | null;
@@ -1279,13 +1547,13 @@ export function harthmereBiomesAuthSessionMatchesIdentity(input: {
   // deliberately fall back to the full native-ECS player bootstrap below.
   return Boolean(
     (input.identity.valid || input.identity.guest) &&
-      input.identity.installId &&
-      input.identity.gameUserId &&
-      input.linkedBiomesUserId &&
-      input.linkedGameUserId &&
-      String(input.authenticatedBiomesUserId) ===
-        String(input.linkedBiomesUserId) &&
-      input.identity.gameUserId === input.linkedGameUserId
+    input.identity.installId &&
+    input.identity.gameUserId &&
+    input.linkedBiomesUserId &&
+    input.linkedGameUserId &&
+    String(input.authenticatedBiomesUserId) ===
+      String(input.linkedBiomesUserId) &&
+    input.identity.gameUserId === input.linkedGameUserId
   );
 }
 
@@ -1816,6 +2084,36 @@ export async function createBiomesAuthForGlitchInstall(
   };
 }
 
+function harthmereRouteErrorStatus(error: unknown, message: string) {
+  if (error instanceof HarthmereCloudSavePayloadError) {
+    return error.status;
+  }
+  if (
+    message === "CLOUD_SAVE_AUTH_REQUIRED" ||
+    message === "PLAYER_VOICE_AUTH_REQUIRED" ||
+    message === "PLAYER_INVITE_AUTH_REQUIRED"
+  ) {
+    return 401;
+  }
+  if (error instanceof HarthmerePlayerInviteError) {
+    return error.status;
+  }
+  if (
+    message === "TITLE_ID_MISMATCH" ||
+    message === "CLOUD_SAVE_INSTALL_ACTOR_MISMATCH"
+  ) {
+    return 403;
+  }
+  if (
+    message === "MISSING_INSTALL_ID" ||
+    message === "MISSING_VOICE_TOKEN" ||
+    message === "INVALID_VOICE_PACKET"
+  ) {
+    return 422;
+  }
+  return 500;
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -2000,6 +2298,229 @@ export default async function handler(
       return res.status(200).json({ ok: true });
     }
 
+    if (op === "inviteCreate") {
+      const { playerId } = await authenticatedBiomesPlayerIdentity(
+        req,
+        "PLAYER_INVITE_AUTH_REQUIRED"
+      );
+      const deps = playerInviteRouteDependencies(req);
+      const created = await createHarthmerePlayerInvite({
+        titleId,
+        inviterPlayerId: playerId,
+        store: deps.store,
+        readPlayer: deps.readPlayer,
+        randomBytes: (length) => crypto.randomBytes(length),
+        rotate: body.rotate === true,
+        destinationAllowed: deps.destinationAllowed,
+      });
+      return res.status(200).json({
+        ok: true,
+        code: created.record.code,
+        formatted_code: formatHarthmerePlayerInviteCode(created.record.code),
+        play_url: created.playUrl,
+        inviter_name: created.record.inviterName,
+        expires_at: new Date(created.record.expiresAtMs).toISOString(),
+      });
+    }
+
+    if (op === "inviteJoin") {
+      const { playerId } = await authenticatedBiomesPlayerIdentity(
+        req,
+        "PLAYER_INVITE_AUTH_REQUIRED"
+      );
+      const deps = playerInviteRouteDependencies(req);
+      const joined = await joinHarthmerePlayerInvite({
+        titleId,
+        inviteePlayerId: playerId,
+        code: normalizeHarthmerePlayerInviteCode(body.invite_code),
+        store: deps.store,
+        readPlayer: deps.readPlayer,
+        publishWarp: deps.publishWarp,
+        destinationAllowed: deps.destinationAllowed,
+      });
+      return res.status(200).json({
+        ok: true,
+        inviter_name: joined.record.inviterName,
+        position: joined.position,
+        already_joined: joined.alreadyJoined,
+      });
+    }
+
+    if (op === "voiceJoin") {
+      const { playerId, displayName } =
+        await authenticatedPlayerVoiceIdentity(req);
+      const query = new URLSearchParams({
+        provider: "glitch_relay",
+        topology: "proximity",
+        state: "active",
+        limit: "100",
+      });
+      const listResponse = await callGlitchApi(
+        `/titles/${encodeURIComponent(titleId)}/multiplayer/voice/rooms`,
+        { label: "listVoiceRooms", query }
+      );
+      if (listResponse.disabled) {
+        return res.status(200).json({
+          ok: false,
+          available: false,
+          reason: listResponse.reason,
+        });
+      }
+      if (!listResponse.ok) {
+        return res
+          .status(listResponse.status || 500)
+          .json(listResponse.json ?? listResponse);
+      }
+
+      const candidates = selectHarthmereVoiceRoomCandidates(
+        harthmereVoiceRoomsFromResponse(listResponse.json)
+      );
+      for (const room of candidates) {
+        const joinResponse = await callGlitchApi(
+          `/titles/${encodeURIComponent(
+            titleId
+          )}/multiplayer/voice/rooms/${encodeURIComponent(room.id)}/join`,
+          {
+            label: "joinVoiceRoom",
+            method: "POST",
+            body: {
+              player_id: playerId,
+              display_name: displayName,
+              metadata: { transport: "webrtc" },
+              ttl_minutes: 5,
+            },
+          }
+        );
+        if (joinResponse.status === 409) {
+          continue;
+        }
+        if (!joinResponse.ok) {
+          return res
+            .status(joinResponse.status || 500)
+            .json(joinResponse.json ?? joinResponse);
+        }
+        const joined = normalizeHarthmereVoiceTokenResponse(joinResponse.json);
+        if (!joined) {
+          return res
+            .status(502)
+            .json({ ok: false, error: "INVALID_VOICE_JOIN_RESPONSE" });
+        }
+        return res.status(200).json({ ok: true, ...joined });
+      }
+
+      const createResponse = await callGlitchApi(
+        `/titles/${encodeURIComponent(titleId)}/multiplayer/voice/rooms`,
+        {
+          label: "createVoiceRoom",
+          method: "POST",
+          body: makeHarthmereVoiceRoomCreateBody({
+            playerId,
+            displayName,
+            iceServers: parseHarthmereVoiceIceServers(
+              envString("GLITCH_VOICE_ICE_SERVERS_JSON")
+            ),
+          }),
+        }
+      );
+      if (!createResponse.ok) {
+        return res
+          .status(createResponse.status || 500)
+          .json(createResponse.json ?? createResponse);
+      }
+      const created = normalizeHarthmereVoiceTokenResponse(createResponse.json);
+      if (!created) {
+        return res
+          .status(502)
+          .json({ ok: false, error: "INVALID_VOICE_CREATE_RESPONSE" });
+      }
+      return res.status(200).json({ ok: true, ...created });
+    }
+
+    if (op === "voiceHeartbeat") {
+      await authenticatedPlayerVoiceIdentity(req);
+      const response = await callGlitchApi("/multiplayer/voice/heartbeat", {
+        label: "heartbeatVoice",
+        method: "POST",
+        authorization: "none",
+        body: {
+          voice_token: voiceTokenFromBody(body),
+          muted: body.muted === true,
+          deafened: body.deafened === true,
+          speaking: body.speaking === true,
+          last_sequence: Number.isInteger(body.last_sequence)
+            ? Math.max(0, body.last_sequence)
+            : 0,
+          ttl_minutes: 5,
+        },
+      });
+      return res
+        .status(response.ok ? 200 : response.status || 500)
+        .json(response.json ?? response);
+    }
+
+    if (op === "voicePacket") {
+      await authenticatedPlayerVoiceIdentity(req);
+      const packetType = firstString(body.packet_type) ?? "control";
+      const payload = typeof body.payload === "string" ? body.payload : "";
+      const payloadLimit = packetType === "audio" ? 16 * 1024 : 4 * 1024;
+      if (
+        !GLITCH_VOICE_PACKET_TYPES.has(packetType) ||
+        payload.length === 0 ||
+        Buffer.byteLength(payload, "utf8") > payloadLimit
+      ) {
+        throw new Error("INVALID_VOICE_PACKET");
+      }
+      const response = await callGlitchApi("/multiplayer/voice/packets", {
+        label: "sendVoicePacket",
+        method: "POST",
+        authorization: "none",
+        body: {
+          voice_token: voiceTokenFromBody(body),
+          packet_type: packetType,
+          payload,
+          ...(Number.isFinite(Number(body.duration_ms))
+            ? { duration_ms: Math.max(0, Math.floor(Number(body.duration_ms))) }
+            : {}),
+        },
+      });
+      return res
+        .status(response.ok ? 200 : response.status || 500)
+        .json(response.json ?? response);
+    }
+
+    if (op === "voicePoll") {
+      await authenticatedPlayerVoiceIdentity(req);
+      const response = await callGlitchApi("/multiplayer/voice/poll", {
+        label: "pollVoicePackets",
+        method: "POST",
+        authorization: "none",
+        body: {
+          voice_token: voiceTokenFromBody(body),
+          after_sequence: Number.isInteger(body.after_sequence)
+            ? Math.max(0, body.after_sequence)
+            : 0,
+          limit: 100,
+          exclude_self: true,
+        },
+      });
+      return res
+        .status(response.ok ? 200 : response.status || 500)
+        .json(response.json ?? response);
+    }
+
+    if (op === "voiceLeave") {
+      await authenticatedPlayerVoiceIdentity(req);
+      const response = await callGlitchApi("/multiplayer/voice/leave", {
+        label: "leaveVoice",
+        method: "POST",
+        authorization: "none",
+        body: { voice_token: voiceTokenFromBody(body) },
+      });
+      return res
+        .status(response.ok ? 200 : response.status || 500)
+        .json(response.json ?? response);
+    }
+
     if (op === "heartbeatInstall") {
       if (shouldRunGlitchHarthmereOperationAsync(op)) {
         const installId = installIdFromBody(body);
@@ -2085,8 +2606,8 @@ export default async function handler(
           reason: cloudActor.actorAdoption.adopted
             ? cloudActor.actorAdoption.reason
             : rehydration.decision.rehydrate
-            ? "restored"
-            : rehydration.decision.reason,
+              ? "restored"
+              : rehydration.decision.reason,
         },
       });
     }
@@ -2168,7 +2689,13 @@ export default async function handler(
       );
       return res
         .status(response.ok ? response.status || 200 : response.status || 500)
-        .json(response.json ?? response);
+        .json(
+          // The client only needs save identity/version for its next
+          // base_version. Do not download the just-uploaded Base64 payload.
+          response.ok
+            ? compactHarthmereStoreSaveResponse(response.json)
+            : (response.json ?? response)
+        );
     }
 
     if (op === "submitProgression") {
@@ -2334,18 +2861,7 @@ export default async function handler(
   } catch (error: any) {
     const message = error?.message ?? String(error);
     routeError = message;
-    const status =
-      error instanceof HarthmereCloudSavePayloadError
-        ? error.status
-        : message === "TITLE_ID_MISMATCH"
-        ? 403
-        : message === "CLOUD_SAVE_AUTH_REQUIRED"
-        ? 401
-        : message === "CLOUD_SAVE_INSTALL_ACTOR_MISMATCH"
-        ? 403
-        : message === "MISSING_INSTALL_ID"
-        ? 422
-        : 500;
+    const status = harthmereRouteErrorStatus(error, message);
     return res.status(status).json({ ok: false, error: message });
   } finally {
     const ms = routeTimer.elapsed;

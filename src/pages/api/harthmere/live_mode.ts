@@ -39,6 +39,10 @@ import {
 } from "@/shared/harthmere/live_mode_backend";
 import { buildHarthmereEscortCompanionNpcProposedChanges } from "@/server/harthmere/escort_companion_npc_ecs";
 import {
+  applyHarthmereBusinessCustomerSessionNpcChanges,
+  buildHarthmereBusinessCustomerSessionNpcChanges,
+} from "@/server/harthmere/business_customer_session_ecs";
+import {
   buildingSystemBlueprintById,
   buildingSystemBlueprintByItemId,
   buildingSystemBlueprintByStructureType,
@@ -102,6 +106,7 @@ import {
   HARTHMERE_NATIVE_THAEDRYN_ENTITY_ID,
 } from "@/shared/harthmere/bible_quest_live_authority";
 import { HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS } from "@/shared/harthmere/business_customer_simulator";
+import { deserializeNpcCustomState } from "@/shared/npc/serde";
 
 export { materializeHarthmereNativeEcsPlans } from "@/server/harthmere/native_ecs_drop_materialization";
 
@@ -159,6 +164,39 @@ export function harthmereLiveModeBibleE2ENowMsForTest(input: {
     Math.floor(input.nowMs / HARTHMERE_BIBLE_E2E_GAME_DAY_MS) *
     HARTHMERE_BIBLE_E2E_GAME_DAY_MS;
   return currentDayStart + (hour / 24) * HARTHMERE_BIBLE_E2E_GAME_DAY_MS;
+}
+
+export async function readHarthmereBusinessCustomerNativeReadyForTest(input: {
+  worldApi: WorldApi;
+  operation: unknown;
+  customerEntityId: unknown;
+  sessionId: unknown;
+  ticketId: unknown;
+}) {
+  if (input.operation !== "serve_business_customer") return undefined;
+  const entityId = safeParseBiomesId(String(input.customerEntityId ?? ""));
+  if (!entityId) return false;
+  const entity = await input.worldApi.get(entityId);
+  const npcState = entity?.npcState();
+  const position = entity?.position();
+  const state = npcState?.data
+    ? deserializeNpcCustomState(npcState.data).businessCustomer
+    : undefined;
+  if (!state || !position) return false;
+  if (
+    state.sessionId !== String(input.sessionId ?? "") ||
+    state.ticketId !== String(input.ticketId ?? "") ||
+    state.phase !== "serving"
+  ) {
+    return false;
+  }
+  return (
+    Math.hypot(
+      position.v[0] - state.customer[0],
+      position.v[1] - state.customer[1],
+      position.v[2] - state.customer[2]
+    ) <= 1.75
+  );
 }
 
 function harthmereLiveModeMutationNowMs(
@@ -2687,6 +2725,62 @@ export async function materializeHarthmereEscortCompanionsToEcs(input: {
   return { changeCount: changes.length, outcome: applied.outcome };
 }
 
+export async function materializeHarthmereBusinessCustomersToEcs(input: {
+  worldApi: WorldApi;
+  state: HarthmereLiveModeBackendState;
+  nowSeconds: number;
+  actorPosition?: { x: number; y: number; z: number };
+}) {
+  const sessions = Object.values(
+    (input.state.economy.production.businessSystems as any)
+      ?.customerSessions ?? {}
+  );
+  const ids = sessions.flatMap((session: any) =>
+    Array.isArray(session.queue)
+      ? session.queue
+          .map((ticket: any) => safeParseBiomesId(String(ticket.entityId)))
+          .filter((id: BiomesId | undefined): id is BiomesId => id !== undefined)
+      : []
+  );
+  if (!ids.length) return { changeCount: 0, outcome: "success" as const };
+  const entities = await input.worldApi.get(ids);
+  const existing = new Map(
+    entities
+      .filter((entity): entity is NonNullable<typeof entity> => Boolean(entity))
+      .map(
+        (entity) =>
+          [
+            entity.id,
+            {
+              id: entity.id,
+              position: entity.position(),
+              npc_state: entity.npcState(),
+            },
+          ] as const
+      )
+  );
+  const changes = buildHarthmereBusinessCustomerSessionNpcChanges({
+    economy: input.state.economy.production,
+    existingEntities: existing,
+    nowSeconds: input.nowSeconds,
+    actorPosition: input.actorPosition
+      ? [
+          input.actorPosition.x,
+          input.actorPosition.y,
+          input.actorPosition.z,
+        ]
+      : undefined,
+  });
+  if (!changes.length) {
+    return { changeCount: 0, outcome: "success" as const };
+  }
+  const applied = await applyHarthmereBusinessCustomerSessionNpcChanges(
+    input.worldApi,
+    changes
+  );
+  return { changeCount: changes.length, outcome: applied.outcome };
+}
+
 async function pendingBuildingMaterializationPlansForReplay(input: {
   redisPrimary: any;
   response: LiveModeResponse;
@@ -2837,6 +2931,7 @@ async function hydrateAndRepairHarthmereLiveModeIdempotencyReplay(input: {
   );
   let nativeRepairError: unknown;
   let buildingRepairError: unknown;
+  let businessCustomerRepairError: unknown;
   let repaired = false;
 
   if (nativePlans?.length) {
@@ -2941,6 +3036,50 @@ async function hydrateAndRepairHarthmereLiveModeIdempotencyReplay(input: {
     }
   }
 
+  if (
+    hydrated.backendMutation?.touchedModels.includes(
+      "economy_business_customer_session"
+    )
+  ) {
+    repaired = true;
+    try {
+      if (!input.worldApi) throw new Error("no_world_api");
+      const now = Date.now();
+      const { rawState, rawSharedState } =
+        await readHarthmerePlayerAndSharedStateStrings(
+          input.redisPrimary,
+          harthmereLiveModePlayerStateKey(input.response.actorId),
+          harthmereLiveModeSharedWorldStateKey()
+        );
+      const replayState = parseHarthmereLiveModeBackendState(
+        rawState,
+        input.response.actorId,
+        now
+      );
+      mergeHarthmereLiveModeSharedWorldStateIntoBackend(
+        replayState,
+        parseHarthmereLiveModeSharedWorldState(rawSharedState, now),
+        now
+      );
+      const result = await materializeHarthmereBusinessCustomersToEcs({
+        worldApi: input.worldApi,
+        state: replayState,
+        nowSeconds: Math.floor(now / 1000),
+        actorPosition: input.envelope.serverActorPosition,
+      });
+      hydrated.backendMutation.warnings.push(
+        `business_customer_ecs_replay_repaired:changes:${result.changeCount}:outcome:${result.outcome}`
+      );
+    } catch (error) {
+      businessCustomerRepairError = error;
+      hydrated.backendMutation?.warnings.push(
+        `business_customer_ecs_replay_deferred:${String(
+          error instanceof Error ? error.message : error
+        ).slice(0, 240)}`
+      );
+    }
+  }
+
   if (repaired) {
     await input.redisPrimary.set(
       input.idempotencyRedisKey,
@@ -2954,6 +3093,9 @@ async function hydrateAndRepairHarthmereLiveModeIdempotencyReplay(input: {
   }
   if (buildingRepairError) {
     throw buildingRepairError;
+  }
+  if (businessCustomerRepairError) {
+    throw businessCustomerRepairError;
   }
   return hydrated;
 }
@@ -3858,6 +4000,46 @@ export async function persistHarthmereLiveModeResponse(
         }
       }
 
+      if (
+        reduced.summary.touchedModels.includes(
+          "economy_business_customer_session"
+        )
+      ) {
+        stageStartedAt = Date.now();
+        let businessCustomerMaterializationError: unknown;
+        try {
+          if (!deps.worldApi) throw new Error("no_world_api");
+          const result = await materializeHarthmereBusinessCustomersToEcs({
+            worldApi: deps.worldApi,
+            state: reduced.state,
+            nowSeconds: Math.floor(now / 1000),
+            actorPosition: envelope.serverActorPosition,
+          });
+          persistedResponse.backendMutation?.warnings.push(
+            `business_customer_ecs_materialized:changes:${result.changeCount}:outcome:${result.outcome}`
+          );
+        } catch (error) {
+          businessCustomerMaterializationError = error;
+          persistedResponse.backendMutation?.warnings.push(
+            `business_customer_ecs_materialization_deferred:${String(
+              error instanceof Error ? error.message : error
+            ).slice(0, 240)}`
+          );
+        }
+        await txPrimary.set(
+          key,
+          JSON.stringify(
+            slimHarthmereLiveModeIdempotencyResponse(persistedResponse)
+          ),
+          "EX",
+          24 * 60 * 60
+        );
+        mark("business_customer_ecs_materialization_ms", stageStartedAt);
+        if (businessCustomerMaterializationError) {
+          throw businessCustomerMaterializationError;
+        }
+      }
+
       // Materialize server-approved building plans after the state/idempotency
       // commit succeeds. This keeps ECS side effects downstream of durable state.
       if (reduced.summary.buildingMaterializationPlans?.length) {
@@ -4156,8 +4338,15 @@ export default biomesApiHandler(
     // client body becomes an authority envelope, then add back only the
     // validated server timestamp after normal envelope validation succeeds.
     const requestedBibleE2EGameHour = body.payload.e2eBibleGameHour;
+    const requestedBusinessCustomerEvidence = {
+      operation: body.payload.operation,
+      customerEntityId: body.payload.customerEntityId,
+      sessionId: body.payload.sessionId,
+      ticketId: body.payload.ticketId,
+    };
     delete body.payload.e2eBibleGameHour;
     delete body.payload[HARTHMERE_BIBLE_E2E_NOW_MS_KEY];
+    delete body.payload.nativeCustomerReady;
     const envelope =
       wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
         actorId,
@@ -4207,6 +4396,14 @@ export default biomesApiHandler(
     });
     if (bibleE2ENowMs !== undefined) {
       envelope.payload[HARTHMERE_BIBLE_E2E_NOW_MS_KEY] = bibleE2ENowMs;
+    }
+    const nativeCustomerReady =
+      await readHarthmereBusinessCustomerNativeReadyForTest({
+        worldApi,
+        ...requestedBusinessCustomerEvidence,
+      });
+    if (nativeCustomerReady !== undefined) {
+      envelope.payload.nativeCustomerReady = nativeCustomerReady;
     }
 
     const mutationPlan =

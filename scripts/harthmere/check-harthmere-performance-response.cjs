@@ -22,6 +22,14 @@ const rendererController = fs.readFileSync(
   path.join(root, "src/client/game/renderers/renderer_controller.ts"),
   "utf8"
 );
+const staticObjectMatrices = fs.readFileSync(
+  path.join(root, "src/client/game/renderers/static_object_matrices.ts"),
+  "utf8"
+);
+const dynamicSettingsUpdater = fs.readFileSync(
+  path.join(root, "src/client/game/resources/dynamic_settings_updater.ts"),
+  "utf8"
+);
 const reactResources = fs.readFileSync(
   path.join(root, "src/client/resources/react.ts"),
   "utf8"
@@ -126,6 +134,24 @@ ok(
   assets.includes("scenes.three.add(this.root)") &&
     !assets.includes("addToScenes(scenes, this.root)"),
   "the full Harthmere runtime hierarchy bypasses per-frame scene rescans"
+);
+ok(
+  assets.includes("freezeStaticObjectMatrices(clone)") &&
+    staticObjectMatrices.includes("child.matrixAutoUpdate = false") &&
+    staticObjectMatrices.includes("object.updateMatrixWorld(true)") &&
+    assets.includes("this.root.matrixAutoUpdate = false"),
+  "static Harthmere placement matrices are frozen after authored transforms"
+);
+ok(
+  rendererController.includes("for (const sceneType of SCENE_TYPES)") &&
+    rendererController.includes("postprocessesVersion !==") &&
+    rendererController.includes("this.postprocessesVersion = undefined"),
+  "renderer frame setup avoids scene-array churn and unchanged postprocess work"
+);
+ok(
+  dynamicSettingsUpdater.includes("DYNAMIC_PERFORMANCE_CHECK_INTERVAL_MS") &&
+    dynamicSettingsUpdater.includes("nextPerformanceCheckAtMs"),
+  "dynamic graphics percentile evaluation is throttled off the per-frame path"
 );
 ok(
   gatheringNodeRenderer.includes("this.groundRefreshSeconds = 0.25") &&

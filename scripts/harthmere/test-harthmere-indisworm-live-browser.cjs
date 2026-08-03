@@ -26,7 +26,6 @@ const { chromium } = require("playwright");
 
 const {
   Collideable,
-  Emote,
   EntityDescription,
   Health,
   Label,
@@ -42,7 +41,6 @@ const {
 const {
   MoveEvent,
   UpdateNpcHealthEvent,
-  UpdatePlayerHealthEvent,
 } = require("../../src/shared/ecs/gen/events");
 const { EventSerde } = require("../../src/shared/ecs/gen/json_serde");
 const { secondsSinceEpoch } = require("../../src/shared/ecs/config");
@@ -82,6 +80,7 @@ const rawGameUrl =
   `${baseUrl}/at?syncBaseUrl=http%3A%2F%2F127.0.0.1%3A4937&glitch_auto_play=1&harthmere_native_ecs_e2e=1&e2e_run=indisworm-live&lowMemory=1&resourceCapacityScale=0.25&forceDrawDistance=16&forceRenderScale=0.25&forceGraphicsQuality=low`;
 const controlToken = process.env.HARTHMERE_E2E_CONTROL_TOKEN || "";
 const timeoutMs = Number(process.env.HARTHMERE_E2E_TIMEOUT_MS || 120_000);
+const damageOnly = process.env.HARTHMERE_E2E_INDISWORM_DAMAGE_ONLY === "1";
 const runId = `${Date.now()}-${process.pid}`;
 const username =
   process.env.HARTHMERE_E2E_USERNAME || `Indisworm-Live-${Date.now()}`;
@@ -109,6 +108,7 @@ const report = {
   username,
   gameUrl: gameUrl.toString(),
   buildId: process.env.HARTHMERE_E2E_BUILD_ID,
+  mode: damageOnly ? "damage-only" : "full",
   startedAt: new Date().toISOString(),
   status: "running",
   playerId: undefined,
@@ -773,10 +773,12 @@ async function run() {
         /Indisworm/i.test(snapshot.label ?? ""),
       90_000
     );
-    pass("typed Indisworm fixture reached local ECS before rendering", {
-      elapsedMs: localFixture.elapsedMs,
-      local: localFixture.value,
-    });
+    if (!damageOnly) {
+      pass("typed Indisworm fixture reached local ECS before rendering", {
+        elapsedMs: localFixture.elapsedMs,
+        local: localFixture.value,
+      });
+    }
     await waitFor(
       "Indisworm synchronized to browser",
       () => renderSnapshot(page, npcId, playerId),
@@ -791,195 +793,219 @@ async function run() {
       60_000
     );
 
-    const requiredClips = [
-      "Idle",
-      "Walk",
-      "Run",
-      "Attack",
-      "RangedAttack",
-      "HitReact",
-      "Death",
-    ];
-    const loaded = await renderSnapshot(page, npcId, playerId);
-    assert.deepEqual(
-      requiredClips.filter((clip) => !loaded.clipNames.includes(clip)),
-      [],
-      `missing Indisworm clips: ${requiredClips
-        .filter((clip) => !loaded.clipNames.includes(clip))
-        .join(", ")}`
-    );
-    pass("GLB loaded all seven authored Indisworm clips", {
-      clipNames: loaded.clipNames,
-      loadCheck: loaded.loadCheck,
-    });
+    if (!damageOnly) {
+      const requiredClips = [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "RangedAttack",
+        "HitReact",
+        "Death",
+      ];
+      const loaded = await renderSnapshot(page, npcId, playerId);
+      assert.deepEqual(
+        requiredClips.filter((clip) => !loaded.clipNames.includes(clip)),
+        [],
+        `missing Indisworm clips: ${requiredClips
+          .filter((clip) => !loaded.clipNames.includes(clip))
+          .join(", ")}`
+      );
+      pass("GLB loaded all seven authored Indisworm clips", {
+        clipNames: loaded.clipNames,
+        loadCheck: loaded.loadCheck,
+      });
 
-    await configureMotion(page, npcId, "idle");
-    const idle = await waitFor(
-      "Indisworm idle animation",
-      () => renderSnapshot(page, npcId, playerId),
-      (snapshot) =>
-        snapshot.executionCheck?.selectedState === "idle" &&
-        Number(snapshot.weights.idle ?? 0) > 0.45,
-      15_000
-    );
-    pass("idle movement selects Idle", {
-      elapsedMs: idle.elapsedMs,
-      state: idle.value.executionCheck,
-      weights: idle.value.weights,
-    });
-    await screenshot(page, "01-idle", idle.value);
+      await configureMotion(page, npcId, "idle");
+      const idle = await waitFor(
+        "Indisworm idle animation",
+        () => renderSnapshot(page, npcId, playerId),
+        (snapshot) =>
+          snapshot.executionCheck?.selectedState === "idle" &&
+          Number(snapshot.weights.idle ?? 0) > 0.45,
+        15_000
+      );
+      pass("idle movement selects Idle", {
+        elapsedMs: idle.elapsedMs,
+        state: idle.value.executionCheck,
+        weights: idle.value.weights,
+      });
+      await screenshot(page, "01-idle", idle.value);
 
-    await configureMotion(page, npcId, "native");
-    await applyChanges(world, [
-      {
-        kind: "update",
-        entity: {
-          id: npcId,
-          rigid_body: RigidBody.create({ velocity: [0.85, 0, 0] }),
+      await configureMotion(page, npcId, "native");
+      const walkVelocity = [0.85, 0, 0];
+      let nextWalkVelocityRefreshAt = 0;
+      const walk = await waitFor(
+        "Indisworm walk animation",
+        async () => {
+          // Live Anima owns rigid_body and can legitimately replace a one-frame
+          // fixture velocity with its next attack decision before the authored
+          // Walk clip has blended in. Keep the same authoritative low-speed input
+          // present only for this bounded animation probe; later checks return
+          // ownership to Anima and prove real chase, projectile, and melee state.
+          if (Date.now() >= nextWalkVelocityRefreshAt) {
+            await applyChanges(world, [
+              {
+                kind: "update",
+                entity: {
+                  id: npcId,
+                  rigid_body: RigidBody.create({ velocity: walkVelocity }),
+                },
+              },
+            ]);
+            nextWalkVelocityRefreshAt = Date.now() + 100;
+          }
+          return renderSnapshot(page, npcId, playerId);
         },
-      },
-    ]);
-    const walk = await waitFor(
-      "Indisworm walk animation",
-      () => renderSnapshot(page, npcId, playerId),
-      (snapshot) =>
-        snapshot.executionCheck?.selectedState === "walk" &&
-        Number(snapshot.audit?.horizontalSpeed ?? 0) >= 0.8 &&
-        Object.values(snapshot.actions).some(
-          (action) =>
-            action?.enabled === true &&
-            action.clip === "Walk" &&
-            Number(action.weight ?? 0) > 0.25
-        ),
-      15_000
-    );
-    pass("low authoritative movement velocity selects Walk", {
-      elapsedMs: walk.elapsedMs,
-      state: walk.value.executionCheck,
-      audit: walk.value.audit,
-      weights: walk.value.weights,
-    });
-    await screenshot(page, "02-walk", walk.value);
+        (snapshot) =>
+          snapshot.executionCheck?.selectedState === "walk" &&
+          Number(snapshot.audit?.horizontalSpeed ?? 0) >= 0.8 &&
+          Object.values(snapshot.actions).some(
+            (action) =>
+              action?.enabled === true &&
+              action.clip === "Walk" &&
+              Number(action.weight ?? 0) > 0.25
+          ),
+        15_000
+      );
+      pass("low authoritative movement velocity selects Walk", {
+        elapsedMs: walk.elapsedMs,
+        state: walk.value.executionCheck,
+        audit: walk.value.audit,
+        weights: walk.value.weights,
+      });
+      await screenshot(page, "02-walk", walk.value);
 
-    await configureMotion(page, npcId, "native");
-    await applyChanges(world, [
-      {
-        kind: "update",
-        entity: {
+      await configureMotion(page, npcId, "native");
+      await applyChanges(world, [
+        {
+          kind: "update",
+          entity: {
+            id: npcId,
+            rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+          },
+        },
+      ]);
+      // Stay inside the native unarmed reach (3.5 m to the target AABB) while
+      // leaving enough center distance for the player and human-sized creature
+      // colliders not to separate the frontend pose from the ECS fixture.
+      const hitPlayer = [npcStart[0] - 3.25, npcStart[1], npcStart[2]];
+      await setPlayerPose(page, world, playerId, hitPlayer, npcStart, {
+        frontendTolerance: 1.5,
+        stabilityMs: 0,
+      });
+      const beforeHit = await authoritativeEntity(world, npcId);
+      await publish(
+        page,
+        new UpdateNpcHealthEvent({
           id: npcId,
-          rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
-        },
-      },
-    ]);
-    // Stay inside the native unarmed reach (3.5 m to the target AABB) while
-    // leaving enough center distance for the player and human-sized creature
-    // colliders not to separate the frontend pose from the ECS fixture.
-    const hitPlayer = [npcStart[0] - 3.25, npcStart[1], npcStart[2]];
-    await setPlayerPose(page, world, playerId, hitPlayer, npcStart, {
-      frontendTolerance: 1.5,
-      stabilityMs: 0,
-    });
-    const beforeHit = await authoritativeEntity(world, npcId);
-    await publish(
-      page,
-      new UpdateNpcHealthEvent({
-        id: npcId,
-        hp: -999,
-        damageSource: {
-          kind: "attack",
-          attacker: playerId,
-          dir: [1, 0, 0],
-        },
-      })
-    );
-    const hitReact = await waitFor(
-      "Indisworm hit reaction",
-      () => renderSnapshot(page, npcId, playerId),
-      (snapshot) => Number(snapshot.weights.creatureHit ?? 0) > 0.2,
-      5_000
-    );
-    const afterHit = await authoritativeEntity(world, npcId);
-    assert(
-      Number(afterHit.entity?.health?.hp) <
-        Number(beforeHit.entity?.health?.hp),
-      "player hit did not reduce authoritative Indisworm health"
-    );
-    pass("player damage selects HitReact and mutates authoritative HP", {
-      hpBefore: beforeHit.entity.health.hp,
-      hpAfter: afterHit.entity.health.hp,
-      elapsedMs: hitReact.elapsedMs,
-      weights: hitReact.value.weights,
-    });
-    await screenshot(page, "03-hit-react", hitReact.value);
+          hp: -999,
+          damageSource: {
+            kind: "attack",
+            attacker: playerId,
+            dir: [1, 0, 0],
+          },
+        })
+      );
+      const hitReact = await waitFor(
+        "Indisworm hit reaction",
+        () => renderSnapshot(page, npcId, playerId),
+        (snapshot) => Number(snapshot.weights.creatureHit ?? 0) > 0.2,
+        5_000
+      );
+      const afterHit = await authoritativeEntity(world, npcId);
+      assert(
+        Number(afterHit.entity?.health?.hp) <
+          Number(beforeHit.entity?.health?.hp),
+        "player hit did not reduce authoritative Indisworm health"
+      );
+      pass("player damage selects HitReact and mutates authoritative HP", {
+        hpBefore: beforeHit.entity.health.hp,
+        hpAfter: afterHit.entity.health.hp,
+        elapsedMs: hitReact.elapsedMs,
+        weights: hitReact.value.weights,
+      });
+      await screenshot(page, "03-hit-react", hitReact.value);
 
-    const chasePlayer = [970.126, 13, -673.99];
-    await setPlayerPose(page, world, playerId, chasePlayer, npcStart);
-    const chaseStart = await authoritativeEntity(world, npcId);
-    const runVelocity = [-combatProfile.runSpeed, 0, 0];
-    await applyChanges(world, [
-      {
-        kind: "update",
-        entity: {
-          id: npcId,
-          orientation: Orientation.create({ v: [0, Math.PI / 2] }),
-          rigid_body: RigidBody.create({ velocity: runVelocity }),
+      const chasePlayer = [970.126, 13, -673.99];
+      await setPlayerPose(page, world, playerId, chasePlayer, npcStart);
+      const chaseStart = await authoritativeEntity(world, npcId);
+      const runVelocity = [-combatProfile.runSpeed, 0, 0];
+      let nextRunVelocityRefreshAt = 0;
+      const run = await waitFor(
+        "Indisworm authoritative run animation",
+        async () => {
+          if (Date.now() >= nextRunVelocityRefreshAt) {
+            await applyChanges(world, [
+              {
+                kind: "update",
+                entity: {
+                  id: npcId,
+                  orientation: Orientation.create({ v: [0, Math.PI / 2] }),
+                  rigid_body: RigidBody.create({ velocity: runVelocity }),
+                },
+              },
+            ]);
+            nextRunVelocityRefreshAt = Date.now() + 100;
+          }
+          return renderSnapshot(page, npcId, playerId);
         },
-      },
-    ]);
-    const run = await waitFor(
-      "Indisworm authoritative run animation",
-      () => renderSnapshot(page, npcId, playerId),
-      (snapshot) =>
-        snapshot.executionCheck?.selectedState === "run" &&
-        Object.values(snapshot.actions).some(
-          (action) =>
-            action?.enabled === true &&
-            action.clip === "Run" &&
-            Number(action.weight ?? 0) > 0.25
-        ),
-      20_000
-    );
-    const runEnd = [
-      chaseStart.entity.position.v[0] - 1,
-      chaseStart.entity.position.v[1],
-      chaseStart.entity.position.v[2],
-    ];
-    await applyChanges(world, [
-      {
-        kind: "update",
-        entity: {
-          id: npcId,
-          position: Position.create({ v: runEnd }),
-          rigid_body: RigidBody.create({ velocity: runVelocity }),
+        (snapshot) =>
+          snapshot.executionCheck?.selectedState === "run" &&
+          Object.values(snapshot.actions).some(
+            (action) =>
+              action?.enabled === true &&
+              action.clip === "Run" &&
+              Number(action.weight ?? 0) > 0.25
+          ),
+        20_000
+      );
+      const runEnd = [
+        chaseStart.entity.position.v[0] - 1,
+        chaseStart.entity.position.v[1],
+        chaseStart.entity.position.v[2],
+      ];
+      await applyChanges(world, [
+        {
+          kind: "update",
+          entity: {
+            id: npcId,
+            position: Position.create({ v: runEnd }),
+            rigid_body: RigidBody.create({ velocity: runVelocity }),
+          },
         },
-      },
-    ]);
-    const chaseMoved = await waitFor(
-      "authoritative Indisworm run movement",
-      () => authoritativeEntity(world, npcId),
-      ({ entity }) =>
-        Boolean(entity?.position?.v) &&
-        distance3(entity.position.v, chaseStart.entity.position.v) >= 0.65,
-      20_000
-    );
-    pass("authoritative cavern movement selects Run and moves native ECS", {
-      animationElapsedMs: run.elapsedMs,
-      movementElapsedMs: chaseMoved.elapsedMs,
-      start: chaseStart.entity.position.v,
-      end: chaseMoved.value.entity.position.v,
-      audit: run.value.audit,
-      weights: run.value.weights,
-    });
-    await screenshot(page, "04-run-chase", run.value);
-    await applyChanges(world, [
-      {
-        kind: "update",
-        entity: {
-          id: npcId,
-          rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+      ]);
+      const chaseMoved = await waitFor(
+        "authoritative Indisworm run movement",
+        () => authoritativeEntity(world, npcId),
+        ({ entity }) =>
+          Boolean(entity?.position?.v) &&
+          distance3(entity.position.v, chaseStart.entity.position.v) >= 0.65,
+        20_000
+      );
+      pass("authoritative cavern movement selects Run and moves native ECS", {
+        animationElapsedMs: run.elapsedMs,
+        movementElapsedMs: chaseMoved.elapsedMs,
+        start: chaseStart.entity.position.v,
+        end: chaseMoved.value.entity.position.v,
+        audit: run.value.audit,
+        weights: run.value.weights,
+      });
+      await screenshot(page, "04-run-chase", run.value);
+      await applyChanges(world, [
+        {
+          kind: "update",
+          entity: {
+            id: npcId,
+            rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+          },
         },
-      },
-    ]);
+      ]);
+    } else {
+      // The same build already passed GLB, Idle, Walk, HitReact, and Run. Keep
+      // fixture/render setup, but resume at the failed authority boundary.
+      await configureMotion(page, npcId, "native");
+    }
 
     const rangedNpc = await authoritativeEntity(world, npcId);
     const rangedNpcPosition = [...rangedNpc.entity.position.v];
@@ -996,34 +1022,29 @@ async function run() {
     assert(poisonSpit, "Indisworm Poison Spit profile is missing");
     const rangedHealthBefore = (await authoritativeEntity(world, playerId))
       .entity.health.hp;
-    const rangedCastTime = secondsSinceEpoch();
-    const rangedReleaseTime = rangedCastTime;
-    const rangedImpactTime = rangedReleaseTime + poisonSpit.castTimeSecs;
-    const rangedAimPoint = [
-      rangedPlayer[0],
-      rangedPlayer[1] + 1.05,
-      rangedPlayer[2],
-    ];
     const rangedState = deserializeNpcCustomState(
       rangedNpc.entity.npc_state?.data
     );
     rangedState.chaseAttack = {
       ...(rangedState.chaseAttack ?? {}),
       attackTarget: playerId,
-      rangedAttack: {
-        abilityId: poisonSpit.abilityId,
-        projectileVisualId: poisonSpit.projectileVisualId,
-        targetId: playerId,
-        castTime: rangedCastTime,
-        chargeTimeSecs: 0,
-        releaseTime: rangedReleaseTime,
-        impactTime: rangedImpactTime,
-        cooldownUntil: rangedReleaseTime + poisonSpit.cooldownSecs,
-        originPoint: [...rangedNpcPosition],
-        aimPoint: rangedAimPoint,
-        castYaw: Math.PI / 2,
-      },
     };
+    delete rangedState.chaseAttack.attackTime;
+    delete rangedState.chaseAttack.strikeTime;
+    delete rangedState.chaseAttack.meleeAttack;
+    delete rangedState.chaseAttack.rangedAttack;
+    delete rangedState.chaseAttack.rangedCooldowns;
+    delete rangedState.chaseAttack.rangedGlobalCooldownUntil;
+    const provokedHealth = Health.clone(rangedNpc.entity.health);
+    provokedHealth.hp = Math.max(1, provokedHealth.hp - 1);
+    provokedHealth.lastDamageSource = {
+      kind: "attack",
+      attacker: playerId,
+      dir: [1, 0, 0],
+    };
+    provokedHealth.lastDamageTime = secondsSinceEpoch();
+    provokedHealth.lastDamageAmount = -1;
+    const rangedStartedAt = secondsSinceEpoch();
     await applyChanges(world, [
       {
         kind: "update",
@@ -1034,23 +1055,24 @@ async function run() {
           npc_state: NpcState.create({
             data: serializeNpcCustomState(rangedState),
           }),
-          npc_combat_state: NpcCombatState.create({
-            attack_target: playerId,
-            ranged_attack_ability_id: poisonSpit.abilityId,
-            ranged_attack_projectile_visual_id: poisonSpit.projectileVisualId,
-            ranged_attack_cast_time: rangedCastTime,
-            ranged_attack_aim_point: rangedAimPoint,
-            ranged_attack_charge_time_secs: 0,
-            ranged_attack_release_time: rangedReleaseTime,
-          }),
-          emote: Emote.create({
-            emote_type: "attack1",
-            emote_start_time: rangedCastTime,
-            emote_expiry_time: rangedImpactTime + 0.1,
-          }),
+          npc_combat_state: NpcCombatState.create({ attack_target: playerId }),
+          health: provokedHealth,
         },
       },
     ]);
+    const authoritativeRanged = await waitFor(
+      "live Anima selects Indisworm poison-spit",
+      () => authoritativeEntity(world, npcId),
+      ({ entity }) => {
+        const state = deserializeNpcCustomState(entity?.npc_state?.data);
+        const attack = state.chaseAttack?.rangedAttack;
+        return (
+          attack?.abilityId === poisonSpit.abilityId &&
+          Number(attack.castTime) >= rangedStartedAt
+        );
+      },
+      30_000
+    );
     const ranged = await waitFor(
       "Indisworm poison-spit attack",
       () => renderSnapshot(page, npcId, playerId),
@@ -1082,84 +1104,21 @@ async function run() {
       "projectile runtime reported failed assets"
     );
     pass("Poison Spit selects RangedAttack and real projectile asset", {
+      authoritativeSelectionMs: authoritativeRanged.elapsedMs,
       elapsedMs: ranged.elapsedMs,
       combatState: ranged.value.combatState,
       projectile: poisonProjectile,
       weights: ranged.value.weights,
     });
     await screenshot(page, "05-poison-spit", ranged.value);
-    // Asset hydration can delay the first visible flight beyond the server's
-    // bounded ranged-damage freshness window. Keep that visual proof, then use
-    // a second fresh resolved cast for the authoritative damage receipt.
-    const damageReleaseTime = secondsSinceEpoch() - 0.01;
-    const damageImpactTime = secondsSinceEpoch() - 0.005;
-    const resolvedRangedState = deserializeNpcCustomState(
-      serializeNpcCustomState(rangedState)
-    );
-    resolvedRangedState.chaseAttack.rangedAttack = {
-      ...resolvedRangedState.chaseAttack.rangedAttack,
-      castTime: damageReleaseTime,
-      releaseTime: damageReleaseTime,
-      impactTime: damageImpactTime,
-      cooldownUntil: damageReleaseTime + poisonSpit.cooldownSecs,
-      hitTargetIds: [playerId],
-      result: "hit",
-      resolvedAt: secondsSinceEpoch(),
-    };
-    await applyChanges(world, [
-      {
-        kind: "update",
-        entity: {
-          id: npcId,
-          npc_state: NpcState.create({
-            data: serializeNpcCustomState(resolvedRangedState),
-          }),
-          npc_combat_state: NpcCombatState.create({
-            attack_target: playerId,
-            ranged_attack_ability_id: poisonSpit.abilityId,
-            ranged_attack_projectile_visual_id: poisonSpit.projectileVisualId,
-            ranged_attack_cast_time: damageReleaseTime,
-            ranged_attack_aim_point: rangedAimPoint,
-            ranged_attack_result: "hit",
-            ranged_attack_charge_time_secs: 0,
-            ranged_attack_release_time: damageReleaseTime,
-          }),
-        },
-      },
-    ]);
-    await waitFor(
-      "fresh Poison Spit authority state",
-      () => authoritativeEntity(world, npcId),
-      ({ entity }) => {
-        const state = deserializeNpcCustomState(entity?.npc_state?.data);
-        return (
-          state.chaseAttack?.rangedAttack?.abilityId === poisonSpit.abilityId &&
-          state.chaseAttack.rangedAttack.releaseTime === damageReleaseTime &&
-          state.chaseAttack.rangedAttack.result === "hit"
-        );
-      },
-      5_000
-    );
-    await publish(
-      page,
-      new UpdatePlayerHealthEvent({
-        id: playerId,
-        hpDelta: -999,
-        damageSource: {
-          kind: "attack",
-          attacker: npcId,
-          dir: [-1, 0, 0],
-        },
-        attackAbilityId: poisonSpit.abilityId,
-        attackTime: damageReleaseTime,
-        impactPoint: rangedAimPoint,
-      })
-    );
+    // Let the live Anima state that produced the rendered projectile resolve
+    // through Logic. A second synthetic receipt races the worker and can be
+    // overwritten by the real charge before the damage event is validated.
     const rangedDamage = await waitFor(
       "Indisworm poison-spit authoritative player damage",
       () => authoritativeEntity(world, playerId),
       ({ entity }) => Number(entity?.health?.hp) < rangedHealthBefore,
-      10_000
+      20_000
     );
     pass("Poison Spit damage reaches native player health", {
       hpBefore: rangedHealthBefore,
@@ -1181,39 +1140,36 @@ async function run() {
     });
     const meleeHealthBefore = (await authoritativeEntity(world, playerId))
       .entity.health.hp;
-    const meleeAttackTime = secondsSinceEpoch();
+    const meleeNpcState = deserializeNpcCustomState(
+      meleeNpc.entity.npc_state?.data
+    );
+    meleeNpcState.chaseAttack = {
+      ...(meleeNpcState.chaseAttack ?? {}),
+      attackTarget: playerId,
+    };
+    delete meleeNpcState.chaseAttack.attackTime;
+    delete meleeNpcState.chaseAttack.strikeTime;
+    delete meleeNpcState.chaseAttack.meleeAttack;
+    delete meleeNpcState.chaseAttack.rangedAttack;
+    delete meleeNpcState.chaseAttack.rangedGlobalCooldownUntil;
     await applyChanges(world, [
       {
         kind: "update",
         entity: {
           id: npcId,
           orientation: Orientation.create({ v: [0, Math.PI / 2] }),
+          rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+          npc_state: NpcState.create({
+            data: serializeNpcCustomState(meleeNpcState),
+          }),
           npc_combat_state: NpcCombatState.create({
             attack_target: playerId,
-          }),
-          emote: Emote.create({
-            emote_type: "attack1",
-            emote_start_time: meleeAttackTime,
-            emote_expiry_time:
-              meleeAttackTime + combatProfile.attackIntervalSecs,
           }),
         },
       },
     ]);
-    await publish(
-      page,
-      new UpdatePlayerHealthEvent({
-        id: playerId,
-        hpDelta: -999,
-        damageSource: {
-          kind: "attack",
-          attacker: npcId,
-          dir: [-1, 0, 0],
-        },
-      })
-    );
     const melee = await waitFor(
-      "Indisworm melee attack",
+      "live Anima Indisworm melee attack",
       () => renderSnapshot(page, npcId, playerId),
       (snapshot) =>
         Object.values(snapshot.actions).some(

@@ -48,6 +48,7 @@ import {
   horizontalDistance,
   lineOfSightEyeHeight,
   lineOfSightTargetSamples,
+  targetIsRidingAttackerBody,
   withinAttackReach,
   ATTACK_VERTICAL_REACH_METERS,
   CHASE_LOST_SIGHT_GRACE_SECONDS,
@@ -72,6 +73,7 @@ import {
 } from "@/shared/npc/creature_level";
 import { getNpcRunSpeed } from "@/shared/npc/bikkie";
 import type { Environment } from "@/shared/npc/environment";
+import { npcGroundTraversalProfile } from "@/shared/npc/ground_locomotion";
 import type {
   BehaviorChaseAttackParams,
   BehaviorRangedAttackParams,
@@ -86,7 +88,10 @@ import {
 import { ok } from "assert";
 import { z } from "zod";
 import { ch1NinthWinterPhase } from "@/shared/harthmere/ch1_dungeon_encounters";
-import { harthmereMagicChargeDurationSecs } from "@/shared/harthmere/magic_charge";
+import {
+  HARTHMERE_MAGIC_RELEASE_WINDUP_SECS,
+  harthmereMagicChargeDurationSecs,
+} from "@/shared/harthmere/magic_charge";
 
 // If the chase target drifts more than this far (meters) from the destination
 // of the cached A* path, the path is stale and must be rebuilt instead of
@@ -119,12 +124,31 @@ const LINE_OF_SIGHT_SAMPLE_BOX_METERS = 0.18;
 const DEFAULT_PLAYER_EYE_HEIGHT_METERS = 1.45;
 export const CH1_SOUND_HUNTER_HEARING_DISTANCE = 28;
 export const CH1_SOUND_HUNTER_MIN_SPEED = 1.35;
+// Anima normally revisits nearby combatants every 100ms. Allow a few delayed
+// ticks to resolve a swing, but never carry a pending hit across a long stall,
+// target change, lost line of sight, or a later re-entry into range.
+export const NPC_MELEE_STRIKE_GRACE_SECONDS = 0.45;
 
 // The strike of a swing lands `attackStrikeMomentSecs / attackAnimationMultiplier`
 // seconds in. If that delay is >= the attack interval, every new swing restarts
 // before the strike window opens, so `npc.attack()` is never called and the NPC
 // flails without ever dealing damage. Clamp the delay to sit strictly inside the
 // interval so a hit always lands, regardless of biscuit configuration.
+/**
+ * Shortest tell an ordinary enemy may present before its strike lands.
+ *
+ * Bosses are protected by `HARTHMERE_BOSS_MINIMUM_TELEGRAPH_SECS`; ordinary
+ * enemies previously had a ceiling on the strike delay but no floor, so any
+ * stacked animation multiplier could compress the tell indefinitely. A night
+ * hexer's 1.35x multiplier already takes an ordinary 0.72 s tell down to
+ * 0.53 s, which is close to the practical limit for reading and answering a new
+ * cue, and nothing structurally stopped the next multiplier from going further.
+ *
+ * `HARTHMERE_COMBAT_SYSTEM.md` states the requirement this enforces: "the tell
+ * must be long enough to read".
+ */
+export const HARTHMERE_MINIMUM_ENEMY_TELL_SECS = 0.45;
+
 export function effectiveAttackStrikeDelaySecs(params: {
   attackStrikeMomentSecs: number;
   attackAnimationMultiplier: number;
@@ -138,17 +162,19 @@ export function effectiveAttackStrikeDelaySecs(params: {
     return rawDelay;
   }
   // Keep the strike strictly before the interval boundary (95% of it) so the
-  // damage branch is always reachable.
-  return Math.min(rawDelay, params.attackIntervalSecs * 0.95);
+  // damage branch is always reachable. The readable floor is applied first, but
+  // the interval ceiling still wins for very short intervals so the damage
+  // branch cannot become unreachable.
+  const readableDelay = Math.max(rawDelay, HARTHMERE_MINIMUM_ENEMY_TELL_SECS);
+  return Math.min(readableDelay, params.attackIntervalSecs * 0.95);
 }
 
-export type AttackTimingDecision = "start" | "strike" | "wait";
+export type AttackTimingDecision = "start" | "strike" | "wait" | "expire";
 
 /**
- * Advance one melee swing without assuming Anima revisits the NPC inside the
- * authored attack interval. A loaded shard can legitimately skip from before
- * the strike moment to after the interval; that must land the pending strike,
- * not restart the animation forever.
+ * Advance one bounded melee swing. A short coarse-tick grace keeps ordinary
+ * scheduler jitter from dropping a visible contact, while an old pending swing
+ * expires instead of landing after the target has left and re-entered range.
  */
 export function attackTimingDecision(input: {
   now: number;
@@ -156,6 +182,7 @@ export function attackTimingDecision(input: {
   strikeTime?: number;
   strikeDelaySecs: number;
   attackIntervalSecs: number;
+  maxStrikeLatenessSecs?: number;
 }): AttackTimingDecision {
   if (input.attackTime === undefined) {
     return "start";
@@ -163,13 +190,63 @@ export function attackTimingDecision(input: {
   const elapsed = input.now - input.attackTime;
   const hasStruck =
     input.strikeTime !== undefined && input.strikeTime >= input.attackTime;
-  if (!hasStruck && elapsed >= input.strikeDelaySecs) {
-    return "strike";
+  if (!hasStruck) {
+    if (elapsed < input.strikeDelaySecs) {
+      return "wait";
+    }
+    if (
+      elapsed <=
+      input.strikeDelaySecs +
+        (input.maxStrikeLatenessSecs ?? NPC_MELEE_STRIKE_GRACE_SECONDS)
+    ) {
+      return "strike";
+    }
+    return "expire";
   }
   if (hasStruck && elapsed >= input.attackIntervalSecs) {
     return "start";
   }
   return "wait";
+}
+
+type MutableMeleeAttackState = {
+  attackTime?: number;
+  strikeTime?: number;
+  meleeAttack?: {
+    result?: "hit" | "miss" | "cancelled";
+    resolvedAt?: number;
+  };
+};
+
+export function hasPendingMeleeAttack(
+  state: Readonly<MutableMeleeAttackState> | undefined
+): boolean {
+  if (!state) return false;
+  if (state.meleeAttack) {
+    return state.meleeAttack.result === undefined;
+  }
+  return (
+    state.attackTime !== undefined &&
+    (state.strikeTime === undefined || state.strikeTime < state.attackTime)
+  );
+}
+
+/** Cancel only an unresolved swing; completed hit receipts remain available
+ * long enough for the logic server to validate the matching damage event. */
+export function cancelPendingMeleeAttack(
+  state: MutableMeleeAttackState,
+  now = secondsSinceEpoch()
+): boolean {
+  if (!hasPendingMeleeAttack(state)) {
+    return false;
+  }
+  state.attackTime = undefined;
+  state.strikeTime = undefined;
+  if (state.meleeAttack) {
+    state.meleeAttack.result = "cancelled";
+    state.meleeAttack.resolvedAt = now;
+  }
+  return true;
 }
 
 // True when the cached path's destination no longer matches where the target is
@@ -571,7 +648,10 @@ export function enhancedNightMuckerHexCombatParams(
     ),
     attackDistance: base.attackDistance + 0.75,
     attackAnimationMultiplier: base.attackAnimationMultiplier * 1.35,
-    attackStrikeMomentSecs: base.attackStrikeMomentSecs * 0.7,
+    // Speeding the clip already moves its authored contact frame earlier.
+    // Multiplying the strike moment as well double-accelerated damage so it
+    // landed before the visible limb reached the player.
+    attackStrikeMomentSecs: base.attackStrikeMomentSecs,
     attackIntervalSecs: Math.max(
       0.55,
       base.attackIntervalSecs * NIGHT_MUCKER_HEX_ATTACK_INTERVAL_MULTIPLIER
@@ -700,6 +780,28 @@ export const zChaseAttackComponent = z.object({
       // When did the player's attack last strike? (If this is *before* the attack
       // time, then the strike hasn't occurred yet),
       strikeTime: z.number().optional(),
+      // A server-owned receipt for exactly one melee swing. The public Attack
+      // emote uses the same attackTime, and the eventual damage event repeats
+      // that timestamp and impactPoint so presentation and authority cannot
+      // drift into separate attack cycles.
+      meleeAttack: z
+        .object({
+          targetId: zBiomesId,
+          attackTime: z.number(),
+          impactTime: z.number(),
+          expiresAt: z.number(),
+          originPoint: zVec3f,
+          impactPoint: zVec3f.optional(),
+          castYaw: z.number(),
+          attackDistance: z.number().nonnegative(),
+          attackFovDeg: z.number().nonnegative(),
+          verticalReach: z.number().nonnegative(),
+          attackDamage: z.number().nonnegative(),
+          lineOfSightAtImpact: z.boolean().optional(),
+          result: z.enum(["hit", "miss", "cancelled"]).optional(),
+          resolvedAt: z.number().optional(),
+        })
+        .optional(),
       rangedAttack: z
         .object({
           abilityId: z.string(),
@@ -746,13 +848,7 @@ export const zChaseAttackComponent = z.object({
 export type ChaseAttackComponent = z.infer<typeof zChaseAttackComponent>;
 
 export type RangedAttackTickPhase =
-  | "none"
-  | "cooldown"
-  | "fired"
-  | "charging"
-  | "in_flight"
-  | "hit"
-  | "miss";
+  "none" | "cooldown" | "fired" | "charging" | "in_flight" | "hit" | "miss";
 
 export interface RangedAttackTickResult {
   handled: boolean;
@@ -779,8 +875,8 @@ export function rangedAttackAimHitsTarget(input: {
   const targetAabb = getAabbForEntity(input.target);
   return Boolean(
     targetAabb &&
-      distSqToAABB(input.aimPoint, targetAabb) <=
-        input.hitRadius * input.hitRadius
+    distSqToAABB(input.aimPoint, targetAabb) <=
+      input.hitRadius * input.hitRadius
   );
 }
 
@@ -990,6 +1086,9 @@ export function rangedAttackTargetTick(
   if (!aimPoint) return { handled: false, phase: "none" };
 
   const castTime = now;
+  // Presentation only: sizes the charge graphic. It no longer delays release,
+  // which previously pushed cast-to-impact to 3.1-11.35 s and made every ranged
+  // boss ability slower than the fight around it. See magic_charge.ts.
   const chargeTimeSecs = harthmereMagicChargeDurationSecs({
     damageType: selected.damageType,
     projectileVisualId: selected.projectileVisualId,
@@ -997,13 +1096,18 @@ export function rangedAttackTargetTick(
     cooldownSecs: selected.cooldownSecs,
     attackShape: selected.attackShape,
   });
-  const releaseTime = castTime + chargeTimeSecs;
+  // Windup publishes intent, then the authored shape telegraph owns the
+  // readable window between release and impact. `selected.castTimeSecs` is
+  // already floored per shape by HARTHMERE_BOSS_MINIMUM_TELEGRAPH_SECS, so the
+  // player keeps at least 1.10-1.35 s of travel to react to after the tell.
+  const releaseTime = castTime + HARTHMERE_MAGIC_RELEASE_WINDUP_SECS;
   const impactTime = releaseTime + selected.castTimeSecs;
   const mutableChaseState = npc.mutableState().chaseAttack!;
   // A ranged cast is a separate attack cycle. Clear any completed/pending
   // melee timing so returning to close range cannot land a stale swing.
   mutableChaseState.attackTime = undefined;
   mutableChaseState.strikeTime = undefined;
+  cancelPendingMeleeAttack(mutableChaseState, now);
   mutableChaseState.rangedSelectionCursor =
     (selectedIndex + 1) % Math.max(1, params.length);
   const originPoint = [...npc.position] as Vec3;
@@ -1050,6 +1154,9 @@ export function chaseAttackTargetTick(
   const out = { forwardSpeed: 0 };
 
   if (!npc.state.chaseAttack?.attackTarget) {
+    if (hasPendingMeleeAttack(npc.state.chaseAttack)) {
+      cancelPendingMeleeAttack(npc.mutableState().chaseAttack!);
+    }
     return out;
   }
 
@@ -1069,6 +1176,9 @@ export function chaseAttackTargetTick(
     }
   }
   if (!target?.health || !target.position) {
+    if (hasPendingMeleeAttack(npc.state.chaseAttack)) {
+      cancelPendingMeleeAttack(npc.mutableState().chaseAttack!);
+    }
     if (npc.state.chaseAttack.attackTarget !== undefined) {
       npc.mutableState().chaseAttack!.attackTarget = undefined;
     }
@@ -1087,7 +1197,7 @@ export function chaseAttackTargetTick(
   const targetVisible = npc.state.chaseAttack.targetVisible !== false;
   const pursuitPosition = targetVisible
     ? target.position.v
-    : npc.state.chaseAttack.lastKnownTargetPosition ?? target.position.v;
+    : (npc.state.chaseAttack.lastKnownTargetPosition ?? target.position.v);
   const pathNode = nextChasePathTarget(env, npc, pursuitPosition);
   const chaseTarget = pathNode ?? pursuitPosition;
   const vecToChaseTarget = sub(chaseTarget, npc.position);
@@ -1129,6 +1239,9 @@ export function chaseAttackTargetTick(
   }
 
   if (approach !== "attack" || !targetVisible) {
+    if (hasPendingMeleeAttack(npc.state.chaseAttack)) {
+      cancelPendingMeleeAttack(npc.mutableState().chaseAttack!);
+    }
     // Reaching the last known position while the player is still occluded is a
     // hold-and-search state, not permission to swing through the wall.
     if (!targetVisible && approach === "attack") {
@@ -1156,13 +1269,24 @@ export function chaseAttackTargetTick(
     !canAttackTarget({
       horizontalDistance: horizontalToPlayer,
       verticalGap,
-      targetOrientationDiff: diffAngle(angleToPlayer, npc.orientation[1]),
+      targetOrientationDiff: diffAngle(
+        angleToPlayer,
+        npc.state.chaseAttack.meleeAttack?.result === undefined
+          ? (npc.state.chaseAttack.meleeAttack?.castYaw ?? npc.orientation[1])
+          : npc.orientation[1]
+      ),
       attackRadius: params.attackDistance,
       attackFovDeg: params.attackFovDeg,
+      attackerPosition: npc.position,
+      attackerSize: npc.size,
+      targetPosition: target.position.v,
     })
   ) {
-    // Wait until we're able to hit the target before proceeding to the attack
-    // logic.
+    // A wind-up is permission to hit only while the target remains in the
+    // authored strike volume. Re-entering range starts a new visible swing.
+    if (hasPendingMeleeAttack(npc.state.chaseAttack)) {
+      cancelPendingMeleeAttack(npc.mutableState().chaseAttack!);
+    }
     return out;
   }
 
@@ -1174,41 +1298,82 @@ export function chaseAttackTargetTick(
     strikeTime: npc.state.chaseAttack.strikeTime,
     strikeDelaySecs,
     attackIntervalSecs: params.attackIntervalSecs,
+    maxStrikeLatenessSecs: NPC_MELEE_STRIKE_GRACE_SECONDS,
   });
   if (timing === "start") {
     // We haven't started an attack, but we can attack, so attack.
     const attackTime = now;
-    npc.mutableState().chaseAttack!.attackTime = attackTime;
-    // HARTHMERE_NPC_ATTACK_ANIM_PULSE_INSTALL_MARKER
-    // Re-pulse the emote window so the renderer's Attack clip
-    // (fileAnimationName: "Attack") triggers visibly each strike.
-    const __animPulseEmote = {
-      emote_type: "attack" as const,
-      emote_start_time: attackTime,
-      emote_expiry_time:
-        attackTime +
-        (params.attackStrikeMomentSecs ?? 0.5) *
-          (params.attackAnimationMultiplier ?? 1) +
-        0.4,
+    const mutable = npc.mutableState().chaseAttack!;
+    mutable.attackTime = attackTime;
+    mutable.strikeTime = undefined;
+    mutable.meleeAttack = {
+      targetId: target.id,
+      attackTime,
+      impactTime: attackTime + strikeDelaySecs,
+      expiresAt: attackTime + strikeDelaySecs + NPC_MELEE_STRIKE_GRACE_SECONDS,
+      originPoint: [...npc.position] as Vec3,
+      castYaw: npc.orientation[1],
+      attackDistance: params.attackDistance,
+      attackFovDeg: params.attackFovDeg,
+      verticalReach: ATTACK_VERTICAL_REACH_METERS,
+      attackDamage: params.attackDamage,
     };
-    // SimulatedNpc.setEmote() below is the supported path; mutableEmote()
-    // was an older internal hook that no longer exists on SimulatedNpc.
-    // Leaving the computed pulse object inert here keeps the attack-pulse
-    // metadata available for future telemetry without touching a missing API.
-    void __animPulseEmote;
 
     npc.setEmote(
       Emote.create({
         emote_type: "attack1",
         emote_start_time: attackTime,
-        emote_expiry_time: attackTime + strikeDelaySecs,
+        // Keep the clip alive through contact and a short authored follow-
+        // through. Damage still resolves only at impactTime above.
+        emote_expiry_time: attackTime + strikeDelaySecs + 0.45,
       })
     );
   } else if (timing === "strike") {
-    npc.mutableState().chaseAttack!.strikeTime = now;
-    // We crossed the strike moment, possibly in one coarse Anima step. Emit the
-    // damage before allowing a later tick to start the next swing.
-    npc.attack(target.id, params.attackDamage);
+    const stillVisible = hasLineOfSightToPlayer(env, npc, target);
+    const committedCastYaw =
+      npc.state.chaseAttack.meleeAttack?.castYaw ?? npc.orientation[1];
+    const stillInStrikeVolume = canAttackTarget({
+      horizontalDistance: horizontalToPlayer,
+      verticalGap,
+      targetOrientationDiff: diffAngle(angleToPlayer, committedCastYaw),
+      attackRadius: params.attackDistance,
+      attackFovDeg: params.attackFovDeg,
+      attackerPosition: npc.position,
+      attackerSize: npc.size,
+      targetPosition: target.position.v,
+    });
+    if (!stillVisible || !stillInStrikeVolume) {
+      cancelPendingMeleeAttack(npc.mutableState().chaseAttack!, now);
+      return out;
+    }
+    const targetHeight = Number.isFinite(target.size?.v[1])
+      ? target.size!.v[1]
+      : 1.8;
+    const impactPoint: Vec3 = [
+      target.position.v[0],
+      target.position.v[1] + targetHeight * 0.5,
+      target.position.v[2],
+    ];
+    const mutable = npc.mutableState().chaseAttack!;
+    mutable.strikeTime = now;
+    if (mutable.meleeAttack) {
+      mutable.meleeAttack.originPoint = [...npc.position] as Vec3;
+      mutable.meleeAttack.impactPoint = impactPoint;
+      mutable.meleeAttack.lineOfSightAtImpact = true;
+      mutable.meleeAttack.result = "hit";
+      mutable.meleeAttack.resolvedAt = now;
+    }
+    npc.attack(target.id, params.attackDamage, {
+      attackTime: mutable.meleeAttack?.attackTime ?? mutable.attackTime ?? now,
+      impactPoint,
+    });
+  } else if (timing === "expire") {
+    const mutable = npc.mutableState().chaseAttack!;
+    mutable.strikeTime = now;
+    if (mutable.meleeAttack) {
+      mutable.meleeAttack.result = "miss";
+      mutable.meleeAttack.resolvedAt = now;
+    }
   }
 
   return out;
@@ -1240,7 +1405,9 @@ function nextChasePathTarget(
   const rebuildPath = () => {
     state.pathfinding = undefined;
     state.lastPathSearchAtSeconds = now;
-    const graph = new GraphImpl();
+    const graph = new GraphImpl(
+      npcGroundTraversalProfile(npc.size).maxStepHeight
+    );
     const srcNode = graph.closestNode(npc.position, env.resources);
     const destNode = graph.closestNode(targetPosition, env.resources);
     if (!srcNode || !destNode) {
@@ -1298,7 +1465,9 @@ function nextChasePathTarget(
       break;
     case "repair":
       if (state.pathfinding) {
-        const graph = new GraphImpl();
+        const graph = new GraphImpl(
+          npcGroundTraversalProfile(npc.size).maxStepHeight
+        );
         const repairedDestination = graph.closestNode(
           decision.destination,
           env.resources
@@ -1355,7 +1524,22 @@ export function canAttackTarget(input: {
   attackRadius: number;
   attackFovDeg: number;
   verticalReach?: number;
+  attackerPosition?: ReadonlyVec3;
+  attackerSize?: ReadonlyVec3;
+  targetPosition?: ReadonlyVec3;
 }): boolean {
+  if (
+    input.attackerPosition &&
+    input.attackerSize &&
+    input.targetPosition &&
+    targetIsRidingAttackerBody({
+      attackerPosition: input.attackerPosition,
+      attackerSize: input.attackerSize,
+      targetPosition: input.targetPosition,
+    })
+  ) {
+    return false;
+  }
   return (
     withinAttackReach({
       horizontalDistance: input.horizontalDistance,
@@ -1741,8 +1925,7 @@ function nearbyGroupAlertAttackerId(
       position: candidate.position.v,
       membership: candidateMembership,
       lastDamageSource: candidate.health.lastDamageSource as
-        | { kind: string; attacker: BiomesId }
-        | undefined,
+        { kind: string; attacker: BiomesId } | undefined,
       lastDamageTimeSeconds: candidate.health.lastDamageTime,
       lastDamageAmount: candidate.health.lastDamageAmount,
       alive: candidate.health.hp > 0,
@@ -1941,7 +2124,9 @@ export function updateAttackTarget(
     // No active attacker and we're inside a safe zone — never hold a proactive
     // target. Retaliation is the deliberate exception, handled above.
     if (npc.state.chaseAttack.attackTarget) {
-      npc.mutableState().chaseAttack!.attackTarget = undefined;
+      const chaseState = npc.mutableState().chaseAttack!;
+      cancelPendingMeleeAttack(chaseState, now);
+      chaseState.attackTarget = undefined;
     }
     npc.setPublicCombatTarget(undefined);
     return;
@@ -2091,8 +2276,7 @@ export function updateAttackTarget(
   // retaliation. Clearing a proactive target here makes that explicit rather than
   // relying on the assist-faction filter alone.
   const preyMembership = npc.state.creatureGroup as
-    | CreatureGroupMembership
-    | undefined;
+    CreatureGroupMembership | undefined;
   if (
     targetId &&
     targetId !== recentAttackerId &&
@@ -2106,7 +2290,9 @@ export function updateAttackTarget(
   }
 
   if (targetId !== npc.state.chaseAttack.attackTarget) {
-    npc.mutableState().chaseAttack!.attackTarget = targetId;
+    const chaseState = npc.mutableState().chaseAttack!;
+    cancelPendingMeleeAttack(chaseState, now);
+    chaseState.attackTarget = targetId;
   }
   if (!targetId) {
     const chaseState = npc.mutableState().chaseAttack!;

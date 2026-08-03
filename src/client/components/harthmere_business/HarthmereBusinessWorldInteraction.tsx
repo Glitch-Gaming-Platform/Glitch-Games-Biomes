@@ -12,6 +12,10 @@ import {
   createHarthmereBusinessOutpostProceduralBuilding,
   harthmereBusinessOutpostBusinessId,
 } from "@/shared/harthmere/business_customer_simulator";
+import {
+  harthmereBusinessInteriorForOutpost,
+  harthmereBusinessInteriorInteractionPoints,
+} from "@/shared/harthmere/business_interior_runtime";
 import { HarthmereBusinessLiveContainer } from "./HarthmereBusinessLiveContainer";
 import type {
   HarthmereBusinessWorldContext,
@@ -21,7 +25,7 @@ import type {
 export const HARTHMERE_BUSINESS_WORLD_INTERACTION_VERSION =
   "harthmere-business-world-interaction" as const;
 
-const BUSINESS_BOARD_RADIUS = 9;
+const BUSINESS_BOARD_RADIUS = 4.25;
 
 interface HarthmereBusinessWorldCameraPoint {
   x: number;
@@ -41,11 +45,17 @@ export interface HarthmereBusinessWorldBoard {
 const HARTHMERE_BUSINESS_WORLD_BOARDS: HarthmereBusinessWorldBoard[] =
   HARTHMERE_BUSINESS_OUTPOSTS.map((outpost) => {
     const building = createHarthmereBusinessOutpostProceduralBuilding(outpost);
+    const interior = harthmereBusinessInteriorForOutpost(outpost.outpostId);
+    const staff = interior
+      ? harthmereBusinessInteriorInteractionPoints(interior).staff
+      : undefined;
     return {
       businessId: harthmereBusinessOutpostBusinessId(outpost.outpostId),
       outpostId: outpost.outpostId,
       displayName: outpost.displayName,
-      position: building.dashboardAccessPoint.position,
+      position: staff
+        ? { x: staff[0], y: staff[1], z: staff[2] }
+        : building.dashboardAccessPoint.position,
       markerId: building.dashboardAccessPoint.markerId,
       radius: BUSINESS_BOARD_RADIUS,
     };

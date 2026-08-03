@@ -100,8 +100,14 @@ export const Chapter1FractureGatePrompt: React.FunctionComponent = () => {
   const inFlight = useRef<Promise<void>>(undefined);
   const busyRef = useRef(false);
   const evictingRef = useRef(false);
+  const lastStateSignature = useRef<string>(undefined);
 
   const applyState = useCallback((next: Chapter1GateState) => {
+    const signature = JSON.stringify(next);
+    if (signature === lastStateSignature.current) {
+      return;
+    }
+    lastStateSignature.current = signature;
     setState(next);
     setCh1ActiveGateIds(next.activeGateIds);
     setCh1ActiveDungeonRunId(next.activeDungeonRunId);
@@ -341,7 +347,11 @@ export const Chapter1FractureGatePrompt: React.FunctionComponent = () => {
               >
                 <div className="min-w-0">
                   <div className="truncate font-semibold">{member.name}</div>
-                  <div className={member.downed ? "text-rose-200" : "text-white/55"}>
+                  <div
+                    className={
+                      member.downed ? "text-rose-200" : "text-white/55"
+                    }
+                  >
                     {member.downed
                       ? `Downed · ${member.distance.toFixed(0)}m`
                       : `${member.hp.toFixed(0)} / ${member.maxHp.toFixed(0)} HP`}

@@ -14,6 +14,7 @@ import {
 } from "@/shared/ecs/gen/events";
 import {
   DOUBLE_JUMP_STAMINA_COST,
+  EVADE_MOVEMENT_ACTION_STAMINA_COST,
   MOVEMENT_ACTION_STAMINA_COST,
 } from "@/shared/game/movement_actions";
 import {
@@ -62,11 +63,11 @@ describe("native ECS movement actions", () => {
     );
   });
 
-  it("accepts one action, normalizes it, and deducts exactly three stamina", async () => {
+  it("accepts one action, normalizes it, and deducts survival stamina", async () => {
     const playerId = (await addGameUser(logic.world, generateTestId(), {})).id;
     editEntity(logic.world, playerId, (player) => {
       writeHarthmereNativeVitals(player.mutableTriggerState(), {
-        stamina: 10,
+        stamina: 50,
         maxStamina: 100,
       });
     });
@@ -98,7 +99,7 @@ describe("native ECS movement actions", () => {
     assert.ok(state.cooldown_expiry_time > state.action_expiry_time);
     assert.equal(
       readHarthmereNativeVitals(player.trigger_state).stamina,
-      10 - MOVEMENT_ACTION_STAMINA_COST
+      50 - MOVEMENT_ACTION_STAMINA_COST
     );
   });
 
@@ -106,7 +107,7 @@ describe("native ECS movement actions", () => {
     const playerId = (await addGameUser(logic.world, generateTestId(), {})).id;
     editEntity(logic.world, playerId, (player) => {
       writeHarthmereNativeVitals(player.mutableTriggerState(), {
-        stamina: 10,
+        stamina: 50,
       });
     });
 
@@ -126,14 +127,17 @@ describe("native ECS movement actions", () => {
 
     const player = logic.world.table.get(playerId)!;
     assert.equal(player.movement_state?.action_nonce, 1);
-    assert.equal(readHarthmereNativeVitals(player.trigger_state).stamina, 7);
+    assert.equal(
+      readHarthmereNativeVitals(player.trigger_state).stamina,
+      50 - EVADE_MOVEMENT_ACTION_STAMINA_COST
+    );
   });
 
-  it("replicates a double jump and deducts exactly four stamina", async () => {
+  it("replicates a double jump and deducts its survival stamina cost", async () => {
     const playerId = (await addGameUser(logic.world, generateTestId(), {})).id;
     editEntity(logic.world, playerId, (player) => {
       writeHarthmereNativeVitals(player.mutableTriggerState(), {
-        stamina: 10,
+        stamina: 50,
         maxStamina: 100,
       });
     });
@@ -160,7 +164,7 @@ describe("native ECS movement actions", () => {
     );
     assert.equal(
       readHarthmereNativeVitals(player.trigger_state).stamina,
-      10 - DOUBLE_JUMP_STAMINA_COST
+      50 - DOUBLE_JUMP_STAMINA_COST
     );
   });
 
@@ -192,7 +196,7 @@ describe("native ECS movement actions", () => {
     );
   });
 
-  it("rejects an action when fewer than three stamina remain", async () => {
+  it("rejects an action when survival stamina is below its cost", async () => {
     const playerId = (await addGameUser(logic.world, generateTestId(), {})).id;
     editEntity(logic.world, playerId, (player) => {
       writeHarthmereNativeVitals(player.mutableTriggerState(), {
@@ -224,7 +228,9 @@ describe("native ECS movement actions", () => {
     const playerId = (await addGameUser(logic.world, generateTestId(), {})).id;
     editEntity(logic.world, playerId, (player) => {
       player.mutableHealth().hp = 0;
-      writeHarthmereNativeVitals(player.mutableTriggerState(), { stamina: 10 });
+      writeHarthmereNativeVitals(player.mutableTriggerState(), {
+        stamina: 50,
+      });
     });
 
     await logic.publish(
@@ -241,7 +247,7 @@ describe("native ECS movement actions", () => {
 
     const player = logic.world.table.get(playerId)!;
     assert.equal(player.movement_state, undefined);
-    assert.equal(readHarthmereNativeVitals(player.trigger_state).stamina, 10);
+    assert.equal(readHarthmereNativeVitals(player.trigger_state).stamina, 50);
   });
 
   it("takes damage during anticipation, ignores it in the iframe, and accepts it afterward", async () => {

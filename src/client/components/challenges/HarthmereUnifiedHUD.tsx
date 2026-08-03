@@ -67,6 +67,7 @@ import { harthmereLiveServerAuthoritative } from "@/client/components/challenges
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { HARTHMERE_HOTBAR_HELD_ITEM_EVENT } from "@/shared/harthmere/premium_weapon_catalog";
 import { readHarthmereNativeVitals } from "@/shared/harthmere/harthmere_native_vitals";
+import { HARTHMERE_PLAYER_ATTACK_TIMINGS } from "@/shared/harthmere/deliberate_combat";
 import type { BiomesId } from "@/shared/ids";
 import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
 import { harthmereNativeNpcCombatProfileForTypeId } from "@/shared/harthmere/harthmere_native_combat_catalog";
@@ -550,8 +551,8 @@ function harthmereBodyAttackTimingFromWeaponEvent(
 ) {
   const defaults =
     attack === "heavy"
-      ? { windupMs: 260, impactMs: 360, recoveryMs: 520 }
-      : { windupMs: 150, impactMs: 220, recoveryMs: 340 };
+      ? HARTHMERE_PLAYER_ATTACK_TIMINGS.heavy
+      : HARTHMERE_PLAYER_ATTACK_TIMINGS.basic;
   const windupMs = Math.max(0, detail?.windupMs ?? defaults.windupMs);
   const impactMs = Math.max(windupMs, detail?.impactMs ?? defaults.impactMs);
   const recoveryMs = Math.max(80, detail?.recoveryMs ?? defaults.recoveryMs);
@@ -773,11 +774,7 @@ const HARTHMERE_PLAYER_SWORD_VISUAL_EVENT =
   "biomes:harthmere-player-sword-visual";
 
 type HarthmereSwordVisualAction =
-  | "grant"
-  | "draw"
-  | "sheathe"
-  | "attack"
-  | "sync";
+  "grant" | "draw" | "sheathe" | "attack" | "sync";
 
 function emitHarthmerePlayerSwordVisual(detail: {
   action: HarthmereSwordVisualAction;
@@ -832,10 +829,10 @@ function useHarthmerePlayerSwordVisualBridge() {
   const itemId =
     hotbarHeldItemId ??
     (harthmereLiveServerAuthoritative()
-      ? liveEquipment.main_hand ?? liveEquipment.off_hand ?? "fists"
-      : inventory.equipment.main_hand?.itemId ??
+      ? (liveEquipment.main_hand ?? liveEquipment.off_hand ?? "fists")
+      : (inventory.equipment.main_hand?.itemId ??
         inventory.equipment.off_hand?.itemId ??
-        "iron_longsword");
+        "iron_longsword"));
 
   useEffect(() => {
     // Give old local-dev saves a sword exactly once. The inventory helper is
@@ -1457,9 +1454,9 @@ function FightSideControls() {
       const targetOffset = Number.isFinite(Number(detail.targetOffset))
         ? Number(detail.targetOffset)
         : Array.isArray(detail.hitOffsets) &&
-          Number.isFinite(Number(detail.hitOffsets[0]))
-        ? Number(detail.hitOffsets[0])
-        : undefined;
+            Number.isFinite(Number(detail.hitOffsets[0]))
+          ? Number(detail.hitOffsets[0])
+          : undefined;
       setCombatFloat({
         id: `${detail.id ?? Date.now()}-${Math.floor(
           Math.random() * 1_000_000
@@ -1505,8 +1502,8 @@ function FightSideControls() {
             {impact.attack === "spark"
               ? "✦"
               : impact.attack === "heavy"
-              ? "⚔"
-              : "🗡"}
+                ? "⚔"
+                : "🗡"}
           </div>
           <div
             className="h-1.5 w-36 absolute origin-left rounded-full bg-white/80 shadow-[0_0_18px_rgba(255,255,255,0.7)]"
@@ -1788,8 +1785,7 @@ function useHarthmereNativeEcsEnemySnapshots(intervalMs = 100) {
 function harthmereHealthBarScreenProjection(
   position: { x: number; y?: number; z: number } | undefined,
   camera:
-    | { three?: any; pos?: () => number[]; view?: () => number[] }
-    | undefined
+    { three?: any; pos?: () => number[]; view?: () => number[] } | undefined
 ):
   | {
       x: number;
@@ -1898,8 +1894,7 @@ function harthmereHealthBarScreenIsVisible(
 function harthmereCombatActorHealthBarScreen(
   actor: HarthmereCombatActorHudSnapshot,
   camera:
-    | { three?: any; pos?: () => number[]; view?: () => number[] }
-    | undefined
+    { three?: any; pos?: () => number[]; view?: () => number[] } | undefined
 ) {
   if (actor.screen) {
     return actor.screen;
@@ -2994,8 +2989,7 @@ function harthmereJobsBoardEventFromEditable(event: Event) {
 function harthmereJobsBoardPromptScreenProjection(
   position: { x: number; y?: number; z: number },
   camera:
-    | { three?: any; pos?: () => number[]; view?: () => number[] }
-    | undefined
+    { three?: any; pos?: () => number[]; view?: () => number[] } | undefined
 ):
   | {
       left: number;
@@ -3161,8 +3155,8 @@ const HarthmereNativeCombatFeedback: React.FunctionComponent = () => {
         feedback.kind === "confirmed"
           ? "border-emerald-300/70 bg-emerald-950/85 text-emerald-100"
           : feedback.kind === "rejected"
-          ? "border-orange-300/70 bg-orange-950/85 text-orange-100"
-          : "border-white/40 bg-black/80 text-white"
+            ? "border-orange-300/70 bg-orange-950/85 text-orange-100"
+            : "border-white/40 bg-black/80 text-white"
       }`}
       role="status"
       aria-live="polite"
@@ -3170,8 +3164,8 @@ const HarthmereNativeCombatFeedback: React.FunctionComponent = () => {
       {feedback.kind === "pending"
         ? `Attacking ${feedback.label}…`
         : feedback.kind === "confirmed"
-        ? `${feedback.label} −${feedback.damage}`
-        : `${feedback.label}: missed, blocked, or out of range`}
+          ? `${feedback.label} −${feedback.damage}`
+          : `${feedback.label}: missed, blocked, or out of range`}
     </div>
   );
 };

@@ -409,7 +409,7 @@ interface BaseClientResourcePaths {
     Promise<NpcRenderState | undefined>
   >;
   "/scene/npc/spatial_lighting": PathDef<[BiomesId], SpatialLighting>;
-  "/scene/npc/mesh": PathDef<[BiomesId], Promise<GLTF>>;
+  "/scene/npc/mesh": PathDef<[BiomesId], Promise<GLTF | undefined>>;
   "/scene/npc_type_mesh": PathDef<[BiomesId], Promise<GLTF>>;
   "/scene/npc_common_effects": PathDef<[], Promise<NpcCommonEffects>>;
   "/scene/npc_effects": PathDef<[BiomesId], Promise<NpcEffects>>;

@@ -1,4 +1,5 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { reactPlayerPlaybackReady } from "@/client/components/reactPlayerPlayback";
 import type { VolumeSettingsType } from "@/client/game/context_managers/audio_manager";
 import {
   SOUND_DEADZONE,
@@ -34,6 +35,9 @@ export const SpatialMediaPlayer: React.FunctionComponent<{
       ["/game_modal"]
     );
     const [videoUrl, setVideoUrl] = useState<string | undefined>();
+    const [preparedVideoUrl, setPreparedVideoUrl] = useState<
+      string | undefined
+    >();
     const [spatialVolume, setSpatialVolume] = useState(0);
     const [muted, setMuted] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
@@ -59,12 +63,16 @@ export const SpatialMediaPlayer: React.FunctionComponent<{
       }
     }, [videoComponent?.video_url]);
 
+    // Reset readiness whenever this provider is replaced or unmounted. Twitch
+    // emits loadedmetadata only after its iframe exists, which is the earliest
+    // safe point for React Player's imperative play() call.
+    useEffect(() => {
+      setPreparedVideoUrl(undefined);
+    }, [videoUrl, modalOpen]);
+
     // Calculate spatial volume.
     useAnimation(() => {
-      if (
-        !audioManager.isRunning() ||
-        !playerRef.current
-      ) {
+      if (!audioManager.isRunning() || !playerRef.current) {
         return;
       }
       const position = reactResources.get("/ecs/c/position", entityId);
@@ -117,7 +125,11 @@ export const SpatialMediaPlayer: React.FunctionComponent<{
         <ReactPlayer
           ref={playerRef}
           src={videoUrl}
-          playing={true}
+          playing={reactPlayerPlaybackReady(
+            videoUrl,
+            preparedVideoUrl,
+            modalOpen
+          )}
           loop={true}
           controls={false}
           style={hidden ? { display: "none" } : {}}
@@ -125,6 +137,7 @@ export const SpatialMediaPlayer: React.FunctionComponent<{
           height={height}
           muted={muted}
           volume={spatialVolume}
+          onLoadedMetadata={() => setPreparedVideoUrl(videoUrl)}
           onDurationChange={(event) => {
             const newDuration = event.currentTarget.duration;
             if (newDuration && newDuration !== videoDuration) {
@@ -137,7 +150,7 @@ export const SpatialMediaPlayer: React.FunctionComponent<{
   }
 );
 
-export const SpatialMediaPlayers: React.FunctionComponent<{}> = ({}) => {
+const DesktopSpatialMediaPlayers: React.FunctionComponent<{}> = ({}) => {
   const { table } = useClientContext();
   const volume = useVolume("settings.volume.media");
 
@@ -176,6 +189,17 @@ export const SpatialMediaPlayers: React.FunctionComponent<{}> = ({}) => {
       ))}
     </>
   );
+};
+
+export const SpatialMediaPlayers: React.FunctionComponent<{}> = ({}) => {
+  const { clientConfig } = useClientContext();
+  if (clientConfig.mobileDevice) {
+    // Hidden ReactPlayer/Twitch/HLS providers create extra media and iframe
+    // allocations inside the already memory-constrained Safari WebContent
+    // process. Phones keep core gameplay audio and skip ambient spatial media.
+    return <></>;
+  }
+  return <DesktopSpatialMediaPlayers />;
 };
 
 export function useVolume(type: VolumeSettingsType) {

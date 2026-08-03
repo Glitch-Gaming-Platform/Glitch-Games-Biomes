@@ -1,5 +1,7 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
+import { shouldInGameCameraHudHandleExitKey } from "@/client/components/inGameCameraExitKey";
+import { inInputElement } from "@/client/components/ShortcutsHUD";
 import { ShortcutText } from "@/client/components/system/ShortcutText";
 import { WORLD_INTERACTION_PRIORITY } from "@/client/components/challenges/worldInteractionDispatcher";
 import {
@@ -62,6 +64,29 @@ export const InGameCameraHUD: React.FunctionComponent<{}> = ({}) => {
       },
     });
   }, []);
+
+  useEffect(() => {
+    return cleanListener(document, {
+      keydown: (event) => {
+        const currentSelection = reactResources.get("/hotbar/selection");
+        if (
+          !shouldInGameCameraHudHandleExitKey(
+            {
+              code: event.code,
+              repeat: event.repeat,
+              inInputElement: inInputElement(event),
+            },
+            currentSelection
+          )
+        ) {
+          return;
+        }
+        event.preventDefault();
+        audioManager.playSound("button_click");
+        exitCamera();
+      },
+    });
+  }, [audioManager, exitCamera, reactResources]);
 
   const waitForAnimationTimeMs = 200;
   const screenshotCallback = useCallback(() => {

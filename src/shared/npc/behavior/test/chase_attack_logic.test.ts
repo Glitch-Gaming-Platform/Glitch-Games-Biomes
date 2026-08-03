@@ -4,6 +4,8 @@ import {
   ATTACK_MEMORY_SECONDS,
   attackTimingDecision,
   boundedHarthmereChaseSpeedForName,
+  canAttackTarget,
+  cancelPendingMeleeAttack,
   chasePathTargetIsStale,
   enhancedNightMuckerHexCombatParams,
   evaluateMixedCreatureGroupRetaliationTarget,
@@ -20,6 +22,7 @@ import {
   MIXED_CREATURE_GROUP_ALERT_MAX_VERTICAL_DISTANCE,
   MIXED_CREATURE_GROUP_ALERT_RADIUS,
   NIGHT_MUCKER_HEX_MOVEMENT_MULTIPLIER,
+  NPC_MELEE_STRIKE_GRACE_SECONDS,
   HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND,
   HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
   HARTHMERE_NPC_CHASE_SPEED_STEP_UP_20,
@@ -75,7 +78,7 @@ describe("chase attack: strike timing", () => {
     );
   });
 
-  it("REGRESSION: lands a pending strike even when a coarse tick skips the whole interval", () => {
+  it("expires a pending strike when a coarse tick skips the bounded contact window", () => {
     assert.equal(
       attackTimingDecision({
         now: 130,
@@ -83,8 +86,55 @@ describe("chase attack: strike timing", () => {
         strikeDelaySecs: 0.5,
         attackIntervalSecs: 2,
       }),
+      "expire"
+    );
+  });
+
+  it("keeps a short coarse-tick grace around the visible impact frame", () => {
+    assert.equal(
+      attackTimingDecision({
+        now: 100.5 + NPC_MELEE_STRIKE_GRACE_SECONDS - 0.000_001,
+        attackTime: 100,
+        strikeDelaySecs: 0.5,
+        attackIntervalSecs: 2,
+      }),
       "strike"
     );
+    assert.equal(
+      attackTimingDecision({
+        now: 100.501 + NPC_MELEE_STRIKE_GRACE_SECONDS,
+        attackTime: 100,
+        strikeDelaySecs: 0.5,
+        attackIntervalSecs: 2,
+      }),
+      "expire"
+    );
+  });
+
+  it("cancels unresolved receipts but preserves completed hit receipts", () => {
+    const pending: {
+      attackTime?: number;
+      meleeAttack: {
+        result?: "hit" | "miss" | "cancelled";
+        resolvedAt?: number;
+      };
+    } = {
+      attackTime: 100,
+      meleeAttack: {},
+    };
+    assert.equal(cancelPendingMeleeAttack(pending, 100.2), true);
+    assert.equal(pending.attackTime, undefined);
+    assert.equal(pending.meleeAttack.result, "cancelled");
+    assert.equal(pending.meleeAttack.resolvedAt, 100.2);
+
+    const completed = {
+      attackTime: 100,
+      strikeTime: 100.5,
+      meleeAttack: { result: "hit" as const, resolvedAt: 100.5 },
+    };
+    assert.equal(cancelPendingMeleeAttack(completed, 101), false);
+    assert.equal(completed.attackTime, 100);
+    assert.equal(completed.meleeAttack.result, "hit");
   });
 
   it("starts the next swing only after the previous one has struck", () => {
@@ -153,6 +203,42 @@ describe("chase attack: strike timing", () => {
         attackIntervalSecs: 0,
       }),
       0.5
+    );
+  });
+});
+
+describe("chase attack: committed aim and body-aware contact", () => {
+  const base = {
+    horizontalDistance: 2,
+    verticalGap: 0,
+    attackRadius: 2.4,
+    attackFovDeg: 100,
+  };
+
+  it("hits a target that remains inside the committed front arc", () => {
+    assert.equal(
+      canAttackTarget({ ...base, targetOrientationDiff: Math.PI / 6 }),
+      true
+    );
+  });
+
+  it("whiffs when the target moves behind the cast yaw during windup", () => {
+    assert.equal(
+      canAttackTarget({ ...base, targetOrientationDiff: Math.PI }),
+      false
+    );
+  });
+
+  it("rejects giant melee contact against a rider on the upper body", () => {
+    assert.equal(
+      canAttackTarget({
+        ...base,
+        targetOrientationDiff: 0,
+        attackerPosition: [0, 10, 0],
+        attackerSize: [20, 14, 12],
+        targetPosition: [0, 20, 0],
+      }),
+      false
     );
   });
 });
@@ -273,6 +359,8 @@ describe("chase attack: night muck/hex aggression helpers", () => {
     assert.ok(night.attackDamage >= 30);
     assert.ok(night.attackIntervalSecs <= 1.1);
     assert.ok(night.attackDistance > base.attackDistance);
+    assert.equal(night.attackStrikeMomentSecs, base.attackStrikeMomentSecs);
+    assert.ok(night.attackAnimationMultiplier > base.attackAnimationMultiplier);
     assert.ok(NIGHT_MUCKER_HEX_MOVEMENT_MULTIPLIER >= 1.8);
 
     assert.equal(

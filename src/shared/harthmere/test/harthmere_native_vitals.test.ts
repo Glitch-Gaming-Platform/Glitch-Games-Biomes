@@ -13,6 +13,7 @@ import {
   harthmereNativeConsumableProfile,
   readHarthmereNativeVitals,
   restoreHarthmereNativeVitalsForRespawn,
+  spendHarthmereNativeStamina,
   tickHarthmereNativeVitals,
   writeHarthmereNativeVitals,
 } from "@/shared/harthmere/harthmere_native_vitals";
@@ -107,6 +108,54 @@ describe("Harthmere native ECS vitals", () => {
       maxElapsedMs: 60 * 60 * 1000,
     });
     assert.ok(Math.abs(paused.vitals.stamina - 50) < 0.0001);
+  });
+
+  it("spends special moves from survival stamina and never regenerates it over time", () => {
+    const state = TriggerState.create();
+    writeHarthmereNativeVitals(state, {
+      stamina: 70,
+      maxStamina: 100,
+      lastTickMs: 1_000,
+    });
+    const spent = spendHarthmereNativeStamina(state, 22);
+    assert.equal(spent.spent, true);
+    assert.equal(spent.vitals.stamina, 48);
+
+    const later = tickHarthmereNativeVitals(state, {
+      nowMs: 1_500,
+      gameplayActive: true,
+      underwater: false,
+      alive: true,
+    });
+    assert.ok(later.vitals.stamina < 48);
+
+    const stillDeclining = tickHarthmereNativeVitals(state, {
+      nowMs: 2_500,
+      gameplayActive: true,
+      underwater: false,
+      alive: true,
+    });
+    assert.ok(stillDeclining.vitals.stamina < later.vitals.stamina);
+  });
+
+  it("lets a special move exhaust the same bar used by stamina death", () => {
+    const state = TriggerState.create();
+    writeHarthmereNativeVitals(state, {
+      stamina: 12,
+      maxStamina: 100,
+      lastTickMs: 1_000,
+    });
+    const spent = spendHarthmereNativeStamina(state, 12);
+    assert.equal(spent.spent, true);
+    assert.equal(spent.vitals.stamina, 0);
+
+    const exhausted = tickHarthmereNativeVitals(state, {
+      nowMs: 1_001,
+      gameplayActive: true,
+      underwater: false,
+      alive: true,
+    });
+    assert.equal(exhausted.deathCause, "stamina");
   });
 
   it("uses breath first and then rapidly damages health while submerged", () => {

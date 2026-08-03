@@ -83,6 +83,7 @@ export interface DestroyInfo {
 export interface AttackInfo {
   start: number;
   duration: number;
+  movementScale?: number;
 }
 
 export type WithActionThottler<T> = T & {

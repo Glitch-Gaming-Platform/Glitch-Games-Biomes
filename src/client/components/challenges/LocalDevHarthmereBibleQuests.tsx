@@ -19,7 +19,6 @@
 
 import {
   HARTHMERE_BIBLE_QUEST_EVENT,
-  HarthmereBibleQuestRejectionError,
   bibleQuestTrackableQuestsForBiomesUI,
   harthmereBibleDialogModelForGiver,
   harthmereBibleGiverIdForNpcLabel,
@@ -31,8 +30,10 @@ import {
   submitHarthmereBibleQuestOperation,
   type HarthmereBibleQuestClientSnapshot,
 } from "@/client/components/challenges/bibleQuestLiveAdapter";
+import { playerFacingQuestActionErrorMessage } from "@/client/components/challenges/questActionError";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { addToast } from "@/client/components/toast/helpers";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import React, {
@@ -115,21 +116,18 @@ export function useHarthmereBibleQuestDialog(talkingToNPCId: BiomesId):
   }, [giverId, snapshot]);
 
   const perform = useCallback(
-    (payload: Record<string, unknown>, followUpText: string) => {
+    async (payload: Record<string, unknown>, followUpText: string) => {
+      setFollowUp(undefined);
       setBusy(true);
-      submitHarthmereBibleQuestOperation(payload)
-        .then(() => setFollowUp(followUpText))
-        .catch((error) => {
-          // Surface server rejections as dialogue, not silent failure — the
-          // audit's core theme was actions that appear to do nothing.
-          const reason =
-            error instanceof HarthmereBibleQuestRejectionError
-              ? error.warnings.join(", ")
-              : "Something interrupts the conversation. Try again.";
-          setFollowUp(reason);
-          log.warn("bible quest operation rejected", { error, payload });
-        })
-        .finally(() => setBusy(false));
+      try {
+        await submitHarthmereBibleQuestOperation(payload);
+        setFollowUp(followUpText);
+      } catch (error) {
+        log.warn("bible quest operation rejected", { error, payload });
+        throw error;
+      } finally {
+        setBusy(false);
+      }
     },
     []
   );
@@ -166,7 +164,7 @@ export { bibleQuestTrackableQuestsForBiomesUI };
 // ---------------------------------------------------------------------------
 export const HarthmereBibleQuestRuntimeController: React.FunctionComponent<{}> =
   () => {
-    const { reactResources } = useClientContext();
+    const { reactResources, resources } = useClientContext();
     const localPlayer = reactResources.use("/scene/local_player");
     const snapshot = useHarthmereBibleQuestSnapshot();
     const [busyActionId, setBusyActionId] = useState<string | undefined>();
@@ -195,13 +193,24 @@ export const HarthmereBibleQuestRuntimeController: React.FunctionComponent<{}> =
         // discovery and mutation validation cannot disagree.
         weather: snapshot.weatherClaim,
       }).catch((error) => {
-        // Expected for gated triggers (wrong weather); retry next session.
+        const playerMessage = playerFacingQuestActionErrorMessage(error);
+        if (playerMessage) {
+          addToast(resources, {
+            kind: "interaction_error",
+            id: `hidden-bible-quest-rejected:${questId}`,
+            error: {
+              kind: "message",
+              message: playerMessage,
+              time: Date.now(),
+            },
+          });
+        }
         log.info("hidden bible quest trigger not accepted", {
           questId,
           error,
         });
       });
-    }, [snapshot, playerPosition?.[0], playerPosition?.[2]]);
+    }, [resources, snapshot, playerPosition?.[0], playerPosition?.[2]]);
 
     const encounter = useMemo(
       () =>

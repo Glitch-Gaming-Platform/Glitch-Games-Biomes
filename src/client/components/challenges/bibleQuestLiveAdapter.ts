@@ -33,6 +33,12 @@ import {
   harthmereNamedNpcById,
 } from "@/shared/harthmere/npc_compendium";
 import { bibleQuestGiverId } from "@/shared/harthmere/bible/bible_quest_schema";
+import { bibleQuestGate } from "@/shared/harthmere/bible/bible_quest_gate";
+import {
+  HarthmereQuestActionError,
+  harthmereQuestRejectionWarningsFromResponse,
+  type HarthmereQuestActionErrorContext,
+} from "@/client/components/challenges/questActionError";
 
 export const HARTHMERE_BIBLE_QUEST_CLIENT_VERSION =
   "harthmere-bible-quest-client" as const;
@@ -270,11 +276,27 @@ export function harthmereBibleQuestSnapshotFromResponse(
   };
 }
 
-export class HarthmereBibleQuestRejectionError extends Error {
-  constructor(public readonly warnings: string[]) {
-    super(warnings.join(","));
+export class HarthmereBibleQuestRejectionError extends HarthmereQuestActionError {
+  constructor(
+    warnings: string[],
+    context: HarthmereQuestActionErrorContext = {}
+  ) {
+    super(warnings, context);
     this.name = "HarthmereBibleQuestRejectionError";
   }
+}
+
+function bibleQuestActionErrorContext(
+  payload: Record<string, unknown>
+): HarthmereQuestActionErrorContext {
+  const questId =
+    typeof payload.questId === "string" ? payload.questId : undefined;
+  const quest = questId ? getHarthmereQuestById(questId) : undefined;
+  return {
+    action: payload.operation === "bible_quest_accept" ? "accept" : "update",
+    questTitle: quest?.title,
+    minimumLevel: quest?.gate.levelBand.min,
+  };
 }
 
 /**
@@ -287,45 +309,57 @@ export async function submitHarthmereBibleQuestOperation(
   options: { fetchImpl?: typeof fetch; locationSearch?: string } = {}
 ): Promise<HarthmereBibleQuestClientSnapshot> {
   const fetchImpl = options.fetchImpl ?? fetch;
+  const errorContext = bibleQuestActionErrorContext(payload);
   const requestId = `bible_quest_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await fetchHarthmereLiveWithTimeout(
-    fetchImpl,
-    liveModeUrl(options.locationSearch),
-    {
-      method: "POST",
-      credentials: "same-origin",
-      headers: liveModeHeaders(options.locationSearch),
-      body: JSON.stringify({
-        requestId,
-        idempotencyKey: requestId,
-        actionKind: "request_quest_state_update",
-        subsystem: "quest",
-        actorEntityVersion: 1,
-        zoneId: "harthmere",
-        clientSentAtMs: Date.now(),
-        payload,
-        clientClaims: {},
-      }),
-    }
-  );
-  const body = await response.json();
-  const snapshot = harthmereBibleQuestSnapshotFromResponse(body);
-  if (!response.ok || body?.ok === false) {
-    throw new Error(
-      body?.error ??
-        body?.validation?.errors?.join(",") ??
-        "bible_quest_request_failed"
+  let response: Response;
+  try {
+    response = await fetchHarthmereLiveWithTimeout(
+      fetchImpl,
+      liveModeUrl(options.locationSearch),
+      {
+        method: "POST",
+        credentials: "same-origin",
+        headers: liveModeHeaders(options.locationSearch),
+        body: JSON.stringify({
+          requestId,
+          idempotencyKey: requestId,
+          actionKind: "request_quest_state_update",
+          subsystem: "quest",
+          actorEntityVersion: 1,
+          zoneId: "harthmere",
+          clientSentAtMs: Date.now(),
+          payload,
+          clientClaims: {},
+        }),
+      }
+    );
+  } catch {
+    throw new HarthmereBibleQuestRejectionError(
+      ["bible_quest_rejected:network_error"],
+      errorContext
     );
   }
-  const rejections = snapshot.warnings.filter(
-    (warning) =>
-      warning.startsWith("bible_quest_rejected") ||
-      warning.startsWith("thaedryn_rejected")
-  );
+  let body: any;
+  try {
+    body = await response.json();
+  } catch {
+    throw new HarthmereBibleQuestRejectionError(
+      ["bible_quest_rejected:request_failed"],
+      errorContext
+    );
+  }
+  const snapshot = harthmereBibleQuestSnapshotFromResponse(body);
+  const rejections = harthmereQuestRejectionWarningsFromResponse(body);
+  if (!response.ok || body?.ok === false) {
+    throw new HarthmereBibleQuestRejectionError(
+      rejections.length ? rejections : ["bible_quest_rejected:request_failed"],
+      errorContext
+    );
+  }
   if (rejections.length) {
-    throw new HarthmereBibleQuestRejectionError(rejections);
+    throw new HarthmereBibleQuestRejectionError(rejections, errorContext);
   }
   // The mutation response is newer than every GET already in flight. Advance
   // the generation before remembering it so a slower read cannot restore the
@@ -693,7 +727,21 @@ export function bibleQuestTrackableQuestsForBiomesUI(snapshot: {
     const quest = getHarthmereQuestById(questId);
     if (!quest) continue;
     const objectives = quest.steps.map((step) => step.label);
-    const progress = Number((activeEntry as any)?.progress ?? 0);
+    const mirroredStepId = String((activeEntry as any)?.stepId ?? "");
+    const mirroredStepIndex = quest.steps.findIndex(
+      (step) => step.id === mirroredStepId
+    );
+    const fractionalProgress = Math.max(
+      0,
+      Math.min(1, Number((activeEntry as any)?.progress ?? 0) || 0)
+    );
+    const objectiveIndex =
+      mirroredStepIndex >= 0
+        ? mirroredStepIndex
+        : Math.min(
+            Math.floor(fractionalProgress * objectives.length),
+            Math.max(0, objectives.length - 1)
+          );
     entries.push({
       questId,
       title: quest.title,
@@ -705,13 +753,49 @@ export function bibleQuestTrackableQuestsForBiomesUI(snapshot: {
       reward: quest.rewards?.previewText ?? "",
       kind: quest.category === "main" ? "main_story" : "bible_side_quest",
       kindLabel: quest.category === "main" ? "Main Story" : "Side Quest",
-      objective:
-        objectives[Math.min(progress, Math.max(0, objectives.length - 1))],
+      objective: objectives[objectiveIndex],
       objectives,
       description: quest.premise ?? quest.dialogue.active,
     });
   }
   return entries;
+}
+
+export const HARTHMERE_BIBLE_QUEST_MARKER_SOURCE =
+  "harthmere_bible_quest" as const;
+
+export function bibleQuestAcceptedLandmarksForBiomesUI(snapshot: {
+  active?: Record<string, any>;
+}) {
+  return bibleQuestTrackableQuestsForBiomesUI(snapshot).flatMap((quest) => {
+    const position = quest.markerWorldPosition;
+    if (
+      !Array.isArray(position) ||
+      position.length < 3 ||
+      !position.every((coordinate) => Number.isFinite(Number(coordinate)))
+    ) {
+      return [];
+    }
+    return [
+      {
+        id: quest.firstMarkerId,
+        label: quest.title,
+        position: [
+          Number(position[0]),
+          Number(position[1]),
+          Number(position[2]),
+        ],
+        kind: "objective" as const,
+        area: quest.area,
+        visibleOnWorldMap: true as const,
+        visibleOnHudMap: true as const,
+        active: true as const,
+        description: quest.objective ?? quest.description,
+        source: HARTHMERE_BIBLE_QUEST_MARKER_SOURCE,
+        questId: quest.questId,
+      },
+    ];
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -729,11 +813,21 @@ export function harthmereBibleHiddenQuestToTrigger(input: {
   nowMs?: number;
 }): string | undefined {
   if (!input.playerPosition) return undefined;
+  const nowMs = input.nowMs ?? input.snapshot.serverNowMs ?? Date.now();
+  const context = buildHarthmereBibleQuestContext({
+    actorId: input.snapshot.actorId ?? "local-player",
+    playerLevel: input.snapshot.playerLevel ?? 1,
+    completedQuests: input.snapshot.completed,
+    slice: input.snapshot.bible,
+    nowMs,
+    weatherClaim: input.snapshot.weatherClaim,
+  });
   for (const quest of HARTHMERE_QUEST_CATALOG) {
     if (!quest.hidden) continue;
     // already known
     if (bibleClientQuestState(input.snapshot, quest.id) !== "unknown") continue;
     if (input.snapshot.completed[quest.id]) continue;
+    if (!bibleQuestGate(quest, context).ok) continue;
     const waypoint = quest.steps[0]
       ? bibleStepWorldWaypoint(quest, quest.steps[0])
       : bibleQuestWorldWaypoint(quest);

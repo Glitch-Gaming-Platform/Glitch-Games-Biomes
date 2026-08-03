@@ -6,6 +6,7 @@ import { HARTHMERE_ADDITIVE_TOWN_NPC_DIALOGUE } from "@/shared/harthmere/additiv
 import { GROVE_QUEST_CATALOG } from "@/shared/harthmere/grove/grove_quest_catalog";
 import { groveQuestGiverId } from "@/shared/harthmere/grove/grove_quest_schema";
 import { HARTHMERE_ALL_NPCS } from "@/shared/harthmere/npc_compendium";
+import { HARTHMERE_NATIVE_QUEST_DIALOGUE_EXPRESSION_EVENTS } from "@/shared/harthmere/native_quest_dialogue_expression_plan";
 import {
   HARTHMERE_ADDITIVE_TOWN_DIALOGUE_EXPRESSION_PLAN,
   HARTHMERE_COMPENDIUM_DIALOGUE_EXPRESSION_PLAN,
@@ -14,7 +15,10 @@ import {
   type HarthmereCompendiumDialogueExpressionTuple,
   type HarthmereThreeLineDialogueExpressionTuple,
 } from "@/shared/harthmere/npc_dialogue_expression_plan";
-import { harthmereDialogueExpressionTextKey } from "@/shared/harthmere/npc_dialogue_expression_text_key";
+import {
+  harthmereDialogueExpressionTextKey,
+  normalizeHarthmereDialogueExpressionText,
+} from "@/shared/harthmere/npc_dialogue_expression_text_key";
 import type { HarthmereDialogueExpressionRecord } from "@/shared/harthmere/npc_dialogue_expression_types";
 import { SNAPSHOT_GROVE_NPCS } from "@/shared/harthmere/snapshot_grove_content";
 import { SNAPSHOT_GROVE_AMBIENT_DIALOGUE } from "@/shared/harthmere/snapshot_grove_ambient_dialogue";
@@ -56,13 +60,26 @@ function addRecord(
       }.${input.field}`
     );
   }
+  const normalizedText = normalizeHarthmereDialogueExpressionText(input.text);
+  const textTemplate = /\{(?:username|robotName)\}/.test(normalizedText)
+    ? normalizedText
+    : undefined;
   records.push({
     textKey: harthmereDialogueExpressionTextKey(input.text),
     expression: input.expression,
     source: input.source,
     actorKey: input.actorKey,
     actorDisplayName: input.actorDisplayName,
-    actorEntityOffset: input.actorEntityOffset,
+    ...(input.actorEntityOffset !== undefined
+      ? { actorEntityOffset: input.actorEntityOffset }
+      : {}),
+    ...(input.actorEntityId !== undefined
+      ? { actorEntityId: input.actorEntityId }
+      : {}),
+    ...(textTemplate !== undefined ? { textTemplate } : {}),
+    ...(input.dialogueStepId !== undefined
+      ? { dialogueStepId: input.dialogueStepId }
+      : {}),
     dialogueKey: input.dialogueKey,
     field: input.field,
   });
@@ -219,10 +236,55 @@ export function buildHarthmereDialogueExpressionRecords(): HarthmereDialogueExpr
     }
   }
 
+  const nativePages = new Map<
+    string,
+    { expression: string; questName: string; stepId: number; pageIndex: number }
+  >();
+  for (const event of HARTHMERE_NATIVE_QUEST_DIALOGUE_EXPRESSION_EVENTS) {
+    event.pages.forEach(([text, expression], pageIndex) => {
+      const normalizedText = normalizeHarthmereDialogueExpressionText(text);
+      const identity = `${event.actor.entityId}:${normalizedText}`;
+      const prior = nativePages.get(identity);
+      if (prior) {
+        if (prior.expression !== expression) {
+          throw new Error(
+            `Native quest page ${JSON.stringify(
+              normalizedText
+            )} has conflicting expressions ${prior.expression} and ${expression}`
+          );
+        }
+        return;
+      }
+      nativePages.set(identity, {
+        expression,
+        questName: event.questName,
+        stepId: event.stepId,
+        pageIndex,
+      });
+      addRecord(records, {
+        text,
+        expression,
+        source: "native_quest",
+        actorKey: event.actor.key,
+        actorDisplayName: event.actor.displayName,
+        actorEntityId: event.actor.entityId,
+        dialogueStepId: event.stepId,
+        dialogueKey: `${event.questId}:${event.stepId}`,
+        field: `page:${pageIndex}`,
+      });
+    });
+  }
+
   const byTextKey = new Map<string, HarthmereDialogueExpressionRecord>();
   for (const record of records) {
     const prior = byTextKey.get(record.textKey);
     if (prior) {
+      if (
+        prior.textTemplate !== undefined &&
+        prior.textTemplate === record.textTemplate
+      ) {
+        continue;
+      }
       throw new Error(
         `Dialogue expression text-key collision ${record.textKey}: ${prior.dialogueKey}.${prior.field} and ${record.dialogueKey}.${record.field}`
       );

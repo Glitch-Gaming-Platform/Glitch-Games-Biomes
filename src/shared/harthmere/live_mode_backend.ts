@@ -6085,9 +6085,26 @@ function outpostBusinessInteractionPosition(outpostBuilding: any) {
 function economyBusinessInteractionPositions(
   state: HarthmereLiveModeBackendState,
   envelope: HarthmereLiveModeAuthorityEnvelope,
-  businessId: string
+  businessId: string,
+  options: { canonicalOnly?: boolean } = {}
 ) {
   const positions: Array<{ x: number; y: number; z: number }> = [];
+  const systems = (state.economy.production as any).businessSystems ?? {};
+  for (const outpostBuilding of Object.values(
+    systems.outpostBuildings ?? {}
+  ) as any[]) {
+    if (
+      harthmereBusinessOutpostBusinessId(outpostBuilding.outpostId) !==
+      businessId
+    ) {
+      continue;
+    }
+    const position = outpostBusinessInteractionPosition(outpostBuilding);
+    if (position) positions.push(position);
+  }
+  if (options.canonicalOnly) {
+    return positions;
+  }
   const requestedMarkerId = payloadString(
     envelope,
     "businessInteractionMarkerId"
@@ -6113,7 +6130,6 @@ function economyBusinessInteractionPositions(
   const propertyPosition = propertyBusinessInteractionPosition(property);
   if (propertyPosition) positions.push(propertyPosition);
 
-  const systems = (state.economy.production as any).businessSystems ?? {};
   const branchId = payloadString(envelope, "branchId");
   const outpostId =
     payloadString(envelope, "outpostId") ??
@@ -6167,17 +6183,33 @@ function rejectEconomyMutationOutsideBusiness(input: {
   const positions = economyBusinessInteractionPositions(
     input.state,
     input.envelope,
-    businessId
+    businessId,
+    {
+      canonicalOnly: [
+        "start_business_customer_session",
+        "serve_business_customer",
+        "tick_business_customer_session",
+        "end_business_customer_session",
+      ].includes(payloadString(input.envelope, "operation") ?? ""),
+    }
   );
   if (positions.length === 0) {
     input.warnings.push("economy_rejected:business_interaction_marker_missing");
     input.touchedModels.add("economy_business_proximity_rejection");
     return true;
   }
-  const radius = Math.max(
-    HARTHMERE_BUSINESS_IN_WORLD_INTERACTION_RADIUS,
-    Math.min(32, Math.max(1, business.serviceRadius ?? 1) * 5)
-  );
+  const customerCounterOperation = [
+    "start_business_customer_session",
+    "serve_business_customer",
+    "tick_business_customer_session",
+    "end_business_customer_session",
+  ].includes(payloadString(input.envelope, "operation") ?? "");
+  const radius = customerCounterOperation
+    ? 4.25
+    : Math.max(
+        HARTHMERE_BUSINESS_IN_WORLD_INTERACTION_RADIUS,
+        Math.min(32, Math.max(1, business.serviceRadius ?? 1) * 5)
+      );
   if (
     positions.some(
       (position) => distanceSq3(actorPosition, position) <= radius * radius
@@ -13756,6 +13788,11 @@ export function reduceHarthmereLiveModeBackendState(
         {
           actorGold: next.inventory.gold,
           actorInventoryItems: next.inventory.items,
+          actorEntityId: envelope.serverActorEntityId,
+          actorPosition: actorWorldPositionFromAuthority(envelope),
+          nativeBusinessCustomerRequired:
+            nativeBiomesEcsAuthorityEnabled() &&
+            envelope.serverActorEntityId !== undefined,
           actorKnownRecipes: next.classMagic.knownRecipes,
           actorGuildId: next.guild.memberGuildId,
           canManageGuildBusiness: (guildId: string) =>

@@ -3,10 +3,12 @@ import { HARTHMERE_BUSINESS_OUTPOSTS } from "../business_customer_simulator";
 import {
   harthmereMaterialAcquisitionPlan,
   normalizeHarthmereMaterialItemId,
+  resolveHarthmereMaterialRoutePositionForTest,
 } from "../material_acquisition_guidance";
 import { harthmereNativeBiomesIdForItemId } from "../harthmere_native_item_ids";
 import { CH1_QUESTS } from "../ch1_quests";
 import { ch1ObjectiveMaterialRequirements } from "../ch1_material_objectives";
+import { SNAPSHOT_GROVE_LIVE_NPC_FEET_Y } from "../snapshot_grove_content";
 
 describe("Harthmere material acquisition guidance", () => {
   it("explains every real way to obtain Workbench iron", () => {
@@ -144,6 +146,41 @@ describe("Harthmere material acquisition guidance", () => {
           `${route.id} should reuse a finite canonical map position`
         );
       }
+    }
+  });
+
+  it("uses the live Grove floor and the same resolved coordinates the map pin uses", () => {
+    const scrap = harthmereMaterialAcquisitionPlan({
+      itemId: "scrap_metal",
+      count: 4,
+    })!;
+    const resin = harthmereMaterialAcquisitionPlan({
+      itemId: "tree_resin",
+      count: 1,
+    })!;
+    for (const [plan, sourceName] of [
+      [scrap, "Luis"],
+      [scrap, "Mel the Handyman"],
+      [resin, "Rin the Forager"],
+    ] as const) {
+      const route = plan.routes.find(
+        (candidate) =>
+          candidate.kind === "buy" && candidate.sourceName === sourceName
+      );
+      assert.ok(route?.markerPosition, `${sourceName} needs a map position`);
+      assert.equal(
+        route!.markerPosition![1],
+        SNAPSHOT_GROVE_LIVE_NPC_FEET_Y,
+        `${sourceName} must use the live Grove floor instead of retired Y=53`
+      );
+      assert.deepEqual(
+        route!.markerPosition,
+        resolveHarthmereMaterialRoutePositionForTest(
+          route!.markerId,
+          route!.markerPosition!
+        ),
+        `${sourceName} guide coordinates must match the active map pin`
+      );
     }
   });
 

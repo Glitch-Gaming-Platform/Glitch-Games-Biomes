@@ -16,7 +16,10 @@ import {
   type HarthmereResolvedBikkieVisual,
 } from "@/shared/harthmere/bikkie_visual_resolver";
 import { getHarthmereItemDefinition } from "@/shared/harthmere/mmo_inventory_authority";
-import { harthmereNativeBiomesIdForItemId } from "@/shared/harthmere/harthmere_native_item_ids";
+import {
+  harthmereNativeBiomesIdForItemId,
+  harthmereNativeItemIdForBiomesId,
+} from "@/shared/harthmere/harthmere_native_item_ids";
 import {
   HARTHMERE_FOOD_DEFINITIONS,
   HARTHMERE_SEED_DEFINITIONS,
@@ -29,6 +32,7 @@ import {
   findHarthmereBusinessCustomerNpc,
   getHarthmereBusinessBikkieGraphics,
   getHarthmereBusinessMiniGameDefinition,
+  getHarthmereBusinessServiceItemDefinition,
   normalizeHarthmereBusinessCustomerStats,
   type HarthmereBusinessMiniGameDecision,
   type HarthmereBusinessBikkieGraphic,
@@ -1012,6 +1016,8 @@ export function formatHarthmereBusinessPlayerWarning(
     return "That customer shift has expired.";
   if (warning.includes("business_customer_left_waiting"))
     return "A customer left after waiting too long.";
+  if (warning.includes("business_customer_not_at_counter"))
+    return "The customer is still walking to the counter.";
   if (warning.includes("business_branch_requires_tier_3"))
     return "Serve more customers before opening a branch.";
   if (warning.includes("business_branch_funds_insufficient"))
@@ -1241,18 +1247,31 @@ export function canCustomerUseHarthmereBusiness(
   return business?.status === "open";
 }
 
-function harthmereBusinessItemDisplayName(
+export function harthmereBusinessItemDisplayName(
   itemId: string,
   fallback?: string
 ): string {
+  const nativeText = itemId.replace(/^b:/, "");
+  const semanticItemId = /^\d+$/.test(nativeText)
+    ? (harthmereNativeItemIdForBiomesId(Number(nativeText)) ?? itemId)
+    : itemId;
+  const generatedFallback = /^(?:b:)?\d+$/.test(semanticItemId)
+    ? "Unknown Item"
+    : titleCaseBusinessText(semanticItemId);
   return (
-    getHarthmereItemDefinition(itemId)?.displayName ??
-    HARTHMERE_FOOD_DEFINITIONS[itemId]?.displayName ??
-    HARTHMERE_SEED_DEFINITIONS[itemId]?.displayName ??
-    HARTHMERE_MEDICAL_ITEM_DEFINITIONS[itemId]?.displayName ??
-    fallback ??
-    itemId
+    getHarthmereItemDefinition(semanticItemId)?.displayName ??
+    HARTHMERE_FOOD_DEFINITIONS[semanticItemId]?.displayName ??
+    HARTHMERE_SEED_DEFINITIONS[semanticItemId]?.displayName ??
+    HARTHMERE_MEDICAL_ITEM_DEFINITIONS[semanticItemId]?.displayName ??
+    getHarthmereBusinessServiceItemDefinition(semanticItemId)?.displayName ??
+    (fallback ? titleCaseBusinessText(fallback) : generatedFallback)
   );
+}
+
+export function isHarthmereBusinessInventoryItemPurchasable(
+  itemId: string
+): boolean {
+  return harthmereNativeBiomesIdForItemId(itemId) !== undefined;
 }
 
 function harthmereBusinessItemKindHint(
@@ -1320,12 +1339,18 @@ export function harthmereBusinessServicePriceGold(
 
 export function getHarthmereVisibleBusinessInventory(
   state: HarthmereBusinessEconomySnapshot,
-  businessId: string
+  businessId: string,
+  purchasableOnly = false
 ): HarthmereBusinessVisibleInventoryItem[] {
   const business = state.businesses[businessId];
   if (!business) return [];
   return Object.values(business.inventory ?? {})
-    .filter((stack) => stack.count > 0)
+    .filter(
+      (stack) =>
+        stack.count > 0 &&
+        (!purchasableOnly ||
+          isHarthmereBusinessInventoryItemPurchasable(stack.itemId))
+    )
     .map((stack) => ({
       ...stack,
       displayName: harthmereBusinessItemDisplayName(stack.itemId),
@@ -1504,7 +1529,7 @@ export interface HarthmereBusinessWorldPoint {
 export function nearestHarthmereBusinessDashboardWorldContext(
   state: HarthmereBusinessEconomySnapshot | undefined,
   playerPosition: HarthmereBusinessWorldPoint | undefined,
-  radius = 6
+  radius = 4.25
 ): HarthmereBusinessWorldContext {
   if (!state || !playerPosition) return {};
   let nearest:
@@ -1851,11 +1876,11 @@ export function getHarthmereBusinessInteractionPrompt(
     businessId: business.businessId,
     mode,
     keyLabel,
-    label: `Press ${keyLabel} to open ${business.name} Business Board`,
+    label: `Press ${keyLabel} to use ${business.name} service counter`,
     helper:
       mode === "owner"
-        ? "Manage clients, orders, money, staff, licenses, and todos"
-        : "Work a shift, buy goods, or request a service",
+        ? "Start an in-world shift or manage this business"
+        : "Buy goods or request a service at the real counter",
   };
 }
 
@@ -2063,7 +2088,19 @@ export function getHarthmereBusinessShopfront(
       emptyLabel: "This business is not open to customers.",
     };
   }
-  const inventory = getHarthmereVisibleBusinessInventory(state, businessId);
+  // Canonical NPC outpost inventory powers the customer-service mini-game; it
+  // is not a public vendor catalogue. Showing it produced the `metal_part`
+  // card from the production report and let customers deplete service inputs.
+  // Player/guild/town businesses may still sell their managed inventory, but
+  // only when the signed ECS purchase can grant the selected item.
+  const inventory =
+    mode === "customer" && business.flags.canonical_outpost_business
+      ? []
+      : getHarthmereVisibleBusinessInventory(
+          state,
+          businessId,
+          mode === "customer"
+        );
   const toolListing = harthmereBusinessToolForType(business.typeId);
   return {
     businessId,
@@ -2641,6 +2678,8 @@ export interface HarthmereBusinessInterfaceAdapter {
     overrides?: Record<string, unknown>
   ): Promise<void>;
   startCustomerSession(businessId: string, count?: number): Promise<void>;
+  tickCustomerSession(businessId: string, sessionId?: string): Promise<void>;
+  endCustomerSession(businessId: string, sessionId?: string): Promise<void>;
   serveCustomer(
     businessId: string,
     offerId: string,
@@ -2986,7 +3025,25 @@ export function createHarthmereBusinessInterfaceAdapter(options: {
         offerId,
         ...(sessionId ? { sessionId } : {}),
         ...(ticketId ? { ticketId } : {}),
+        ...(ticketId
+          ? {
+              customerEntityId:
+                current?.businessSystems.customerSessions?.[sessionId ?? ""]
+                  ?.queue.find((ticket) => ticket.ticketId === ticketId)
+                  ?.entityId,
+            }
+          : {}),
         ...(minigameAction ? { minigameAction } : {}),
+      }),
+    tickCustomerSession: (businessId, sessionId) =>
+      submit("tick_business_customer_session", {
+        businessId,
+        ...(sessionId ? { sessionId } : {}),
+      }),
+    endCustomerSession: (businessId, sessionId) =>
+      submit("end_business_customer_session", {
+        businessId,
+        ...(sessionId ? { sessionId } : {}),
       }),
     openBranch: (businessId, outpostId) =>
       submit("open_business_branch", {

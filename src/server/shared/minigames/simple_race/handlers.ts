@@ -1,8 +1,16 @@
-import { makeEventHandler, newId } from "@/server/logic/events/core";
+import {
+  makeEventHandler,
+  newId,
+  RollbackError,
+} from "@/server/logic/events/core";
 import { q } from "@/server/logic/events/query";
 import { forcePlayerWarp } from "@/server/logic/utils/players";
 import { serverModFor } from "@/server/shared/minigames/server_mods";
-import { handleSimpleRaceReachCheckpoint } from "@/server/shared/minigames/simple_race/util";
+import {
+  assertValidSimpleRaceElement,
+  handleSimpleRaceReachCheckpoint,
+  reachedAllCheckpoints,
+} from "@/server/shared/minigames/simple_race/util";
 import {
   isMinigameInstanceOfStateKind,
   mutInstanceOfStateKind,
@@ -106,7 +114,7 @@ const finishSimpleRaceEventHandler = makeEventHandler(
           ?.entry_stash_id ?? INVALID_BIOMES_ID,
     }),
     involves: (event, { playerStashedEntityId }) => ({
-      player: q.id(event.id).with("playing_minigame").includeIced(),
+      player: q.id(event.id).with("playing_minigame", "position").includeIced(),
       minigame: q
         .id(event.minigame_id)
         .with("created_by", "minigame_component")
@@ -115,14 +123,22 @@ const finishSimpleRaceEventHandler = makeEventHandler(
         .id(event.minigame_instance_id)
         .with("created_by", "minigame_instance")
         .includeIced(),
-      minigameElement: q.id(event.minigame_element_id),
+      minigameElement: q
+        .id(event.minigame_element_id)
+        .with("minigame_element", "placeable_component", "position"),
       playerStashedEntity: q
         .id(playerStashedEntityId)
         .with("stashed")
         .includeIced(),
     }),
     apply: (
-      { player, minigame, minigameInstance, playerStashedEntity },
+      {
+        player,
+        minigame,
+        minigameElement,
+        minigameInstance,
+        playerStashedEntity,
+      },
       event,
       context
     ) => {
@@ -137,6 +153,12 @@ const finishSimpleRaceEventHandler = makeEventHandler(
       );
       const instanceComponent = minigameInstance.minigameInstance();
       ok(isMinigameInstanceOfStateKind(instanceComponent, "simple_race"));
+      assertValidSimpleRaceElement(minigame, player, minigameElement, "finish");
+      if (
+        !reachedAllCheckpoints(minigame.minigameComponent(), instanceComponent)
+      ) {
+        throw new RollbackError("Not all race checkpoints have been reached");
+      }
 
       if (instanceComponent.state.player_state !== "racing") {
         return;
@@ -168,7 +190,7 @@ const reachCheckpointSimpleRaceMinigameEventHandler = makeEventHandler(
   "reachCheckpointSimpleRaceMinigameEvent",
   {
     involves: (event) => ({
-      player: q.id(event.id).with("playing_minigame").includeIced(),
+      player: q.id(event.id).with("playing_minigame", "position").includeIced(),
       minigame: q
         .id(event.minigame_id)
         .with("created_by", "minigame_component")
@@ -177,7 +199,9 @@ const reachCheckpointSimpleRaceMinigameEventHandler = makeEventHandler(
         .id(event.minigame_instance_id)
         .with("created_by", "minigame_instance")
         .includeIced(),
-      minigameElement: q.id(event.minigame_element_id),
+      minigameElement: q
+        .id(event.minigame_element_id)
+        .with("minigame_element", "placeable_component", "position"),
     }),
     apply: ({ player, minigame, minigameElement, minigameInstance }) => {
       ok(
@@ -188,6 +212,13 @@ const reachCheckpointSimpleRaceMinigameEventHandler = makeEventHandler(
       ok(
         minigameInstance.createdBy().id === minigame.id,
         "Wrong instance passed"
+      );
+
+      assertValidSimpleRaceElement(
+        minigame,
+        player,
+        minigameElement,
+        "checkpoint"
       );
 
       handleSimpleRaceReachCheckpoint(minigameInstance, minigameElement);
@@ -208,7 +239,7 @@ const restartSimpleRaceMinigameEventHandler = makeEventHandler(
       minigameElementIds: [...minigame.minigame_component.minigame_element_ids],
     }),
     involves: (event, { minigameElementIds }) => ({
-      player: q.id(event.id).with("playing_minigame").includeIced(),
+      player: q.id(event.id).with("playing_minigame", "position").includeIced(),
       minigame: q
         .id(event.minigame_id)
         .with("created_by", "minigame_component")
@@ -261,7 +292,7 @@ const reachStartSimpleRaceMinigameEventHandler = makeEventHandler(
   "reachStartSimpleRaceMinigameEvent",
   {
     involves: (event) => ({
-      player: q.id(event.id).with("playing_minigame").includeIced(),
+      player: q.id(event.id).with("playing_minigame", "position").includeIced(),
       minigame: q
         .id(event.minigame_id)
         .with("created_by", "minigame_component")
@@ -270,9 +301,11 @@ const reachStartSimpleRaceMinigameEventHandler = makeEventHandler(
         .id(event.minigame_instance_id)
         .with("created_by", "minigame_instance")
         .includeIced(),
-      minigameElement: q.id(event.minigame_element_id),
+      minigameElement: q
+        .id(event.minigame_element_id)
+        .with("minigame_element", "placeable_component", "position"),
     }),
-    apply: ({ player, minigame, minigameInstance }) => {
+    apply: ({ player, minigame, minigameElement, minigameInstance }) => {
       ok(
         player.playingMinigame().minigame_instance_id === minigameInstance.id,
         "Not playing this game"
@@ -282,6 +315,8 @@ const reachStartSimpleRaceMinigameEventHandler = makeEventHandler(
         minigameInstance.createdBy().id === minigame.id,
         "Wrong instance passed"
       );
+
+      assertValidSimpleRaceElement(minigame, player, minigameElement, "start");
 
       const mutInstance = mutInstanceOfStateKind(
         minigameInstance,

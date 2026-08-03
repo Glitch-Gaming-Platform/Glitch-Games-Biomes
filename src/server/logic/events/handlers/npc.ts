@@ -277,11 +277,11 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
         const helixWeapon = getHarthmereEnergyWeapon("helix_projector");
         const authorizedBurnTick = Boolean(
           burn &&
-            helixWeapon &&
-            burn.source === attacker.id &&
-            burn.ticksRemaining > 0 &&
-            nowMs + 50 >= burn.nextTickAtMs &&
-            event.hp < 0
+          helixWeapon &&
+          burn.source === attacker.id &&
+          burn.ticksRemaining > 0 &&
+          nowMs + 50 >= burn.nextTickAtMs &&
+          event.hp < 0
         );
         if (authorizedBurnTick && burn && helixWeapon) {
           hpDelta = -burn.tickDamage;
@@ -439,11 +439,11 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
                 energyWeapon,
                 distanceToTarget
               )
-            : itemProfile?.damagePerHit ??
+            : (itemProfile?.damagePerHit ??
               Math.max(
                 1,
                 Math.round(((selected?.item.dps ?? 16) * intervalMs) / 1000)
-              );
+              ));
           const overheat = deserializedNpcState.energyWeapon?.shieldOverheat;
           const photonSidearm = getHarthmereEnergyWeapon("photon_sidearm");
           if (

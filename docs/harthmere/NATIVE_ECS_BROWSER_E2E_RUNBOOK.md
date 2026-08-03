@@ -108,6 +108,13 @@ endpoint, such as trigger/notify metrics ports.
   runner through a local-only relay. The browser/API and the fixture writer
   must use the same Redis world; do not point the runner at a separate default
   localhost Redis instance.
+- For bundle-only retries, use
+  `scripts/glitch/refresh-warm-local-stack.cjs --build all` to recreate only
+  the app with current `.next`, `dist`, and `public` read-only mounts. The
+  helper keeps the Redis container identity fixed and forces snapshot
+  population/bootstrap/flush off. If Redis is intentionally not published,
+  pass `HARTHMERE_E2E_REDIS_CONTAINER=<name>` to `e2e-jump.cjs ready` instead of
+  creating another database just for readiness.
 - Retry a reset socket only for idempotent admin ECS `update` fixtures. A
   `create`/`delete` with an unknown response must not be blindly replayed.
 - After each objective, verify all applicable layers before continuing:

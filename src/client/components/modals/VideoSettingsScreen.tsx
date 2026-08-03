@@ -1,4 +1,5 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { reactPlayerPlaybackReady } from "@/client/components/reactPlayerPlayback";
 import { DialogButton } from "@/client/components/system/DialogButton";
 import { DialogCheckbox } from "@/client/components/system/DialogCheckbox";
 import { LeftPane } from "@/client/components/system/mini_phone/split_pane/LeftPane";
@@ -23,6 +24,9 @@ export const VideoSettingsScreen: React.FunctionComponent<{
     ["/ecs/c/placeable_component", placeableId]
   );
   const [videoUrl, setVideoUrl] = useState(videoComponent?.video_url ?? "");
+  const [preparedVideoUrl, setPreparedVideoUrl] = useState<
+    string | undefined
+  >();
   const [muted, setMuted] = useState(!!videoComponent?.muted);
   const canChange = useUserCanAction(placeableId, "destroy");
 
@@ -30,6 +34,10 @@ export const VideoSettingsScreen: React.FunctionComponent<{
     setVideoUrl(videoComponent?.video_url ?? "");
     setMuted(!!videoComponent?.muted);
   }, [videoComponent]);
+
+  useEffect(() => {
+    setPreparedVideoUrl(undefined);
+  }, [videoUrl]);
 
   const save = useCallback(() => {
     void (async () => {
@@ -101,10 +109,11 @@ export const VideoSettingsScreen: React.FunctionComponent<{
           <ReactPlayer
             ref={playerRef}
             src={videoUrl}
-            playing={true}
+            playing={reactPlayerPlaybackReady(videoUrl, preparedVideoUrl)}
             loop={true}
             width="400px"
             height="400px"
+            onLoadedMetadata={() => setPreparedVideoUrl(videoUrl)}
           />
         )}
       </RightPane>

@@ -21,6 +21,7 @@ import {
   talkDialogShouldShowVoiceInputForTest,
 } from "@/client/components/challenges/talkDialogModalFlow";
 import { HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT } from "@/client/components/challenges/harthmereEvents";
+import { playerFacingQuestActionErrorMessage } from "@/client/components/challenges/questActionError";
 import { cleanListener } from "@/client/util/helpers";
 import { useEffectAsync } from "@/client/util/hooks";
 import { useTypedStorageItem } from "@/client/util/typed_local_storage";
@@ -211,7 +212,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
     actionFollowUp ?? (dialog[dialogIndex] as TalkDialogInfo | undefined);
   const activeDialogueExpression = harthmereDialogueExpressionForText(
     currentDialog?.text,
-    { entityId: Number(entityId), title }
+    { entityId: Number(entityId), title, dialogueId: id }
   );
   const activeDialogueExpressionNonce = activeDialogueExpression
     ? `talk:${entityId}:${dialogIndex}:${
@@ -488,6 +489,10 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
                                 goNext();
                               }
                             } catch (error) {
+                              const playerMessage =
+                                playerFacingQuestActionErrorMessage(error) ??
+                                "That action could not be completed. Please try again.";
+                              setActionFollowUp({ text: playerMessage });
                               // Keep the dialog open and re-enable the action so
                               // a transient socket/server failure is retryable.
                               log.warn("NPC dialog action did not complete", {

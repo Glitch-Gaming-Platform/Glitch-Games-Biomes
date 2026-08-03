@@ -82,10 +82,10 @@ export function automaticQuestDestinationMarkerForTest(input: {
   // minimap forever while the HUD correctly names the next Chapter 1 step.
   const existingBelongsToPriorQuestObjective = Boolean(
     input.existingPin?.ownerQuestId &&
-      (input.existingPin.ownerQuestId !== input.quest.questId ||
-        (input.existingPin.ownerStepId &&
-          input.quest.currentStepId &&
-          input.existingPin.ownerStepId !== input.quest.currentStepId))
+    (input.existingPin.ownerQuestId !== input.quest.questId ||
+      (input.existingPin.ownerStepId &&
+        input.quest.currentStepId &&
+        input.existingPin.ownerStepId !== input.quest.currentStepId))
   );
 
   const existingIsEarlierStepOfQuest = existingMarkerId.startsWith(
@@ -210,13 +210,32 @@ export function activeBiomesUIMapPinFromMarkerForTest(
 // means the map data has not hydrated yet, so we never clear in that case
 // (which would wrongly nuke a still-valid pin during loading).
 export function shouldClearStaleActiveMapPin(input: {
-  pin: { markerId: string } | undefined;
+  pin:
+    | {
+        markerId: string;
+        ownerQuestId?: string;
+        ownerStepId?: string;
+        worldPosition?: [number, number, number];
+      }
+    | undefined;
   visibleMarkerIds: readonly string[];
 }): boolean {
   if (!input.pin) {
     return false;
   }
   if (input.visibleMarkerIds.length === 0) {
+    return false;
+  }
+  // Material guidance deliberately creates coordinate pins for resources,
+  // vendors, and crafting stations that are not always members of the static
+  // map-landmark registry. The owning quest/step lifecycle clears these pins
+  // when the objective advances; deleting them merely because their marker is
+  // synthetic made "Show on map" appear to do nothing.
+  if (
+    finiteWorldPosition(input.pin.worldPosition) &&
+    (Boolean(input.pin.ownerQuestId) ||
+      /^(?:material_source|building_material_source):/.test(input.pin.markerId))
+  ) {
     return false;
   }
   return !input.visibleMarkerIds.includes(input.pin.markerId);
@@ -282,9 +301,22 @@ export function writeActiveBiomesUIMapPin(
 // minimap arrow appear as before) AND asks the UI to open the Map tab and center
 // on it. Used by the Land/Property panels' "Locate on map" buttons.
 export function requestBiomesUILocateOnMap(pin: BiomesUIActiveMapPin): void {
-  writeActiveBiomesUIMapPin(pin);
+  const normalized = activeBiomesUIMapPinFromMarkerForTest(
+    {
+      id: pin.markerId,
+      label: pin.label,
+      kind: pin.kind,
+      worldPosition: pin.worldPosition,
+      description: pin.description,
+      ownerQuestId: pin.ownerQuestId,
+      ownerStepId: pin.ownerStepId,
+    },
+    pin.setAtMs
+  );
+  if (!normalized) return;
+  writeActiveBiomesUIMapPin(normalized);
   if (typeof window === "undefined") return;
   window.dispatchEvent(
-    new CustomEvent(BIOMES_UI_LOCATE_ON_MAP_EVENT, { detail: pin })
+    new CustomEvent(BIOMES_UI_LOCATE_ON_MAP_EVENT, { detail: normalized })
   );
 }

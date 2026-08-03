@@ -9,7 +9,10 @@ const HARTHMERE_DEATH_CORPSE_HOLD_MS = 4500;
 const HARTHMERE_DEATH_MAX_GROUND_GAP_METERS = 0.18;
 const HARTHMERE_DEATH_MAX_SINK_METERS = 0.04;
 import type { ClientContext } from "@/client/game/context";
-import type { AudioManager } from "@/client/game/context_managers/audio_manager";
+import type {
+  AudioManager,
+  PathSpatialAudioOptions,
+} from "@/client/game/context_managers/audio_manager";
 import type { AudioPath } from "@/client/game/resources/audio";
 import {
   applyHarthmereCinematicExpressionPose,
@@ -127,7 +130,10 @@ import {
   harthmereNativeNpcProjectileAttackTime,
   harthmereNativeNpcProjectilePresentation,
 } from "@/shared/harthmere/harthmere_native_combat";
-import { HARTHMERE_PROJECTILE_VISUAL_EVENT } from "@/shared/harthmere/projectile_visual_manifest";
+import {
+  HARTHMERE_PROJECTILE_VISUAL_EVENT,
+  harthmereAuthoritativeImpactRemainingSecs,
+} from "@/shared/harthmere/projectile_visual_manifest";
 import {
   HARTHMERE_MAGIC_CHARGE_MAX_SECS,
   HARTHMERE_MAGIC_CHARGE_MIN_SECS,
@@ -216,7 +222,6 @@ import {
   getRunSpeedByNpcType,
   idToNpcEffectProfile,
   idToNpcType,
-  isNpcTypeId,
 } from "@/shared/npc/bikkie";
 import type { RegistryLoader } from "@/shared/registry";
 import { ok } from "assert";
@@ -228,11 +233,17 @@ import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 
 export {
   HARTHMERE_NPC_RENDER_COMPONENT_COMPAT_VERSION,
+  harthmereNpcAttackUsesAuthoritativeTransform,
   harthmereEnsureRenderableNpcEntity,
+  harthmereRenderableNpcType,
   isRenderNpcEntity,
   type RenderNpcEntity,
 } from "@/client/game/resources/harthmere_npc_render_compat";
-import type { RenderNpcEntity } from "@/client/game/resources/harthmere_npc_render_compat";
+import {
+  harthmereNpcAttackUsesAuthoritativeTransform,
+  harthmereRenderableNpcType,
+  type RenderNpcEntity,
+} from "@/client/game/resources/harthmere_npc_render_compat";
 
 export interface ActiveBecomeNpcState {
   kind: "active";
@@ -809,8 +820,8 @@ function applyHarthmereBossDamagePose(
         brokenCount >= 2
           ? "unbalanced"
           : brokenCount === 1
-          ? "damaged"
-          : "intact",
+            ? "damaged"
+            : "intact",
     };
     return;
   }
@@ -819,8 +830,8 @@ function applyHarthmereBossDamagePose(
       healthRatio <= 0.3
         ? "rupturing"
         : healthRatio <= 0.65
-        ? "opened"
-        : "armored";
+          ? "opened"
+          : "armored";
     if (phase !== "armored") {
       const leftShell = root.getObjectByName("Carapace.L");
       const rightShell = root.getObjectByName("Carapace.R");
@@ -854,8 +865,8 @@ function applyHarthmereBossDamagePose(
       healthRatio <= 0.3
         ? "year_breaks"
         : encounter?.cycleStartedAtMs === undefined || cycleElapsedMs < 30_000
-        ? "hearth_fails"
-        : "same_day_again";
+          ? "hearth_fails"
+          : "same_day_again";
     for (const name of ["Rain.L", "Rain.R"]) {
       const rain = root.getObjectByName(name);
       if (rain) {
@@ -906,10 +917,10 @@ function applyHarthmereBossDamagePose(
       healthRatio > 0.75
         ? 4
         : healthRatio > 0.5
-        ? 2
-        : healthRatio > 0.2
-        ? 1
-        : 0;
+          ? 2
+          : healthRatio > 0.2
+            ? 1
+            : 0;
     const brokenChains = 4 - chainsRemaining;
     for (let index = 1; index <= 4; index += 1) {
       const hidden = index <= brokenChains;
@@ -931,10 +942,10 @@ function applyHarthmereBossDamagePose(
         chainsRemaining === 4
           ? "sleeper"
           : chainsRemaining === 2
-          ? "half_waking"
-          : chainsRemaining === 1
-          ? "bellbound"
-          : "path_dependent",
+            ? "half_waking"
+            : chainsRemaining === 1
+              ? "bellbound"
+              : "path_dependent",
       chainsRemaining,
       healthRatio,
     };
@@ -1219,10 +1230,10 @@ function recordHarthmereNpcAnimationExecutionCheck(
   const selectedState = attackActive
     ? "attack"
     : running
-    ? "run"
-    : moving
-    ? "walk"
-    : "idle";
+      ? "run"
+      : moving
+        ? "walk"
+        : "idle";
   const loadCheck = root.userData.harthmereNpcAnimationLoadCheck as
     | {
         hasAttack?: boolean;
@@ -1244,10 +1255,10 @@ function recordHarthmereNpcAnimationExecutionCheck(
     hasMatchingClip: attackActive
       ? Boolean(loadCheck?.hasAttack)
       : running
-      ? Boolean(loadCheck?.hasRun)
-      : moving
-      ? Boolean(loadCheck?.hasWalk)
-      : true,
+        ? Boolean(loadCheck?.hasRun)
+        : moving
+          ? Boolean(loadCheck?.hasWalk)
+          : true,
     clipCount: loadCheck?.clipCount ?? 0,
     mixerTime,
     executedAt: Date.now(),
@@ -1275,11 +1286,9 @@ function publishHarthmereVoxelNpcUniversalCombatAnimationAudit(
   };
   const label = entity.label?.text ?? `Voxel NPC ${entity.id}`;
   const execution = root.userData.harthmereNpcAnimationExecutionCheck as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   const loadCheck = root.userData.harthmereNpcAnimationLoadCheck as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   const attackAgeMs = Number.isFinite(attackTime)
     ? Math.max(0, Math.round((secondsSinceEpoch - Number(attackTime)) * 1000))
     : undefined;
@@ -1485,8 +1494,8 @@ function getHarthmereVoxelNpcMotionOverride(
     const targetRaw = Array.isArray(chase.targetPos)
       ? chase.targetPos
       : Array.isArray(chase.playerPos)
-      ? chase.playerPos
-      : undefined;
+        ? chase.playerPos
+        : undefined;
     const from: [number, number] = [
       Number(fromRaw?.[0] ?? basePosition[0]),
       Number(fromRaw?.[1] ?? basePosition[2]),
@@ -1494,8 +1503,8 @@ function getHarthmereVoxelNpcMotionOverride(
     const target: [number, number] | undefined = targetRaw
       ? [Number(targetRaw[0]), Number(targetRaw[1])]
       : localPlayerPosition
-      ? [localPlayerPosition[0], localPlayerPosition[2]]
-      : undefined;
+        ? [localPlayerPosition[0], localPlayerPosition[2]]
+        : undefined;
     if (
       target &&
       from.every(Number.isFinite) &&
@@ -1865,10 +1874,10 @@ function cutsceneNpcAnimationAction(
       repeat: isHarthmereCinematicExpression(presentation.animation)
         ? harthmereCinematicExpressionRepeat(presentation.animation)
         : presentation.animation === "death"
-        ? { kind: "once", clampWhenFinished: true }
-        : presentation.animation === "hitReact"
-        ? { kind: "once" }
-        : { kind: "repeat" },
+          ? { kind: "once", clampWhenFinished: true }
+          : presentation.animation === "hitReact"
+            ? { kind: "once" }
+            : { kind: "repeat" },
       startTime: mixerTime - Math.max(0, presentation.animationTime ?? 0),
     },
     layers: { all: "apply" },
@@ -2064,8 +2073,8 @@ export class NpcRenderState {
     return this.consecutiveFrameState
       ? this.consecutiveFrameState.position.get()
       : this.entity
-      ? this.entity.position.v
-      : [0, 0, 0]; // This shouldn't actually be possible.
+        ? this.entity.position.v
+        : [0, 0, 0]; // This shouldn't actually be possible.
   }
 
   private tickConsecutiveFrameState(
@@ -2139,7 +2148,7 @@ export class NpcRenderState {
         ? readRenderablePuppetOverrides().find(
             (override) => override.id === Number(entity.id)
           )
-        : renderablePuppetOverride ?? undefined;
+        : (renderablePuppetOverride ?? undefined);
     const cutsceneMotionOverrides = cutsceneOverride?.at
       ? {
           position: [...cutsceneOverride.at] as Vec3,
@@ -2156,8 +2165,14 @@ export class NpcRenderState {
     const nativeEcsAuthority = nativeBiomesEcsAuthorityEnabled();
     const npcPosition = entity.position?.v;
     const npcTypeId = entity.npc_metadata.type_id;
-    ok(npcTypeId);
-    const npcType = idToNpcType(npcTypeId);
+    const npcType = harthmereRenderableNpcType(npcTypeId);
+    if (!npcType) {
+      log.throttledError(
+        10_000,
+        `Skipping render tick for NPC ${entity.id} with invalid type_id (${npcTypeId})`
+      );
+      return;
+    }
 
     const rawPosition = motionOverrides?.position ?? entity.position.v;
     const snapshotGroundedLiveNpc =
@@ -2174,8 +2189,8 @@ export class NpcRenderState {
     // visible body in one place and an authoritative hitbox in another.
     let position = nativeEcsAuthority
       ? rawPosition
-      : motionOverrides?.position ??
-        snapshotGroundLiveNpcPosition(rawPosition, entity.label?.text);
+      : (motionOverrides?.position ??
+        snapshotGroundLiveNpcPosition(rawPosition, entity.label?.text));
     if (snapshotGroundedLiveNpc) {
       this.mixedMesh.three.userData.snapshotLiveGrounding = {
         version: SNAPSHOT_LIVE_NPC_GROUNDING_VERSION,
@@ -2346,7 +2361,14 @@ export class NpcRenderState {
       harthmereIsDead &&
       Array.isArray(this.mixedMesh.three.userData.harthmereDeathWorldPosition)
         ? this.mixedMesh.three.userData.harthmereDeathWorldPosition
-        : motionOverrides?.position ?? consecutiveFrameState.position.get();
+        : (motionOverrides?.position ??
+          (nativeEcsAuthority &&
+          harthmereNpcAttackUsesAuthoritativeTransform(
+            this.entity.emote,
+            secondsSinceEpoch
+          )
+            ? position
+            : consecutiveFrameState.position.get()));
     this.mixedMesh.three.position.fromArray(pos);
 
     // Some older NPC biscuits omit boxSize. Use the centralized fallback so
@@ -2379,7 +2401,13 @@ export class NpcRenderState {
 
     this.mixedMesh.three.rotation.y =
       motionOverrides?.orientation[1] ??
-      consecutiveFrameState.orientation.get();
+      (nativeEcsAuthority &&
+      harthmereNpcAttackUsesAuthoritativeTransform(
+        this.entity.emote,
+        secondsSinceEpoch
+      )
+        ? orientation[1]
+        : consecutiveFrameState.orientation.get());
 
     // Lighting
     const spatialLighting = consecutiveFrameState.spatialLighting
@@ -2466,19 +2494,19 @@ export class NpcRenderState {
     const cinematicExpressionTime = cutsceneExpression
       ? Math.max(0, cutsceneOverride?.animationTime ?? 0)
       : dialogueExpressionCue
-      ? Math.max(0, (Date.now() - dialogueExpressionCue.startedAtMs) / 1000)
-      : gameplayExpression
-      ? Math.max(0, secondsSinceEpoch - (emote?.emote_start_time ?? 0))
-      : 0;
+        ? Math.max(0, (Date.now() - dialogueExpressionCue.startedAtMs) / 1000)
+        : gameplayExpression
+          ? Math.max(0, secondsSinceEpoch - (emote?.emote_start_time ?? 0))
+          : 0;
     this.syncCinematicFacialExpression(
       cinematicExpression,
       cutsceneExpression
         ? `cutscene:${cutsceneOverride?.animation ?? cutsceneExpression}`
         : dialogueExpression
-        ? `dialogue:${dialogueExpressionCue?.nonce ?? dialogueExpression}`
-        : gameplayExpression
-        ? `gameplay:${emote?.emote_start_time ?? 0}`
-        : "none",
+          ? `dialogue:${dialogueExpressionCue?.nonce ?? dialogueExpression}`
+          : gameplayExpression
+            ? `gameplay:${emote?.emote_start_time ?? 0}`
+            : "none",
       dialogueExpression ? "dialogue" : "script"
     );
 
@@ -2526,7 +2554,7 @@ export class NpcRenderState {
             aimPoint: [...publicCombatState.ranged_attack_aim_point] as [
               number,
               number,
-              number
+              number,
             ],
             result:
               publicCombatState.ranged_attack_result === "hit" ||
@@ -2540,16 +2568,16 @@ export class NpcRenderState {
       this.entity.id
     );
     const nativeRangedAttack = nativeCombatProfile?.rangedAttacks?.length
-      ? publicRangedAttack ??
+      ? (publicRangedAttack ??
         deserializeNpcCustomState(
           synchronizedNpcState?.data ??
             (entity as ReadonlyEntity).npc_state?.data
-        ).chaseAttack?.rangedAttack
+        ).chaseAttack?.rangedAttack)
       : undefined;
     const rangedReleaseTime = nativeRangedAttack
-      ? nativeRangedAttack.releaseTime ??
+      ? (nativeRangedAttack.releaseTime ??
         nativeRangedAttack.castTime +
-          Number(nativeRangedAttack.chargeTimeSecs ?? 0)
+          Number(nativeRangedAttack.chargeTimeSecs ?? 0))
       : undefined;
     const presentationAttackTime = harthmereNativeNpcProjectileAttackTime({
       isDead: harthmereIsDead,
@@ -2573,9 +2601,9 @@ export class NpcRenderState {
     const magicChargeTimeSecs = projectilePresentation?.chargeTimeSecs ?? 0;
     const chargingMagic = Boolean(
       projectilePresentation?.magic &&
-        magicChargeTimeSecs > 0 &&
-        projectilePresentation.releaseTime !== undefined &&
-        secondsSinceEpoch < projectilePresentation.releaseTime
+      magicChargeTimeSecs > 0 &&
+      projectilePresentation.releaseTime !== undefined &&
+      secondsSinceEpoch < projectilePresentation.releaseTime
     );
     const attackTime = chargingMagic ? undefined : presentationAttackTime;
     const projectileVisualId = projectilePresentation?.projectileVisualId;
@@ -2699,6 +2727,15 @@ export class NpcRenderState {
               hitRadius: projectilePresentation?.hitRadius,
               coneAngleDeg: projectilePresentation?.coneAngleDeg,
               windupSecs: projectilePresentation?.windupSecs,
+              authoritativeImpactSecs:
+                projectilePresentation?.releaseTime !== undefined &&
+                projectilePresentation.windupSecs !== undefined
+                  ? harthmereAuthoritativeImpactRemainingSecs({
+                      releaseTime: projectilePresentation.releaseTime,
+                      impactDelaySecs: projectilePresentation.windupSecs,
+                      now: secondsSinceEpoch,
+                    })
+                  : undefined,
               result: projectilePresentation?.result,
               attacker:
                 entity.label?.text ??
@@ -2729,14 +2766,14 @@ export class NpcRenderState {
         cutsceneOverride?.animation
           ? cutsceneOverride
           : dialogueExpressionCue
-          ? {
-              animation: dialogueExpressionCue.expression,
-              animationTime: Math.max(
-                0,
-                (Date.now() - dialogueExpressionCue.startedAtMs) / 1000
-              ),
-            }
-          : undefined,
+            ? {
+                animation: dialogueExpressionCue.expression,
+                animationTime: Math.max(
+                  0,
+                  (Date.now() - dialogueExpressionCue.startedAtMs) / 1000
+                ),
+              }
+            : undefined,
         this.mixedMesh.animationMixer.time
       ),
       animAccum
@@ -2827,6 +2864,7 @@ export class NpcRenderState {
             runSpeed: getRunSpeedByNpcType(npcType),
             movementType: getMovementTypeByNpcType(npcType),
             characterSystem: npcSystem,
+            idleSpeed: HARTHMERE_NPC_BODY_LOCOMOTION_DEADZONE_SPEED,
           }),
       animAccum
     );
@@ -3047,6 +3085,7 @@ export class NpcRenderState {
       this.entity.label?.text,
       Number(this.entity.id)
     );
+    if (!profile) return;
     if (
       !advanceHarthmereBossStomp(this.harthmereBossStompState, {
         profile,
@@ -3060,11 +3099,17 @@ export class NpcRenderState {
     }
     const sound = getHarthmereSoundEffect(HARTHMERE_GIANT_BOSS_STOMP_SOUND_ID);
     if (!sound) return;
-    this.playSound("npcVoice", sound.path as AudioPath, [
-      centerPosition[0],
-      aabb[0][1] + 0.15,
-      centerPosition[2],
-    ]);
+    this.playSound(
+      "npcVoice",
+      sound.path as AudioPath,
+      [centerPosition[0], aabb[0][1] + 0.15, centerPosition[2]],
+      {
+        volumeMultiplier: profile.soundVolumeMultiplier,
+        refDistance: profile.soundRefDistance,
+        maxDistance: profile.soundMaxDistance,
+        rolloffFactor: profile.soundRolloffFactor,
+      }
+    );
   }
 
   private tickOnAttackEffects(
@@ -3279,8 +3324,8 @@ export class NpcRenderState {
       const sound = creatureProfile
         ? this.harthmereCreatureSound(phase)
         : bufferChoices?.length
-        ? sample(bufferChoices)
-        : this.harthmereFallbackSound(phase);
+          ? sample(bufferChoices)
+          : this.harthmereFallbackSound(phase);
       if (sound) {
         this.playSound("npcVoice", sound, centerPosition);
       }
@@ -3361,13 +3406,14 @@ export class NpcRenderState {
   playSound(
     channel: keyof typeof this.soundChannels,
     assetPath: AudioPath,
-    position: Vec3
+    position: Vec3,
+    spatialOptions?: PathSpatialAudioOptions
   ) {
     if (String(assetPath).startsWith("/assets/harthmere/audio/sfx/")) {
       // Generated Harthmere effects are not part of the eagerly loaded Galois
       // bundle. Use the async path so the first attack requests and plays its
       // clip instead of silently losing the one-shot on a cold cache.
-      this.audioManager.playPathAt(assetPath, position);
+      this.audioManager.playPathAt(assetPath, position, spatialOptions);
       return;
     }
     const audioListener = this.audioManager.getAudioListener();
@@ -3461,8 +3507,14 @@ async function makeNpcRenderState(
   id: BiomesId
 ): Promise<NpcRenderState | undefined> {
   const npcMetadata = deps.get("/ecs/c/npc_metadata", id);
-  ok(npcMetadata);
-  if (!isNpcTypeId(npcMetadata.type_id)) {
+  // Resource invalidation can race entity deletion or a Sync subscription
+  // boundary. Treat a missing component as an unrenderable frame instead of
+  // poisoning the cached render-state resource with an assertion error.
+  if (!npcMetadata) {
+    return;
+  }
+  const npcType = harthmereRenderableNpcType(npcMetadata.type_id);
+  if (!npcType) {
     log.throttledError(
       10_000,
       `Entity ${id} has npc_metadata but invalid type_id (${npcMetadata.type_id})`
@@ -3471,7 +3523,9 @@ async function makeNpcRenderState(
   }
 
   const gltf = await deps.get("/scene/npc/mesh", id);
-  const npcType = idToNpcType(npcMetadata.type_id);
+  if (!gltf) {
+    return;
+  }
   const mixedMesh = makeMixedNpcMesh(gltf, npcType);
   const commonResources = await deps.get("/scene/npc_common_effects");
 
@@ -3595,12 +3649,7 @@ type LocalDevVoxelHairStyle =
   | "wavy";
 
 type LocalDevVoxelMouthStyle =
-  | "line"
-  | "smile"
-  | "frown"
-  | "open"
-  | "stern"
-  | "smirk";
+  "line" | "smile" | "frown" | "open" | "stern" | "smirk";
 
 type LocalDevVoxelFaceSpec = {
   headSize: [number, number, number];
@@ -3889,38 +3938,38 @@ function localDevVoxelFaceSpec(
   const headWidth = robot
     ? 0.36
     : faceShape === "wide"
-    ? 0.38
-    : faceShape === "narrow"
-    ? 0.28
-    : faceShape === "tall"
-    ? 0.31
-    : faceShape === "soft"
-    ? 0.34
-    : 0.34;
+      ? 0.38
+      : faceShape === "narrow"
+        ? 0.28
+        : faceShape === "tall"
+          ? 0.31
+          : faceShape === "soft"
+            ? 0.34
+            : 0.34;
   const headHeight = robot
     ? 0.32
     : faceShape === "tall"
-    ? 0.36
-    : faceShape === "soft"
-    ? 0.31
-    : faceShape === "narrow"
-    ? 0.33
-    : 0.32;
+      ? 0.36
+      : faceShape === "soft"
+        ? 0.31
+        : faceShape === "narrow"
+          ? 0.33
+          : 0.32;
   const headDepth = robot
     ? 0.29
     : faceShape === "wide"
-    ? 0.29
-    : faceShape === "narrow"
-    ? 0.25
-    : 0.27;
+      ? 0.29
+      : faceShape === "narrow"
+        ? 0.25
+        : 0.27;
 
   const hairStyle = robot
     ? "flat"
-    : (faceConfig?.accessory === "cap"
+    : ((faceConfig?.accessory === "cap"
         ? "cap"
         : faceConfig?.accessory === "hood"
-        ? "hood"
-        : faceConfig?.hairStyle) ??
+          ? "hood"
+          : faceConfig?.hairStyle) ??
       pickLocalDev(
         [
           "flat",
@@ -3937,7 +3986,7 @@ function localDevVoxelFaceSpec(
         ] as const,
         seed,
         7
-      );
+      ));
   const mouthStyle =
     faceConfig?.mouthStyle ??
     pickLocalDev(["line", "smile", "frown", "open", "stern"] as const, seed, 8);
@@ -3950,81 +3999,81 @@ function localDevVoxelFaceSpec(
     eyeShape === "wide"
       ? 0.048
       : eyeShape === "small"
-      ? 0.028
-      : eyeShape === "sleepy"
-      ? 0.024
-      : 0.038;
+        ? 0.028
+        : eyeShape === "sleepy"
+          ? 0.024
+          : 0.038;
   const mouthY =
     mouthStyle === "frown"
       ? 0.995
       : mouthStyle === "smile" || mouthStyle === "smirk"
-      ? 1.03
-      : 1.015;
+        ? 1.03
+        : 1.015;
   const mouthWidth =
     mouthStyle === "smirk"
       ? 0.13
       : mouthStyle === "stern"
-      ? 0.1
-      : mouthStyle === "open"
-      ? 0.09
-      : 0.115;
+        ? 0.1
+        : mouthStyle === "open"
+          ? 0.09
+          : 0.115;
   const browStyle = faceConfig?.browStyle ?? "straight";
   const browTiltOffset =
     browStyle === "arched"
       ? 0.016
       : browStyle === "stern"
-      ? -0.016
-      : browStyle === "scarred"
-      ? 0.012
-      : 0;
+        ? -0.016
+        : browStyle === "scarred"
+          ? 0.012
+          : 0;
   const noseStyle = faceConfig?.noseStyle ?? "straight";
   const noseSize: [number, number, number] =
     noseStyle === "wide"
       ? [0.07, 0.05, 0.06]
       : noseStyle === "long"
-      ? [0.05, 0.075, 0.065]
-      : noseStyle === "button"
-      ? [0.055, 0.035, 0.055]
-      : noseStyle === "small"
-      ? [0.04, 0.04, 0.05]
-      : [0.05, 0.055, 0.055];
+        ? [0.05, 0.075, 0.065]
+        : noseStyle === "button"
+          ? [0.055, 0.035, 0.055]
+          : noseStyle === "small"
+            ? [0.04, 0.04, 0.05]
+            : [0.05, 0.055, 0.055];
 
   const leftHairSize: [number, number, number] | undefined =
     hairStyle === "shaved"
       ? undefined
       : hairStyle === "braids"
-      ? [0.055, 0.28, 0.05]
-      : hairStyle === "curly"
-      ? [0.09, 0.2, headDepth + 0.03]
-      : hairStyle === "bob"
-      ? [0.085, 0.28, headDepth + 0.04]
-      : hairStyle === "long"
-      ? [0.095, 0.44, 0.075]
-      : hairStyle === "pigtails"
-      ? [0.095, 0.28, 0.09]
-      : hairStyle === "wavy"
-      ? [0.085, 0.28, headDepth + 0.03]
-      : hairStyle === "side_part" || hairStyle === "hood"
-      ? [0.075, 0.2, headDepth + 0.03]
-      : [0.055, 0.14, headDepth + 0.02];
+        ? [0.055, 0.28, 0.05]
+        : hairStyle === "curly"
+          ? [0.09, 0.2, headDepth + 0.03]
+          : hairStyle === "bob"
+            ? [0.085, 0.28, headDepth + 0.04]
+            : hairStyle === "long"
+              ? [0.095, 0.44, 0.075]
+              : hairStyle === "pigtails"
+                ? [0.095, 0.28, 0.09]
+                : hairStyle === "wavy"
+                  ? [0.085, 0.28, headDepth + 0.03]
+                  : hairStyle === "side_part" || hairStyle === "hood"
+                    ? [0.075, 0.2, headDepth + 0.03]
+                    : [0.055, 0.14, headDepth + 0.02];
   const rightHairSize: [number, number, number] | undefined =
     hairStyle === "shaved"
       ? undefined
       : hairStyle === "braids"
-      ? [0.055, 0.28, 0.05]
-      : hairStyle === "curly"
-      ? [0.09, 0.2, headDepth + 0.03]
-      : hairStyle === "bob"
-      ? [0.085, 0.28, headDepth + 0.04]
-      : hairStyle === "long"
-      ? [0.095, 0.44, 0.075]
-      : hairStyle === "pigtails"
-      ? [0.095, 0.28, 0.09]
-      : hairStyle === "wavy"
-      ? [0.085, 0.28, headDepth + 0.03]
-      : hairStyle === "hood" || hairStyle === "flat"
-      ? [0.075, 0.18, headDepth + 0.03]
-      : [0.045, 0.12, headDepth + 0.02];
+        ? [0.055, 0.28, 0.05]
+        : hairStyle === "curly"
+          ? [0.09, 0.2, headDepth + 0.03]
+          : hairStyle === "bob"
+            ? [0.085, 0.28, headDepth + 0.04]
+            : hairStyle === "long"
+              ? [0.095, 0.44, 0.075]
+              : hairStyle === "pigtails"
+                ? [0.095, 0.28, 0.09]
+                : hairStyle === "wavy"
+                  ? [0.085, 0.28, headDepth + 0.03]
+                  : hairStyle === "hood" || hairStyle === "flat"
+                    ? [0.075, 0.18, headDepth + 0.03]
+                    : [0.045, 0.12, headDepth + 0.02];
   const facialHair = faceConfig?.facialHair ?? "none";
   const sideProfile = harthmereNpcFaceSideProfile(seed, robot);
 
@@ -4037,16 +4086,18 @@ function localDevVoxelFaceSpec(
       hairStyle === "shaved"
         ? [headWidth + 0.01, 0.025, headDepth + 0.015]
         : hairStyle === "balding"
-        ? [headWidth * 0.72, 0.045, headDepth + 0.02]
-        : hairStyle === "curly"
-        ? [headWidth + 0.08, 0.105, headDepth + 0.08]
-        : hairStyle === "bob" || hairStyle === "long" || hairStyle === "wavy"
-        ? [headWidth + 0.07, 0.095, headDepth + 0.06]
-        : hairStyle === "bun"
-        ? [headWidth + 0.04, 0.075, headDepth + 0.04]
-        : hairStyle === "pigtails"
-        ? [headWidth + 0.05, 0.085, headDepth + 0.04]
-        : [headWidth + 0.03, 0.085, headDepth + 0.03],
+          ? [headWidth * 0.72, 0.045, headDepth + 0.02]
+          : hairStyle === "curly"
+            ? [headWidth + 0.08, 0.105, headDepth + 0.08]
+            : hairStyle === "bob" ||
+                hairStyle === "long" ||
+                hairStyle === "wavy"
+              ? [headWidth + 0.07, 0.095, headDepth + 0.06]
+              : hairStyle === "bun"
+                ? [headWidth + 0.04, 0.075, headDepth + 0.04]
+                : hairStyle === "pigtails"
+                  ? [headWidth + 0.05, 0.085, headDepth + 0.04]
+                  : [headWidth + 0.03, 0.085, headDepth + 0.03],
     hairTopPosition: [0, 1.1 + headHeight / 2 + 0.04, -0.01],
     leftHairSize,
     leftHairPosition: leftHairSize
@@ -4057,10 +4108,10 @@ function localDevVoxelFaceSpec(
           hairStyle === "long"
             ? 1.005
             : hairStyle === "pigtails"
-            ? 1.04
-            : hairStyle === "bob" || hairStyle === "wavy"
-            ? 1.06
-            : 1.12,
+              ? 1.04
+              : hairStyle === "bob" || hairStyle === "wavy"
+                ? 1.06
+                : 1.12,
           hairStyle === "long" || hairStyle === "pigtails" ? 0.01 : -0.01,
         ]
       : undefined,
@@ -4073,10 +4124,10 @@ function localDevVoxelFaceSpec(
           hairStyle === "long"
             ? 1.005
             : hairStyle === "pigtails"
-            ? 1.04
-            : hairStyle === "bob" || hairStyle === "wavy"
-            ? 1.06
-            : 1.12,
+              ? 1.04
+              : hairStyle === "bob" || hairStyle === "wavy"
+                ? 1.06
+                : 1.12,
           hairStyle === "long" || hairStyle === "pigtails" ? 0.01 : -0.01,
         ]
       : undefined,
@@ -4084,30 +4135,30 @@ function localDevVoxelFaceSpec(
       hairStyle === "side_part"
         ? [headWidth * 0.62, 0.05, 0.04]
         : hairStyle === "short_crown"
-        ? [headWidth * 0.34, 0.055, 0.04]
-        : hairStyle === "braids"
-        ? [headWidth * 0.75, 0.045, 0.04]
-        : hairStyle === "bob" || hairStyle === "wavy"
-        ? [headWidth * 0.8, 0.045, 0.04]
-        : hairStyle === "bun"
-        ? [headWidth * 0.45, 0.035, 0.035]
-        : hairStyle === "pigtails"
-        ? [headWidth * 0.65, 0.04, 0.04]
-        : undefined,
+          ? [headWidth * 0.34, 0.055, 0.04]
+          : hairStyle === "braids"
+            ? [headWidth * 0.75, 0.045, 0.04]
+            : hairStyle === "bob" || hairStyle === "wavy"
+              ? [headWidth * 0.8, 0.045, 0.04]
+              : hairStyle === "bun"
+                ? [headWidth * 0.45, 0.035, 0.035]
+                : hairStyle === "pigtails"
+                  ? [headWidth * 0.65, 0.04, 0.04]
+                  : undefined,
     fringePosition:
       hairStyle === "side_part"
         ? [-0.045, 1.1 + headHeight / 2 + 0.055, -headDepth / 2 - 0.026]
         : hairStyle === "short_crown"
-        ? [0.065, 1.1 + headHeight / 2 + 0.055, -headDepth / 2 - 0.026]
-        : hairStyle === "braids"
-        ? [0, 1.1 + headHeight / 2 + 0.045, -headDepth / 2 - 0.026]
-        : hairStyle === "bob" || hairStyle === "wavy"
-        ? [0, 1.1 + headHeight / 2 + 0.045, -headDepth / 2 - 0.026]
-        : hairStyle === "bun"
-        ? [-0.035, 1.1 + headHeight / 2 + 0.04, -headDepth / 2 - 0.026]
-        : hairStyle === "pigtails"
-        ? [0, 1.1 + headHeight / 2 + 0.045, -headDepth / 2 - 0.026]
-        : undefined,
+          ? [0.065, 1.1 + headHeight / 2 + 0.055, -headDepth / 2 - 0.026]
+          : hairStyle === "braids"
+            ? [0, 1.1 + headHeight / 2 + 0.045, -headDepth / 2 - 0.026]
+            : hairStyle === "bob" || hairStyle === "wavy"
+              ? [0, 1.1 + headHeight / 2 + 0.045, -headDepth / 2 - 0.026]
+              : hairStyle === "bun"
+                ? [-0.035, 1.1 + headHeight / 2 + 0.04, -headDepth / 2 - 0.026]
+                : hairStyle === "pigtails"
+                  ? [0, 1.1 + headHeight / 2 + 0.045, -headDepth / 2 - 0.026]
+                  : undefined,
     browSize: [
       browStyle === "soft" ? 0.05 : 0.065,
       browStyle === "scarred" ? 0.022 : 0.016,
@@ -4154,10 +4205,10 @@ function localDevVoxelFaceSpec(
       facialHair === "short_beard"
         ? [0.18, 0.075, 0.018]
         : facialHair === "goatee"
-        ? [0.09, 0.08, 0.018]
-        : facialHair === "full_beard"
-        ? [0.2, 0.12, 0.018]
-        : undefined,
+          ? [0.09, 0.08, 0.018]
+          : facialHair === "full_beard"
+            ? [0.2, 0.12, 0.018]
+            : undefined,
     beardPosition: [
       0,
       facialHair === "full_beard" ? 0.975 : 0.99,
@@ -4604,8 +4655,8 @@ function addLocalDevNpcModularClothingDetails(
       const baseColor = armor
         ? metal
         : hunter || apron
-        ? leather
-        : palette.tunic;
+          ? leather
+          : palette.tunic;
       addBox(
         "harthmere-npc-clothing-torso-front",
         [body.torsoWidth + 0.12, torsoHeight, 0.062],
@@ -5183,12 +5234,12 @@ function auditLocalDevNpcClothingLayers(root: THREE.Object3D): void {
       shellObjects.length > 0 && detailObjects.length === 0
         ? "shell-rendered-but-no-outward-detail-layer"
         : shellObjects.length > 0 &&
-          hiddenDetails.length >=
-            Math.max(1, Math.floor(detailObjects.length * 0.6))
-        ? "details-mostly-inside-shell"
-        : shellObjects.length === 0 && detailObjects.length === 0
-        ? "no-shell-or-detail-rendered-on-this-path"
-        : "details-present",
+            hiddenDetails.length >=
+              Math.max(1, Math.floor(detailObjects.length * 0.6))
+          ? "details-mostly-inside-shell"
+          : shellObjects.length === 0 && detailObjects.length === 0
+            ? "no-shell-or-detail-rendered-on-this-path"
+            : "details-present",
   };
 
   root.userData.harthmereNpcClothingLayerAudit = audit;
@@ -6181,16 +6232,16 @@ function localDevNpcBodyScales(body: HarthmereVoxelBodyConfig) {
     body.bodyHeight === "very_tall"
       ? 1.16
       : body.bodyHeight === "tall"
-      ? 1.08
-      : body.bodyHeight === "short"
-      ? 0.92
-      : 1;
+        ? 1.08
+        : body.bodyHeight === "short"
+          ? 0.92
+          : 1;
   const shoulderExtra =
     body.shoulderWidth === "wide"
       ? 0.11
       : body.shoulderWidth === "narrow"
-      ? -0.06
-      : 0;
+        ? -0.06
+        : 0;
   const armLength =
     body.armLength === "long" ? 0.54 : body.armLength === "short" ? 0.38 : 0.46;
   const legLength =
@@ -6205,14 +6256,14 @@ function localDevNpcBodyScales(body: HarthmereVoxelBodyConfig) {
       body.stance === "heroic"
         ? 0.065
         : body.stance === "reserved"
-        ? 0.035
-        : 0.045,
+          ? 0.035
+          : 0.045,
     stanceYOffset:
       body.stance === "heroic"
         ? 0.025
         : body.stance === "reserved"
-        ? -0.015
-        : 0,
+          ? -0.015
+          : 0,
   };
 }
 
@@ -6563,8 +6614,20 @@ async function makeHarthmereBossNpcAssetMesh(
 
 async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
   const npcMetadata = deps.get("/ecs/c/npc_metadata", id);
-  ok(npcMetadata);
-  const npcType = idToNpcType(npcMetadata.type_id);
+  // The entity may leave the local Sync radius between the resource request
+  // and generation. The render-state path already accepts an absent mesh, so
+  // make this transient race a clean miss as well.
+  if (!npcMetadata) {
+    return;
+  }
+  const npcType = harthmereRenderableNpcType(npcMetadata.type_id);
+  if (!npcType) {
+    log.throttledError(
+      10_000,
+      `Skipping NPC mesh ${id} with invalid type_id (${npcMetadata.type_id})`
+    );
+    return;
+  }
   const label = deps.get("/ecs/c/label", id)?.text;
 
   // HARTHMERE_BUSINESS_NPC_PLAYER_AVATAR_PARITY:

@@ -73,7 +73,7 @@ export function isDiagonalOffset(offset: ReadonlyVec3): boolean {
 
 export function pathfindingEdgeWeight(offset: ReadonlyVec3): number {
   if (offset[1] !== 0) {
-    return PATHFINDING_VERTICAL_WEIGHT;
+    return PATHFINDING_VERTICAL_WEIGHT * Math.abs(offset[1]);
   }
   return isDiagonalOffset(offset)
     ? PATHFINDING_DIAGONAL_WEIGHT
@@ -88,6 +88,8 @@ export interface NpcMovementOffsetOptions {
   onFullBlock: boolean;
   /** Escape hatch for callers that want the historical cardinal-only graph. */
   allowDiagonals?: boolean;
+  /** Maximum cardinal rise/drop for an oversized ground body. */
+  maxStepHeight?: number;
 }
 
 /**
@@ -98,11 +100,26 @@ export interface NpcMovementOffsetOptions {
  * and is not needed: a slope is walkable as a diagonal step followed by a cardinal
  * step, and A* finds that pair.
  */
-export function npcMovementOffsets(
-  options: NpcMovementOffsetOptions
-): Vec3[] {
+export function npcMovementOffsets(options: NpcMovementOffsetOptions): Vec3[] {
   const offsets: Vec3[] = [];
-  const levels = options.onFullBlock ? [-1, 0, 1] : [-1, 0];
+  const maxStepHeight = Math.max(
+    1,
+    Math.min(
+      4,
+      Math.trunc(
+        Number.isFinite(options.maxStepHeight) ? options.maxStepHeight! : 1
+      )
+    )
+  );
+  const levels: number[] = [];
+  for (let y = -maxStepHeight; y <= 0; y += 1) {
+    levels.push(y);
+  }
+  if (options.onFullBlock) {
+    for (let y = 1; y <= maxStepHeight; y += 1) {
+      levels.push(y);
+    }
+  }
   for (const y of levels) {
     offsets.push([1, y, 0], [-1, y, 0], [0, y, 1], [0, y, -1]);
   }
@@ -171,7 +188,10 @@ export function nearestStandingVoxel(input: {
   const z = Math.round(input.position[2]);
   const baseY = Math.round(input.position[1]);
   const up = Math.max(0, input.searchUp ?? PATHFINDING_STANDING_SEARCH_UP);
-  const down = Math.max(0, input.searchDown ?? PATHFINDING_STANDING_SEARCH_DOWN);
+  const down = Math.max(
+    0,
+    input.searchDown ?? PATHFINDING_STANDING_SEARCH_DOWN
+  );
   const candidates: number[] = [baseY];
   for (let step = 1; step <= Math.max(up, down); step += 1) {
     if (step <= down) candidates.push(baseY - step);

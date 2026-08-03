@@ -2,7 +2,15 @@
 
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import { normalizeAngle } from "@/shared/math/angles";
-import { add, dist, lengthSq, normalizev, pitchAndYaw, sub, yaw } from "@/shared/math/linear";
+import {
+  add,
+  dist,
+  lengthSq,
+  normalizev,
+  pitchAndYaw,
+  sub,
+  yaw,
+} from "@/shared/math/linear";
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 import { zVec3f } from "@/shared/math/types";
 import { harthmereClampMeanderDestinationToMuckArea } from "@/shared/harthmere/harthmere_muck_monster_containment";
@@ -17,6 +25,7 @@ import {
 } from "@/shared/npc/behavior/pathfinding";
 import { getNpcBehavior, getNpcWalkSpeed } from "@/shared/npc/bikkie";
 import type { Environment } from "@/shared/npc/environment";
+import { npcGroundTraversalProfile } from "@/shared/npc/ground_locomotion";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
 import { ok } from "assert";
 import { z } from "zod";
@@ -80,12 +89,7 @@ export function meanderTick(
       lengthSq(toHome) > params.stayDistanceFromSpawn ** 2 ||
       Boolean(
         behavior.chaseAttack &&
-          isSafeZone(
-            env.voxeloo,
-            npc.position,
-            env.ecsMetaIndex,
-            env.resources
-          )
+        isSafeZone(env.voxeloo, npc.position, env.ecsMetaIndex, env.resources)
       )
     );
   })();
@@ -113,13 +117,17 @@ export function meanderTick(
     state.pathfinding = findPathToMeanderDestination(
       env,
       npc.position,
-      state.destination
+      state.destination,
+      npc.size
     );
   }
 
   if (state.pathfinding) {
     updatePathfindingPosition(state.pathfinding, npc.position);
-    const nextTarget = findNextTargetOnPath(npc.position, state.pathfinding.path);
+    const nextTarget = findNextTargetOnPath(
+      npc.position,
+      state.pathfinding.path
+    );
     if (nextTarget) {
       const angleToTarget = yaw(sub(nextTarget, npc.position));
       if (npc.state.rotateTarget !== angleToTarget) {
@@ -151,21 +159,30 @@ function chooseMeanderDestination(
     const dirToHome = normalizev(toHome);
     const jitter = (Math.random() - 0.5) * RETURN_APPROX_ANGLE_RANGE;
     const homeYaw = normalizeAngle(pitchAndYaw(dirToHome)[1] + jitter);
-    return add(stayNearPoint, [Math.cos(homeYaw), 0, Math.sin(homeYaw)]) as Vec3;
+    return add(stayNearPoint, [
+      Math.cos(homeYaw),
+      0,
+      Math.sin(homeYaw),
+    ]) as Vec3;
   }
   const angle = Math.random() * Math.PI * 2;
   const radius = Math.random() * stayDistanceFromSpawn;
-  return add(stayNearPoint, [Math.cos(angle) * radius, 0, Math.sin(angle) * radius]) as Vec3;
+  return add(stayNearPoint, [
+    Math.cos(angle) * radius,
+    0,
+    Math.sin(angle) * radius,
+  ]) as Vec3;
 }
 
 function findPathToMeanderDestination(
   env: Environment,
   position: ReadonlyVec3,
-  destination: ReadonlyVec3
+  destination: ReadonlyVec3,
+  size: ReadonlyVec3
 ) {
-  const graph = new GraphImpl();
-  const srcNode = graph.closestNode(position);
-  const destNode = graph.closestNode(destination);
+  const graph = new GraphImpl(npcGroundTraversalProfile(size).maxStepHeight);
+  const srcNode = graph.closestNode(position, env.resources);
+  const destNode = graph.closestNode(destination, env.resources);
   if (!srcNode || !destNode) {
     return undefined;
   }

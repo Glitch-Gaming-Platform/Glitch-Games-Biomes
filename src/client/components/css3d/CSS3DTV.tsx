@@ -11,11 +11,28 @@ import type { BiomesId } from "@/shared/ids";
 import { getThumbnailFromUrl } from "@/shared/media";
 import React, { useEffect, useMemo, useState } from "react";
 
+const CSS3DTVLiveMedia: React.FunctionComponent<{
+  entityId: BiomesId;
+  width: number;
+  height: number;
+}> = ({ entityId, width, height }) => {
+  const volume = useVolume("settings.volume.media");
+  return (
+    <SpatialMediaPlayer
+      entityId={entityId}
+      volume={volume}
+      width={width}
+      height={height}
+      seekToTimeline={true}
+    />
+  );
+};
+
 export const CSS3DTV: React.FunctionComponent<{
   entityId: BiomesId;
 }> = React.memo(({ entityId }) => {
   const context = useClientContext();
-  const { reactResources } = context;
+  const { clientConfig, reactResources } = context;
   const css3d = useCSS3DRefCallback(reactResources, entityId);
   const [videoUrl, setVideoUrl] = useState<string | undefined>();
   const videoComponent = reactResources.use("/ecs/c/video_component", entityId);
@@ -44,8 +61,9 @@ export const CSS3DTV: React.FunctionComponent<{
   }, [videoComponent?.video_url]);
 
   const thumbnailUrl = videoUrl ? getThumbnailFromUrl(videoUrl) : undefined;
-  const volume = useVolume("settings.volume.media");
-  const showThumbnail = thumbnailUrl !== undefined && screenshotting;
+  const mobileStaticMedia = clientConfig.mobileDevice;
+  const showThumbnail =
+    thumbnailUrl !== undefined && (screenshotting || mobileStaticMedia);
 
   return (
     <div
@@ -59,13 +77,13 @@ export const CSS3DTV: React.FunctionComponent<{
         height={height * 100}
         url={thumbnailUrl}
       />
-      <SpatialMediaPlayer
-        entityId={entityId}
-        volume={volume}
-        width={width * 100}
-        height={height * 100}
-        seekToTimeline={true}
-      />
+      {!mobileStaticMedia && (
+        <CSS3DTVLiveMedia
+          entityId={entityId}
+          width={width * 100}
+          height={height * 100}
+        />
+      )}
     </div>
   );
 });

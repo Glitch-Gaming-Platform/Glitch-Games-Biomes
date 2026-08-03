@@ -16,6 +16,7 @@
 #   scripts/harthmere/t.sh cutscene       # cutscene generator   (~2 s)
 #   scripts/harthmere/t.sh promo          # promo still registry (~1 s)
 #   scripts/harthmere/t.sh visuals        # terrain + promo tests/types (~3 s warm)
+#   scripts/harthmere/t.sh perf           # FPS/polling/save/telemetry contracts
 #   scripts/harthmere/t.sh watch ch1      # re-run on save
 #   scripts/harthmere/t.sh types          # scoped typecheck     (~3 s)
 #   scripts/harthmere/t.sh types:stack    # focused stack wiring typecheck
@@ -52,6 +53,28 @@
 
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+
+# The broad suite imports the native zRPC WebSocket server. After any install
+# refresh, uWebSockets.js exposes only the ABI binaries supported by the
+# repository pin, so a transitional Node 20 shell fails before Mocha can run a
+# single assertion. Keep the cheap focused presets cross-version, but make the
+# final `full` gate select the exact .nvmrc runtime before defining NODE_OPTIONS
+# or launching Mocha.
+if [ "${1:-}" = "full" ]; then
+  REQUIRED_NODE_VERSION="$(tr -d '[:space:]' < .nvmrc)"
+  CURRENT_NODE_VERSION="$(node -p 'process.versions.node' 2>/dev/null || true)"
+  if [ "$CURRENT_NODE_VERSION" != "$REQUIRED_NODE_VERSION" ]; then
+    PINNED_NODE_BIN="$HOME/.nvm/versions/node/v${REQUIRED_NODE_VERSION}/bin"
+    if [ -x "$PINNED_NODE_BIN/node" ]; then
+      export PATH="$PINNED_NODE_BIN:$PATH"
+      CURRENT_NODE_VERSION="$(node -p 'process.versions.node')"
+    fi
+  fi
+  if [ "$CURRENT_NODE_VERSION" != "$REQUIRED_NODE_VERSION" ]; then
+    echo "full test gate requires Node $REQUIRED_NODE_VERSION from .nvmrc; found ${CURRENT_NODE_VERSION:-none}." >&2
+    exit 1
+  fi
+fi
 
 # Node 22+ can let its native TypeScript loader intercept Mocha's dynamic
 # import before ts-node and tsconfig-paths apply this repo's CommonJS/alias
@@ -132,6 +155,13 @@ CLIENT_CONFIG=('src/client/game/client_config.test.ts')
 CUTSCENE=('src/shared/cutscene/test/*.test.ts')
 # Promo stills validate without a browser/stack/GPU; the capture needs all three.
 PROMO=('src/shared/cutscene/test/promo_scenes.test.ts')
+PERF=(
+  'src/client/game/renderers/static_object_matrices.test.ts'
+  'src/server/glitch/test/harthmere_store_save_response.test.ts'
+  'src/client/components/challenges/Chapter1NativeObjectivePrompt.test.ts'
+  'src/client/components/challenges/Chapter1PollingPerformance.test.ts'
+  'src/shared/cutscene/test/ch1_projection_puppets.test.ts'
+)
 
 run_scoped_types() {
   NODE_OPTIONS="--max-old-space-size=8192" \
@@ -195,6 +225,12 @@ case "$cmd" in
     ;;
   cutscene) "${FAST[@]}" "${CUTSCENE[@]}" ;;
   promo)    "${FAST[@]}" "${PROMO[@]}" ;;
+  perf)
+    "${FAST[@]}" "${PERF[@]}"
+    node scripts/harthmere/check-harthmere-performance-response.cjs
+    node scripts/harthmere/test-harthmere-glitch-cloud-save-all-state.cjs
+    node scripts/harthmere/test-glitch-aegis-telemetry-mucker-clearance.cjs
+    ;;
   visuals)
     "${FAST[@]}" \
       src/shared/harthmere/test/ch1_dungeon_terrain.test.ts \

@@ -3,10 +3,43 @@ import {
   applyDrawDistanceFloors,
   applyMinimumDrawDistance,
   defaultDynamicDrawDistance,
+  graphicsQualityForDevice,
 } from "@/client/game/resources/graphics_settings";
 import assert from "assert";
 
 describe("graphics settings draw distance floors", () => {
+  it("forces stored high settings down only on mobile", () => {
+    assert.equal(
+      graphicsQualityForDevice({
+        mobileDevice: true,
+        storedQuality: "high",
+      }),
+      "low"
+    );
+    assert.equal(
+      graphicsQualityForDevice({
+        mobileDevice: true,
+        storedQuality: "safeMode",
+      }),
+      "safeMode"
+    );
+    assert.equal(
+      graphicsQualityForDevice({
+        mobileDevice: false,
+        storedQuality: "high",
+      }),
+      "high"
+    );
+    assert.equal(
+      graphicsQualityForDevice({
+        mobileDevice: true,
+        forcedQuality: "high",
+        storedQuality: "low",
+      }),
+      "high"
+    );
+  });
+
   it("starts low-memory/mobile clients at 64m without changing desktop's 96m default", () => {
     assert.equal(defaultDynamicDrawDistance(true), 64);
     assert.equal(defaultDynamicDrawDistance(false), 96);

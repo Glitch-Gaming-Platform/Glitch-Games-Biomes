@@ -1,5 +1,4 @@
 import { npcEntity } from "@/server/spawn/spawn_npc";
-import { BikkieIds } from "@/shared/bikkie/ids";
 import type { Change, ProposedChange } from "@/shared/ecs/change";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import { EntityDescription } from "@/shared/ecs/gen/components";
@@ -9,8 +8,8 @@ import {
   snapshotHostileEntityId,
 } from "@/shared/harthmere/snapshot_runtime_rules";
 import { SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE } from "@/shared/harthmere/snapshot_grove_content";
+import { HARTHMERE_NATIVE_NPC_ID_MANIFEST } from "@/shared/harthmere/harthmere_native_id_manifest";
 import type { BiomesId } from "@/shared/ids";
-import { LOCAL_DEV_HUMAN_NPC_TYPE_ID, isNpcTypeId } from "@/shared/npc/bikkie";
 
 function proposedFromChange(change: Change): ProposedChange {
   if (change.kind === "delete") {
@@ -28,6 +27,19 @@ export function harthmereSnapshotCombatNpcSeedIds() {
   );
 }
 
+export function snapshotCombatNativeNpcTypeId(
+  profile: "muckling" | "mucker" | "wild_mucker"
+): BiomesId {
+  switch (profile) {
+    case "muckling":
+      return HARTHMERE_NATIVE_NPC_ID_MANIFEST.monster_watchtower_muckling;
+    case "mucker":
+      return HARTHMERE_NATIVE_NPC_ID_MANIFEST.monster_watchtower_clearing_mucker;
+    case "wild_mucker":
+      return HARTHMERE_NATIVE_NPC_ID_MANIFEST.monster_old_wood_mucker;
+  }
+}
+
 export function buildHarthmereSnapshotCombatNpcSeedChanges(input: {
   tick: number;
   nowSeconds?: number;
@@ -35,10 +47,6 @@ export function buildHarthmereSnapshotCombatNpcSeedChanges(input: {
 }) {
   const existingIds = input.existingIds ?? new Set<BiomesId>();
   const nowSeconds = input.nowSeconds ?? secondsSinceEpoch();
-  const typeId = isNpcTypeId(BikkieIds.dMucker)
-    ? BikkieIds.dMucker
-    : LOCAL_DEV_HUMAN_NPC_TYPE_ID;
-
   return SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS.map((spawn): Change => {
     const id = snapshotHostileEntityId(
       SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE,
@@ -47,7 +55,10 @@ export function buildHarthmereSnapshotCombatNpcSeedChanges(input: {
     const entity = npcEntity(
       {
         id,
-        typeId,
+        // These imported encounter entities used to borrow dMucker, bypassing
+        // the exact native combat profile and its receipt validation. Preserve
+        // their stable entity ids while assigning the authored family type.
+        typeId: snapshotCombatNativeNpcTypeId(spawn.profile),
         // Preserve the authored wilds Y. Grove civic NPC grounding deliberately
         // targets the raised courtyard and would make hostile bodies float.
         position: snapshotCombatGroundedPosition(spawn.authoredPosition),
