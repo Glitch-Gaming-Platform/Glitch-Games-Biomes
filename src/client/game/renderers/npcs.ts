@@ -7,6 +7,7 @@ import { drawLimitValueWithTweak } from "@/client/game/resources/graphics_settin
 import { harthmereEnsureRenderableNpcEntity } from "@/client/game/resources/harthmere_npc_render_compat";
 import type { ClientResources } from "@/client/game/resources/types";
 import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
+import { isHarthmereRequestBoardEntityId } from "@/shared/harthmere/native_request_boards";
 import type { BiomesId } from "@/shared/ids";
 import {
   readRenderablePuppetOverrides,
@@ -83,8 +84,18 @@ export const makeNpcsRenderer = (
           mustKeep: mustKeepNpcIds,
         }
       );
-      for (let i = entities.length - 1; i >= 0; i -= 1) {
-        if (hiddenNpcIds?.has(Number(entities[i].id))) entities.splice(i, 1);
+      // Compact in place in a single linear pass. The previous reverse-splice
+      // loop was O(n^2) in the number of hidden puppets, since each splice
+      // shifts the whole tail. Only fires when a cutscene is actually hiding
+      // NPCs, so this is a small win -- but it keeps a per-frame path linear.
+      if (hiddenNpcIds) {
+        let kept = 0;
+        for (let i = 0; i < entities.length; i += 1) {
+          if (!hiddenNpcIds.has(Number(entities[i].id))) {
+            entities[kept++] = entities[i];
+          }
+        }
+        entities.length = kept;
       }
       if (
         becomeNpc.kind === "active" &&
@@ -108,6 +119,14 @@ export const makeNpcsRenderer = (
         }
       }
       for (const rawEntity of entities) {
+        // The snapshot authored its request boards as quest-giver NPCs. Three
+        // therefore render the squat bot/pedestal shown in production and the
+        // Collective board renders a player-like NPC. Keep those ECS entities
+        // for native quest, collision, distance and trigger authority, but let
+        // the dedicated category-specific Blender board own their visible body.
+        if (isHarthmereRequestBoardEntityId(rawEntity.id)) {
+          continue;
+        }
         // HARTHMERE_NPC_RENDER_COMPONENT_COMPAT: fill safe defaults for NPCs
         // missing combat components (health/size/orientation/rigid_body) so
         // they render a body instead of just a floating nameplate.

@@ -127,7 +127,7 @@ const ACT_1: readonly Ch1QuestDef[] = [
         id: "wake_up",
         title: "Wake Up",
         objective:
-          "Stand up from the road-house bed, then go downstairs for breakfast with Jackie.",
+          "Stand up from the bed in the spare room, then go downstairs to the ground floor for breakfast with Jackie at the hearth.",
         trigger: "sleep",
         targetLabel: "Bed",
         grants: ["item_ch1_breakfast_tea"],
@@ -291,7 +291,7 @@ const ACT_1: readonly Ch1QuestDef[] = [
         id: "not_this_small",
         title: '"Not This Small"',
         objective:
-          "Tell Jackie whether the seam is smaller than the fracture that brought you here.",
+          "Tell Jackie what you think about the seam in the air — is it smaller or larger than the fracture you remember from before?",
         trigger: "dialogue_choice",
         targetLabel: "Jackie",
         note: "All dialogue options produce the same line. The player does not choose this.",
@@ -347,7 +347,8 @@ const ACT_2: readonly Ch1QuestDef[] = [
       {
         id: "take_jobs",
         title: "Take Work",
-        objective: "Complete jobs for the Grove's businesses.",
+        objective:
+          "Use the Jobs Board to accept and complete three Grove jobs. Finish each job through its normal objective before returning to the board.",
         trigger: "interact",
         targetLabel: "Jobs Board",
       },
@@ -483,7 +484,8 @@ const ACT_3: readonly Ch1QuestDef[] = [
       {
         id: "examine_the_button",
         title: "Examine the Button",
-        objective: "Pick up the coat button Rin found at Shutter Cove.",
+        objective:
+          "Go to Shutter Cove and pick up the worn coat button that Rin found in the tide wrack. It's from a Grove shop — from nine months ago.",
         trigger: "collect",
         targetLabel: "A Coat Button",
         grants: ["item_iris_button"],
@@ -558,7 +560,7 @@ const ACT_3: readonly Ch1QuestDef[] = [
         id: "d1_salt_market",
         title: "The Salt Market",
         objective:
-          "Defeat the Salt-Cured Muckers blocking the route through the bazaar.",
+          "The Salt-Cured Muckers block the bazaar route forward. Defeat them or find another way through the city.",
         trigger: "defeat",
         targetLabel: "Salt-Cured Muckers",
       },
@@ -584,7 +586,8 @@ const ACT_3: readonly Ch1QuestDef[] = [
       {
         id: "d1_sun_court",
         title: "The Sun Court",
-        objective: "Defeat the Gilded Bull guarding the Sun Court exit.",
+        objective:
+          "The Gilded Bull stands before the exit. Defeat it or find a way around it to reach the vault beyond.",
         trigger: "defeat",
         targetLabel: "The Gilded Bull",
         grants: ["item_bulls_core"],
@@ -637,14 +640,15 @@ const ACT_3: readonly Ch1QuestDef[] = [
         id: "come_back_out",
         title: "Come Back Out",
         objective:
-          "Leave the Dry Mouth through the return aperture and meet Jackie outside in the Grove.",
+          "Exit the Dry Mouth dungeon through the return aperture and step back into the Grove. Jackie should be waiting.",
         trigger: "near_location",
         targetLabel: "The Grove",
       },
       {
         id: "the_flinch",
         title: "The Flinch",
-        objective: "Talk to Jackie at the Dry Mouth gate after you return.",
+        objective:
+          "Let Jackie see your face after you return. Let her know what you found down there.",
         trigger: "talk_npc",
         targetLabel: "Jackie",
         cutsceneId: "ch1-the-flinch",
@@ -710,7 +714,7 @@ const ACT_4: readonly Ch1QuestDef[] = [
         id: "the_procedure",
         title: "The Procedure",
         objective:
-          "Use the containment controls in order to stabilise the core before time runs out.",
+          "The containment core is in runaway. You have forty seconds to stabilize it using the lattice controls. Follow the procedure or watch it fail.",
         trigger: "minigame",
         targetLabel: "Containment lattice",
         latentSkillId: "ls_containment_triage",
@@ -721,7 +725,7 @@ const ACT_4: readonly Ch1QuestDef[] = [
         id: "how_did_you_do_that",
         title: '"How Did You Do That?"',
         objective:
-          "Tell Calla Ashe how you knew which containment controls to use.",
+          "Calla Ashe asks you how you knew exactly what to do with those controls. Answer her honestly — how did you know?",
         trigger: "dialogue_choice",
         targetLabel: "Foreman Calla Ashe",
         note: "Four options. All four are 'I don't know', phrased differently. That's the scene.",
@@ -842,7 +846,7 @@ const ACT_4: readonly Ch1QuestDef[] = [
         id: "interrogate",
         title: "Ask Him",
         objective:
-          "Talk to Teak Morrow in Rat Crowns about who supplied the compound.",
+          "Find Teak Morrow at the Rat Crowns and ask him who supplied the strange compound to Jackie. He won't want to answer, but he might slip.",
         trigger: "talk_npc",
         targetLabel: 'Teague "Teak" Morrow',
       },
@@ -867,7 +871,8 @@ const ACT_4: readonly Ch1QuestDef[] = [
       {
         id: "confront",
         title: "Confront Her",
-        objective: "Ask Jackie what she has been giving you.",
+        objective:
+          "Face Jackie at the road-house and ask her directly what she's been putting in your tea. Demand an answer.",
         trigger: "dialogue_choice",
         targetLabel: "Jackie",
         cutsceneId: "ch1-confrontation",
@@ -981,7 +986,7 @@ const ACT_5: readonly Ch1QuestDef[] = [
         id: "provision_winter",
         title: "Provision",
         objective:
-          "Pack fuel, food, cooked rations, cold-weather gear, rope, iron, repair kits, and field medicine. Open Quests to choose and track a gather, buy, or craft source for every missing supply.",
+          "You're going into a frozen fjord this time. Pack fuel, food, cooked rations, cold-weather gear, rope, iron, repair kits, and field medicine. Double everything from last time. Open Quests to find and gather what you need.",
         trigger: "collect",
         targetLabel: "Provisioning checklist",
       },
@@ -1104,9 +1109,26 @@ const ACT_5: readonly Ch1QuestDef[] = [
       {
         id: "come_out",
         title: "Come Out",
+        // THIS IS AN ARRIVAL BEAT, NOT AN ESCORT LEG, AND IT USED TO CLAIM
+        // OTHERWISE. The objective read "Get Sorrel across the fjord" under an
+        // `escort` trigger, but `ch1RequiredEscortNpcsForObjective("come_out")`
+        // returns nothing, so no Sorrel check ever ran.
+        //
+        // Adding her to that list would have been an unrecoverable soft-lock:
+        // the escort scheduler cancels her follow the moment
+        // `d2_the_breaking_year` is applied, and clears escort state entirely
+        // when the dungeon slot claim is released. By the time the player is
+        // standing in the Grove she is back at her seeded winter position and
+        // cannot be brought any closer. The crossing is already gated one step
+        // earlier, where she is genuinely following.
+        //
+        // So this matches Act 3's identical beat (`come_back_out`): arrive in
+        // the Grove. Same 18 m radius either way — `radiusFor` treats escort
+        // and near_location the same — but the action label now reads "Arrive"
+        // instead of "Finish escort", and it auto-completes on arrival.
         objective:
-          "Escort Sorrel through the return aperture and reach the Grove together.",
-        trigger: "escort",
+          "Step back into the Grove through the return aperture. Rook has held the near side for two days and the whole town is waiting on the ice.",
+        trigger: "near_location",
         targetLabel: "The Grove",
       },
     ],
@@ -1195,7 +1217,7 @@ const ACT_6: readonly Ch1QuestDef[] = [
         id: "the_word",
         title: "The Word",
         objective:
-          "Stay with Dr. Ardan at Returnstone and listen when he addresses you by the designation you never told him.",
+          "Dr. Ardan thanks you warmly, the way he has since the beginning. Listen carefully to what he says — to what he calls you. You've never told him that word.",
         trigger: "interact",
         targetLabel: "Dr. Lucien Ardan",
         cutsceneId: "ch1-consolidation-revision",
@@ -1215,7 +1237,8 @@ const ACT_6: readonly Ch1QuestDef[] = [
       {
         id: "watch_him_go",
         title: "Watch Him Go",
-        objective: "Answer Dr. Ardan at the Returnstone exit before he leaves.",
+        objective:
+          "Lou stops at the Returnstone exit. You have one moment to respond before he leaves forever. Choose your words carefully — all four answers mean the same thing.",
         trigger: "dialogue_choice",
         targetLabel: "Dr. Lucien Ardan",
         cutsceneId: "ch1-too-late",
@@ -1237,7 +1260,8 @@ const ACT_6: readonly Ch1QuestDef[] = [
       {
         id: "did_he_take_it",
         title: '"Did He Take It?"',
-        objective: "Tell Jackie whether Dr. Ardan took Sorrel's ledger.",
+        objective:
+          "Tell Jackie the truth: did Dr. Ardan take Sorrel's field ledger? She needs to know what he knows.",
         trigger: "dialogue_choice",
         targetLabel: "Jackie",
       },
@@ -1245,7 +1269,7 @@ const ACT_6: readonly Ch1QuestDef[] = [
         id: "the_whole_plan",
         title: "The Whole Plan",
         objective:
-          "Stay with Jackie in the watch house and hear the full containment plan.",
+          "Stay with Jackie in the watch house and listen to her explain what she's been planning. How to contain what you are. How to keep you safe.",
         trigger: "talk_npc",
         targetLabel: "Jackie",
         cutsceneId: "ch1-the-watch-house",
@@ -1253,7 +1277,8 @@ const ACT_6: readonly Ch1QuestDef[] = [
       {
         id: "the_final_choice",
         title: "Decide",
-        objective: "Confess, contain, or bargain.",
+        objective:
+          "Three paths remain: confess everything to the authorities, contain the truth and disappear, or try to bargain for your freedom. Choose.",
         trigger: "dialogue_choice",
         targetLabel: "Jackie",
         note: "None of these is the good ending. Do not mark one as canon.",

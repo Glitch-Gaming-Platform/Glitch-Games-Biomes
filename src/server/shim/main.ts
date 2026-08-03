@@ -61,6 +61,7 @@ import {
   harthmereGroveRaceMinigameSeedIds,
 } from "@/server/harthmere/grove_race_minigame_ecs_seed";
 import { reconcileSnapshotMinigameCatalog } from "@/server/harthmere/snapshot_minigame_ecs_seed";
+import { buildHarthmereObsoleteSnapshotGroveNpcDeleteChanges } from "@/server/harthmere/snapshot_grove_npc_ecs_seed";
 import {
   buildHarthmereBusinessOwnerNpcSeedChanges,
   harthmereBusinessOwnerNpcSeedEntityIds,
@@ -71,6 +72,27 @@ import {
   harthmereBusinessCraftingStationSeedEntityIds,
 } from "@/server/harthmere/business_crafting_station_ecs_seed";
 import {
+  buildHarthmereBusinessInteriorCollisionSeedChanges,
+  harthmereBusinessInteriorCollisionSeedEntityIds,
+} from "@/server/harthmere/business_interior_collision_ecs_seed";
+import {
+  buildHarthmereAdditiveTownInteriorCollisionSeedChanges,
+  harthmereAdditiveTownInteriorCollisionSeedEntityIds,
+} from "@/server/harthmere/additive_town_interior_collision_ecs_seed";
+import {
+  buildHarthmereAdditiveTownCookingStationSeedChanges,
+  harthmereAdditiveTownCookingStationSeedEntityIds,
+} from "@/server/harthmere/additive_town_cooking_station_ecs_seed";
+import {
+  HARTHMERE_REQUEST_BOARD_ECS_SEED_VERSION,
+  buildHarthmereRequestBoardEcsSeedChanges,
+  harthmereRequestBoardEcsSeedEntityIds,
+} from "@/server/harthmere/request_board_ecs_seed";
+import {
+  HARTHMERE_BUSINESS_AISLE_NPC_SWEEP_VERSION,
+  applyHarthmereBusinessAisleKeepOutToSeedChanges,
+} from "@/server/harthmere/business_aisle_npc_sweep";
+import {
   buildChapter1PropSeedChanges,
   chapter1PropSeedIds,
 } from "@/server/harthmere/ch1_prop_ecs_seed";
@@ -80,6 +102,9 @@ import {
   prepareHarthmerePlayerLikeNpcForUniqueAppearance,
 } from "@/server/harthmere/player_like_npc_cosmetics";
 import { HARTHMERE_BUSINESS_CRAFTING_STATION_SEED_VERSION } from "@/shared/harthmere/business_crafting_station_seed";
+import { HARTHMERE_BUSINESS_INTERIOR_COLLISION_SEED_VERSION } from "@/shared/harthmere/business_interior_collision_seed";
+import { HARTHMERE_ADDITIVE_TOWN_INTERIOR_COLLISION_SEED_VERSION } from "@/shared/harthmere/additive_town_interior_collision_seed";
+import { HARTHMERE_ADDITIVE_TOWN_COOKING_STATION_SEED_VERSION } from "@/shared/harthmere/additive_town_cooking_station_seed";
 import { HARTHMERE_BUSINESS_OWNER_NPC_SEED_VERSION } from "@/shared/harthmere/business_owner_npc_seed";
 import { HARTHMERE_BUSINESS_CUSTOMER_NPC_SEED_VERSION } from "@/shared/harthmere/business_customer_npc_seed";
 import {
@@ -153,6 +178,11 @@ import {
   harthmereAdditiveTownNpcVoiceProfile,
 } from "@/shared/harthmere/additive_town_npc_dialogue";
 import {
+  HARTHMERE_ADDITIVE_TOWN_INTERIOR_NPC_ANCHORS,
+  HARTHMERE_ADDITIVE_TOWN_INTERIORS_VERSION,
+  harthmereAdditiveTownInteriorNpcAnchor,
+} from "@/shared/harthmere/harthmere_additive_town_interiors";
+import {
   SHARD_DIM,
   shardDecode,
   shardToVoxelPos,
@@ -195,6 +225,7 @@ import {
   snapshotGroveNpcEntityId,
 } from "@/shared/harthmere/snapshot_grove_content";
 import {
+  SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS,
   SNAPSHOT_GROVE_RHIAMON_DRY_POSITION,
   SNAPSHOT_GROVE_RHIAMON_ENTITY_ID,
 } from "@/shared/harthmere/snapshot_grove_ids";
@@ -233,6 +264,10 @@ import {
   type HarthmereMat as HarthmereBuildingMat,
   type HarthmereStairs,
 } from "@/shared/harthmere/harthmere_town_buildings";
+import {
+  HARTHMERE_TOWN_STREETS_VERSION,
+  harthmereTownStreetSurfaceAt,
+} from "@/shared/harthmere/harthmere_town_streets";
 import {
   HARTHMERE_BUILDING_STYLE_VERSION,
   harthmereBuildingFacadeMaterialAt,
@@ -275,6 +310,10 @@ import {
 import { HARTHMERE_TOWN_BACK_BOUNDARY_X } from "@/shared/harthmere/harthmere_town_horizon";
 import { isHarthmereBuildingVegetationExclusion } from "@/shared/harthmere/harthmere_building_exclusion";
 import { HARTHMERE_ICED_BOARD_ENTITY_IDS } from "@/shared/harthmere/native_request_boards";
+import {
+  harthmereShardHasAuthoredWater,
+  isHarthmereAuthoredWaterColumn,
+} from "@/shared/harthmere/harthmere_authored_water";
 import {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
   HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
@@ -356,7 +395,7 @@ const LOCAL_DEV_SEED_MARKER_ID = 8_810_000_000_029_000 as BiomesId;
 const LOCAL_DEV_RUNTIME_CONTENT_MARKER_ID = 8_810_000_000_029_001 as BiomesId;
 const LOCAL_DEV_NPC_COSMETIC_MARKER_ID = 8_810_000_000_029_002 as BiomesId;
 const HARTHMERE_ADDITIVE_RUNTIME_CONTENT_VERSION =
-  "harthmere-additive-runtime-content-town-population-v5" as const;
+  "harthmere-additive-runtime-content-grove-identity-v7" as const;
 
 const STARTER_TOWN_GROUND_Y = 52;
 const STARTER_TOWN_SPAWN: Vec3 = [486, STARTER_TOWN_GROUND_Y + 1, -209];
@@ -989,6 +1028,15 @@ const HARTHMERE_NPC_STABLE_ANCHOR = new Map<number, Vec3>([
   [64, [432, HARTHMERE_CLUSTER_FEET_Y_BASE, -260]], // Stablehand Corin
 ]);
 
+// The shell audit is now the final authority for NPCs assigned to an indoor
+// job/home. Replace stale plaza/street approximations with collision-checked
+// points inside the intended one of the 57 fixed additive-town buildings.
+// Outdoor walkers and quest actors not assigned by the interior audit retain
+// their existing authored anchors.
+for (const anchor of HARTHMERE_ADDITIVE_TOWN_INTERIOR_NPC_ANCHORS) {
+  HARTHMERE_NPC_STABLE_ANCHOR.set(anchor.offset, [...anchor.position]);
+}
+
 // Walker NPC ids (17-26) intentionally NOT in the anchor table — they wander.
 // They keep using the existing safe-relocation, which is correct for movers.
 // The check script verifies named-and-stationary NPCs are anchored.
@@ -1060,16 +1108,19 @@ function harthmereGroundedNpcWorldPositionWithClaim(
 ): Vec3 {
   // Anchored NPCs use their stable X/Z and skip safe-relocation entirely —
   // that's what was collapsing multiple NPCs onto the same first available
-  // clearance column. Their measured legacy Y survives only in standalone
-  // mode; the additive town uses the shared flat feet plane. Non-anchored NPCs
-  // (walkers, late additions) still go through the clearance path for X/Z.
+  // clearance column. Audited indoor anchors preserve their assigned floor Y;
+  // ordinary outdoor anchors still use the shared additive-town feet plane.
+  // Non-anchored NPCs (walkers, late additions) continue through the clearance
+  // path for X/Z.
   const anchorAuthored = harthmereStableAnchorAuthoredPosition(npc, claimed);
   if (anchorAuthored) {
+    const offset = Number(npc.id) - Number(LOCAL_DEV_NPC_ID_BASE);
+    const interiorAnchor = harthmereAdditiveTownInteriorNpcAnchor(offset);
     const shifted = harthmereWorldPosition(anchorAuthored);
     return [
       shifted[0],
       shouldUseHarthmereExtraTownOffset()
-        ? HARTHMERE_EXTENSION_FEET_Y
+        ? (interiorAnchor?.position[1] ?? HARTHMERE_EXTENSION_FEET_Y)
         : anchorAuthored[1],
       shifted[2],
     ];
@@ -3412,12 +3463,9 @@ function harthmereBuildingBlockAt(
   );
   if (roomPartitionBlock !== undefined) return roomPartitionBlock;
 
-  // HARTHMERE_BUILDING_INTERIORS: beds, tables, shelves, crates, counters,
-  // hearths and ceiling lights, built from blocks the way the design doc says
-  // Biomes builds furniture (4.3.6 — the placeable catalogue has no beds or
-  // shelves; they are shaped blocks). Checked after the shell and partitions so
-  // structure always wins, and the generator itself refuses to place anything
-  // in a door lane, on a stair, or inside an overlapping neighbour.
+  // HARTHMERE_BUILDING_INTERIORS: structure-owned ceiling LEDs only. The
+  // coarse voxel furniture from the first shell pass is retired; the audited
+  // 57-building Blender/native-ECS manifest owns furniture and collision now.
   const furnitureBlock = harthmereBuildingInteriorBlockAt(
     building,
     worldX,
@@ -3908,8 +3956,32 @@ function harthmereFullTownBlockAt(
   return (
     harthmereWallAndGateBlockAt(materials, worldX, worldY, worldZ) ??
     harthmereFenceBlockAt(materials, worldX, worldY, worldZ) ??
-    harthmereLandmarkBlockAt(materials, worldX, worldY, worldZ)
+    harthmereLandmarkBlockAt(materials, worldX, worldY, worldZ) ??
+    harthmereTownStreetBlockAt(materials, worldX, worldY, worldZ)
   );
+}
+
+// HARTHMERE_TOWN_STREETS: pave the ground surface of the derived street
+// network. Checked LAST in the chain, so a wall, a fence, a landmark or a
+// building always wins the column — the network is computed to miss every
+// footprint, but a lower-priority surface pass cannot break anything even if a
+// future building is authored on top of a lane.
+//
+// relY 0 is the ground plane itself. Streets replace the grass there rather
+// than sitting one voxel proud of it, so a player walks along a road instead of
+// stepping up onto a kerb every few metres.
+function harthmereTownStreetBlockAt(
+  materials: ReturnType<typeof localDevMaterials>,
+  worldX: number,
+  worldY: number,
+  worldZ: number
+): TerrainID | undefined {
+  void HARTHMERE_TOWN_STREETS_VERSION;
+  if (worldY - STARTER_TOWN_GROUND_Y !== 0) {
+    return undefined;
+  }
+  const surface = harthmereTownStreetSurfaceAt(worldX, worldZ);
+  return surface ? harthmereMat(materials, surface) : undefined;
 }
 
 // HARTHMERE_CLEAN_TOWN_REBUILD_END
@@ -5949,13 +6021,12 @@ function makeLocalDevTerrainShard(
             const worldY = v0[1] + y;
             const relY = worldY - STARTER_TOWN_GROUND_Y;
             const stillWaterBlock = harthmereStillWaterBlockAt(
-              materials,
               authoredWorldX,
               relY,
               authoredWorldZ
             );
             if (stillWaterBlock !== undefined) {
-              seedBlock.set(x, y, z, stillWaterBlock);
+              seedBlock.set(x, y, z, harthmereMat(materials, stillWaterBlock));
               continue;
             }
             if (
@@ -6078,9 +6149,20 @@ function makeLocalDevTerrainShard(
     id,
     box: Box.create({ v0, v1 }),
     shard_seed: ShardSeed.create({ buffer }),
-    ...(kind === "update" &&
-    process.env.BIOMES_MIGRATE_HARTHMERE_AUTHORED_WATER === "1" &&
-    shardHasAuthoredWater
+    // HARTHMERE_AUTHORED_WATER: for a shard that carries authored water, the
+    // water IS authored terrain and travels with `shard_seed`.
+    //
+    // `terrainSeedEntityForWrite` only applies `mutableDefaults` on create, so
+    // leaving shard_water there meant an ordinary additive deploy rewrote the
+    // carved channel and left it dry — a trench the surface repair then filled
+    // in. Promoting it to authored data is what makes the river survive a
+    // deploy at all.
+    //
+    // The trade-off is deliberate and narrow: on these shards only, a player's
+    // own water edits are re-flattened to the authored river. That is the same
+    // contract the authored seed already has for terrain, and it applies to a
+    // few dozen shards along the Brell rather than the whole town.
+    ...(kind === "update" && shardHasAuthoredWater
       ? { shard_water: shardWater }
       : {}),
   };
@@ -7508,6 +7590,9 @@ function makeLocalDevChapter1TestimonyNpcChanges(
         velocity: [0, 0, 0],
         displayName: seed.displayName,
         defaultDialog: npcDialog(seed.line),
+        // Testimony witnesses are authored interaction posts, not ambient
+        // walkers. Keep Anima's home/respawn anchor on the exact route post.
+        spawnPositionJitterRadius: 0,
       },
       now
     );
@@ -7580,6 +7665,14 @@ function localDevBusinessCraftingStationIds() {
   return harthmereBusinessCraftingStationSeedEntityIds();
 }
 
+function localDevBusinessInteriorCollisionIds() {
+  return harthmereBusinessInteriorCollisionSeedEntityIds();
+}
+
+function localDevRequestBoardEcsSeedIds() {
+  return harthmereRequestBoardEcsSeedEntityIds();
+}
+
 function localDevPlayerLikeNpcCosmeticRepairIds() {
   return [
     ...new Set([
@@ -7619,6 +7712,51 @@ function makeRetiredBusinessCustomerNpcChanges(
   return localDevBusinessCustomerNpcIds()
     .filter((id) => existingIds.has(id))
     .map((id) => ({ kind: "delete", tick, id }));
+}
+
+async function makeRetiredSnapshotGroveNpcChanges(
+  tick: number,
+  service: ShimWorldService | undefined,
+  worldApi: WorldApi
+): Promise<Change[]> {
+  const legacyIds = Object.values(SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS);
+  if (service) {
+    return buildHarthmereObsoleteSnapshotGroveNpcDeleteChanges({
+      tick,
+      candidates: legacyIds.flatMap((id) => {
+        const entity = service.table.get(id);
+        return entity
+          ? [
+              {
+                id: entity.id,
+                label: entity.label?.text,
+                hasNpcMetadata: Boolean(entity.npc_metadata),
+                hasPlayerStatus: Boolean(entity.player_status),
+                hasRemoteConnection: Boolean(entity.remote_connection),
+              },
+            ]
+          : [];
+      }),
+    });
+  }
+
+  const entities = await worldApi.get(legacyIds);
+  return buildHarthmereObsoleteSnapshotGroveNpcDeleteChanges({
+    tick,
+    candidates: entities.flatMap((entity) =>
+      entity
+        ? [
+            {
+              id: entity.id,
+              label: entity.label()?.text,
+              hasNpcMetadata: Boolean(entity.npcMetadata()),
+              hasPlayerStatus: Boolean(entity.playerStatus()),
+              hasRemoteConnection: Boolean(entity.remoteConnection()),
+            },
+          ]
+        : []
+    ),
+  });
 }
 
 function makeRetiredGenericTownspersonChanges(
@@ -7998,6 +8136,10 @@ function makeLocalDevSeedFingerprint(input: {
   businessOwnerNpcIds: BiomesId[];
   retiredBusinessCustomerNpcIds: BiomesId[];
   businessCraftingStationIds: BiomesId[];
+  businessInteriorCollisionIds: BiomesId[];
+  additiveTownInteriorCollisionIds: BiomesId[];
+  additiveTownCookingStationIds: BiomesId[];
+  requestBoardEcsSeedIds: BiomesId[];
   chapter1PropIds: BiomesId[];
 }) {
   return JSON.stringify({
@@ -8013,6 +8155,14 @@ function makeLocalDevSeedFingerprint(input: {
     buildingStyleVersion: HARTHMERE_BUILDING_STYLE_VERSION,
     businessCraftingStationSeedVersion:
       HARTHMERE_BUSINESS_CRAFTING_STATION_SEED_VERSION,
+    businessInteriorCollisionSeedVersion:
+      HARTHMERE_BUSINESS_INTERIOR_COLLISION_SEED_VERSION,
+    additiveTownInteriorCollisionSeedVersion:
+      HARTHMERE_ADDITIVE_TOWN_INTERIOR_COLLISION_SEED_VERSION,
+    additiveTownCookingStationSeedVersion:
+      HARTHMERE_ADDITIVE_TOWN_COOKING_STATION_SEED_VERSION,
+    additiveTownInteriorsVersion: HARTHMERE_ADDITIVE_TOWN_INTERIORS_VERSION,
+    requestBoardEcsSeedVersion: HARTHMERE_REQUEST_BOARD_ECS_SEED_VERSION,
     contentPass: HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS,
     terrainBoundsVersion: HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION,
     chapter1DungeonTerrainVersion: CH1_DUNGEON_TERRAIN_VERSION,
@@ -8044,6 +8194,11 @@ function makeLocalDevSeedFingerprint(input: {
       businessOwnerNpcs: input.businessOwnerNpcIds.length,
       retiredBusinessCustomerNpcs: input.retiredBusinessCustomerNpcIds.length,
       businessCraftingStations: input.businessCraftingStationIds.length,
+      businessInteriorCollisions: input.businessInteriorCollisionIds.length,
+      additiveTownInteriorCollisions:
+        input.additiveTownInteriorCollisionIds.length,
+      additiveTownCookingStations: input.additiveTownCookingStationIds.length,
+      requestBoardEcsSeeds: input.requestBoardEcsSeedIds.length,
       fastHarvestableBlocks: HARTHMERE_FAST_HARVESTABLE_BLOCK_BY_COORD.size,
       harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,
       harvestableOreClusters: HARTHMERE_HARVESTABLE_ORE_CENTERS.length,
@@ -8099,6 +8254,7 @@ function makeLocalDevSeedMarkerChange(
 function makeLocalDevRuntimeContentFingerprint() {
   return JSON.stringify({
     version: HARTHMERE_ADDITIVE_RUNTIME_CONTENT_VERSION,
+    businessAisleNpcSweepVersion: HARTHMERE_BUSINESS_AISLE_NPC_SWEEP_VERSION,
     chapter1TestimonyNpcSeedVersion: CH1_TESTIMONY_NPC_SEED_VERSION,
     chapter1ReturningNpcSeedVersion: CH1_RETURNING_NPC_SEED_VERSION,
     playerLikeNpcCosmeticResetVersion:
@@ -8111,6 +8267,16 @@ function makeLocalDevRuntimeContentFingerprint() {
     npcPopulationPolicyVersion: HARTHMERE_NPC_POPULATION_POLICY_VERSION,
     retiredBusinessCustomerNpcSeedVersion:
       HARTHMERE_BUSINESS_CUSTOMER_NPC_SEED_VERSION,
+    businessCraftingStationSeedVersion:
+      HARTHMERE_BUSINESS_CRAFTING_STATION_SEED_VERSION,
+    businessInteriorCollisionSeedVersion:
+      HARTHMERE_BUSINESS_INTERIOR_COLLISION_SEED_VERSION,
+    additiveTownInteriorCollisionSeedVersion:
+      HARTHMERE_ADDITIVE_TOWN_INTERIOR_COLLISION_SEED_VERSION,
+    additiveTownCookingStationSeedVersion:
+      HARTHMERE_ADDITIVE_TOWN_COOKING_STATION_SEED_VERSION,
+    additiveTownInteriorsVersion: HARTHMERE_ADDITIVE_TOWN_INTERIORS_VERSION,
+    requestBoardEcsSeedVersion: HARTHMERE_REQUEST_BOARD_ECS_SEED_VERSION,
     offsets: {
       x: harthmereExtraTownOffsetX(),
       z: harthmereExtraTownOffsetZ(),
@@ -8258,6 +8424,8 @@ async function reconcileLocalDevRuntimeContent(
     tick,
     presentRetiredCustomerIds
   );
+  const retiredSnapshotGroveNpcChanges =
+    await makeRetiredSnapshotGroveNpcChanges(tick, service, worldApi);
   const retiredGenericTownspersonChanges = makeRetiredGenericTownspersonChanges(
     tick,
     service,
@@ -8268,6 +8436,7 @@ async function reconcileLocalDevRuntimeContent(
     (await localDevRuntimeContentMarkerFingerprint(service, worldApi)) ===
       fingerprint &&
     retiredCustomerChanges.length === 0 &&
+    retiredSnapshotGroveNpcChanges.length === 0 &&
     retiredGenericTownspersonChanges.length === 0
   ) {
     return true;
@@ -8276,7 +8445,7 @@ async function reconcileLocalDevRuntimeContent(
   const emptyIds = new Set<BiomesId>();
   const cosmeticRepairIds = localDevPlayerLikeNpcCosmeticRepairIds();
   const nowSeconds = secondsSinceEpoch();
-  const candidate = [
+  const candidateNpcChanges = applyHarthmereBusinessAisleKeepOutToSeedChanges([
     ...makeLocalDevNpcChanges(tick, emptyIds),
     ...makeLocalDevChapter1NpcChanges(tick, emptyIds),
     ...makeLocalDevSnapshotGroveNpcChanges(tick, emptyIds),
@@ -8295,6 +8464,31 @@ async function reconcileLocalDevRuntimeContent(
           Date.now()
         ),
     }),
+  ]).changes;
+  const candidate = [
+    ...candidateNpcChanges,
+    ...buildHarthmereBusinessCraftingStationSeedChanges({
+      tick,
+      nowSeconds,
+      existingIds: emptyIds,
+    }),
+    ...buildHarthmereBusinessInteriorCollisionSeedChanges({
+      tick,
+      existingIds: emptyIds,
+    }),
+    ...buildHarthmereAdditiveTownInteriorCollisionSeedChanges({
+      tick,
+      existingIds: emptyIds,
+    }),
+    ...buildHarthmereAdditiveTownCookingStationSeedChanges({
+      tick,
+      nowSeconds,
+      existingIds: emptyIds,
+    }),
+    ...buildHarthmereRequestBoardEcsSeedChanges({
+      tick,
+      existingIds: emptyIds,
+    }),
   ];
   const candidateIds = candidate.map(localDevSeedChangeId);
   const existingIds = await existingLocalDevIds(
@@ -8310,26 +8504,51 @@ async function reconcileLocalDevRuntimeContent(
     service,
     worldApi
   );
+  const runtimeNpcSeedChanges = applyHarthmereBusinessAisleKeepOutToSeedChanges(
+    [
+      ...makeLocalDevNpcChanges(tick, existingIds),
+      ...makeLocalDevChapter1NpcChanges(tick, existingIds),
+      ...makeLocalDevSnapshotGroveNpcChanges(tick, existingIds),
+      ...buildHarthmereBusinessOwnerNpcSeedChanges({
+        tick,
+        nowSeconds,
+        existingIds,
+      }),
+      ...buildHarthmereLiveEntityProductionSeedChanges({
+        tick,
+        nowSeconds,
+        existingIds,
+        isRespawnSuppressed: (id) =>
+          harthmereSharedLiveCreatureRespawnRegistry().isSuppressed(
+            id,
+            Date.now()
+          ),
+      }),
+    ]
+  );
   const changes = [
-    ...makeLocalDevNpcChanges(tick, existingIds),
-    ...makeLocalDevChapter1NpcChanges(tick, existingIds),
-    ...makeLocalDevSnapshotGroveNpcChanges(tick, existingIds),
-    ...buildHarthmereBusinessOwnerNpcSeedChanges({
+    ...runtimeNpcSeedChanges.changes,
+    ...buildHarthmereBusinessCraftingStationSeedChanges({
       tick,
       nowSeconds,
       existingIds,
     }),
-    ...buildHarthmereLiveEntityProductionSeedChanges({
+    ...buildHarthmereBusinessInteriorCollisionSeedChanges({
+      tick,
+      existingIds,
+    }),
+    ...buildHarthmereAdditiveTownInteriorCollisionSeedChanges({
+      tick,
+      existingIds,
+    }),
+    ...buildHarthmereAdditiveTownCookingStationSeedChanges({
       tick,
       nowSeconds,
       existingIds,
-      isRespawnSuppressed: (id) =>
-        harthmereSharedLiveCreatureRespawnRegistry().isSuppressed(
-          id,
-          Date.now()
-        ),
     }),
+    ...buildHarthmereRequestBoardEcsSeedChanges({ tick, existingIds }),
     ...makeLocalDevPlayerLikeNpcCosmeticRepairChanges(tick, existingIds),
+    ...retiredSnapshotGroveNpcChanges,
     ...retiredCustomerChanges,
     ...retiredGenericTownspersonChanges,
     makeLocalDevRuntimeContentMarkerChange(tick, existingIds, fingerprint),
@@ -8340,8 +8559,11 @@ async function reconcileLocalDevRuntimeContent(
     ...summarizeLocalDevSeedChanges(changes),
     runtimeOffsetX: harthmereExtraTownOffsetX(),
     runtimeOffsetZ: harthmereExtraTownOffsetZ(),
+    retiredSnapshotGroveNpcs: retiredSnapshotGroveNpcChanges.length,
     retiredPersistentBusinessCustomers: retiredCustomerChanges.length,
     retiredGenericTownspeople: retiredGenericTownspersonChanges.length,
+    relocatedBusinessAisleNpcs: runtimeNpcSeedChanges.correctedIds.length,
+    relocatedBusinessAisleNpcIds: runtimeNpcSeedChanges.correctedIds,
   });
   if (service) {
     service.writeableTable.apply(changes);
@@ -8510,6 +8732,26 @@ function makeLocalDevMiniWorldChanges(
       nowSeconds: secondsSinceEpoch(),
       existingIds,
     });
+  const businessInteriorCollisionChanges =
+    buildHarthmereBusinessInteriorCollisionSeedChanges({
+      tick,
+      existingIds,
+    });
+  const additiveTownInteriorCollisionChanges =
+    buildHarthmereAdditiveTownInteriorCollisionSeedChanges({
+      tick,
+      existingIds,
+    });
+  const additiveTownCookingStationChanges =
+    buildHarthmereAdditiveTownCookingStationSeedChanges({
+      tick,
+      nowSeconds: secondsSinceEpoch(),
+      existingIds,
+    });
+  const requestBoardEcsSeedChanges = buildHarthmereRequestBoardEcsSeedChanges({
+    tick,
+    existingIds,
+  });
   // CHAPTER_1_PROPS: the road-house, its hearth, cot and stores, Coretta's
   // ledger and the watch-house post. Act 1 was written around objects that were
   // never modelled; these are create-only so a container's contents survive a
@@ -8519,17 +8761,43 @@ function makeLocalDevMiniWorldChanges(
     nowSeconds: secondsSinceEpoch(),
     existingIds,
   });
-  changes.push(
+  // HARTHMERE_BUSINESS_AISLE_NPC_SWEEP
+  // Persistent NPC posts are corrected out of business customer aisles before
+  // they are written. The outposts only grew to their audited 24x20 / 28x22
+  // footprints after most of this cast was authored, so Chapter 1 actors,
+  // Grove residents and additive-town NPCs can now find themselves standing
+  // across a shop's entrance. A collidable one-metre body parked in a
+  // three-voxel doorway is physically a wall, and it reproduces exactly the
+  // stall the widened doorway was meant to end.
+  //
+  // Correcting the seed in place — rather than writing the blocker and
+  // relocating it afterwards — means the world never contains the obstruction,
+  // and a warm-Redis refresh converges on the same state as a cold seed.
+  const aisleSweptNpcChanges = applyHarthmereBusinessAisleKeepOutToSeedChanges([
     ...npcChanges,
     ...chapter1NpcChanges,
-    ...chapter1PropChanges,
     ...groveNpcChanges,
     ...combatNpcChanges,
     ...liveEntitySeedChanges,
-    ...groveRaceSeedChanges,
     ...businessOwnerNpcChanges,
+  ]);
+  if (aisleSweptNpcChanges.correctedIds.length > 0) {
+    log.warn("Relocated persistent NPCs out of business customer aisles", {
+      version: HARTHMERE_BUSINESS_AISLE_NPC_SWEEP_VERSION,
+      count: aisleSweptNpcChanges.correctedIds.length,
+      ids: aisleSweptNpcChanges.correctedIds,
+    });
+  }
+  changes.push(
+    ...aisleSweptNpcChanges.changes,
+    ...chapter1PropChanges,
+    ...groveRaceSeedChanges,
     ...retiredBusinessCustomerNpcChanges,
     ...businessCraftingStationChanges,
+    ...businessInteriorCollisionChanges,
+    ...additiveTownInteriorCollisionChanges,
+    ...additiveTownCookingStationChanges,
+    ...requestBoardEcsSeedChanges,
     makeLocalDevRuntimeContentMarkerChange(tick, existingIds),
     makeLocalDevSeedMarkerChange(tick, existingIds, seedFingerprint)
   );
@@ -8547,6 +8815,10 @@ function makeLocalDevMiniWorldChanges(
     businessOwnerNpcs: businessOwnerNpcChanges.length,
     retiredBusinessCustomerNpcs: retiredBusinessCustomerNpcChanges.length,
     businessCraftingStations: businessCraftingStationChanges.length,
+    businessInteriorCollisions: businessInteriorCollisionChanges.length,
+    additiveTownInteriorCollisions: additiveTownInteriorCollisionChanges.length,
+    additiveTownCookingStations: additiveTownCookingStationChanges.length,
+    requestBoardEcsSeeds: requestBoardEcsSeedChanges.length,
     runtimeOffsetX: harthmereExtraTownOffsetX(),
     runtimeOffsetZ: harthmereExtraTownOffsetZ(),
     firstSnapshotGroveNpc:
@@ -8773,6 +9045,13 @@ async function harthmereUnsolidSurfaceTerrainIds(
           ) {
             continue;
           }
+          // HARTHMERE_AUTHORED_WATER: the Brell's channel and the mill race are
+          // open by design. Counting them as holes marked every river shard
+          // "unsolid" on every boot, which queued an endless rebuild and fed
+          // the surface repair that filled the river in with dirt.
+          if (isHarthmereAuthoredWaterColumn(worldX, worldZ)) {
+            continue;
+          }
           if (!Number(seedTerrain.get(localX, localGroundY, localZ))) {
             holed = true;
             break;
@@ -8962,6 +9241,23 @@ async function seedMissingLocalDevContentIntoExistingWorld(
     ...buildHarthmereBusinessCraftingStationSeedChanges({
       tick,
       nowSeconds,
+      existingIds: emptyIds,
+    }),
+    ...buildHarthmereBusinessInteriorCollisionSeedChanges({
+      tick,
+      existingIds: emptyIds,
+    }),
+    ...buildHarthmereAdditiveTownInteriorCollisionSeedChanges({
+      tick,
+      existingIds: emptyIds,
+    }),
+    ...buildHarthmereAdditiveTownCookingStationSeedChanges({
+      tick,
+      nowSeconds,
+      existingIds: emptyIds,
+    }),
+    ...buildHarthmereRequestBoardEcsSeedChanges({
+      tick,
       existingIds: emptyIds,
     }),
   ];
@@ -9300,6 +9596,12 @@ async function seedLocalDevTerrainIfMissing(
   const businessOwnerNpcIds = localDevBusinessOwnerNpcIds();
   const retiredBusinessCustomerNpcIds = localDevBusinessCustomerNpcIds();
   const businessCraftingStationIds = localDevBusinessCraftingStationIds();
+  const businessInteriorCollisionIds = localDevBusinessInteriorCollisionIds();
+  const additiveTownInteriorCollisionIds =
+    harthmereAdditiveTownInteriorCollisionSeedEntityIds();
+  const additiveTownCookingStationIds =
+    harthmereAdditiveTownCookingStationSeedEntityIds();
+  const requestBoardEcsSeedIds = localDevRequestBoardEcsSeedIds();
   const chapter1PropIds = chapter1PropSeedIds();
   const legacyTerrainIds = localDevLegacyTerrainShardIds();
   const activeTerrainIds = new Set(terrainIds);
@@ -9315,6 +9617,10 @@ async function seedLocalDevTerrainIfMissing(
     ...groveRaceMinigameSeedIds,
     ...businessOwnerNpcIds,
     ...businessCraftingStationIds,
+    ...businessInteriorCollisionIds,
+    ...additiveTownInteriorCollisionIds,
+    ...additiveTownCookingStationIds,
+    ...requestBoardEcsSeedIds,
   ];
   const seedFingerprint = makeLocalDevSeedFingerprint({
     terrainIds,
@@ -9329,6 +9635,10 @@ async function seedLocalDevTerrainIfMissing(
     businessOwnerNpcIds,
     retiredBusinessCustomerNpcIds,
     businessCraftingStationIds,
+    businessInteriorCollisionIds,
+    additiveTownInteriorCollisionIds,
+    additiveTownCookingStationIds,
+    requestBoardEcsSeedIds,
   });
   const previousAdditiveTerrainIds = await existingPreviousAdditiveTerrainIds(
     service,
@@ -9392,10 +9702,25 @@ async function seedLocalDevTerrainIfMissing(
   for (const id of unsolidSurfaceIds) {
     terrainIdsToBuild.add(id);
   }
-  if (
-    process.env.BIOMES_MIGRATE_HARTHMERE_AUTHORED_WATER === "1" &&
-    !shouldRewriteExistingTerrain
-  ) {
+  // HARTHMERE_AUTHORED_WATER: re-assert the river on EVERY deploy.
+  //
+  // Two separate reasons this is unconditional rather than opt-in or
+  // conditional on a diff:
+  //
+  //   * it used to sit behind BIOMES_MIGRATE_HARTHMERE_AUTHORED_WATER=1, so an
+  //     ordinary deploy left the carved channel dry and the next surface-repair
+  //     pass filled it in with soil;
+  //   * worlds deployed before this fix already have the channel PAVED OVER in
+  //     their seed. Now that river columns no longer count as "unsolid", the
+  //     hole detector will never ask for those shards again — so nothing else
+  //     would ever restore the carve.
+  //
+  // These shards therefore get a FULL authored rebuild (seed and water), not a
+  // water-only patch, which is what puts the channel back and fills it in one
+  // pass. It re-writes identical bytes for a healthy world; the cost is a few
+  // dozen shards along the Brell, and the alternative is a river that silently
+  // disappears again.
+  if (!shouldRewriteExistingTerrain) {
     for (const spec of localDevTerrainShardSpecs()) {
       if (
         existingIds.has(spec.id) &&
@@ -9403,11 +9728,9 @@ async function seedLocalDevTerrainIfMissing(
           spec.shardX,
           spec.shardY,
           spec.shardZ
-        ) &&
-        !terrainIdsToBuild.has(spec.id)
+        )
       ) {
         terrainIdsToBuild.add(spec.id);
-        authoredWaterOnlyIds.add(spec.id);
       }
     }
   }

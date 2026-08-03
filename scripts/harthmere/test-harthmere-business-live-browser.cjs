@@ -17,7 +17,11 @@ const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
 const { chromium } = require("playwright");
-const { Health, Position } = require("../../src/shared/ecs/gen/components");
+const {
+  Health,
+  Orientation,
+  Position,
+} = require("../../src/shared/ecs/gen/components");
 const { MoveEvent } = require("../../src/shared/ecs/gen/events");
 const {
   EntitySerde,
@@ -27,15 +31,20 @@ const {
 const { ChangeSerde } = require("../../src/shared/ecs/serde");
 const {
   HARTHMERE_BUSINESS_INTERIORS,
+  harthmereBusinessCustomerDeparturePoint,
   harthmereBusinessInteriorInteractionPoints,
 } = require("../../src/shared/harthmere/business_interior_runtime");
+const {
+  HARTHMERE_BUSINESS_INTERIOR_COLLISION_SEEDS,
+} = require("../../src/shared/harthmere/business_interior_collision_seed");
+const {
+  harthmereBusinessCraftingStationSeedByOutpost,
+} = require("../../src/shared/harthmere/business_crafting_station_seed");
 const {
   HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS,
   harthmereBusinessOutpostBusinessId,
 } = require("../../src/shared/harthmere/business_customer_simulator");
-const {
-  deserializeNpcCustomState,
-} = require("../../src/shared/npc/serde");
+const { deserializeNpcCustomState } = require("../../src/shared/npc/serde");
 
 const root = path.resolve(__dirname, "../..");
 const baseUrl = String(
@@ -140,8 +149,11 @@ function persistReport() {
   fs.mkdirSync(artifactsDir, { recursive: true });
   fs.writeFileSync(
     reportPath,
-    JSON.stringify(report, (_key, value) =>
-      typeof value === "bigint" ? `${value}n` : value, 2)
+    JSON.stringify(
+      report,
+      (_key, value) => (typeof value === "bigint" ? `${value}n` : value),
+      2
+    )
   );
 }
 
@@ -331,7 +343,10 @@ async function openActor(browser) {
   );
   await context.addInitScript(() => {
     localStorage.setItem("settings.hud.keepOverlaysVisible", "true");
-    sessionStorage.setItem("biomes.harthmere.partialTerrainRecoveryReloaded", "1");
+    sessionStorage.setItem(
+      "biomes.harthmere.partialTerrainRecoveryReloaded",
+      "1"
+    );
     sessionStorage.setItem(
       "biomes.world.missingShardRecoveryReloadedAt",
       String(Date.now())
@@ -426,24 +441,66 @@ async function publish(page, event) {
   return bridgeCall(page, "publish", serializedEvent(event));
 }
 
+async function dismissEnterGame(page) {
+  const enterGame = page.getByRole("button", { name: "Enter Game" });
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (!(await enterGame.isVisible().catch(() => false))) return;
+    await enterGame.evaluate((button) => button.click()).catch(() => undefined);
+    await delay(250);
+  }
+  assert.equal(
+    await enterGame.isVisible().catch(() => false),
+    false,
+    "Enter Game safety modal must close before business input"
+  );
+}
+
 async function placePlayer(page, position) {
-  await page.evaluate(
+  const current = await authoritativeEntity(page, actorId);
+  const maxHp = Math.max(1, current?.health?.maxHp ?? 100);
+  const liveTeleport = await page.evaluate(
     ({ id, position }) => {
+      const teleport = globalThis.__harthmereLivePlayerDebug?.teleportTo;
+      const result =
+        typeof teleport === "function"
+          ? teleport({
+              x: position[0],
+              y: position[1],
+              z: position[2],
+              name: "businessCustomerE2E",
+              reason: "Stream the authoritative business interior district",
+            })
+          : undefined;
       const resources = globalThis.clientContext?.resources;
-      if (!resources) return;
+      if (!resources) throw new Error("client resources unavailable");
       resources.update("/sim/player", id, (player) => {
         player.position = [...position];
+        player.orientation = [0, 0];
         player.velocity = [0, 0, 0];
       });
+      resources.update("/scene/local_player", (localPlayer) => {
+        localPlayer.player.position = [...position];
+        localPlayer.player.orientation = [0, 0];
+        localPlayer.player.velocity = [0, 0, 0];
+      });
+      return result;
     },
     { id: actorId, position }
   );
+  if (liveTeleport) {
+    assert.equal(
+      liveTeleport.teleported,
+      true,
+      `live player did not stream business ${position.join(",")}`
+    );
+  }
   await applyChanges(page, {
     kind: "update",
     entity: {
       id: actorId,
       position: Position.create({ v: [...position] }),
-      health: Health.create({ hp: 100, maxHp: 100 }),
+      orientation: Orientation.create({ v: [0, 0] }),
+      health: Health.create({ hp: maxHp, maxHp }),
       death_info: null,
       iced: null,
     },
@@ -457,12 +514,27 @@ async function placePlayer(page, position) {
       velocity: [0, 0, 0],
     })
   );
+  await delay(300);
+  await dismissEnterGame(page);
 }
 
 async function authoritativeEntity(page, id) {
   const rows = await bridgeCall(page, "getAuthoritative", [id]);
   const serialized = rows?.[0]?.[1];
   return serialized ? EntitySerde.deserialize(serialized, false) : undefined;
+}
+
+async function authoritativeEntities(page, ids) {
+  const rows = await bridgeCall(page, "getAuthoritative", ids);
+  return new Map(
+    (rows ?? [])
+      .map((row, offset) => [ids[offset], row?.[1]])
+      .filter(([, serialized]) => serialized)
+      .map(([id, serialized]) => [
+        Number(id),
+        EntitySerde.deserialize(serialized, false),
+      ])
+  );
 }
 
 function customerState(entity) {
@@ -485,10 +557,96 @@ async function economyState(page) {
   return body.economyState ?? body;
 }
 
-function activeSessionForBusiness(state, businessId) {
-  return Object.values(
+async function submitCleanupMutation(page, operation, payload) {
+  return page.evaluate(
+    async ({ operation, payload }) => {
+      const requestId = `business_e2e_cleanup_${Date.now()}_${Math.random()
+        .toString(36)
+        .slice(2)}`;
+      const response = await fetch("/api/harthmere/live_mode", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          requestId,
+          idempotencyKey: requestId,
+          actionKind: "request_economy_mutation",
+          subsystem: "economy",
+          clientSentAtMs: Date.now(),
+          actorEntityVersion: 1,
+          zoneId: "the_grove",
+          payload: { operation, ...payload },
+          includeSnapshots: ["economyState"],
+        }),
+      });
+      const body = await response.json();
+      const backendRejection = body.backendMutation?.warnings?.find(
+        (warning) => String(warning).startsWith("economy_rejected:")
+      );
+      if (!response.ok || body.ok === false || backendRejection) {
+        throw new Error(
+          backendRejection ??
+          body.validation?.errors?.[0] ??
+            body.warnings?.[0] ??
+            `business_cleanup_http_${response.status}`
+        );
+      }
+      return body;
+    },
+    { operation, payload }
+  );
+}
+
+async function cleanupActorBusinessSessions(page, onlyBusinessId) {
+  const state = await economyState(page);
+  const sessions = Object.values(
     state?.businessSystems?.customerSessions ?? {}
-  ).find(
+  ).filter(
+    (session) =>
+      session.status === "active" &&
+      String(session.actorId) === String(actorId) &&
+      (!onlyBusinessId || session.businessId === onlyBusinessId)
+  );
+  for (const session of sessions) {
+    const record = HARTHMERE_BUSINESS_INTERIORS.find(
+      (candidate) =>
+        harthmereBusinessOutpostBusinessId(candidate.outpostId) ===
+        session.businessId
+    );
+    assert.ok(
+      record,
+      `Cannot clean unknown business session ${session.businessId}`
+    );
+    await placePlayer(
+      page,
+      harthmereBusinessInteriorInteractionPoints(record).staff
+    );
+    await submitCleanupMutation(page, "end_business_customer_session", {
+      businessId: session.businessId,
+      sessionId: session.sessionId,
+    });
+  }
+  if (sessions.length > 0) {
+    await waitFor(
+      `cleanup ${sessions.length} retained business sessions`,
+      () => economyState(page),
+      (next) =>
+        !Object.values(next?.businessSystems?.customerSessions ?? {}).some(
+          (session) =>
+            session.status === "active" &&
+            String(session.actorId) === String(actorId) &&
+            (!onlyBusinessId || session.businessId === onlyBusinessId)
+        )
+    );
+  }
+  return sessions.map((session) => session.sessionId);
+}
+
+function activeSessionForBusiness(state, businessId) {
+  return Object.values(state?.businessSystems?.customerSessions ?? {}).find(
     (session) =>
       session.businessId === businessId && session.status === "active"
   );
@@ -548,6 +706,7 @@ async function closeBusinessPanel(page) {
 async function runBusiness(page, record, index) {
   const businessId = harthmereBusinessOutpostBusinessId(record.outpostId);
   const points = harthmereBusinessInteriorInteractionPoints(record);
+  const departure = harthmereBusinessCustomerDeparturePoint(record, 0);
   const result = {
     index,
     outpostId: record.outpostId,
@@ -558,6 +717,7 @@ async function runBusiness(page, record, index) {
     desk: record.deskWorldPivot,
     staff: points.staff,
     customer: points.customer,
+    departure,
     fixtureCount: record.fixtures.length,
     collisionCount: record.collisionBoxes.length,
     floors: record.footprint.floors,
@@ -586,34 +746,138 @@ async function runBusiness(page, record, index) {
   );
   assert.deepEqual(interior.value.origin, record.assetWorldAnchor);
   assert.deepEqual(interior.value.desk, record.deskWorldPivot);
+  assert.deepEqual(interior.value.footprint, record.footprint);
+  for (const [lod, bounds] of [
+    ["lod0", interior.value.lod0WorldBounds],
+    ["lod1", interior.value.lod1WorldBounds],
+  ]) {
+    assert.ok(bounds, `${record.outpostId} ${lod} world bounds missing`);
+    assert.ok(
+      bounds.min[0] >= record.assetWorldAnchor[0] - 0.1,
+      `${record.outpostId} ${lod} furniture escaped west of the building`
+    );
+    assert.ok(
+      bounds.max[0] <=
+        record.assetWorldAnchor[0] + record.footprint.width + 0.1,
+      `${record.outpostId} ${lod} furniture escaped east of the building`
+    );
+    assert.ok(
+      bounds.min[2] >= record.assetWorldAnchor[2] - 0.1,
+      `${record.outpostId} ${lod} furniture escaped in front of the building`
+    );
+    assert.ok(
+      bounds.max[2] <=
+        record.assetWorldAnchor[2] + record.footprint.depth + 0.1,
+      `${record.outpostId} ${lod} furniture escaped behind the building`
+    );
+    assert.ok(
+      bounds.min[1] >= record.assetWorldAnchor[1] - 0.1,
+      `${record.outpostId} ${lod} furniture fell below the floor`
+    );
+    assert.ok(
+      bounds.max[1] <=
+        record.assetWorldAnchor[1] + record.footprint.floors * 4 + 0.1,
+      `${record.outpostId} ${lod} furniture escaped above the authored floors`
+    );
+  }
   assert.equal(interior.value.fixtureCount, record.fixtures.length);
   assert.equal(interior.value.collisionCount, record.collisionBoxes.length);
+
+  const collisionSeeds = HARTHMERE_BUSINESS_INTERIOR_COLLISION_SEEDS.filter(
+    (seed) => seed.outpostId === record.outpostId
+  );
+  const collisionEntities = await authoritativeEntities(
+    page,
+    collisionSeeds.map((seed) => seed.entityId)
+  );
+  assert.equal(
+    collisionEntities.size,
+    collisionSeeds.length,
+    `${record.outpostId} must materialize every manifest collision proxy`
+  );
+  for (const seed of collisionSeeds) {
+    const proxy = collisionEntities.get(Number(seed.entityId));
+    assert.ok(proxy?.collideable, `${seed.collisionSeedId} is not collidable`);
+    assert.deepEqual(proxy?.position?.v, seed.position);
+    assert.deepEqual(proxy?.size?.v, seed.size);
+    assert.equal(proxy?.placeable_component, undefined);
+    assert.equal(proxy?.npc_metadata, undefined);
+  }
+  result.nativeCollisionProxyCount = collisionEntities.size;
+
+  const stationSeed = harthmereBusinessCraftingStationSeedByOutpost(
+    record.outpostId
+  );
+  assert.ok(stationSeed, `${record.outpostId} crafting anchor missing`);
+  const stationEntity = await authoritativeEntity(page, stationSeed.entityId);
+  assert.deepEqual(stationEntity?.position?.v, stationSeed.position);
+  assert.ok(stationEntity?.placeable_component);
+  assert.ok(stationEntity?.crafting_station_component);
+  assert.equal(
+    stationEntity?.collideable,
+    undefined,
+    `${record.outpostId} visible machine collision must not be duplicated`
+  );
+  result.craftingInteractionAnchorId = Number(stationSeed.entityId);
   result.screenshots.push(await screenshot(page, indexed, "interior"));
 
   const retainedEnd = page.getByRole("button", { name: "End shift" });
   if ((await retainedEnd.count()) === 1) {
-    await retainedEnd.click();
+    await dismissEnterGame(page);
+    // This is cleanup for a retained prior run, not the product action under
+    // test. World streaming can temporarily leave the loading layer above the
+    // already-rendered HUD button, so invoke the same DOM action directly and
+    // reserve pointer-action validation for the new shift below.
+    await retainedEnd.evaluate((button) => button.click());
     await page.waitForSelector(
       '[data-harthmere-business-shift-status="true"]',
       { state: "detached", timeout: timeoutMs }
     );
   }
 
-  await page.evaluate(() => globalThis.__harthmereBusinessBoardDebug.open());
+  // Re-acquire the station immediately before opening it. The board component
+  // intentionally unmounts when streaming briefly loses the local-player
+  // position, so retaining an earlier debug object and calling it much later
+  // turns an otherwise valid row into `undefined.open` harness noise.
+  await placePlayer(page, points.staff);
+  await waitFor(
+    `${record.outpostId} atomic counter open`,
+    () =>
+      page.evaluate((outpostId) => {
+        const debug = globalThis.__harthmereBusinessBoardDebug;
+        if (debug?.activeBoard?.outpostId !== outpostId) return false;
+        debug.open();
+        return true;
+      }, record.outpostId),
+    Boolean
+  );
   await page.waitForSelector(
     `[data-harthmere-business-interface="true"][data-business-id="${businessId}"]`,
     { timeout: timeoutMs }
   );
-  const dayJob = page.getByRole("button", { name: "Day Job Mini-Game" });
-  assert.equal(await dayJob.count(), 1, "Day Job tab must be unique");
-  await dayJob.click();
+  const inWorldShift = page.getByRole("button", { name: "In-World Shift" });
+  assert.equal(
+    await inWorldShift.count(),
+    1,
+    "In-world shift tab must be unique"
+  );
+  await inWorldShift.click();
+  assert.equal(
+    await page.locator('[data-business-minigame-arena="true"]').count(),
+    0,
+    "Detached customer card arena must remain retired"
+  );
   const start = page.getByRole("button", { name: "Start shift at counter" });
   assert.equal(await start.count(), 1, "Start shift control must be unique");
+  result.screenshots.push(await screenshot(page, indexed, "shift-control"));
   await start.click();
   await page.waitForSelector('[data-harthmere-business-shift-status="true"]', {
     timeout: timeoutMs,
   });
   await closeBusinessPanel(page);
+  result.screenshots.push(
+    await screenshot(page, indexed, "shift-started-behind-counter")
+  );
 
   const serving = await waitFor(
     `${record.outpostId} native customer serving`,
@@ -630,8 +894,12 @@ async function runBusiness(page, record, index) {
       value?.customer?.phase === "serving" &&
       Number.isSafeInteger(value?.ticket?.entityId)
   );
-  const { session, ticket, entity: servingEntity, customer: servingState } =
-    serving.value;
+  const {
+    session,
+    ticket,
+    entity: servingEntity,
+    customer: servingState,
+  } = serving.value;
   const entityId = ticket.entityId;
   result.sessionId = session.sessionId;
   result.ticketId = ticket.ticketId;
@@ -644,25 +912,60 @@ async function runBusiness(page, record, index) {
     distance(servingEntity.position.v, points.customer) <= 1.75,
     "Customer must physically reach the audited counter point"
   );
-  result.screenshots.push(await screenshot(page, indexed, "service"));
+  result.screenshots.push(
+    await screenshot(page, indexed, "customer-at-counter")
+  );
 
-  const definition = HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS[record.businessType];
+  const definition =
+    HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS[record.businessType];
   const offerIndex = definition.offers.findIndex(
     (candidate) => candidate.offerId === ticket.requestedOfferId
   );
-  assert(offerIndex >= 0, "Requested offer must exist in the business definition");
-  const offerDefinition = definition.offers[offerIndex];
-  const offerByData = page.locator(
-    `[data-business-offer-id="${ticket.requestedOfferId}"]`
+  assert(
+    offerIndex >= 0,
+    "Requested offer must exist in the business definition"
   );
-  const offer =
-    (await offerByData.count()) === 1
-      ? offerByData
-      : page.getByRole("button", {
-          name: `${offerIndex + 1}. ${offerDefinition.label}`,
-        });
-  assert.equal(await offer.count(), 1, "Correct spatial offer must be unique");
+  const offerDefinition = definition.offers[offerIndex];
+  // Use the actual NPC talk surface. The production HAR showed the shift start
+  // succeeded but talking to the customer displayed ambient Chit Chat choices,
+  // so no serve_business_customer mutation was ever sent. Opening the same
+  // game modal as the native F interaction lets the screenshot prove the
+  // active ticket overrides ordinary dialogue before the service click.
+  await page.evaluate((talkingToNPCId) => {
+    const resources = globalThis.clientContext?.reactResources;
+    if (!resources) throw new Error("client react resources unavailable");
+    resources.set("/game_modal", { kind: "talk_to_npc", talkingToNPCId });
+  }, entityId);
+  await page.waitForSelector('[data-harthmere-business-customer-talk="true"]', {
+    timeout: timeoutMs,
+  });
+  assert.equal(
+    await page.getByRole("button", { name: "Chit Chat" }).count(),
+    0,
+    "Active customer must not show ordinary Chit Chat"
+  );
+  assert.equal(
+    await page.getByRole("button", { name: "Ask about this place" }).count(),
+    0,
+    "Active customer must not show ordinary place dialogue"
+  );
+  for (const definedOffer of definition.offers) {
+    assert.equal(
+      await page.getByRole("button", { name: definedOffer.label }).count(),
+      1,
+      `${definedOffer.label} must appear exactly once in customer talk`
+    );
+  }
+  result.screenshots.push(
+    await screenshot(page, indexed, "customer-talk-service-options")
+  );
+  const offer = page.getByRole("button", { name: offerDefinition.label });
+  assert.equal(await offer.count(), 1, "Correct talk offer must be unique");
   await offer.click();
+  await page.waitForSelector('[data-harthmere-business-customer-talk="true"]', {
+    state: "detached",
+    timeout: timeoutMs,
+  });
   const committed = await waitFor(
     `${record.outpostId} authoritative service commit`,
     async () => {
@@ -672,6 +975,22 @@ async function runBusiness(page, record, index) {
     (nextSession) => nextSession?.servedTicketIds?.includes(ticket.ticketId)
   );
   result.committedServedCount = committed.value.servedTicketIds.length;
+
+  const reacted = await waitFor(
+    `${record.outpostId} visible service outcome`,
+    async () => {
+      const entity = await authoritativeEntity(page, entityId);
+      return { entity, state: customerState(entity) };
+    },
+    (value) =>
+      value?.state?.reaction === "success" ||
+      value?.state?.reaction === "payment"
+  );
+  assert.ok(reacted.value.entity, "Customer must remain visible for reaction");
+  result.phases.push(reacted.value.state.phase);
+  result.screenshots.push(
+    await screenshot(page, indexed, "authoritative-service-outcome")
+  );
 
   let lastPosition = servingEntity.position.v;
   let sawReaction = false;
@@ -695,11 +1014,18 @@ async function runBusiness(page, record, index) {
   );
   assert.equal(sawReaction, true, "Customer must visibly react to success");
   assert(
-    distance(departed.value.lastPosition, points.staff) >= 18,
-    "Customer must be safely off-screen before despawn"
+    distance(departed.value.lastPosition, departure) <= 1.25,
+    "Customer must reach the authored departure point before despawn"
+  );
+  assert(
+    distance(departed.value.lastPosition, points.staff) >= 27,
+    "Customer must be safely outside the building before despawn"
   );
   result.safeDespawnPosition = departed.value.lastPosition;
-  result.safeDespawnDistance = distance(departed.value.lastPosition, points.staff);
+  result.safeDespawnDistance = distance(
+    departed.value.lastPosition,
+    points.staff
+  );
   result.screenshots.push(await screenshot(page, indexed, "departed"));
 
   const nextServing = await waitFor(
@@ -718,15 +1044,18 @@ async function runBusiness(page, record, index) {
       };
     },
     (next) =>
-      next?.ticket?.entityId !== entityId &&
-      next?.customer?.phase === "serving"
+      next?.ticket?.entityId !== entityId && next?.customer?.phase === "serving"
   );
   result.nextEntityId = nextServing.value.ticket.entityId;
   result.queueAdvanced = true;
   result.screenshots.push(await screenshot(page, indexed, "queue-advanced"));
 
   const endShift = page.getByRole("button", { name: "End shift" });
-  assert.equal(await endShift.count(), 1, "HUD end-shift action must be unique");
+  assert.equal(
+    await endShift.count(),
+    1,
+    "HUD end-shift action must be unique"
+  );
   await endShift.click();
   await page.waitForSelector('[data-harthmere-business-shift-status="true"]', {
     state: "detached",
@@ -759,6 +1088,10 @@ async function main() {
   let actor;
   try {
     actor = await openActor(browser);
+    report.retainedSessionCleanup = await cleanupActorBusinessSessions(
+      actor.page
+    );
+    persistReport();
     const loaded = await actor.page.evaluate(() => ({
       expected: globalThis.__harthmereBusinessInteriors.expectedCount,
       count: globalThis.__harthmereBusinessInteriors.interiors().length,
@@ -789,6 +1122,13 @@ async function main() {
         } catch {}
         console.error(`FAIL ${record.outpostId}: ${error?.stack || error}`);
         await closeBusinessPanel(actor.page).catch(() => undefined);
+        failure.sessionCleanup = await cleanupActorBusinessSessions(
+          actor.page,
+          harthmereBusinessOutpostBusinessId(record.outpostId)
+        ).catch((cleanupError) => {
+          failure.cleanupError = cleanupError?.stack || String(cleanupError);
+          return [];
+        });
       } finally {
         persistReport();
       }

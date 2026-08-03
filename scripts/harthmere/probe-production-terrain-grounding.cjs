@@ -73,9 +73,6 @@ const {
   HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS,
 } = require("../../src/shared/harthmere/business_customer_npc_seed");
 const {
-  HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS,
-} = require("../../src/shared/harthmere/business_crafting_station_seed");
-const {
   HARTHMERE_GATHERING_AUTHORITY_NODES,
 } = require("../../src/shared/harthmere/gathering_node_authority");
 const {
@@ -296,14 +293,6 @@ async function productionProbeItems() {
       originalIndoorItem(
         "original_business_customers",
         seed.customerNpcId,
-        seed.entityId,
-        seed.position
-      )
-    ),
-    ...HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS.map((seed) =>
-      originalIndoorItem(
-        "original_business_objects",
-        seed.stationSeedId,
         seed.entityId,
         seed.position
       )

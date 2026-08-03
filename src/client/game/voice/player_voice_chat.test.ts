@@ -1,6 +1,7 @@
 import {
   parsePlayerVoiceSignalPayload,
   playerVoiceIceServersFromConfig,
+  playerVoiceIceTransportPolicyFromConfig,
   playerVoiceProximityVolume,
   shouldInitiatePlayerVoiceOffer,
   shouldMaintainPlayerVoicePeer,
@@ -10,9 +11,11 @@ import assert from "assert";
 describe("player voice chat", () => {
   it("attenuates nearby voices and mutes them outside the audible radius", () => {
     assert.equal(playerVoiceProximityVolume(0, 0.8), 0.8);
-    assert.equal(playerVoiceProximityVolume(4, 0.8), 0.8);
-    assert.equal(playerVoiceProximityVolume(14, 0.8), 0.4);
-    assert.equal(playerVoiceProximityVolume(24, 0.8), 0);
+    assert.equal(playerVoiceProximityVolume(8, 0.8), 0.8);
+    assert.ok(playerVoiceProximityVolume(14, 0.8) > 0.69);
+    assert.ok(playerVoiceProximityVolume(20, 0.8) > 0.56);
+    assert.ok(playerVoiceProximityVolume(24, 0.8) > 0.46);
+    assert.equal(playerVoiceProximityVolume(32, 0.8), 0);
     assert.equal(playerVoiceProximityVolume(50, 0.8), 0);
   });
 
@@ -22,9 +25,9 @@ describe("player voice chat", () => {
   });
 
   it("keeps only peers inside the disconnect radius", () => {
-    assert.equal(shouldMaintainPlayerVoicePeer(39.9), true);
-    assert.equal(shouldMaintainPlayerVoicePeer(40), true);
-    assert.equal(shouldMaintainPlayerVoicePeer(40.1), false);
+    assert.equal(shouldMaintainPlayerVoicePeer(43.9), true);
+    assert.equal(shouldMaintainPlayerVoicePeer(44), true);
+    assert.equal(shouldMaintainPlayerVoicePeer(44.1), false);
     assert.equal(
       shouldMaintainPlayerVoicePeer(Number.POSITIVE_INFINITY),
       false
@@ -74,5 +77,12 @@ describe("player voice chat", () => {
         },
       ]
     );
+    assert.equal(
+      playerVoiceIceTransportPolicyFromConfig({
+        iceTransportPolicy: "relay",
+      }),
+      "relay"
+    );
+    assert.equal(playerVoiceIceTransportPolicyFromConfig({}), "all");
   });
 });

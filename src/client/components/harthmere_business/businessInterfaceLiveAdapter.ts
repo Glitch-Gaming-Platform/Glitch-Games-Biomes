@@ -3019,22 +3019,21 @@ export function createHarthmereBusinessInterfaceAdapter(options: {
         businessId,
         ...(count ? { count } : {}),
       }),
-    serveCustomer: (businessId, offerId, sessionId, ticketId, minigameAction) =>
-      submit("serve_business_customer", {
+    serveCustomer: (businessId, offerId, sessionId, ticketId, minigameAction) => {
+      const customerEntityId = ticketId
+        ? current?.businessSystems.customerSessions?.[sessionId ?? ""]?.queue.find(
+            (ticket) => ticket.ticketId === ticketId
+          )?.entityId
+        : undefined;
+      return submit("serve_business_customer", {
         businessId,
         offerId,
         ...(sessionId ? { sessionId } : {}),
         ...(ticketId ? { ticketId } : {}),
-        ...(ticketId
-          ? {
-              customerEntityId:
-                current?.businessSystems.customerSessions?.[sessionId ?? ""]
-                  ?.queue.find((ticket) => ticket.ticketId === ticketId)
-                  ?.entityId,
-            }
-          : {}),
+        ...(customerEntityId ? { customerEntityId } : {}),
         ...(minigameAction ? { minigameAction } : {}),
-      }),
+      });
+    },
     tickCustomerSession: (businessId, sessionId) =>
       submit("tick_business_customer_session", {
         businessId,

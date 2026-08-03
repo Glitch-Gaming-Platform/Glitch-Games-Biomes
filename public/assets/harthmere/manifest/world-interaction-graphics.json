@@ -1,6 +1,6 @@
 {
-  "assetVersion": "harthmere-world-interaction-graphics-blender-v1",
-  "generatorVersion": 1,
+  "assetVersion": "harthmere-world-interaction-graphics-blender-v3",
+  "generatorVersion": 3,
   "coordinateContract": {
     "unitMeters": 1,
     "pivot": "bottom_center",
@@ -31,6 +31,11 @@
     "lod1MaxDistanceMeters": 72,
     "hiddenBeyondMeters": 110
   },
+  "requestBoardLodPolicy": {
+    "lod0MaxDistanceMeters": 22,
+    "lod1MaxDistanceMeters": 72,
+    "hiddenBeyondMeters": 110
+  },
   "gatheringNodes": [
     {
       "nodeId": "harthmere_north_iron_vein",
@@ -43,19 +48,19 @@
       },
       "bounds": {
         "min": [
-          -1.125,
-          -0.9,
-          -0.1024
+          -0.7744,
+          -0.7861,
+          0.0
         ],
         "max": [
-          1.125,
-          0.9,
-          0.8164
+          0.9308,
+          0.4863,
+          0.9188
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 13008,
+          "bytes": 12740,
           "meshCount": 1,
           "primitiveCount": 3,
           "materialCount": 3,
@@ -64,7 +69,7 @@
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 5308,
+          "bytes": 5324,
           "meshCount": 1,
           "primitiveCount": 3,
           "materialCount": 3,
@@ -85,19 +90,19 @@
       },
       "bounds": {
         "min": [
-          -1.2,
-          -0.9,
+          -0.8772,
+          -0.7312,
           0.0
         ],
         "max": [
-          1.2,
-          0.9,
-          0.6436
+          0.8769,
+          0.5948,
+          0.5136
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 15268,
+          "bytes": 14952,
           "meshCount": 1,
           "primitiveCount": 3,
           "materialCount": 3,
@@ -106,7 +111,7 @@
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 4892,
+          "bytes": 4852,
           "meshCount": 1,
           "primitiveCount": 3,
           "materialCount": 3,
@@ -127,31 +132,31 @@
       },
       "bounds": {
         "min": [
-          -1.25,
-          -0.825,
+          -0.9653,
+          -0.6182,
           0.0
         ],
         "max": [
-          1.25,
-          0.825,
-          0.8285
+          0.9653,
+          0.6182,
+          0.6485
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 13232,
+          "bytes": 12344,
           "meshCount": 1,
-          "primitiveCount": 3,
-          "materialCount": 3,
+          "primitiveCount": 2,
+          "materialCount": 2,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 5208,
+          "bytes": 4596,
           "meshCount": 1,
-          "primitiveCount": 3,
-          "materialCount": 3,
+          "primitiveCount": 2,
+          "materialCount": 2,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
@@ -169,19 +174,19 @@
       },
       "bounds": {
         "min": [
-          -1.25,
+          -1.09,
           -1.09,
           0.0
         ],
         "max": [
-          1.25,
           1.09,
-          1.168
+          1.09,
+          1.0833
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 11080,
+          "bytes": 10616,
           "meshCount": 1,
           "primitiveCount": 5,
           "materialCount": 5,
@@ -190,7 +195,7 @@
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 6456,
+          "bytes": 6352,
           "meshCount": 1,
           "primitiveCount": 5,
           "materialCount": 5,
@@ -211,31 +216,31 @@
       },
       "bounds": {
         "min": [
-          -1.25,
-          -0.825,
-          0.0
+          -1.0,
+          -0.66,
+          -0.0
         ],
         "max": [
-          1.25,
-          0.825,
-          0.8915
+          1.0,
+          0.66,
+          0.7115
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 30596,
+          "bytes": 29972,
           "meshCount": 1,
-          "primitiveCount": 4,
-          "materialCount": 4,
+          "primitiveCount": 3,
+          "materialCount": 3,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 6944,
+          "bytes": 6328,
           "meshCount": 1,
-          "primitiveCount": 4,
-          "materialCount": 4,
+          "primitiveCount": 3,
+          "materialCount": 3,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
@@ -253,31 +258,31 @@
       },
       "bounds": {
         "min": [
-          -1.2,
-          -0.95,
-          -0.3602
+          -0.892,
+          -0.5301,
+          -0.0
         ],
         "max": [
-          1.2,
-          0.95,
-          1.4402
+          0.8892,
+          0.586,
+          1.0556
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 11248,
+          "bytes": 10340,
           "meshCount": 1,
-          "primitiveCount": 3,
-          "materialCount": 3,
+          "primitiveCount": 2,
+          "materialCount": 2,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 4696,
+          "bytes": 4048,
           "meshCount": 1,
-          "primitiveCount": 3,
-          "materialCount": 3,
+          "primitiveCount": 2,
+          "materialCount": 2,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
@@ -295,31 +300,31 @@
       },
       "bounds": {
         "min": [
-          -1.25,
-          -1.0,
+          -0.92,
+          -0.6379,
           0.0
         ],
         "max": [
-          1.25,
-          1.0,
-          0.7742
+          0.9371,
+          0.6149,
+          0.6317
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 7440,
+          "bytes": 6532,
           "meshCount": 1,
-          "primitiveCount": 3,
-          "materialCount": 3,
+          "primitiveCount": 2,
+          "materialCount": 2,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 4740,
+          "bytes": 4200,
           "meshCount": 1,
-          "primitiveCount": 3,
-          "materialCount": 3,
+          "primitiveCount": 2,
+          "materialCount": 2,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
@@ -337,19 +342,19 @@
       },
       "bounds": {
         "min": [
-          -1.1,
-          -0.95,
-          0.0
+          -0.94,
+          -0.94,
+          -0.0
         ],
         "max": [
-          1.1,
-          0.95,
-          1.0794
+          0.94,
+          0.94,
+          0.9188
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 13384,
+          "bytes": 12956,
           "meshCount": 1,
           "primitiveCount": 3,
           "materialCount": 3,
@@ -358,7 +363,7 @@
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 5044,
+          "bytes": 4976,
           "meshCount": 1,
           "primitiveCount": 3,
           "materialCount": 3,
@@ -379,31 +384,31 @@
       },
       "bounds": {
         "min": [
-          -1.25,
-          -0.95,
+          -0.7156,
+          -0.6408,
           0.0
         ],
         "max": [
-          1.25,
-          0.95,
-          0.7962
+          0.9928,
+          0.5357,
+          0.6462
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 9596,
+          "bytes": 8676,
           "meshCount": 1,
-          "primitiveCount": 5,
-          "materialCount": 5,
+          "primitiveCount": 4,
+          "materialCount": 4,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 5128,
+          "bytes": 4448,
           "meshCount": 1,
-          "primitiveCount": 5,
-          "materialCount": 5,
+          "primitiveCount": 4,
+          "materialCount": 4,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
@@ -421,31 +426,31 @@
       },
       "bounds": {
         "min": [
-          -1.325,
-          -1.025,
+          -1.3096,
+          -0.87,
           0.0
         ],
         "max": [
           1.3365,
-          1.025,
-          1.02
+          0.6807,
+          0.88
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 14404,
+          "bytes": 13296,
           "meshCount": 1,
-          "primitiveCount": 5,
-          "materialCount": 5,
+          "primitiveCount": 4,
+          "materialCount": 4,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 5904,
+          "bytes": 5240,
           "meshCount": 1,
-          "primitiveCount": 4,
-          "materialCount": 4,
+          "primitiveCount": 3,
+          "materialCount": 3,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
@@ -463,19 +468,19 @@
       },
       "bounds": {
         "min": [
-          -1.2,
-          -0.9,
+          -0.78,
+          -0.632,
           0.0
         ],
         "max": [
-          1.2,
+          0.78,
           0.9044,
           0.763
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 10740,
+          "bytes": 10424,
           "meshCount": 1,
           "primitiveCount": 2,
           "materialCount": 2,
@@ -484,7 +489,7 @@
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 3972,
+          "bytes": 3888,
           "meshCount": 1,
           "primitiveCount": 2,
           "materialCount": 2,
@@ -505,19 +510,19 @@
       },
       "bounds": {
         "min": [
-          -1.2,
-          -0.9,
+          -0.78,
+          -0.6418,
           0.0
         ],
         "max": [
-          1.2,
+          0.78,
           1.0874,
-          1.595
+          1.4592
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 13876,
+          "bytes": 13688,
           "meshCount": 1,
           "primitiveCount": 3,
           "materialCount": 3,
@@ -526,7 +531,7 @@
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 4128,
+          "bytes": 4068,
           "meshCount": 1,
           "primitiveCount": 3,
           "materialCount": 3,
@@ -547,19 +552,19 @@
       },
       "bounds": {
         "min": [
-          -1.2,
-          -0.9,
+          -0.78,
+          -0.668,
           0.0
         ],
         "max": [
-          1.2,
-          0.9,
-          0.66
+          0.78,
+          0.6776,
+          0.568
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 22116,
+          "bytes": 21724,
           "meshCount": 1,
           "primitiveCount": 3,
           "materialCount": 3,
@@ -568,7 +573,7 @@
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 3404,
+          "bytes": 3308,
           "meshCount": 1,
           "primitiveCount": 2,
           "materialCount": 2,
@@ -589,19 +594,19 @@
       },
       "bounds": {
         "min": [
-          -1.2,
-          -0.9,
+          -0.78,
+          -0.632,
           0.0
         ],
         "max": [
-          1.2,
-          0.9,
-          0.988
+          0.78,
+          0.6776,
+          0.8542
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 18536,
+          "bytes": 18164,
           "meshCount": 1,
           "primitiveCount": 3,
           "materialCount": 3,
@@ -610,7 +615,7 @@
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 5284,
+          "bytes": 5236,
           "meshCount": 1,
           "primitiveCount": 3,
           "materialCount": 3,
@@ -631,19 +636,19 @@
       },
       "bounds": {
         "min": [
-          -1.125,
-          -0.9,
-          -0.2284
+          -0.7744,
+          -0.7861,
+          0.0
         ],
         "max": [
-          1.125,
-          0.9,
-          0.8937
+          0.9973,
+          0.4863,
+          1.1221
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 13956,
+          "bytes": 13672,
           "meshCount": 1,
           "primitiveCount": 3,
           "materialCount": 3,
@@ -652,7 +657,7 @@
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 5760,
+          "bytes": 5708,
           "meshCount": 1,
           "primitiveCount": 3,
           "materialCount": 3,
@@ -673,31 +678,31 @@
       },
       "bounds": {
         "min": [
-          -1.125,
-          -0.9,
-          -0.1024
+          -0.8665,
+          -0.7861,
+          0.0
         ],
         "max": [
-          1.125,
-          0.9,
-          0.8164
+          0.9973,
+          0.4863,
+          0.9188
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 15352,
+          "bytes": 14524,
           "meshCount": 1,
-          "primitiveCount": 3,
-          "materialCount": 3,
+          "primitiveCount": 2,
+          "materialCount": 2,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 6612,
+          "bytes": 6188,
           "meshCount": 1,
-          "primitiveCount": 3,
-          "materialCount": 3,
+          "primitiveCount": 2,
+          "materialCount": 2,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
@@ -715,19 +720,19 @@
       },
       "bounds": {
         "min": [
-          -1.125,
-          -0.9,
-          -0.1024
+          -0.7744,
+          -0.7861,
+          0.0
         ],
         "max": [
-          1.125,
-          0.9,
-          0.9517
+          0.9308,
+          0.4863,
+          0.9188
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 16428,
+          "bytes": 16072,
           "meshCount": 1,
           "primitiveCount": 2,
           "materialCount": 2,
@@ -736,7 +741,7 @@
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 4988,
+          "bytes": 5060,
           "meshCount": 1,
           "primitiveCount": 2,
           "materialCount": 2,
@@ -757,19 +762,19 @@
       },
       "bounds": {
         "min": [
-          -1.125,
-          -0.9,
-          -0.1024
+          -0.7744,
+          -0.7861,
+          0.0
         ],
         "max": [
-          1.125,
-          0.9,
-          0.8164
+          0.9308,
+          0.4863,
+          0.9188
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 13604,
+          "bytes": 13412,
           "meshCount": 1,
           "primitiveCount": 2,
           "materialCount": 2,
@@ -778,7 +783,7 @@
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 5328,
+          "bytes": 5412,
           "meshCount": 1,
           "primitiveCount": 2,
           "materialCount": 2,
@@ -799,19 +804,19 @@
       },
       "bounds": {
         "min": [
-          -1.15,
-          -0.925,
+          -0.7996,
+          -0.6258,
           0.0
         ],
         "max": [
-          1.15,
-          0.925,
-          0.845
+          0.8241,
+          0.5531,
+          0.757
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 10824,
+          "bytes": 11004,
           "meshCount": 1,
           "primitiveCount": 2,
           "materialCount": 2,
@@ -820,7 +825,7 @@
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 5856,
+          "bytes": 6044,
           "meshCount": 1,
           "primitiveCount": 2,
           "materialCount": 2,
@@ -841,31 +846,31 @@
       },
       "bounds": {
         "min": [
-          -1.15,
-          -0.925,
+          -0.8912,
+          -0.7686,
           0.0
         ],
         "max": [
-          1.15,
-          0.925,
-          0.59
+          0.8912,
+          0.7686,
+          0.535
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 28300,
+          "bytes": 27388,
           "meshCount": 1,
-          "primitiveCount": 3,
-          "materialCount": 3,
+          "primitiveCount": 2,
+          "materialCount": 2,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 5564,
+          "bytes": 4876,
           "meshCount": 1,
-          "primitiveCount": 3,
-          "materialCount": 3,
+          "primitiveCount": 2,
+          "materialCount": 2,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
@@ -883,31 +888,31 @@
       },
       "bounds": {
         "min": [
-          -1.25,
-          -1.0,
-          0.0
+          -0.9187,
+          -0.595,
+          -0.0
         ],
         "max": [
-          1.25,
-          1.0,
-          1.35
+          0.969,
+          0.455,
+          1.2111
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 19664,
+          "bytes": 19216,
           "meshCount": 1,
-          "primitiveCount": 3,
-          "materialCount": 3,
+          "primitiveCount": 2,
+          "materialCount": 2,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 5720,
+          "bytes": 5252,
           "meshCount": 1,
-          "primitiveCount": 3,
-          "materialCount": 3,
+          "primitiveCount": 2,
+          "materialCount": 2,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
@@ -925,31 +930,31 @@
       },
       "bounds": {
         "min": [
-          -1.25,
-          -1.0,
-          0.0
+          -0.92,
+          -0.9,
+          -0.0
         ],
         "max": [
-          1.25,
-          1.0,
-          0.7742
+          0.9371,
+          0.9,
+          0.6392
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 8444,
+          "bytes": 7564,
           "meshCount": 1,
-          "primitiveCount": 4,
-          "materialCount": 4,
+          "primitiveCount": 3,
+          "materialCount": 3,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 5772,
+          "bytes": 5208,
           "meshCount": 1,
-          "primitiveCount": 4,
-          "materialCount": 4,
+          "primitiveCount": 3,
+          "materialCount": 3,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
@@ -967,19 +972,19 @@
       },
       "bounds": {
         "min": [
-          -1.15,
-          -0.925,
-          -0.1024
+          -0.7744,
+          -0.7861,
+          0.0
         ],
         "max": [
-          1.15,
-          0.925,
-          0.8164
+          0.6984,
+          0.5096,
+          0.9188
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 22432,
+          "bytes": 22036,
           "meshCount": 1,
           "primitiveCount": 4,
           "materialCount": 4,
@@ -988,7 +993,7 @@
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 7528,
+          "bytes": 7628,
           "meshCount": 1,
           "primitiveCount": 4,
           "materialCount": 4,
@@ -1009,31 +1014,31 @@
       },
       "bounds": {
         "min": [
-          -1.25,
-          -0.825,
-          0.0
+          -1.0,
+          -0.66,
+          -0.0
         ],
         "max": [
-          1.25,
-          0.825,
-          0.8915
+          1.0,
+          0.66,
+          0.7115
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 30640,
+          "bytes": 30028,
           "meshCount": 1,
-          "primitiveCount": 4,
-          "materialCount": 4,
+          "primitiveCount": 3,
+          "materialCount": 3,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 7000,
+          "bytes": 6380,
           "meshCount": 1,
-          "primitiveCount": 4,
-          "materialCount": 4,
+          "primitiveCount": 3,
+          "materialCount": 3,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
@@ -1051,31 +1056,31 @@
       },
       "bounds": {
         "min": [
-          -1.1,
-          -0.9,
+          -0.8046,
+          -0.53,
           0.0
         ],
         "max": [
-          1.1,
-          0.9,
-          1.6336
+          0.8046,
+          0.525,
+          1.4836
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 8240,
+          "bytes": 7184,
           "meshCount": 1,
-          "primitiveCount": 5,
-          "materialCount": 5,
+          "primitiveCount": 4,
+          "materialCount": 4,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 5384,
+          "bytes": 4704,
           "meshCount": 1,
-          "primitiveCount": 5,
-          "materialCount": 5,
+          "primitiveCount": 4,
+          "materialCount": 4,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
@@ -1093,31 +1098,31 @@
       },
       "bounds": {
         "min": [
-          -1.325,
-          -1.025,
+          -1.0578,
+          -0.87,
           0.0
         ],
         "max": [
           1.3365,
-          1.025,
-          1.0444
+          0.6973,
+          0.9044
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 15252,
+          "bytes": 14372,
           "meshCount": 1,
-          "primitiveCount": 6,
-          "materialCount": 6,
+          "primitiveCount": 5,
+          "materialCount": 5,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 6312,
+          "bytes": 5656,
           "meshCount": 1,
-          "primitiveCount": 5,
-          "materialCount": 5,
+          "primitiveCount": 4,
+          "materialCount": 4,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
@@ -1135,31 +1140,31 @@
       },
       "bounds": {
         "min": [
-          -1.325,
-          -1.025,
-          0.0
+          -1.03,
+          -0.87,
+          -0.0
         ],
         "max": [
           1.4035,
-          1.025,
-          0.8976
+          0.6807,
+          0.8352
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 13860,
+          "bytes": 12844,
           "meshCount": 1,
-          "primitiveCount": 6,
-          "materialCount": 6,
+          "primitiveCount": 5,
+          "materialCount": 5,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 6324,
+          "bytes": 5696,
           "meshCount": 1,
-          "primitiveCount": 5,
-          "materialCount": 5,
+          "primitiveCount": 4,
+          "materialCount": 4,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
@@ -1177,19 +1182,19 @@
       },
       "bounds": {
         "min": [
-          -1.325,
-          -1.025,
+          -1.1097,
+          -0.87,
           0.0
         ],
         "max": [
           1.3365,
-          1.025,
-          0.9556
+          0.709,
+          0.9512
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 13160,
+          "bytes": 12668,
           "meshCount": 1,
           "primitiveCount": 5,
           "materialCount": 5,
@@ -1198,7 +1203,7 @@
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 6768,
+          "bytes": 6676,
           "meshCount": 1,
           "primitiveCount": 4,
           "materialCount": 4,
@@ -1219,31 +1224,31 @@
       },
       "bounds": {
         "min": [
-          -1.2,
-          -0.95,
-          0.0
+          -0.7289,
+          -0.3869,
+          -0.0
         ],
         "max": [
-          1.2,
-          0.95,
-          0.5758
+          0.8521,
+          0.5861,
+          0.4716
         ]
       },
       "stats": {
         "lod0": {
-          "bytes": 12748,
+          "bytes": 11840,
           "meshCount": 1,
-          "primitiveCount": 4,
-          "materialCount": 4,
+          "primitiveCount": 3,
+          "materialCount": 3,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
         },
         "lod1": {
-          "bytes": 5272,
+          "bytes": 4680,
           "meshCount": 1,
-          "primitiveCount": 4,
-          "materialCount": 4,
+          "primitiveCount": 3,
+          "materialCount": 3,
           "textureCount": 0,
           "imageCount": 0,
           "meshoptCompressed": true
@@ -1448,10 +1453,177 @@
       }
     }
   },
+  "requestBoardVariants": {
+    "fishing": {
+      "displayName": "Fishing Board",
+      "category": "fishing",
+      "accentColor": "#1f7ab8",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/request_boards/request_board_fishing/request_board_fishing.glb",
+        "lod1": "/assets/harthmere/glb/request_boards/request_board_fishing/request_board_fishing.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -3.3017,
+          -0.7168,
+          0.0
+        ],
+        "max": [
+          3.3017,
+          0.5488,
+          6.4293
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 34000,
+          "meshCount": 1,
+          "primitiveCount": 7,
+          "materialCount": 7,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 11016,
+          "meshCount": 1,
+          "primitiveCount": 7,
+          "materialCount": 7,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    "farming": {
+      "displayName": "Farming Bounties",
+      "category": "farming",
+      "accentColor": "#5c9e2e",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/request_boards/request_board_farming/request_board_farming.glb",
+        "lod1": "/assets/harthmere/glb/request_boards/request_board_farming/request_board_farming.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -3.3017,
+          -0.7168,
+          0.0
+        ],
+        "max": [
+          3.3017,
+          0.5488,
+          6.4293
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 41296,
+          "meshCount": 1,
+          "primitiveCount": 8,
+          "materialCount": 8,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 15164,
+          "meshCount": 1,
+          "primitiveCount": 8,
+          "materialCount": 8,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    "industrial": {
+      "displayName": "Industrial Job Board",
+      "category": "industrial",
+      "accentColor": "#c75c1a",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/request_boards/request_board_industrial/request_board_industrial.glb",
+        "lod1": "/assets/harthmere/glb/request_boards/request_board_industrial/request_board_industrial.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -3.3017,
+          -0.7168,
+          0.0
+        ],
+        "max": [
+          3.3017,
+          0.5488,
+          6.4293
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 45424,
+          "meshCount": 1,
+          "primitiveCount": 8,
+          "materialCount": 8,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 12588,
+          "meshCount": 1,
+          "primitiveCount": 8,
+          "materialCount": 8,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    },
+    "research": {
+      "displayName": "Collective Research Board",
+      "category": "research",
+      "accentColor": "#7347c2",
+      "assets": {
+        "lod0": "/assets/harthmere/glb/request_boards/request_board_research/request_board_research.glb",
+        "lod1": "/assets/harthmere/glb/request_boards/request_board_research/request_board_research.lod1.glb"
+      },
+      "bounds": {
+        "min": [
+          -3.3017,
+          -0.7168,
+          0.0
+        ],
+        "max": [
+          3.3017,
+          0.5488,
+          6.4293
+        ]
+      },
+      "stats": {
+        "lod0": {
+          "bytes": 35412,
+          "meshCount": 1,
+          "primitiveCount": 8,
+          "materialCount": 8,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        },
+        "lod1": {
+          "bytes": 10764,
+          "meshCount": 1,
+          "primitiveCount": 8,
+          "materialCount": 8,
+          "textureCount": 0,
+          "imageCount": 0,
+          "meshoptCompressed": true
+        }
+      }
+    }
+  },
   "summary": {
     "gatheringNodeCount": 29,
     "jobsBoardVariantCount": 5,
-    "glbCount": 68,
-    "totalBytes": 840560
+    "requestBoardVariantCount": 4,
+    "glbCount": 76,
+    "totalBytes": 1019780
   }
 }

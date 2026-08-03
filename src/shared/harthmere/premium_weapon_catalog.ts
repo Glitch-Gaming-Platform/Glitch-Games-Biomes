@@ -10,19 +10,10 @@ export const HARTHMERE_HOTBAR_HELD_ITEM_EVENT =
   "biomes:harthmere-hotbar-held-item" as const;
 
 export type HarthmerePremiumWeaponProfile =
-  | "melee"
-  | "ranged"
-  | "magic"
-  | "magicBook"
-  | "thrown"
-  | "shield";
+  "melee" | "ranged" | "magic" | "magicBook" | "thrown" | "shield";
 
 export type HarthmerePremiumWeaponQuality =
-  | "common"
-  | "uncommon"
-  | "rare"
-  | "epic"
-  | "legendary";
+  "common" | "uncommon" | "rare" | "epic" | "legendary";
 
 export interface HarthmerePremiumWeaponDefinition {
   id: string;
@@ -276,7 +267,7 @@ export const HARTHMERE_PREMIUM_WEAPONS = [
     durabilityMax: 50,
     requiredLevel: 2,
     targetLength: 1.18,
-    attackPoints: 18,
+    attackPoints: 32,
     accuracy: 3,
     visualAliases: ["sword_1handed"],
     description:

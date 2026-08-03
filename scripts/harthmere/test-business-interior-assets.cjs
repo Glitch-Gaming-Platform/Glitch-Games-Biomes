@@ -63,6 +63,54 @@ function parseGlb(file) {
   };
 }
 
+function glbLocalBounds(json) {
+  const lower = [Infinity, Infinity, Infinity];
+  const upper = [-Infinity, -Infinity, -Infinity];
+
+  function visit(
+    nodeIndex,
+    parentTranslation = [0, 0, 0],
+    parentScale = [1, 1, 1]
+  ) {
+    const node = json.nodes[nodeIndex];
+    assert.equal(
+      node.matrix,
+      undefined,
+      "matrix-authored GLB nodes are unsupported"
+    );
+    assert.equal(node.rotation, undefined, "rotated GLB nodes are unsupported");
+    const translation = (node.translation ?? [0, 0, 0]).map(
+      (value, axis) => parentTranslation[axis] + parentScale[axis] * value
+    );
+    const scale = (node.scale ?? [1, 1, 1]).map(
+      (value, axis) => parentScale[axis] * value
+    );
+
+    if (node.mesh !== undefined) {
+      for (const primitive of json.meshes[node.mesh].primitives) {
+        const accessor = json.accessors[primitive.attributes.POSITION];
+        assert.ok(
+          accessor.min && accessor.max,
+          "position accessor lacks bounds"
+        );
+        for (let axis = 0; axis < 3; axis += 1) {
+          const a = translation[axis] + scale[axis] * accessor.min[axis];
+          const b = translation[axis] + scale[axis] * accessor.max[axis];
+          lower[axis] = Math.min(lower[axis], a, b);
+          upper[axis] = Math.max(upper[axis], a, b);
+        }
+      }
+    }
+    for (const child of node.children ?? []) {
+      visit(child, translation, scale);
+    }
+  }
+
+  const scene = json.scenes[json.scene ?? 0];
+  for (const nodeIndex of scene.nodes ?? []) visit(nodeIndex);
+  return { lower, upper };
+}
+
 function projectedAabb(box) {
   const angle = ((box.rotationDegrees || 0) * Math.PI) / 180;
   const halfX =
@@ -371,6 +419,7 @@ for (const business of manifest.businesses) {
     const file = publicFile(url);
     assert.ok(fs.existsSync(file), `missing ${url}`);
     const { bytes, json } = parseGlb(file);
+    const localBounds = glbLocalBounds(json);
     totalGlbBytes += bytes;
     maximumGlbBytes = Math.max(maximumGlbBytes, bytes);
     assert.ok(bytes <= 128 * 1024, `${url} exceeds 128 KiB`);
@@ -390,6 +439,29 @@ for (const business of manifest.businesses) {
     );
     maximumDrawCount = Math.max(maximumDrawCount, drawCount);
     assert.ok(drawCount <= 9, `${url} has ${drawCount} draw primitives`);
+    // Blender +Y depth is emitted as glTF -Z. The runtime reflects the GLB
+    // root on Z, so verify the actual compressed asset (not just its manifest)
+    // then lands wholly inside the positive-depth building footprint.
+    const runtimeDepthMin = -localBounds.upper[2];
+    const runtimeDepthMax = -localBounds.lower[2];
+    assert.ok(
+      runtimeDepthMin >= -0.1,
+      `${url} reflects before the building's southwest origin`
+    );
+    assert.ok(
+      runtimeDepthMax <= business.footprint.depth + 0.1,
+      `${url} reflects beyond the building depth`
+    );
+    assert.ok(localBounds.lower[0] >= -0.1, `${url} extends before local X`);
+    assert.ok(
+      localBounds.upper[0] <= business.footprint.width + 0.1,
+      `${url} extends beyond building width`
+    );
+    assert.ok(localBounds.lower[1] >= -0.1, `${url} extends below floor`);
+    assert.ok(
+      localBounds.upper[1] <= business.footprint.floors * 4 + 0.1,
+      `${url} extends above authored floors`
+    );
     assert.equal(
       fs.existsSync(file.replace(/\.glb$/, ".raw.glb")),
       false,

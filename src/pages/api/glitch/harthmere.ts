@@ -163,6 +163,7 @@ const globalForHarthmere = globalThis as typeof globalThis & {
   __harthmereGlitchAsyncOutboxDrain?: boolean;
   __harthmereGlitchTelemetryAuthBackoffUntil?: number;
   __harthmerePlayerInviteMemoryStore?: MemoryHarthmerePlayerInviteStore;
+  __harthmereVoiceRoomByTitle?: Map<string, string>;
 };
 
 const sessionStore: HarthmereSessionStore =
@@ -185,6 +186,10 @@ const playerInviteMemoryStore =
   globalForHarthmere.__harthmerePlayerInviteMemoryStore ??
   (globalForHarthmere.__harthmerePlayerInviteMemoryStore =
     new MemoryHarthmerePlayerInviteStore());
+
+const voiceRoomByTitle =
+  globalForHarthmere.__harthmereVoiceRoomByTitle ??
+  (globalForHarthmere.__harthmereVoiceRoomByTitle = new Map<string, string>());
 
 function playerInviteRedisKey(code: string) {
   return `${GLITCH_HARTHMERE_SESSION_REDIS_PREFIX}:player_invite:${code}`;
@@ -2349,6 +2354,57 @@ export default async function handler(
     if (op === "voiceJoin") {
       const { playerId, displayName } =
         await authenticatedPlayerVoiceIdentity(req);
+      const resumeVoiceToken = firstString(body.voice_token);
+      const attemptedRoomIds = new Set<string>();
+      const joinRoom = async (roomId: string) => {
+        attemptedRoomIds.add(roomId);
+        return callGlitchApi(
+          `/titles/${encodeURIComponent(
+            titleId
+          )}/multiplayer/voice/rooms/${encodeURIComponent(roomId)}/join`,
+          {
+            label: "joinVoiceRoom",
+            method: "POST",
+            body: {
+              player_id: playerId,
+              display_name: displayName,
+              metadata: { transport: "webrtc" },
+              ttl_minutes: 5,
+              ...(resumeVoiceToken ? { voice_token: resumeVoiceToken } : {}),
+            },
+          }
+        );
+      };
+      const directRoomIds = [
+        firstString(body.voice_room_id),
+        voiceRoomByTitle.get(titleId),
+      ].filter(
+        (roomId, index, roomIds): roomId is string =>
+          Boolean(roomId) && roomIds.indexOf(roomId) === index
+      );
+      for (const roomId of directRoomIds) {
+        const joinResponse = await joinRoom(roomId);
+        if (joinResponse.ok) {
+          const joined = normalizeHarthmereVoiceTokenResponse(
+            joinResponse.json
+          );
+          if (!joined) {
+            return res
+              .status(502)
+              .json({ ok: false, error: "INVALID_VOICE_JOIN_RESPONSE" });
+          }
+          voiceRoomByTitle.set(titleId, roomId);
+          return res.status(200).json({ ok: true, ...joined });
+        }
+        if (![404, 409, 410, 422].includes(joinResponse.status)) {
+          return res
+            .status(joinResponse.status || 500)
+            .json(joinResponse.json ?? joinResponse);
+        }
+        if (voiceRoomByTitle.get(titleId) === roomId) {
+          voiceRoomByTitle.delete(titleId);
+        }
+      }
       const query = new URLSearchParams({
         provider: "glitch_relay",
         topology: "proximity",
@@ -2376,21 +2432,10 @@ export default async function handler(
         harthmereVoiceRoomsFromResponse(listResponse.json)
       );
       for (const room of candidates) {
-        const joinResponse = await callGlitchApi(
-          `/titles/${encodeURIComponent(
-            titleId
-          )}/multiplayer/voice/rooms/${encodeURIComponent(room.id)}/join`,
-          {
-            label: "joinVoiceRoom",
-            method: "POST",
-            body: {
-              player_id: playerId,
-              display_name: displayName,
-              metadata: { transport: "webrtc" },
-              ttl_minutes: 5,
-            },
-          }
-        );
+        if (attemptedRoomIds.has(room.id)) {
+          continue;
+        }
+        const joinResponse = await joinRoom(room.id);
         if (joinResponse.status === 409) {
           continue;
         }
@@ -2405,6 +2450,7 @@ export default async function handler(
             .status(502)
             .json({ ok: false, error: "INVALID_VOICE_JOIN_RESPONSE" });
         }
+        voiceRoomByTitle.set(titleId, room.id);
         return res.status(200).json({ ok: true, ...joined });
       }
 
@@ -2416,9 +2462,13 @@ export default async function handler(
           body: makeHarthmereVoiceRoomCreateBody({
             playerId,
             displayName,
-            iceServers: parseHarthmereVoiceIceServers(
-              envString("GLITCH_VOICE_ICE_SERVERS_JSON")
-            ),
+            ...(envString("GLITCH_VOICE_ICE_SERVERS_JSON")
+              ? {
+                  iceServers: parseHarthmereVoiceIceServers(
+                    envString("GLITCH_VOICE_ICE_SERVERS_JSON")
+                  ),
+                }
+              : {}),
           }),
         }
       );
@@ -2433,6 +2483,7 @@ export default async function handler(
           .status(502)
           .json({ ok: false, error: "INVALID_VOICE_CREATE_RESPONSE" });
       }
+      voiceRoomByTitle.set(titleId, created.voice_room.id);
       return res.status(200).json({ ok: true, ...created });
     }
 
@@ -2462,11 +2513,15 @@ export default async function handler(
       await authenticatedPlayerVoiceIdentity(req);
       const packetType = firstString(body.packet_type) ?? "control";
       const payload = typeof body.payload === "string" ? body.payload : "";
-      const payloadLimit = packetType === "audio" ? 16 * 1024 : 4 * 1024;
+      const recipientPlayerId = firstString(body.recipient_player_id);
+      const payloadLimit = ["audio", "offer", "answer"].includes(packetType)
+        ? 16 * 1024
+        : 4 * 1024;
       if (
         !GLITCH_VOICE_PACKET_TYPES.has(packetType) ||
         payload.length === 0 ||
-        Buffer.byteLength(payload, "utf8") > payloadLimit
+        Buffer.byteLength(payload, "utf8") > payloadLimit ||
+        (["offer", "answer", "ice"].includes(packetType) && !recipientPlayerId)
       ) {
         throw new Error("INVALID_VOICE_PACKET");
       }
@@ -2478,6 +2533,9 @@ export default async function handler(
           voice_token: voiceTokenFromBody(body),
           packet_type: packetType,
           payload,
+          ...(recipientPlayerId
+            ? { recipient_player_id: recipientPlayerId }
+            : {}),
           ...(Number.isFinite(Number(body.duration_ms))
             ? { duration_ms: Math.max(0, Math.floor(Number(body.duration_ms))) }
             : {}),

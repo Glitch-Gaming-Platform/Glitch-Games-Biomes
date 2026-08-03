@@ -6,6 +6,8 @@ import {
   harthmereBusinessCustomerQueueTarget,
   harthmereBusinessCustomerSessionEntityId,
   harthmereBusinessCustomerSpawnPoint,
+  harthmereBusinessInteriorContainingPosition,
+  harthmereBusinessInteriorContainsPosition,
   harthmereBusinessInteriorInteractionPoints,
   validateHarthmereBusinessInteriorRuntimeContract,
 } from "../business_interior_runtime";
@@ -95,6 +97,41 @@ describe("Harthmere business interior runtime matrix", () => {
         points.entrance,
       ]);
       assert.deepEqual(departing.waypoints.at(-1), departure);
+    }
+  });
+
+  it("detects entering and leaving the authored footprint for all 19 businesses", () => {
+    for (const record of HARTHMERE_BUSINESS_INTERIORS) {
+      const inside = {
+        x: record.assetWorldAnchor[0] + record.footprint.width / 2,
+        y: record.assetWorldAnchor[1],
+        z: record.assetWorldAnchor[2] + record.footprint.depth / 2,
+      };
+      assert.equal(
+        harthmereBusinessInteriorContainsPosition(record, inside),
+        true,
+        record.outpostId
+      );
+      assert.equal(
+        harthmereBusinessInteriorContainingPosition(inside)?.outpostId,
+        record.outpostId
+      );
+      assert.equal(
+        harthmereBusinessInteriorContainsPosition(record, {
+          ...inside,
+          x: record.assetWorldAnchor[0] - 0.01,
+        }),
+        false,
+        `${record.outpostId}: west exit`
+      );
+      assert.equal(
+        harthmereBusinessInteriorContainsPosition(record, {
+          ...inside,
+          z: record.assetWorldAnchor[2] + record.footprint.depth,
+        }),
+        false,
+        `${record.outpostId}: north exit`
+      );
     }
   });
 

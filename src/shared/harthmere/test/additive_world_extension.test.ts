@@ -552,6 +552,10 @@ describe("Harthmere additive world extension", () => {
       SNAPSHOT_GROVE_NPC_FEET_Y + 17,
       -140,
     ]);
+    assert.deepEqual(
+      snapshotGroveGroundedPosition([510, 1, -155]),
+      [510, 73, -155]
+    );
   });
 
   it("does not let the retired placement map relocate any marker", () => {

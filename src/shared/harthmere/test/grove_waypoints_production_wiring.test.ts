@@ -132,6 +132,47 @@ describe("Grove waypoint production wiring", () => {
     }
   });
 
+  it("routes every Grove navigation-aid pin through the grounded resolver", () => {
+    // WHY `landmarkPositionReaders()` ABOVE IS NOT ENOUGH.
+    //
+    // That scan matches the literal token `landmark.position`, and says so: it
+    // was deliberately narrowed to avoid three false positives. Two live pin
+    // sites in LocalDevSnapshotGroveBibleRuntime.tsx named their variables
+    // `marker` and `stepMarker`, so they read a raw authored position straight
+    // into a navigation aid while the scan stayed green and
+    // GROVE_UNWIRED_LANDMARK_POSITION_READERS stayed empty.
+    //
+    // This checks the invariant that actually matters — what reaches the pin —
+    // rather than one spelling of one variable name.
+    const file = path.join(
+      ROOT,
+      "src/client/components/challenges/LocalDevSnapshotGroveBibleRuntime.tsx"
+    );
+    const text = fs.readFileSync(file, "utf8");
+
+    // The pin helper takes a LANDMARK, not a Vec3, so an unresolved coordinate
+    // is unrepresentable at the call site. If that signature is ever widened
+    // back to a position, this is the assertion that notices.
+    assert(
+      /function pinSnapshotGroveLandmark\(\s*mapManager: \{[\s\S]{0,220}?\},\s*landmark: SnapshotGroveLandmark,/.test(
+        text
+      ),
+      "pinSnapshotGroveLandmark no longer takes a landmark — a caller can " +
+        "hand it an unresolved position again"
+    );
+
+    // And no caller may pass a raw `.position` into it.
+    const rawPinArguments = text
+      .split(/pinSnapshotGroveLandmark\(/)
+      .slice(1)
+      .filter((call) => /^[^)]*\.position\b/.test(call));
+    assert.deepEqual(
+      rawPinArguments,
+      [],
+      "a pinSnapshotGroveLandmark call passes a raw .position"
+    );
+  });
+
   it("states plainly whether the player-facing map is fixed", () => {
     // This assertion is the whole point of the file. While the unwired list is
     // non-empty, the resolver is correct but production can still draw a

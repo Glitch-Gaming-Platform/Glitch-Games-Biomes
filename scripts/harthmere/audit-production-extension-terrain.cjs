@@ -24,11 +24,8 @@ const {
   harthmereExtensionTerrainEntityIdForShard,
 } = require("../../src/shared/harthmere/world_extension");
 const {
-  harthmereRiverContains,
-} = require("../../src/shared/harthmere/harthmere_river");
-const {
-  harthmereStillWaterLevelAt,
-} = require("../../src/shared/harthmere/harthmere_still_water");
+  isHarthmereAuthoredWaterColumn,
+} = require("../../src/shared/harthmere/harthmere_authored_water");
 
 const REDIS_HOST =
   process.env.REDIS_HOST ||
@@ -54,14 +51,18 @@ const FORBIDDEN_HARTHMERE_MUCK_TERRAIN_IDS = new Set(
     .map(Number)
 );
 
+// HARTHMERE_AUTHORED_WATER: one source of truth for "this column is open by
+// design". The audit used to carry its own copy of the river test, which is
+// exactly how the surface repair and the unsolid-surface scan drifted apart
+// and started paving the Brell over. Ask the shared predicate instead.
 function isIntentionalSurfaceOpening(worldX, worldZ) {
+  if (isHarthmereAuthoredWaterColumn(worldX, worldZ)) {
+    return true;
+  }
   const [authoredX, , centerZ] =
     HARTHMERE_BELLBINDER_DESCENT.surfaceOpeningCenter;
   const centerX = authoredX + HARTHMERE_ADDITIVE_TOWN_OFFSET_X;
-  const waterAuthoredX = worldX - HARTHMERE_ADDITIVE_TOWN_OFFSET_X;
   return (
-    harthmereRiverContains(waterAuthoredX, worldZ) ||
-    harthmereStillWaterLevelAt(waterAuthoredX, 0, worldZ) > 0 ||
     worldX >= centerX - 1 &&
     worldX <= centerX + 1 &&
     worldZ >= centerZ - 2 &&

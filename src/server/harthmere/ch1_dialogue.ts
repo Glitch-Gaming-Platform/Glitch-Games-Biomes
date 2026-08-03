@@ -733,9 +733,308 @@ export const CH1_OBJECTIVE_DIALOGUE = applyDialogueExpressionPlan(
   CH1_OBJECTIVE_DIALOGUE_EXPRESSION_PLAN
 );
 
+// CHAPTER_1_COMPLETION_DIALOGUE
+//
+// Every accepted choice gets an answer. This used to cover three steps out of
+// twenty-one, so the player committed to a line and the world said nothing
+// back — including at the beats the writer's journal names as the point of the
+// scene ("Four options. All four are 'I don't know'... That's the scene.").
+// ch1_choice_completion_dialogue.test.ts is the gate: adding a choice option
+// without an answer now fails the suite.
+//
+// TWO DELIBERATE EXCLUSIONS, asserted by that test so they cannot rot into
+// accidental gaps:
+//   * `confront` and `watch_him_go` are answered by a linear cutscene
+//     (ch1-confrontation, ch1-too-late). Both are authored so that every option
+//     means the same thing; a per-choice reply would contradict the design and
+//     double up on the cutscene that already carries the line.
+//   * `give_the_ledger`/`not_yet` is REFUSED by `acceptedChoice`, so it never
+//     reaches completion. Its player-facing text is the refusal message.
 const CH1_COMPLETION_DIALOGUE_BASE: Readonly<
   Record<string, CompletionDialogueByChoice>
 > = Object.freeze({
+  choose_a_name: {
+    keep_name: sequence("A Name for the Board", [
+      {
+        speaker: "Taye",
+        text: "Nobody finds their name; everybody gets given one and spends a while growing into it. You're just doing it faster than most.",
+      },
+    ]),
+  },
+  not_this_small: {
+    not_this_small: sequence("Not This Small", [
+      {
+        speaker: "You",
+        text: "Not this small.",
+      },
+      {
+        speaker: "Jackie",
+        text: "…Right. We're going back inside, and you won't say that where anyone else can hear you.",
+      },
+    ]),
+  },
+  say_the_sentence: {
+    biomes_make_gates: sequence("Say the Obvious Sentence", [
+      {
+        speaker: "Halden Rook",
+        text: "Two years. Two years I have watched these open on your side of the river and never once on mine, and not one of you would say it out loud.",
+      },
+      {
+        speaker: "Halden Rook",
+        text: "Thank you; that is not an accusation. It is the first honest sentence anyone from the Grove has given me.",
+      },
+    ]),
+  },
+  d1_salt_market: {
+    drop_awnings: sequence("The Salt Market", [
+      {
+        speaker: "You",
+        text: "The rotten awning poles come down across the bazaar lane. The Salt-Cured go down under the canvas, and the route forward opens cheap.",
+      },
+    ]),
+    fight_open: sequence("The Salt Market", [
+      {
+        speaker: "You",
+        text: "You take them in the open. It works, and it costs — the market goes still, and so does most of your water.",
+      },
+    ]),
+  },
+  d1_cistern_stair: {
+    lit_stair: sequence("The Cistern Stair", [
+      {
+        speaker: "You",
+        text: "Three torches spent, air overhead the whole way down. Slow is the price of arriving.",
+      },
+    ]),
+    no_air_shortcut: sequence("The Cistern Stair", [
+      {
+        speaker: "You",
+        text: "You take the flooded run. There is no pocket halfway, and your lungs learn that before your legs do.",
+      },
+    ]),
+  },
+  ch1_a3_d1_hall_of_weights: {
+    modern_scale_a: sequence("The Hall of Weights", [
+      {
+        speaker: "You",
+        text: "The instrument reads confidently and reads wrong. The beam refuses the mass.",
+      },
+      {
+        speaker: "Your hands",
+        text: "You cannot measure anything against the present. You can only measure things against each other.",
+      },
+    ]),
+    modern_scale_b: sequence("The Hall of Weights", [
+      {
+        speaker: "You",
+        text: "The second instrument disagrees with the first by an amount that is small, consistent, and impossible. The beam refuses again.",
+      },
+      {
+        speaker: "Your hands",
+        text: "Stop trusting instruments. Compare the unknown to the standard that is standing right in front of you.",
+      },
+    ]),
+    temple_balance: sequence("The Hall of Weights", [
+      {
+        speaker: "You",
+        text: "You set the unknown against the temple's own reference mass and let the beam settle itself. It levels on the first try.",
+      },
+      {
+        speaker: "Your hands",
+        text: "You have done this before. You do not remember learning it.",
+      },
+    ]),
+  },
+  d1_sun_court: {
+    stealth_bypass: sequence("The Sun Court", [
+      {
+        speaker: "You",
+        text: "You keep the pillars between you and the Bull and reach the vault door unnoticed. Its core stays in its chest, and the lore cache stays sealed behind it.",
+      },
+    ]),
+    break_horns: sequence("The Sun Court", [
+      {
+        speaker: "You",
+        text: "The horns go into stone instead of you. The third phase is a slow, badly balanced thing, and then it is over.",
+      },
+      {
+        speaker: "You",
+        text: "The Bull's Core is still warm when you lift it out.",
+      },
+    ]),
+  },
+  tell_sil_why: {
+    dont_know_heard_it: sequence("Tell Sil Why", [
+      {
+        speaker: "Sil",
+        text: "You heard it. Half a tone, under nine hundred kilos of granite, and you heard it.",
+      },
+      {
+        speaker: "Sil",
+        text: "I have tuned these stones for eleven years. Don't apologise for not knowing how.",
+      },
+    ]),
+    hands_know: sequence("Tell Sil Why", [
+      {
+        speaker: "Sil",
+        text: "Then your hands are welcome here any day you like, and the rest of you can catch up whenever it wants to.",
+      },
+    ]),
+    bedrock: sequence("Tell Sil Why", [
+      {
+        speaker: "Sil",
+        text: "The bedrock — it's the bedrock. Nobody has said that to me in eleven years.",
+      },
+      {
+        speaker: "Sil",
+        text: "Sorry; give me a moment.",
+      },
+    ]),
+    cannot_explain: sequence("Tell Sil Why", [
+      {
+        speaker: "Sil",
+        text: "You're right, and I can hear it. You handed me eleven years back without knowing where you got it.",
+      },
+    ]),
+  },
+  how_did_you_do_that: {
+    dont_know: sequence('"How Did You Do That?"', [
+      {
+        speaker: "Foreman Calla Ashe",
+        text: "You don't know.",
+      },
+      {
+        speaker: "Foreman Calla Ashe",
+        text: "Fine; I'm still required to write it up. Whoever reads the report will want a better answer, and so will I.",
+      },
+    ]),
+    hands_moved: sequence('"How Did You Do That?"', [
+      {
+        speaker: "Foreman Calla Ashe",
+        text: "Your hands moved.",
+      },
+      {
+        speaker: "Foreman Calla Ashe",
+        text: "I've got forty seconds of procedure and a core that needed four minutes. Your answer goes in the incident file exactly as given.",
+      },
+    ]),
+    already_knew: sequence('"How Did You Do That?"', [
+      {
+        speaker: "Foreman Calla Ashe",
+        text: "It felt like you already knew.",
+      },
+      {
+        speaker: "Foreman Calla Ashe",
+        text: "Nobody already knows this; that's why we keep the procedure. I have to file it, and you understand why.",
+      },
+    ]),
+    cannot_teach_it: sequence('"How Did You Do That?"', [
+      {
+        speaker: "Foreman Calla Ashe",
+        text: "You can't teach it.",
+      },
+      {
+        speaker: "Foreman Calla Ashe",
+        text: "Then I've got sixty people on this floor whose lives just depended on something that only happens if you're standing here. That's the part I have to write down.",
+      },
+    ]),
+  },
+  call_the_collapse: {
+    seventeen_seconds: sequence("Call the Collapse", [
+      {
+        speaker: "Halden Rook",
+        text: "…Seventeen. To the second.",
+      },
+      {
+        speaker: "Halden Rook",
+        text: "I have been told my whole life that your people are clever devils. It is a great deal more frightening to learn you are simply clever.",
+      },
+    ]),
+  },
+  d2_hanged_wood: {
+    silent_path: sequence("The Hanged Wood", [
+      {
+        speaker: "You",
+        text: "You move the way the wood asks you to move. Nothing between the trees turns its head, and the pines let you out the far side.",
+      },
+    ]),
+    fight_through: sequence("The Hanged Wood", [
+      {
+        speaker: "You",
+        text: "You force the path. Everything that hunts by sound now knows exactly where you are, and the wood is a long way across.",
+      },
+    ]),
+  },
+  d2_the_oath: {
+    swear_oath: sequence("The Condition", [
+      {
+        speaker: "You",
+        text: "It does not go to the Collective, ever or under any circumstance.",
+      },
+      {
+        speaker: "Dr. Nadia Sorrel",
+        text: "Say it again without looking at the door.",
+      },
+      {
+        speaker: "Dr. Nadia Sorrel",
+        text: "…Good. Then it's yours; I carried this for nine years and now trust it to someone who cannot remember why it matters.",
+      },
+    ]),
+  },
+  d2_ash_hall: {
+    feed_hearth: sequence("The Ash Hall", [
+      {
+        speaker: "You",
+        text: "You burn the carried fuel into the hearth. The hall holds its light, and the Winter has to fight you where you can see it.",
+      },
+    ]),
+    fight_dark: sequence("The Ash Hall", [
+      {
+        speaker: "You",
+        text: "The hearth goes out. The ninth winter closes over the hall, and every exchange from here costs more than it should.",
+      },
+    ]),
+  },
+  give_the_ledger: {
+    give: sequence("The Handover", [
+      {
+        speaker: "You",
+        text: "You put Nadia Sorrel's field ledger into Lucien Ardan's hands. You remember promising it would never go to the Collective.",
+      },
+      {
+        speaker: "Dr. Lucien Ardan",
+        text: "Thank you. I know exactly what that cost you, and I am not going to pretend otherwise to make it easier.",
+      },
+    ]),
+  },
+  give_her_location: {
+    tell: sequence("Tell Him Where She Is", [
+      {
+        speaker: "You",
+        text: "You tell him where Sorrel is and that she needs a doctor before she needs anything else.",
+      },
+      {
+        speaker: "Dr. Lucien Ardan",
+        text: "Then she'll have one within the hour. That part I can promise you without qualifying it.",
+      },
+    ]),
+  },
+  did_he_take_it: {
+    yes: sequence('"Did He Take It?"', [
+      {
+        speaker: "You",
+        text: "Yes. He took it.",
+      },
+      {
+        speaker: "Jackie",
+        text: "…",
+      },
+      {
+        speaker: "Jackie",
+        text: "Right. Then we work from there; sit down, because there's a lot and we haven't long.",
+      },
+    ]),
+  },
   report_or_not: {
     report: sequence("Statement Given", [
       {
@@ -856,6 +1155,67 @@ const CH1_COMPLETION_DIALOGUE_EXPRESSION_PLAN: Readonly<
     >
   >
 > = Object.freeze({
+  choose_a_name: {
+    keep_name: ["gratitude"],
+  },
+  not_this_small: {
+    not_this_small: [undefined, "fear"],
+  },
+  say_the_sentence: {
+    biomes_make_gates: ["frustration", "gratitude"],
+  },
+  d1_salt_market: {
+    drop_awnings: [undefined],
+    fight_open: [undefined],
+  },
+  d1_cistern_stair: {
+    lit_stair: [undefined],
+    no_air_shortcut: [undefined],
+  },
+  ch1_a3_d1_hall_of_weights: {
+    modern_scale_a: [undefined, undefined],
+    modern_scale_b: [undefined, undefined],
+    temple_balance: [undefined, undefined],
+  },
+  d1_sun_court: {
+    stealth_bypass: [undefined],
+    break_horns: [undefined, undefined],
+  },
+  tell_sil_why: {
+    dont_know_heard_it: ["shock", "gratitude"],
+    hands_know: ["gratitude"],
+    bedrock: ["crying", "embarrassment"],
+    cannot_explain: ["crying"],
+  },
+  how_did_you_do_that: {
+    dont_know: ["uncertainty", "determined"],
+    hands_moved: ["shock", "determined"],
+    already_knew: ["fear", "determined"],
+    cannot_teach_it: ["uncertainty", "determined"],
+  },
+  call_the_collapse: {
+    seventeen_seconds: ["shock", "fear"],
+  },
+  d2_hanged_wood: {
+    silent_path: [undefined],
+    fight_through: [undefined],
+  },
+  d2_the_oath: {
+    swear_oath: [undefined, "stop", "relief"],
+  },
+  d2_ash_hall: {
+    feed_hearth: [undefined],
+    fight_dark: [undefined],
+  },
+  give_the_ledger: {
+    give: [undefined, "gratitude"],
+  },
+  give_her_location: {
+    tell: [undefined, "gratitude"],
+  },
+  did_he_take_it: {
+    yes: [undefined, "sadness", "determined"],
+  },
   report_or_not: {
     report: ["determined", "sadness"],
     stop_tea: ["determined", "shame"],
@@ -1058,7 +1418,7 @@ export function ch1DialogueWithExitGuidanceForTest(
     ...dialogue,
     completionLabel: choiceFollows
       ? "Continue to your choice"
-      : dialogue.completionLabel ?? "Continue to the next task",
+      : (dialogue.completionLabel ?? "Continue to the next task"),
     pages: [
       ...dialogue.pages.map((page) => ({ ...page })),
       {

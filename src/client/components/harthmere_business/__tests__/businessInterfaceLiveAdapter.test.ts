@@ -63,6 +63,7 @@ import {
   type HarthmereBusinessTypeId,
 } from "../businessInterfaceLiveAdapter";
 import { HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT } from "@/client/components/challenges/harthmereEvents";
+import type { BiomesId } from "@/shared/ids";
 
 function resolveRepoAliasForEsbuild(importPath: string) {
   const basePath = path.join(process.cwd(), "src", importPath.slice(2));
@@ -626,6 +627,7 @@ describe("Harthmere in-world business interface live adapter", () => {
         queue: [
           {
             ticketId: "customer_ticket_1",
+            entityId: 90_001 as BiomesId,
             npcId: "customer_jessa_mint",
             askId: "hot_meal",
             requestedOfferId: "serve_worker_meal",
@@ -639,6 +641,9 @@ describe("Harthmere in-world business interface live adapter", () => {
             reputationDelta: 1,
             needDelta: 3,
             navGoal: "counterNodeId",
+            spatialPhase: "queued",
+            reaction: "neutral",
+            queueIndex: 0,
           },
         ],
         servedTicketIds: [],
@@ -724,13 +729,10 @@ describe("Harthmere in-world business interface live adapter", () => {
         initialTab: "customers",
       })
     );
-    assert.ok(html.includes("Current Customer"));
-    assert.ok(html.includes("Day Job Mini-Game"));
-    assert.ok(html.includes("Take a day job to earn some gold."));
-    assert.ok(html.includes("Buff Economy Service Line"));
-    assert.ok(html.includes("Service line panel"));
-    assert.ok(html.includes("Jessa Mint"));
-    assert.ok(html.includes("Serve worker meal"));
+    assert.ok(html.includes("In-world customer shift"));
+    assert.ok(html.includes("Shift live: 0/1"));
+    assert.ok(html.includes("End safely"));
+    assert.equal(html.includes('data-business-minigame-arena="true"'), false);
   });
 
   it("derives and renders branch empire data from backend building, branch, and automation records", () => {
@@ -1259,16 +1261,16 @@ describe("Harthmere in-world business interface current screens", () => {
     });
     assert.equal(ownerPrompt.visible, true);
     assert.equal(ownerPrompt.mode, "owner");
-    assert.match(ownerPrompt.label, /Press E to open .* Business Board/);
-    assert.match(ownerPrompt.helper, /Manage clients/);
+    assert.match(ownerPrompt.label, /Press E to use .* service counter/);
+    assert.match(ownerPrompt.helper, /Start an in-world shift/);
     const customerPrompt = getHarthmereBusinessInteractionPrompt(state, {
       insideBusiness: true,
       nearbyBusinessId: "business_clinic",
       interactionKeyLabel: "F",
     });
     assert.equal(customerPrompt.mode, "customer");
-    assert.match(customerPrompt.label, /Press F to open .* Business Board/);
-    assert.match(customerPrompt.helper, /Work a shift/);
+    assert.match(customerPrompt.label, /Press F to use .* service counter/);
+    assert.match(customerPrompt.helper, /Buy goods or request a service/);
   });
 
   it("resolves canonical outpost dashboard coordinates to the matching business prompt", () => {
@@ -1308,7 +1310,7 @@ describe("Harthmere in-world business interface current screens", () => {
     );
     const prompt = getHarthmereBusinessInteractionPrompt(state, context);
     assert.equal(prompt.visible, true);
-    assert.match(prompt.label, /Press F to open .* Business Board/);
+    assert.match(prompt.label, /Press F to use .* service counter/);
   });
 
   it("enriches sparse HUD business context with nearby outpost marker proof", () => {
@@ -1496,12 +1498,10 @@ describe("Harthmere in-world business interface current screens", () => {
     assert.ok(promptHtml.includes('data-access-point-min-height="82"'));
     assert.ok(promptHtml.includes('data-access-point-key-size="46"'));
     assert.ok(promptHtml.includes("Business owner access"));
-    assert.ok(promptHtml.includes("Press F to open"));
-    assert.ok(promptHtml.includes("Business Board"));
+    assert.ok(promptHtml.includes("Press F to use"));
+    assert.ok(promptHtml.includes("service counter"));
     assert.ok(
-      promptHtml.includes(
-        "Manage clients, orders, money, staff, licenses, and todos"
-      )
+      promptHtml.includes("Start an in-world shift or manage this business")
     );
     assert.ok(promptHtml.includes("min-height:82px"));
     assert.ok(promptHtml.includes("width:min(calc(100vw - 24px), 590px)"));
@@ -1591,7 +1591,7 @@ describe("Harthmere in-world business interface current screens", () => {
     }
   });
 
-  it("renders the customer mini-game as an accessible customer tab", () => {
+  it("renders the in-world shift control as an accessible customer tab", () => {
     const state = sampleSnapshot();
     const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
@@ -1607,8 +1607,9 @@ describe("Harthmere in-world business interface current screens", () => {
         compact: true,
       })
     );
-    assert.ok(html.includes("Day Job Mini-Game"));
-    assert.ok(html.includes("Take a day job to earn some gold."));
+    assert.ok(html.includes("In-World Shift"));
+    assert.ok(html.includes("In-world customer shift"));
+    assert.ok(html.includes("Start shift at counter"));
     assert.ok(html.includes('data-business-mode="customer"'));
   });
 
@@ -1631,7 +1632,6 @@ describe("Harthmere in-world business interface current screens", () => {
 
     for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER) {
       const businessId = `customer_ui_${typeId}`;
-      const miniGame = getHarthmereBusinessCustomerMiniGame(state, businessId);
       const html = renderToStaticMarkup(
         React.createElement(HarthmereBusinessInterfacePanel, {
           adapter,
@@ -1645,23 +1645,14 @@ describe("Harthmere in-world business interface current screens", () => {
         `${typeId} should render as customer mode`
       );
       assert.ok(
-        html.includes(
-          `data-business-minigame-spec="${miniGame.definition.mechanicSpec.specId}"`
-        ),
-        `${typeId} should render its concrete minigame spec`
+        html.includes('data-harthmere-business-in-world-shift-control="true"'),
+        `${typeId} should render the spatial shift control`
       );
       assert.ok(
-        html.includes("Start Shift"),
+        html.includes("Start shift at counter"),
         `${typeId} should render a start control`
       );
-      assert.ok(
-        html.includes("#ffd23f") && html.includes("box-shadow"),
-        `${typeId} should render the bright glowing start control`
-      );
-      assert.ok(
-        html.includes("Service Board") && html.includes("Current Customer"),
-        `${typeId} should render the minigame work surfaces`
-      );
+      assert.equal(html.includes('data-business-minigame-arena="true"'), false);
       const visibleText = visibleTextFromStaticMarkup(html);
       assert.equal(
         /[a-z]+_[a-z]+/.test(visibleText),
@@ -1676,7 +1667,7 @@ describe("Harthmere in-world business interface current screens", () => {
     }
   });
 
-  it("renders the overhauled arena, onboarding, queue, and reference surfaces for every business type", () => {
+  it("keeps the detached card arena retired for every business type", () => {
     const state = sampleSnapshot();
     for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER) {
       const businessId = `arena_ui_${typeId}`;
@@ -1694,8 +1685,6 @@ describe("Harthmere in-world business interface current screens", () => {
     });
     for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER) {
       const businessId = `arena_ui_${typeId}`;
-      const miniGame = getHarthmereBusinessCustomerMiniGame(state, businessId);
-      const spec = miniGame.definition.mechanicSpec;
       const html = renderToStaticMarkup(
         React.createElement(HarthmereBusinessInterfacePanel, {
           adapter,
@@ -1705,54 +1694,28 @@ describe("Harthmere in-world business interface current screens", () => {
         })
       );
       assert.ok(
-        html.includes('data-business-minigame-arena="true"'),
-        `${typeId} should render the overhauled arena root`
+        html.includes('data-harthmere-business-in-world-shift-control="true"'),
+        `${typeId} should render the in-world shift control`
       );
-      assert.ok(
-        html.includes('data-business-minigame-howto="true"'),
-        `${typeId} should render the how-to-play onboarding`
-      );
-      for (const surface of [
-        "Service Board",
-        "Current Customer",
-        "Queue",
-        "Who shows up",
-        "How to play",
-        "Goals",
-        "Watch out for",
-      ]) {
-        assert.ok(
-          html.includes(surface),
-          `${typeId} should render the "${surface}" surface`
-        );
-      }
-      // Idle arena (no live session) must keep the visible text free of
-      // snake_case / camelCase identifiers introduced by the overhaul.
+      assert.equal(html.includes('data-business-minigame-arena="true"'), false);
+      assert.equal(html.includes('data-business-minigame-howto="true"'), false);
+      assert.equal(html.includes("Service Board"), false);
+      assert.equal(html.includes("Current Customer"), false);
       const visibleText = visibleTextFromStaticMarkup(html);
-      // Onboarding copy is sourced from the spec, not invented per business.
-      // (Check against unescaped visible text so apostrophes/ampersands match.)
-      assert.ok(
-        visibleText.includes(spec.coreMechanic.slice(0, 24)),
-        `${typeId} should surface its core-mechanic onboarding text`
-      );
-      assert.ok(
-        spec.winConditions.every((win) => visibleText.includes(win)),
-        `${typeId} should list all win conditions as goals`
-      );
       assert.equal(
         /[a-z]+_[a-z]+/.test(visibleText),
         false,
-        `${typeId} overhauled arena leaks snake case: ${visibleText}`
+        `${typeId} shift control leaks snake case: ${visibleText}`
       );
       assert.equal(
         /[a-z][A-Z][a-z]/.test(visibleText),
         false,
-        `${typeId} overhauled arena leaks camel case: ${visibleText}`
+        `${typeId} shift control leaks camel case: ${visibleText}`
       );
     }
   });
 
-  it("renders the live-shift arena with patience meter, offer rewards, and stat chips", () => {
+  it("renders only safe live-shift controls while service stays in the spatial HUD", () => {
     const state = sampleSnapshot();
     state.businessSystems.customerSessions = {
       customer_shift_live: {
@@ -1767,6 +1730,7 @@ describe("Harthmere in-world business interface current screens", () => {
         queue: [
           {
             ticketId: "live_ticket_1",
+            entityId: 90_002 as BiomesId,
             npcId: "customer_jessa_mint",
             askId: "hot_meal",
             requestedOfferId: "serve_worker_meal",
@@ -1780,6 +1744,9 @@ describe("Harthmere in-world business interface current screens", () => {
             reputationDelta: 1,
             needDelta: 3,
             navGoal: "counterNodeId",
+            spatialPhase: "queued",
+            reaction: "neutral",
+            queueIndex: 0,
           },
         ],
         servedTicketIds: [],
@@ -1806,21 +1773,15 @@ describe("Harthmere in-world business interface current screens", () => {
         compact: true,
       })
     );
-    // Live stat chips and progress.
-    assert.ok(html.includes("Shift Live"));
-    assert.ok(html.includes("Streak"));
-    assert.ok(html.includes("Satisfaction"));
-    // Patience meter + difficulty surface for the current customer.
-    assert.ok(html.includes("Patience 46/46"));
-    assert.ok(html.includes("s left"));
-    // Offer cards expose reward + satisfaction footers.
-    assert.ok(html.includes("gold ·"));
-    assert.ok(html.includes("satisfaction"));
-    assert.ok(html.includes("Jessa Mint"));
-    assert.ok(html.includes("Serve worker meal"));
+    assert.ok(html.includes("In-world customer shift"));
+    assert.ok(html.includes("Shift live: 0/1"));
+    assert.ok(html.includes("End safely"));
+    assert.equal(html.includes("Patience 46/46"), false);
+    assert.equal(html.includes("Serve worker meal"), false);
+    assert.equal(html.includes('data-business-minigame-arena="true"'), false);
   });
 
-  it("renders an end-of-shift summary when an active session has no waiting customer", () => {
+  it("keeps a completed active session on the safe end-shift control", () => {
     const state = sampleSnapshot();
     state.businessSystems.customerSessions = {
       customer_shift_done: {
@@ -1835,6 +1796,7 @@ describe("Harthmere in-world business interface current screens", () => {
         queue: [
           {
             ticketId: "done_ticket_1",
+            entityId: 90_003 as BiomesId,
             npcId: "customer_jessa_mint",
             askId: "hot_meal",
             requestedOfferId: "serve_worker_meal",
@@ -1848,6 +1810,9 @@ describe("Harthmere in-world business interface current screens", () => {
             reputationDelta: 1,
             needDelta: 3,
             navGoal: "counterNodeId",
+            spatialPhase: "departing",
+            reaction: "success",
+            queueIndex: 0,
           },
         ],
         servedTicketIds: ["done_ticket_1"],
@@ -1874,13 +1839,13 @@ describe("Harthmere in-world business interface current screens", () => {
         compact: true,
       })
     );
-    assert.ok(html.includes('data-business-minigame-summary="true"'));
-    assert.ok(html.includes("Shift complete"));
-    assert.ok(html.includes("Start New Shift"));
-    assert.ok(html.includes("earned 40 gold"));
+    assert.ok(html.includes("Shift live: 1/1"));
+    assert.ok(html.includes("End safely"));
+    assert.equal(html.includes('data-business-minigame-summary="true"'), false);
+    assert.equal(html.includes("Start New Shift"), false);
   });
 
-  it("does not crash when the customer minigame panel hydrates and starts a shift in the browser", async function () {
+  it("starts the spatial shift without restoring detached offer cards in the browser", async function () {
     this.timeout(60_000);
 
     const tempDir = await mkdtemp(
@@ -2089,6 +2054,13 @@ describe("Harthmere in-world business interface current screens", () => {
                 namespace: "business-panel-test",
               })
             );
+            pluginBuild.onResolve(
+              { filter: /@\/galois\/assets\/shapes$/ },
+              () => ({
+                path: "galois-shapes",
+                namespace: "business-panel-test",
+              })
+            );
             pluginBuild.onResolve({ filter: /@\/shared\/logging$/ }, () => ({
               path: "shared-logging",
               namespace: "business-panel-test",
@@ -2204,6 +2176,17 @@ describe("Harthmere in-world business interface current screens", () => {
                   "export function isPointInsideHarthmereBusinessSafeSite() { return false; }",
                   "export function createHarthmereBusinessMiniGameDecisionForOffer(offer) { return { actionId: offer?.actionId ?? 'test_action' }; }",
                 ].join("\n"),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /galois-shapes/,
+                namespace: "business-panel-test",
+              },
+              () => ({
+                contents:
+                  "export const shapeIDs = { full: 1, step: 2, table: 3 };",
                 loader: "js",
               })
             );
@@ -2451,21 +2434,14 @@ describe("Harthmere in-world business interface current screens", () => {
           },
         ]
       );
-      await page.getByRole("button", { name: firstOfferLabel }).click();
-      await page
-        .getByText("That customer timed out. Start a new shift.")
-        .waitFor({
-          timeout: 15_000,
-        });
+      await page.getByRole("button", { name: "End safely" }).waitFor({
+        timeout: 15_000,
+      });
       assert.deepEqual(browserErrors, []);
       assert.equal(
-        await page.evaluate(
-          () =>
-            (window as any).__businessOperations.filter(
-              (row: any) => row.operation === "serve_customer"
-            ).length
-        ),
-        1
+        await page.getByRole("button", { name: firstOfferLabel }).count(),
+        0,
+        "offer choices belong to the projected spatial HUD, not this panel"
       );
       await page.getByRole("button", { name: "Shopfront" }).click();
       const buySurgeonKit = page.getByRole("button", {

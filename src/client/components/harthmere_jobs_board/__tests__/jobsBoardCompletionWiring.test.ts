@@ -4,6 +4,7 @@ import {
   createHarthmereJobsBoardAdapter,
   planHarthmereJobsBoardCompletionSteps,
 } from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
+import { HarthmereQuestActionError } from "@/client/components/challenges/questActionError";
 
 // HARTHMERE_JOBS_BOARD_COMPLETION_WIRING
 // Locks the fix for the P0 where no job could ever be completed/paid: the client
@@ -22,10 +23,9 @@ describe("planHarthmereJobsBoardCompletionSteps", () => {
   });
 
   it("skips re-verifying when the todo is already completed", () => {
-    assert.deepStrictEqual(
-      planHarthmereJobsBoardCompletionSteps("completed"),
-      ["complete_job"]
-    );
+    assert.deepStrictEqual(planHarthmereJobsBoardCompletionSteps("completed"), [
+      "complete_job",
+    ]);
   });
 });
 
@@ -42,7 +42,9 @@ function recordingFetch(opts: { rejectOps?: Set<string> } = {}) {
         ok: true,
         json: async () => ({
           ok: true,
-          backendMutation: { warnings: ["jobs_board_rejected:missing_completion_item:iron_ore"] },
+          backendMutation: {
+            warnings: ["jobs_board_rejected:missing_completion_item:iron_ore"],
+          },
         }),
       } as unknown as Response;
     }
@@ -65,7 +67,9 @@ describe("createHarthmereJobsBoardAdapter.completeJobFully", () => {
   it("sends only complete_job when the todo is already completed", async () => {
     const { ops, fetchImpl } = recordingFetch();
     const adapter = createHarthmereJobsBoardAdapter(fetchImpl);
-    await adapter.completeJobFully("job1", "board1", { todoStatus: "completed" });
+    await adapter.completeJobFully("job1", "board1", {
+      todoStatus: "completed",
+    });
     assert.deepStrictEqual(ops, ["complete_job"]);
   });
 
@@ -76,7 +80,12 @@ describe("createHarthmereJobsBoardAdapter.completeJobFully", () => {
     const adapter = createHarthmereJobsBoardAdapter(fetchImpl);
     await assert.rejects(
       adapter.completeJobFully("job1", "board1", { todoStatus: "active" }),
-      /missing_completion_item/
+      (error: unknown) =>
+        error instanceof HarthmereQuestActionError &&
+        error.warnings.some((warning) =>
+          warning.includes("missing_completion_item")
+        ) &&
+        !error.message.includes("jobs_board_rejected")
     );
     // The payout step must never run after a rejected verification.
     assert.deepStrictEqual(ops, ["complete_job_quest"]);
@@ -86,7 +95,10 @@ describe("createHarthmereJobsBoardAdapter.completeJobFully", () => {
     const sentBodies: any[] = [];
     const fetchImpl = (async (_url: string, init: any) => {
       sentBodies.push(JSON.parse(init.body));
-      return { ok: true, json: async () => ({ ok: true, jobsBoardState: {} }) } as unknown as Response;
+      return {
+        ok: true,
+        json: async () => ({ ok: true, jobsBoardState: {} }),
+      } as unknown as Response;
     }) as unknown as typeof fetch;
     const adapter = createHarthmereJobsBoardAdapter(fetchImpl);
     await adapter.completeJobFully("job1", "board1", {
@@ -97,7 +109,9 @@ describe("createHarthmereJobsBoardAdapter.completeJobFully", () => {
     const questStep = sentBodies.find(
       (b) => b.payload.operation === "complete_job_quest"
     );
-    const payStep = sentBodies.find((b) => b.payload.operation === "complete_job");
+    const payStep = sentBodies.find(
+      (b) => b.payload.operation === "complete_job"
+    );
     assert.strictEqual(questStep.payload.completedTargetId, "refinery_intake");
     assert.strictEqual(questStep.payload.questTodoId, "todo-7");
     assert.strictEqual(payStep.payload.completedTargetId, undefined);

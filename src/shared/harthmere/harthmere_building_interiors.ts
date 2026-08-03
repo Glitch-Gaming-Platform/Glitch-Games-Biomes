@@ -1,6 +1,6 @@
 // HARTHMERE_BUILDING_INTERIORS
 //
-// Furniture for Harthmere's 57 buildings.
+// Structural ceiling lighting for Harthmere's 57 buildings.
 //
 // WHY BLOCKS AND NOT PLACEABLES
 // The world-anatomy doc is blunt about this (4.3.6): Biomes ships no beds, no
@@ -11,9 +11,12 @@
 // inset and dyed". Placeables are reserved for things that need behaviour: an
 // inventory, an animation, a screen, a light, an ACL.
 //
-// So furniture here is voxels. The shim's seeder writes plain TerrainIDs with
-// no shape or isomorphism channel, so a "table" is a lumber slab on a log leg
-// rather than a `table`-shaped block — the same idea at voxel granularity.
+// The first pass also built coarse beds/tables/shelves from full terrain
+// voxels. Those shapes are retained below as historical generator vocabulary,
+// but are no longer emitted: the authoritative additive-town interior manifest
+// now supplies compact Blender-authored native furniture with proper bounds,
+// inventory identity and icons. Keeping both would double-render furniture and
+// turn rooms back into block mazes.
 //
 // Lighting follows the same section (4.3.3): "there is no lamp, torch, lantern
 // or candle placeable... to light a room in Biomes you build the light into the
@@ -34,7 +37,7 @@ import {
 } from "@/shared/harthmere/harthmere_town_buildings";
 
 export const HARTHMERE_BUILDING_INTERIORS_VERSION =
-  "harthmere-building-interiors-v1" as const;
+  "harthmere-building-interiors-v2-lighting-only" as const;
 
 /** A furniture voxel box, in authored coordinates, with relY above the floor. */
 export interface HarthmereFurnitureBox {
@@ -578,8 +581,9 @@ export function harthmereBuildingFurniture(
       all.push({ ...box, y0: box.y0 + base, y1: box.y1 + base });
     }
   }
-  furnitureCache.set(building.name, all);
-  return all;
+  const structuralLighting = all.filter((box) => box.piece === "ceiling_led");
+  furnitureCache.set(building.name, structuralLighting);
+  return structuralLighting;
 }
 
 export function harthmereResetInteriorCache(): void {
@@ -621,9 +625,6 @@ export function harthmereValidateBuildingInteriors(): string[] {
   const problems: string[] = [];
   for (const building of HARTHMERE_BUILDINGS) {
     const furniture = harthmereBuildingFurniture(building);
-    if (furniture.length === 0) {
-      problems.push(`${building.name}: no furniture at all`);
-    }
     for (const box of furniture) {
       if (
         box.x0 <= building.x0 ||

@@ -10,6 +10,7 @@
 import { harthmereNativeBiomesIdForItemId } from "@/shared/harthmere/harthmere_native_item_ids";
 import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
 import {
+  harthmereAdditiveTownGatheringNodePositionOverride,
   harthmereGatheringTerrainFrame,
   harthmereOriginalHillyGatheringNodePosition,
   type HarthmereGatheringTerrainFrame,
@@ -19,7 +20,7 @@ import type { BiomesId } from "@/shared/ids";
 import { hasFishingRodIdentity } from "@/shared/harthmere/fishing_rods";
 
 export const HARTHMERE_GATHERING_NODE_AUTHORITY_VERSION =
-  "harthmere-gathering-node-authority-2026-07-23" as const;
+  "harthmere-gathering-node-authority-2026-08-03" as const;
 export const HARTHMERE_GATHERING_NODE_INTERACTION_RADIUS = 5;
 
 export interface HarthmereGatheringAuthorityNode {
@@ -222,7 +223,7 @@ const HARTHMERE_GATHERING_AUTHORED_AUTHORITY_NODES = [
     profession: "scavenging",
     requiredTool: "scavenger_hook",
     requiredSkill: 1,
-    position: [409, 53, -178],
+    position: [409, 39, -178],
     shareMode: "shared",
     ownership: "public",
     minRespawnSeconds: 180,
@@ -1018,16 +1019,22 @@ function runtimeGatheringNodePosition(
   if (terrainFrame === "original_hilly") {
     return harthmereOriginalHillyGatheringNodePosition(node.id)!;
   }
+  const additiveOverride =
+    harthmereAdditiveTownGatheringNodePositionOverride(node.id);
+  if (additiveOverride) {
+    return additiveOverride;
+  }
   return normalizeHarthmereExtensionOutdoorFeetPosition(
     shiftHarthmereAuthoredPositionToWorld(node.position)
   );
 }
 
-// Town nodes cross the +1600 additive-world boundary and use its flat Y=53
-// surface. Deep-wilds nodes intentionally stay on their original-map X/Z and
-// use production-probed hill heights. Native authority and the browser consume
-// this same resolved catalogue, so map pins, prompts, range validation, and ECS
-// loot drops cannot disagree about where a node exists.
+// Town nodes cross the +1600 additive-world boundary and normally use its flat
+// Y=53 surface. Audited terrain exceptions use explicit world-space overrides.
+// Deep-wilds nodes intentionally stay on their original-map X/Z and use
+// production-probed hill heights. Native authority and the browser consume this
+// same resolved catalogue, so map pins, prompts, range validation, and ECS loot
+// drops cannot disagree about where a node exists.
 export const HARTHMERE_GATHERING_AUTHORITY_NODES: readonly HarthmereGatheringAuthorityNode[] =
   HARTHMERE_GATHERING_AUTHORED_AUTHORITY_NODES.map((node) => {
     const terrainFrame = harthmereGatheringTerrainFrame(node.id);

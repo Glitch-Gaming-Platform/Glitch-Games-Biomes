@@ -141,6 +141,11 @@ export class TerrainRenderer implements Renderer {
   private harthmerePrewarmQueue: ShardId[] = [];
   private harthmerePrewarmInFlight = 0;
   private harthmerePrewarmLastPlanAt = 0;
+  // PERF (2026-08-03 render audit): ResourceLimiter is stateless -- all of its
+  // throttling state lives in the shared ResourcesStats it reads through
+  // pathStats(). Rebuilding it (and its two inner limiters) on every frame was
+  // pure allocation with no semantic effect, so it is hoisted here.
+  private readonly throttledResources: TerrainResourceLimiter<ClientResourcePaths>;
 
   constructor(
     private readonly resources: ClientResources,
@@ -149,6 +154,10 @@ export class TerrainRenderer implements Renderer {
     private readonly voxeloo: VoxelooModule
   ) {
     this.sharder = new voxeloo.FrustumSharder(5 /* shard level */);
+    this.throttledResources = new TerrainResourceLimiter(
+      this.resources,
+      this.resourcesStats
+    );
   }
 
   draw(scenes: Scenes, dt: number) {
@@ -164,10 +173,15 @@ export class TerrainRenderer implements Renderer {
     // The reosurce limiter throttles how often resource generation occurs as a
     // side effect of fetching resources from the cache. Internally, the limiter
     // maintains a quota and only generates so many new terrain shards per frame.
-    const throttledResources = new TerrainResourceLimiter(
-      this.resources,
-      this.resourcesStats
-    );
+    const throttledResources = this.throttledResources;
+
+    // PERF (2026-08-03 render audit): destruction/shaping uniforms can only
+    // ever apply to the single shard the local player is currently mining, but
+    // this used to be recomputed per shard per frame -- each call re-fetching
+    // /scene/local_player and two /materials/* resources and then discarding
+    // the result for every shard that wasn't the destroy target. Resolve it
+    // once per frame instead and compare shard ids in the loop.
+    const frameDestruction = this.destructionUniformsForFrame();
 
     // Fetch the debug occlusion mesh data.
     const occlusionDebugMeshWriter = new OcclusionMeshWriter(
@@ -257,15 +271,26 @@ export class TerrainRenderer implements Renderer {
     const blockMeshes: BlockMesh[] = [];
     const floraMeshes: FloraMesh[] = [];
     const glassMeshes: GlassMesh[] = [];
-    const waterMeshes: WaterMesh[] = [];
+    // PERF (2026-08-03 render audit): water is blended, so it must be drawn
+    // back-to-front. It previously relied on `waterMesh.renderOrder`, but that
+    // is inert here: three only consults renderOrder inside its opaque and
+    // transparent sort comparators, and those only run when
+    // renderer.sortObjects === true -- which PassRenderer explicitly disables
+    // so that draw order can be controlled manually (pass_renderer.ts). Since
+    // insertion order IS draw order under sortObjects=false, sort the meshes
+    // ourselves before adding them. Carry the distance alongside so we don't
+    // recompute it.
+    const waterMeshes: { mesh: WaterMesh; distance: number }[] = [];
 
     numRenderedBlockShards.value = 0;
     numRenderedGlassShards.value = 0;
     numRenderedFloraShards.value = 0;
     numRenderedWaterShards.value = 0;
-    shards.map(({ shard: id, center, occlusion }, i) => {
+    const cameraPosition = camera.three.position.toArray();
+    for (let i = 0; i < shards.length; ++i) {
+      const { shard: id, center, occlusion } = shards[i];
       if (occlusion) {
-        const shardDistance = distSq(camera.three.position.toArray(), center);
+        const shardDistance = distSq(cameraPosition, center);
 
         // Don't throttle shards adjacent to the player, we want to make sure
         // they're always up-to-date, especially for edit latency.
@@ -277,11 +302,14 @@ export class TerrainRenderer implements Renderer {
           id
         );
         if (!combinedMesh) {
-          return;
+          continue;
         }
         const [blockMesh, glassMesh, floraMesh, waterMesh] = combinedMesh;
 
-        const destructionUniforms = this.destructionUniforms(id);
+        const destructionUniforms =
+          frameDestruction && frameDestruction.shardId === id
+            ? frameDestruction.uniforms
+            : undefined;
         // Render the block mesh.
         if (blockMesh) {
           updateBlocksMaterial(blockMesh.material, {
@@ -340,8 +368,11 @@ export class TerrainRenderer implements Renderer {
         if (waterMesh) {
           updateWaterMaterial(waterMesh.material, waterMaterial);
           waterMesh.material.wireframe = tweaks.showWireframe;
+          // Kept in sync so that ordering stays correct if sortObjects is ever
+          // re-enabled; the explicit sort below is what actually takes effect
+          // today. See the waterMeshes declaration above.
           waterMesh.renderOrder = shardDistance;
-          waterMeshes.push(waterMesh);
+          waterMeshes.push({ mesh: waterMesh, distance: shardDistance });
           ++numRenderedWaterShards.value;
         }
       }
@@ -404,7 +435,7 @@ export class TerrainRenderer implements Renderer {
           addToScenes(scenes, shard);
         }
       }
-    });
+    }
 
     // Render all of each type so that similar materials are rendered
     // consecutively to improve performance.
@@ -417,8 +448,11 @@ export class TerrainRenderer implements Renderer {
     for (const glassMesh of glassMeshes) {
       addToScene(scenes.translucent, glassMesh);
     }
-    for (const waterMesh of waterMeshes) {
-      addToScene(scenes.water, waterMesh);
+    // Farthest first: under sortObjects=false, insertion order is draw order,
+    // so this is what actually gives water correct back-to-front blending.
+    waterMeshes.sort((a, b) => b.distance - a.distance);
+    for (const { mesh } of waterMeshes) {
+      addToScene(scenes.water, mesh);
     }
   }
 
@@ -483,9 +517,17 @@ export class TerrainRenderer implements Renderer {
     }
   }
 
-  private destructionUniforms(
-    shardId: ShardId
-  ): Partial<BlocksUniforms & GlassUniforms> | undefined {
+  // PERF (2026-08-03 render audit): formerly destructionUniforms(shardId),
+  // called once per visible shard per frame. Every call re-read
+  // /scene/local_player plus both /materials/* resources and then threw the
+  // work away for all but (at most) one shard, since destroyInfo describes a
+  // single voxel. Resolve the target shard and its uniforms once per frame and
+  // let the draw loop compare shard ids. Behaviourally identical -- the guard
+  // conditions below are unchanged, only `destroyShard === shardId` has moved
+  // out to the caller.
+  private destructionUniformsForFrame():
+    | { shardId: ShardId; uniforms: Partial<BlocksUniforms & GlassUniforms> }
+    | undefined {
     const player = this.resources.get("/scene/local_player");
     const destroyShard = player.destroyInfo
       ? voxelShard(...player.destroyInfo.pos)
@@ -502,7 +544,6 @@ export class TerrainRenderer implements Renderer {
     if (
       player.destroyInfo &&
       destroyShard &&
-      destroyShard === shardId &&
       !player.destroyInfo.groupId &&
       destroyingMaterial &&
       shapingMaterial
@@ -535,7 +576,7 @@ export class TerrainRenderer implements Renderer {
           shapingMaterial.numFrames
         ),
       };
-      return ret;
+      return { shardId: destroyShard, uniforms: ret };
     }
   }
 

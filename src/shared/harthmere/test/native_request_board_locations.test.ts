@@ -9,6 +9,8 @@ import {
   harthmereRequestBoardJobsBoardId,
   harthmereRequestBoardJobsBoardIds,
   harthmereRequestBoardJobsBoardLocations,
+  harthmereRequestBoardPhysicalPromptRecords,
+  nearestHarthmereRequestBoardPhysicalPrompt,
 } from "@/shared/harthmere/native_request_board_locations";
 import {
   HARTHMERE_DOCK_FISHING_BOARD,
@@ -109,6 +111,35 @@ describe("request boards in the jobs-board registry", () => {
       assert.equal(
         record.location.radius,
         HARTHMERE_REQUEST_BOARD_INTERACTION_RADIUS
+      );
+    }
+  });
+
+  it("drives the visible renderer and F prompt from the same five anchors", () => {
+    const prompts = harthmereRequestBoardPhysicalPromptRecords();
+    assert.equal(prompts.length, 5);
+    assert.deepEqual(
+      prompts.map((prompt) => prompt.boardId).sort(),
+      Object.keys(records).sort()
+    );
+    for (const prompt of prompts) {
+      const record = records[prompt.boardId];
+      assert.deepEqual(prompt.position, {
+        x: record.location.x,
+        y: record.location.y,
+        z: record.location.z,
+      });
+      assert.equal(prompt.radius, record.location.radius);
+      assert.equal(
+        nearestHarthmereRequestBoardPhysicalPrompt(prompt.position)?.boardId,
+        prompt.boardId
+      );
+      assert.equal(
+        nearestHarthmereRequestBoardPhysicalPrompt({
+          x: prompt.position.x + prompt.radius + 0.01,
+          z: prompt.position.z,
+        })?.boardId,
+        undefined
       );
     }
   });

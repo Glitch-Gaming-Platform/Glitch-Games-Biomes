@@ -78,7 +78,7 @@ const SCOPED_SEED_IDS = new Set(
   String(process.env.HARTHMERE_CREATURE_GROUNDING_SEED_IDS || "")
     .split(",")
     .map((value) => Number(value.trim()))
-    .filter(Number.isFinite)
+    .filter((value) => Number.isFinite(value) && value > 0)
 );
 
 function redisOptions() {

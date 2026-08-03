@@ -140,13 +140,22 @@ export class PlayersRenderer implements Renderer {
       }
     });
 
+    const movementActionAnimation = player.movementActionInfo
+      ? playerMovementActionAnimationName({
+          action: player.movementActionInfo.action,
+          direction: player.movementActionInfo.direction,
+          facingYaw: scenePlayer.orientation[1],
+        })
+      : undefined;
     // EvadeRoll is authored as one high-quality forward roll. Rotate the
     // rendered root into the requested travel direction while leaving camera
-    // facing and authoritative orientation untouched.
+    // facing and authoritative orientation untouched. The roll is now the
+    // dodge action's presentation, so key this from the selected clip rather
+    // than from the unchanged gameplay action name.
     three.rotation.y =
-      player.movementActionInfo?.action === "evade"
+      movementActionAnimation === "evade"
         ? movementActionYaw(
-            player.movementActionInfo.direction,
+            player.movementActionInfo!.direction,
             scenePlayer.orientation[1]
           )
         : scenePlayer.orientation[1];
@@ -177,14 +186,21 @@ export class PlayersRenderer implements Renderer {
         const duration = movementAction.expiryTime - movementAction.startTime;
         const progress =
           duration > 0 ? (clock.time - movementAction.startTime) / duration : 0;
-        pose = playerMovementActionVisualPose(
-          playerMovementActionAnimationName({
-            action: movementAction.action,
-            direction: movementAction.direction,
-            facingYaw: scenePlayer.orientation[1],
-          }),
-          progress
-        );
+        const animationName = playerMovementActionAnimationName({
+          action: movementAction.action,
+          direction: movementAction.direction,
+          facingYaw: scenePlayer.orientation[1],
+        });
+        // The procedural pose is a *substitute* for generated voxel shells that
+        // do not inherit every joint of the skinned rig — not a supplement to
+        // the authored clip. Applying both double-counts the motion: EvadeRoll
+        // is 424 authored keyframes that already roll the body, and the
+        // procedural term adds a further full 2*PI pitch and 0.9 m of lift on
+        // top, so a skinned player rolled twice and floated. Only fall back to
+        // it when the rig genuinely lacks the clip.
+        if (!mesh.animationSystem.hasAnimation(animationName)) {
+          pose = playerMovementActionVisualPose(animationName, progress);
+        }
       } else if (cutsceneMovement) {
         const duration =
           cutsceneMovement.expiryTime - cutsceneMovement.startTime;

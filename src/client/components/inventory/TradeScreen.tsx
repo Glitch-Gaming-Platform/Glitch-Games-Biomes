@@ -173,13 +173,17 @@ const ItemBuyerLeftPaneContent: React.FunctionComponent<{
   }, [meTrader?.accepted, otherTrader?.accepted]);
 
   if (trade === undefined) {
-    <PaneLayout extraClassName="inventory-left-pane ">
-      Loading trade...
-    </PaneLayout>;
+    return (
+      <PaneLayout extraClassName="inventory-left-pane ">
+        Loading trade...
+      </PaneLayout>
+    );
   } else if (trade === null) {
-    <PaneLayout extraClassName="inventory-left-pane ">
-      Trade not found!
-    </PaneLayout>;
+    return (
+      <PaneLayout extraClassName="inventory-left-pane ">
+        Trade not found!
+      </PaneLayout>
+    );
   }
 
   return (

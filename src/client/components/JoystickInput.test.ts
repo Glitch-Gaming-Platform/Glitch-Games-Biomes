@@ -58,7 +58,18 @@ describe("mobile joystick walk/run threshold", () => {
   it("encodes active walking separately from release and running", () => {
     assert.equal(mobileJoystickRunMotionValueForTest(0, 0), 0);
     assert.equal(mobileJoystickRunMotionValueForTest(0, 0.4), -1);
-    assert.equal(mobileJoystickRunMotionValueForTest(0, 1), 1);
+    for (const [x, y] of [
+      [0, 1],
+      [0, -1],
+      [1, 0],
+      [-1, 0],
+    ] as const) {
+      assert.equal(
+        mobileJoystickRunMotionValueForTest(x, y),
+        1,
+        `full deflection ${x},${y} runs`
+      );
+    }
   });
 
   it("recognizes only a quick outer-ring release as a hard tap", () => {

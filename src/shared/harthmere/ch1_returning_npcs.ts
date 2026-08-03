@@ -23,7 +23,7 @@ export const CH1_SERGEANT_HOLT = Object.freeze({
   entityId: HOLT.entityId,
   displayName: HOLT.displayName,
   aliases: Object.freeze(["Sergeant Bramwell Holt"]),
-  position: CH1_ANCHORS.grove_watch_house,
+  position: CH1_ANCHORS.grove_watch_house_holt_post,
   role: "Town Watch sergeant taking the Chapter 1 statement",
 });
 

@@ -40,6 +40,11 @@ export interface HarthmereSharedQuestForClient {
   updatedAtMs: number;
   firstMarkerId?: string;
   markerWorldPosition?: [number, number, number];
+  questSource: "grove" | "bible";
+  status: "active" | "completed";
+  activeState?: HarthmereQuestStateForClient["active"][string];
+  completedAtMs?: number;
+  lastProgressActorId?: string;
 }
 
 export interface HarthmereQuestStateForClient {
@@ -175,6 +180,17 @@ function normalizeSharedQuest(
     updatedAtMs: numberMs(value.updatedAtMs),
     firstMarkerId: maybeText(value.firstMarkerId),
     markerWorldPosition: vec3(value.markerWorldPosition),
+    questSource: value.questSource === "bible" ? "bible" : "grove",
+    status: value.status === "completed" ? "completed" : "active",
+    activeState:
+      value.activeState && typeof value.activeState === "object"
+        ? value.activeState
+        : undefined,
+    completedAtMs:
+      value.status === "completed"
+        ? numberMs(value.completedAtMs, numberMs(value.updatedAtMs))
+        : undefined,
+    lastProgressActorId: maybeText(value.lastProgressActorId),
   };
 }
 
@@ -203,8 +219,7 @@ export function normalizeHarthmereQuestState(
           .filter(
             (
               invite: HarthmereQuestInviteRecordForClient | undefined
-            ): invite is HarthmereQuestInviteRecordForClient =>
-              Boolean(invite)
+            ): invite is HarthmereQuestInviteRecordForClient => Boolean(invite)
           )
       : [],
     sentPendingInvites: Array.isArray(value.sentPendingInvites)
@@ -213,8 +228,7 @@ export function normalizeHarthmereQuestState(
           .filter(
             (
               invite: HarthmereQuestInviteRecordForClient | undefined
-            ): invite is HarthmereQuestInviteRecordForClient =>
-              Boolean(invite)
+            ): invite is HarthmereQuestInviteRecordForClient => Boolean(invite)
           )
       : [],
     sharedQuests: Array.isArray(value.sharedQuests)
@@ -358,11 +372,11 @@ export function resolveSharedQuestMarkerPosition(quest: {
     quest.firstMarkerId
   );
   return resolved
-    ? ([
-        resolved.position[0],
-        resolved.position[1],
-        resolved.position[2],
-      ] as [number, number, number])
+    ? ([resolved.position[0], resolved.position[1], resolved.position[2]] as [
+        number,
+        number,
+        number,
+      ])
     : undefined;
 }
 
@@ -370,7 +384,7 @@ export function sharedQuestAcceptedLandmarksForBiomesUI(raw: unknown) {
   const state = normalizeHarthmereQuestState(raw);
   return state.sharedQuests.flatMap((quest) => {
     const markerPosition = resolveSharedQuestMarkerPosition(quest);
-    if (!markerPosition) return [];
+    if (!markerPosition || quest.status === "completed") return [];
     return [
       {
         id: `shared_quest_marker:${quest.sharedQuestId}`,
@@ -397,7 +411,7 @@ export function sharedQuestTrackableQuestsForBiomesUI(
     questId: `shared_quest:${quest.sharedQuestId}`,
     title: quest.questTitle,
     area: `${quest.questArea} - ${quest.memberActorIds.length} players`,
-    status: "active" as const,
+    status: quest.status,
     firstMarkerId: quest.markerWorldPosition
       ? `shared_quest_marker:${quest.sharedQuestId}`
       : quest.firstMarkerId,
@@ -416,12 +430,14 @@ export function activeSharedQuestMissionStepsForBiomesUI(raw: unknown) {
     id: `shared_quest:${quest.sharedQuestId}`,
     title: `Shared quest ${index + 1}`,
     objective: quest.objectiveText,
-    done: false,
+    done: quest.status === "completed",
   }));
 }
 
 export function firstActiveSharedQuestTitleForBiomesUI(raw: unknown) {
-  return normalizeHarthmereQuestState(raw).sharedQuests[0]?.questTitle;
+  return normalizeHarthmereQuestState(raw).sharedQuests.find(
+    (quest) => quest.status === "active"
+  )?.questTitle;
 }
 
 export function questInviteOptionsFromTrackableQuests(

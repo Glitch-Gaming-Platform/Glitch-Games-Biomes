@@ -1,6 +1,6 @@
 export const HARTHMERE_PLAYER_VOICE_CHANNEL_KEY = "biomes-world";
 export const HARTHMERE_PLAYER_VOICE_MAX_PARTICIPANTS = 32;
-export const HARTHMERE_PLAYER_VOICE_AUDIBLE_RADIUS = 24;
+export const HARTHMERE_PLAYER_VOICE_AUDIBLE_RADIUS = 32;
 
 export type HarthmereVoiceIceServer = {
   urls: string | string[];
@@ -17,6 +17,12 @@ export type HarthmereGlitchVoiceRoom = {
   max_participants?: number;
   metadata?: Record<string, unknown>;
   created_at?: string | null;
+};
+
+export type HarthmereVoiceTokenResponse = {
+  voice_room: HarthmereGlitchVoiceRoom;
+  participant: Record<string, unknown>;
+  voice_token: string;
 };
 
 const DEFAULT_VOICE_ICE_SERVERS: HarthmereVoiceIceServer[] = [
@@ -118,7 +124,7 @@ export function selectHarthmereVoiceRoomCandidates(
 export function makeHarthmereVoiceRoomCreateBody(input: {
   playerId: string;
   displayName: string;
-  iceServers: HarthmereVoiceIceServer[];
+  iceServers?: HarthmereVoiceIceServer[];
 }) {
   return {
     player_id: input.playerId,
@@ -134,9 +140,10 @@ export function makeHarthmereVoiceRoomCreateBody(input: {
     max_participants: HARTHMERE_PLAYER_VOICE_MAX_PARTICIPANTS,
     recording_allowed: false,
     moderation_enabled: true,
-    connection_config: {
-      iceServers: input.iceServers,
-    },
+    connection_config:
+      input.iceServers && input.iceServers.length > 0
+        ? { iceServers: input.iceServers }
+        : {},
     metadata: {
       channel_key: HARTHMERE_PLAYER_VOICE_CHANNEL_KEY,
       transport: "webrtc",
@@ -146,20 +153,25 @@ export function makeHarthmereVoiceRoomCreateBody(input: {
   };
 }
 
-export function normalizeHarthmereVoiceTokenResponse(raw: unknown) {
+export function normalizeHarthmereVoiceTokenResponse(
+  raw: unknown
+): HarthmereVoiceTokenResponse | undefined {
   const record = asRecord(raw);
   const candidate = asRecord(record?.data) ?? record;
+  const voiceRoom = asRecord(candidate?.voice_room);
+  const participant = asRecord(candidate?.participant);
   if (
     !candidate ||
     typeof candidate.voice_token !== "string" ||
-    !asRecord(candidate.voice_room) ||
-    !asRecord(candidate.participant)
+    !voiceRoom ||
+    typeof voiceRoom.id !== "string" ||
+    !participant
   ) {
     return undefined;
   }
   return {
-    voice_room: candidate.voice_room,
-    participant: candidate.participant,
+    voice_room: voiceRoom as HarthmereGlitchVoiceRoom,
+    participant,
     voice_token: candidate.voice_token,
   };
 }

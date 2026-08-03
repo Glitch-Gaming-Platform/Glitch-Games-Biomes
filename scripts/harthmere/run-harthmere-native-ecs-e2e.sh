@@ -41,8 +41,14 @@ echo "== Native ECS topology and security contracts =="
 node scripts/harthmere/test-harthmere-stream-workers-production.cjs "$ROOT"
 node scripts/harthmere/test-harthmere-native-farming-e2e-contract.cjs "$ROOT"
 node scripts/harthmere/test-harthmere-native-ecs-all-jobs-e2e-contract.cjs "$ROOT"
+node scripts/harthmere/test-world-interaction-graphics.cjs "$ROOT"
 node scripts/harthmere/test-harthmere-native-robot-story-e2e-contract.cjs "$ROOT"
 node scripts/harthmere/test-harthmere-native-chase-e2e-contract.cjs "$ROOT"
+# HARTHMERE_RIVER_DEPLOY_DURABILITY: fails a deployment candidate that would
+# carve the Brell and then leave it dry or pave it over. Source-and-data only,
+# so it runs in the no-browser contract phase and blocks BEFORE a deploy can
+# flatten the river again.
+node scripts/harthmere/test-harthmere-river-deploy-durability-contract.cjs "$ROOT"
 "${TS_MOCHA[@]}" \
   src/client/game/e2e/harthmere_native_ecs_e2e.test.ts \
   src/pages/api/harthmere/test/visual_test_auth.test.ts
@@ -74,6 +80,9 @@ echo "== Visible frontend interaction contracts =="
   src/client/components/harthmere_jobs_board/__tests__/HarthmereJobsBoardPanel.keyboard.test.tsx \
   src/client/components/harthmere_jobs_board/__tests__/jobsBoardLiveAdapter.test.ts \
   src/client/components/harthmere_jobs_board/__tests__/jobsBoardInteractionPriority.test.ts \
+  src/client/game/renderers/local_dev/test/harthmere_request_board_markers.test.ts \
+  src/client/components/biomes_ui/__tests__/biomesUIMountWorldObjectPanels.test.ts \
+  src/client/components/challenges/claimRewardsEntityMatching.test.ts \
   src/client/components/test/harthmere_live_fetch_coalesce.test.ts \
   src/client/util/nux/state_machines.test.ts \
   src/shared/harthmere/test/world_object_f_interaction_all_props.test.ts \
@@ -100,6 +109,9 @@ echo "== Native ECS handler and authority contracts =="
   src/server/logic/test/harthmere_placeable_transaction.test.ts \
   src/server/logic/test/inventory.test.ts \
   src/server/shared/triggers/test/challenge_claim_rewards_roundtrip.test.ts \
+  src/server/shared/triggers/test/native_request_board_progression.test.ts \
+  src/server/logic/events/handlers/test/quest_step_validation.test.ts \
+  src/server/harthmere/test/request_board_ecs_seed.test.ts \
   src/server/shared/triggers/test/native_road_ahead_inventory_triggers.test.ts \
   src/server/shared/triggers/test/native_robot_story_continuation.test.ts \
   src/server/shared/triggers/test/engine_cleanup.test.ts \

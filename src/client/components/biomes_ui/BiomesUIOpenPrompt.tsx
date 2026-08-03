@@ -62,7 +62,7 @@ export function biomesUIIsNonGameplayScreenVisible(
   });
 }
 
-function useBiomesUINonGameplayScreenVisible() {
+export function useBiomesUINonGameplayScreenVisible() {
   const [visible, setVisible] = React.useState(false);
 
   React.useEffect(() => {
@@ -144,7 +144,7 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
           <span className="biomes-ui-mobile-menu__key" aria-hidden>
             ☰
           </span>
-          <span>Menu</span>
+          <span className="biomes-ui-mobile-menu__label">Menu</span>
         </button>
         <button
           type="button"
@@ -163,7 +163,7 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
           <span className="biomes-ui-mobile-menu__key" aria-hidden>
             R
           </span>
-          <span>Recipes</span>
+          <span className="biomes-ui-mobile-menu__label">Recipes</span>
         </button>
         <button
           type="button"
@@ -182,7 +182,7 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
           <span className="biomes-ui-mobile-menu__key" aria-hidden>
             +
           </span>
-          <span>Invite</span>
+          <span className="biomes-ui-mobile-menu__label">Invite</span>
         </button>
       </div>
     );

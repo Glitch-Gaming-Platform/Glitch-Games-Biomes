@@ -1,0 +1,28 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/shared/harthmere/native_request_boards.ts",
+    "src/shared/harthmere/native_request_board_locations.ts",
+    "src/shared/harthmere/world_interaction_graphics.ts",
+    "src/client/components/challenges/helpers.ts",
+    "src/client/components/harthmere_request_board/HarthmereRequestBoardWorldInteraction.tsx",
+    "src/client/components/biomes_ui/BiomesUIMount.tsx",
+    "src/client/game/renderers/local_dev/harthmere_request_board_marker.ts",
+    "src/client/game/renderers/placeables.ts",
+    "src/client/game/renderers/npcs.ts",
+    "src/client/game/renderers/renderers.ts",
+    "src/server/harthmere/request_board_ecs_seed.ts",
+    "src/server/logic/events/handlers/quest_step_validation.ts",
+    "src/server/shim/main.ts",
+    "src/shared/harthmere/test/native_request_board_locations.test.ts",
+    "src/shared/harthmere/test/world_interaction_graphics.test.ts",
+    "src/client/game/renderers/local_dev/test/harthmere_request_board_markers.test.ts",
+    "src/server/harthmere/test/request_board_ecs_seed.test.ts",
+    "modules.d.ts"
+  ]
+}

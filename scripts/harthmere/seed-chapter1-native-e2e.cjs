@@ -6,9 +6,11 @@
  * The full local-dev terrain bootstrap owns thousands of unrelated Harthmere
  * shards and is intentionally too broad for the browser-test inner loop. This
  * maintenance entry point installs only the two Elsewhen dungeon shard sets,
- * the Chapter 1 cast, and the canonical testimony NPCs in bounded batches
- * while the production stack stays warm. It is safe to rerun after an
- * interrupted seed: existing rows are updated and missing rows are created.
+ * the Chapter 1 cast, all required encounter enemies, canonical testimony
+ * NPCs, and shared Grove dependencies in bounded batches while the production
+ * stack stays warm. It is safe to rerun after an interrupted seed: existing
+ * rows are updated, missing rows are created, and retired duplicate Grove
+ * identities are deleted without ever selecting a player.
  *
  * Elsewhen stays outside ordinary WorldMetadata. The only metadata mutation
  * this script may perform is repairing the retired X=3648 boundary back to the
@@ -42,6 +44,11 @@ const {
   prepareHarthmerePlayerLikeNpcForUniqueAppearance,
 } = require("../../src/server/harthmere/player_like_npc_cosmetics");
 const {
+  buildHarthmereSnapshotGroveNpcSeedProposedChanges,
+  harthmereObsoleteSnapshotGroveNpcIds,
+  harthmereSnapshotGroveNpcSeedIds,
+} = require("../../src/server/harthmere/snapshot_grove_npc_ecs_seed");
+const {
   getTerrainID,
   safeGetTerrainId,
 } = require("../../src/shared/asset_defs/terrain");
@@ -55,12 +62,14 @@ const { secondsSinceEpoch } = require("../../src/shared/ecs/config");
 const {
   Box,
   EntityDescription,
+  Health,
   QuestGiver,
   ShardDiff,
   ShardMuck,
   ShardSeed,
   ShardShapes,
   ShardWater,
+  Size,
   WorldMetadata,
 } = require("../../src/shared/ecs/gen/components");
 const { WorldMetadataId } = require("../../src/shared/ecs/ids");
@@ -70,10 +79,17 @@ const {
   CH1_SEEDED_CAST,
 } = require("../../src/shared/harthmere/ch1_cast");
 const {
+  CH1_RETURNING_NPC_SEED_VERSION,
+  CH1_SERGEANT_HOLT,
+} = require("../../src/shared/harthmere/ch1_returning_npcs");
+const {
   CH1_RETIRED_DUPLICATE_TESTIMONY_NPC_IDS,
   CH1_TESTIMONY_NPC_SEEDS,
   CH1_TESTIMONY_NPC_SEED_VERSION,
 } = require("../../src/shared/harthmere/ch1_testimony_npcs");
+const {
+  CH1_DUNGEON_ENCOUNTER_NPCS,
+} = require("../../src/shared/harthmere/ch1_dungeon_encounters");
 const {
   CH1_DUNGEON_TERRAIN_VERSION,
   ch1DungeonAuthoredToWorld,
@@ -92,7 +108,14 @@ const {
   HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
 } = require("../../src/shared/harthmere/world_extension");
 const {
+  resolveHarthmereProductionMarkerPosition,
+} = require("../../src/shared/harthmere/production_terrain_placement_map");
+const {
+  SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS,
+} = require("../../src/shared/harthmere/snapshot_grove_ids");
+const {
   LOCAL_DEV_HUMAN_NPC_TYPE_ID,
+  LOCAL_DEV_WALKER_NPC_TYPE_ID,
   isNpcTypeId,
 } = require("../../src/shared/npc/bikkie");
 const { Sparse3 } = require("../../src/shared/util/sparse");
@@ -286,14 +309,14 @@ function chapter1SeedPlacement(member) {
   switch (member.key) {
     case "iris_fen":
       return ch1DungeonAuthoredToWorld("ch1_dungeon_desert", {
-        x: 344,
-        y: -21,
+        x: 386,
+        y: -20,
         z: -56,
       });
     case "marrow":
       return ch1DungeonAuthoredToWorld("ch1_dungeon_desert", {
-        x: 350,
-        y: -21,
+        x: 391,
+        y: -20,
         z: -52,
       });
     case "nadia_sorrel":
@@ -318,8 +341,8 @@ function resolveNpcTypeId(member) {
     member.key === "augur9"
       ? ["biomesRobot", "dRobot"]
       : member.key === "marrow"
-      ? ["dog", "wolf", "rabbit"]
-      : ["local_dev_human"];
+        ? ["dog", "wolf", "rabbit"]
+        : ["local_dev_human"];
   if (preferredNames.includes("local_dev_human")) {
     return LOCAL_DEV_HUMAN_NPC_TYPE_ID;
   }
@@ -377,6 +400,7 @@ function buildTestimonyNpcEntity(seed, kind, nowSeconds) {
       velocity: [0, 0, 0],
       displayName: seed.displayName,
       defaultDialog: npcDialog(seed.line),
+      spawnPositionJitterRadius: 0,
     },
     nowSeconds
   );
@@ -399,6 +423,69 @@ function buildTestimonyNpcEntity(seed, kind, nowSeconds) {
   };
 }
 
+function buildEncounterNpcEntity(encounter, nowSeconds) {
+  const typeId = isNpcTypeId(BikkieIds.dMucker)
+    ? BikkieIds.dMucker
+    : LOCAL_DEV_WALKER_NPC_TYPE_ID;
+  const base = npcEntity(
+    {
+      id: encounter.entityId,
+      typeId,
+      position: [...encounter.position],
+      orientation: [0, Math.PI],
+      velocity: [0, 0, 0],
+      displayName: encounter.displayName,
+      defaultDialog: npcDialog("It does not answer."),
+    },
+    nowSeconds
+  );
+  return {
+    ...base,
+    health: Health.create({
+      hp: encounter.maxHp,
+      maxHp: encounter.maxHp,
+    }),
+    ...(encounter.size ? { size: Size.create({ v: encounter.size }) } : {}),
+    entity_description: EntityDescription.create({
+      text: `${CH1_DUNGEON_TERRAIN_VERSION} CH1_ENCOUNTER ${encounter.dungeonId} ${encounter.encounterId} ${encounter.objectiveId}`,
+    }),
+  };
+}
+
+function buildReturningNpcEntity(kind, nowSeconds) {
+  const homePosition = resolveHarthmereProductionMarkerPosition({
+    markerId: "sergeant_bram_holt",
+    fallback: [486, 58, -277],
+  });
+  let base = npcEntity(
+    {
+      id: CH1_SERGEANT_HOLT.entityId,
+      typeId: LOCAL_DEV_HUMAN_NPC_TYPE_ID,
+      position: homePosition,
+      orientation: [0, Math.PI],
+      velocity: [0, 0, 0],
+      displayName: CH1_SERGEANT_HOLT.displayName,
+      defaultDialog: npcDialog(
+        "State your name and your business and I will write you into the ledger."
+      ),
+    },
+    nowSeconds
+  );
+  base = prepareHarthmerePlayerLikeNpcForUniqueAppearance(base, kind);
+  return {
+    ...base,
+    entity_description: EntityDescription.create({
+      text: `${CH1_RETURNING_NPC_SEED_VERSION} ${CH1_SERGEANT_HOLT.role}`,
+    }),
+    quest_giver: QuestGiver.create({
+      concurrent_quests: 1,
+      concurrent_quest_dialog: npcDialog(
+        "State your name and your business and I will write you into the ledger."
+      ),
+    }),
+  };
+}
+
 async function registerBakedBikkie() {
   const storage = new RedisBikkieStorage(await connectToRedis("bikkie"));
   try {
@@ -413,7 +500,12 @@ async function registerBakedBikkie() {
 async function applyChanges(world, changes) {
   for (let start = 0; start < changes.length; start += APPLY_BATCH_SIZE) {
     const batch = changes.slice(start, start + APPLY_BATCH_SIZE);
-    await world.apply({ changes: batch });
+    const result = await world.apply({ changes: batch });
+    if (result.outcome !== "success") {
+      throw new Error(
+        `Chapter 1 seed batch ${start + 1}-${start + batch.length} failed: ${result.outcome}`
+      );
+    }
     console.log(
       `Applied ${Math.min(start + batch.length, changes.length)}/${
         changes.length
@@ -463,7 +555,12 @@ async function main() {
     ...(TERRAIN_ONLY ? [] : CH1_SEEDED_CAST.map((member) => member.entityId)),
     ...(TERRAIN_ONLY
       ? []
+      : CH1_DUNGEON_ENCOUNTER_NPCS.map((encounter) => encounter.entityId)),
+    ...(TERRAIN_ONLY ? [] : [CH1_SERGEANT_HOLT.entityId]),
+    ...(TERRAIN_ONLY
+      ? []
       : CH1_TESTIMONY_NPC_SEEDS.map((seed) => seed.entityId)),
+    ...(TERRAIN_ONLY ? [] : harthmereSnapshotGroveNpcSeedIds()),
     ...(TERRAIN_ONLY ? [] : CH1_RETIRED_DUPLICATE_TESTIMONY_NPC_IDS),
   ];
   const world = new RedisWorld(await connectToRedisWithLua("ecs"));
@@ -496,7 +593,12 @@ async function main() {
       castOnly: CAST_ONLY,
       terrainShards: terrainPlan.length,
       castMembers: TERRAIN_ONLY ? 0 : CH1_SEEDED_CAST.length,
+      encounterNpcs: TERRAIN_ONLY ? 0 : CH1_DUNGEON_ENCOUNTER_NPCS.length,
+      returningNpcs: TERRAIN_ONLY ? 0 : 1,
       testimonyNpcs: TERRAIN_ONLY ? 0 : CH1_TESTIMONY_NPC_SEEDS.length,
+      sharedGroveNpcs: TERRAIN_ONLY
+        ? 0
+        : harthmereSnapshotGroveNpcSeedIds().length,
       worldBoundaryEast: boundary.currentEastEdge,
       effectiveWorldBoundaryEast: boundary.effectiveEastEdge,
       expectedOrdinaryWorldBoundaryEast: HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
@@ -578,6 +680,20 @@ async function main() {
         };
       });
       await applyChanges(world, npcChanges);
+      const encounterChanges = CH1_DUNGEON_ENCOUNTER_NPCS.map((encounter) => ({
+        kind: existingIds.has(encounter.entityId) ? "update" : "create",
+        entity: buildEncounterNpcEntity(encounter, nowSeconds),
+      }));
+      await applyChanges(world, encounterChanges);
+      const returningKind = existingIds.has(CH1_SERGEANT_HOLT.entityId)
+        ? "update"
+        : "create";
+      await applyChanges(world, [
+        {
+          kind: returningKind,
+          entity: buildReturningNpcEntity(returningKind, nowSeconds),
+        },
+      ]);
       const testimonyChanges = CH1_TESTIMONY_NPC_SEEDS.map((seed) => {
         const kind = existingIds.has(seed.entityId) ? "update" : "create";
         return {
@@ -586,6 +702,40 @@ async function main() {
         };
       });
       await applyChanges(world, testimonyChanges);
+
+      await applyChanges(
+        world,
+        buildHarthmereSnapshotGroveNpcSeedProposedChanges({
+          nowSeconds,
+          existingIds,
+        })
+      );
+      const legacyGroveNpcEntities = await Promise.all(
+        Object.values(SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS).map((id) =>
+          world.get(id)
+        )
+      );
+      const retiredGroveNpcIds = harthmereObsoleteSnapshotGroveNpcIds(
+        legacyGroveNpcEntities.flatMap((entity) =>
+          entity
+            ? [
+                {
+                  id: entity.id,
+                  label: entity.label()?.text,
+                  hasNpcMetadata: Boolean(entity.npcMetadata()),
+                  hasPlayerStatus: Boolean(entity.playerStatus()),
+                  hasRemoteConnection: Boolean(entity.remoteConnection()),
+                },
+              ]
+            : []
+        )
+      );
+      if (retiredGroveNpcIds.length > 0) {
+        await applyChanges(
+          world,
+          retiredGroveNpcIds.map((id) => ({ kind: "delete", id }))
+        );
+      }
     }
     console.log(
       `Chapter 1 native seed complete in ${(

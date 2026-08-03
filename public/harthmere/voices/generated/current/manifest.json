@@ -1,7 +1,7 @@
 {
   "version": "npc-voice-audio-cache-v1",
   "catalogVersion": "harthmere-npc-voice-catalog",
-  "generatedAt": "2026-08-01T15:46:05.339Z",
+  "generatedAt": "2026-08-03T17:36:12.785Z",
   "provider": "elevenlabs",
   "synthesisIdentity": "elevenlabs-natural-v3-speed-102-v1|eleven_v3|mp3_44100_128||||",
   "modelId": "eleven_v3",
@@ -3068,6 +3068,66 @@
       "bytes": 90741
     },
     {
+      "cacheKey": "303f3dd17faf33d0d1c39cc8e3a3d8d207674c5e15d5898982b0f3ab20505f87",
+      "cacheKeys": [
+        "303f3dd17faf33d0d1c39cc8e3a3d8d207674c5e15d5898982b0f3ab20505f87",
+        "3770439be715158aa754ead678082acddd7f3239797c488d40abb39894ae1b9c"
+      ],
+      "actorKey": "chapter_1_identity:halden_rook:8810000000020503:halden rook:halden rook",
+      "actorId": "chapter1-objective:halden_rook",
+      "lineId": "line-10",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-halden-rook-halden-rook/line-10.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.00|rate=-2%25|pitch=%2B3%25|volume=default|break=134|actor=chapter_1_identity%3Ahalden_rook%3A8810000000020503%3Ahalden%20rook%3Ahalden%20rook",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "359a84e01322e5bac559bb80333bb5e40349f9794ec6de12d61a5eb1c11485c9",
+      "bytes": 147165
+    },
+    {
+      "cacheKey": "e2a8f16b8e2cbca18a2b7545ecff45684a847145cda20f11d4f15eb2769bd46c",
+      "cacheKeys": [
+        "e2a8f16b8e2cbca18a2b7545ecff45684a847145cda20f11d4f15eb2769bd46c",
+        "99429859f961e920ea5022f874105af9294462382fa61b9d44141d833c29afd2"
+      ],
+      "actorKey": "chapter_1_identity:halden_rook:8810000000020503:halden rook:halden rook",
+      "actorId": "chapter1-objective:halden_rook",
+      "lineId": "line-11",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-halden-rook-halden-rook/line-11.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.00|rate=-2%25|pitch=%2B3%25|volume=default|break=134|actor=chapter_1_identity%3Ahalden_rook%3A8810000000020503%3Ahalden%20rook%3Ahalden%20rook",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "0187b88f60b7409c7ebfbac02fabf899648511793e7349baf03cb09aaaab598f",
+      "bytes": 112475
+    },
+    {
+      "cacheKey": "9a897e3e300447231acfe611e2f067c33536eb1dcbdb34e731632df273b163de",
+      "cacheKeys": [
+        "9a897e3e300447231acfe611e2f067c33536eb1dcbdb34e731632df273b163de",
+        "a73755a35e94986262e9e7b0bf632142ed8a3b44c0381d0a86e5272ff99125d2"
+      ],
+      "actorKey": "chapter_1_identity:halden_rook:8810000000020503:halden rook:halden rook",
+      "actorId": "chapter1-objective:halden_rook",
+      "lineId": "line-12",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-halden-rook-halden-rook/line-12.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.00|rate=-2%25|pitch=%2B3%25|volume=default|break=134|actor=chapter_1_identity%3Ahalden_rook%3A8810000000020503%3Ahalden%20rook%3Ahalden%20rook",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "31785f0775bb71c97d1418ae6bd1bfe407669ed0d22cdb8cfcc5d39fee92ba96",
+      "bytes": 41839
+    },
+    {
+      "cacheKey": "865e3438363f853055b9b11fe721adeceff531b0472edba67579d562cd6503fe",
+      "cacheKeys": [
+        "865e3438363f853055b9b11fe721adeceff531b0472edba67579d562cd6503fe",
+        "693366ae49a5467511965c28a6eba21ca43bdba06db147d0fe697fe7dbe31a31"
+      ],
+      "actorKey": "chapter_1_identity:halden_rook:8810000000020503:halden rook:halden rook",
+      "actorId": "chapter1-objective:halden_rook",
+      "lineId": "line-13",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-halden-rook-halden-rook/line-13.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.00|rate=-2%25|pitch=%2B3%25|volume=default|break=134|actor=chapter_1_identity%3Ahalden_rook%3A8810000000020503%3Ahalden%20rook%3Ahalden%20rook",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "41b69d1e46901da917ba8c6ce56319e15953b2bc87cc3f59dc2b2b671efc510d",
+      "bytes": 136716
+    },
+    {
       "cacheKey": "9e334f29b9194b69c9f52e57b3fd0fd925de8a4f6a6778ef4e3366482f9eb4b7",
       "cacheKeys": [
         "9e334f29b9194b69c9f52e57b3fd0fd925de8a4f6a6778ef4e3366482f9eb4b7",
@@ -3293,6 +3353,36 @@
       "bytes": 86979
     },
     {
+      "cacheKey": "b85ea5b9a1906641984ea3c26d0ea3c4c20d9410ee273141cea79dc4ad76bb8e",
+      "cacheKeys": [
+        "b85ea5b9a1906641984ea3c26d0ea3c4c20d9410ee273141cea79dc4ad76bb8e",
+        "7e13d4981d940da7c1f26d37d39c64143d5f6b6f5d5a40f3ac2d500cdf3b679a"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "chapter1-objective:lou_ardan",
+      "lineId": "line-09",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-lou-ardan-dr-lucien-ardan/line-09.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "3e1942d8e3321939cb81ca6c40ae32a2c83d2af9eb9089128470fb14af635478",
+      "bytes": 100772
+    },
+    {
+      "cacheKey": "91a6c64f64be167370738fb343c05df8700164f2cabe87792da7ec51e554640a",
+      "cacheKeys": [
+        "91a6c64f64be167370738fb343c05df8700164f2cabe87792da7ec51e554640a",
+        "10530e175445ebbca2f6a5d00f68c7bdf7e77f2ce0f6eea401b807dd8ef49e84"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "chapter1-objective:lou_ardan",
+      "lineId": "line-10",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-lou-ardan-dr-lucien-ardan/line-10.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "b78d481eb1f4ae6d07f9d784f3a080326035c298dbe98a24c2fb82b47b44b5d5",
+      "bytes": 98264
+    },
+    {
       "cacheKey": "0d5939cb4e468987aa7600f78bf3da9407b743579af3a49209926280ee33390b",
       "cacheKeys": [
         "0d5939cb4e468987aa7600f78bf3da9407b743579af3a49209926280ee33390b",
@@ -3321,6 +3411,36 @@
       "voiceId": "MF3mGyEYCl7XYWbV9V6O",
       "textHash": "0f32147e824e886e3ead33cb935c99b88052fc1a59b3c0db8b78c26bf3f6f1b2",
       "bytes": 54796
+    },
+    {
+      "cacheKey": "bfe8e7a6eab5a7c358910eec6bbe107c26cada7aeb6589ebb93b7768284e6973",
+      "cacheKeys": [
+        "bfe8e7a6eab5a7c358910eec6bbe107c26cada7aeb6589ebb93b7768284e6973",
+        "ee4637efa07045180ea91ba64f1bf8f4f44aa5d5ba2d3a82f21763c4c27269ad"
+      ],
+      "actorKey": "chapter_1_identity:nadia_sorrel:8810000000020504:dr. nadia sorrel:dr. nadia sorrel",
+      "actorId": "chapter1-objective:nadia_sorrel",
+      "lineId": "line-03",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-nadia-sorrel-dr-nadia-sorrel/line-03.mp3",
+      "voice": "azure-speech|voice=en-US-PhoebeMultilingualNeural|gender=female|kind=humanoid|style=empathetic|styleDegree=1.05|rate=%2B2%25|pitch=%2B3%25|volume=default|break=122|actor=chapter_1_identity%3Anadia_sorrel%3A8810000000020504%3Adr.%20nadia%20sorrel%3Adr.%20nadia%20sorrel",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "d1fb231bc90814c9dd5ba8356f746f61ec314402f94a28a7eb4c3947f078a351",
+      "bytes": 41839
+    },
+    {
+      "cacheKey": "56f9e3e4f55dca7bb22dab129a744a7f64b79bc15923442c5b60bd19e4ba984e",
+      "cacheKeys": [
+        "56f9e3e4f55dca7bb22dab129a744a7f64b79bc15923442c5b60bd19e4ba984e",
+        "fd790086b011a8dcc8f0d6149dd267baa16dbd27e022a0907215df798861ebd6"
+      ],
+      "actorKey": "chapter_1_identity:nadia_sorrel:8810000000020504:dr. nadia sorrel:dr. nadia sorrel",
+      "actorId": "chapter1-objective:nadia_sorrel",
+      "lineId": "line-04",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-nadia-sorrel-dr-nadia-sorrel/line-04.mp3",
+      "voice": "azure-speech|voice=en-US-PhoebeMultilingualNeural|gender=female|kind=humanoid|style=empathetic|styleDegree=1.05|rate=%2B2%25|pitch=%2B3%25|volume=default|break=122|actor=chapter_1_identity%3Anadia_sorrel%3A8810000000020504%3Adr.%20nadia%20sorrel%3Adr.%20nadia%20sorrel",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "b6d763e7a2a86e0ee9321ed65109d2107fa4c2215666a5caff3c299ca40187a0",
+      "bytes": 134208
     },
     {
       "cacheKey": "2db3ea998335144c6c279ae05fbdb68419920be6a458bd4c09737efca9d72504",
@@ -3683,6 +3803,51 @@
       "bytes": 94502
     },
     {
+      "cacheKey": "3e53693d36404f91dcbbfeb68c45531978aed4bea09b66d8e38aa6c503978a55",
+      "cacheKeys": [
+        "3e53693d36404f91dcbbfeb68c45531978aed4bea09b66d8e38aa6c503978a55",
+        "b1a17e48a472757a665dc690ba744b0ec4bda40c1c2da83221ad170aacf26a67"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "chapter1-objective:returning_jackie",
+      "lineId": "line-14",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-jackie-jackie/line-14.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "3d328551c754a8485bfa26e0526ade7ad5720971427086c94796e04027536888",
+      "bytes": 77784
+    },
+    {
+      "cacheKey": "eb983f2f219090918fe8f4dcca003d3d949c1b55127bcfe827d1aafdb2d3cb3f",
+      "cacheKeys": [
+        "eb983f2f219090918fe8f4dcca003d3d949c1b55127bcfe827d1aafdb2d3cb3f",
+        "bb9b56803cefa3b93fa11622a10dd78e9fc06101bb7282d204ed9ff90fbe529e"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "chapter1-objective:returning_jackie",
+      "lineId": "line-15",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-jackie-jackie/line-15.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "b4935894c8ce16bde67bbffc672428b1533c4f1e1e8b1ce21a2933183db6bfa5",
+      "bytes": 16344
+    },
+    {
+      "cacheKey": "8db99b57d1ba8ad926550261375b83ace3e16fbdbb62af69cf50bc956e3ae839",
+      "cacheKeys": [
+        "8db99b57d1ba8ad926550261375b83ace3e16fbdbb62af69cf50bc956e3ae839",
+        "2ad1b1f766b45cea85d21bd19b921651e82dc215e4620bc74bcfe4e35201a37d"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "chapter1-objective:returning_jackie",
+      "lineId": "line-16",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-jackie-jackie/line-16.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "ce6c6c5827ba68b0eb7097650ff21a5caf5b1abee753340fd03b25e7207088a8",
+      "bytes": 93248
+    },
+    {
       "cacheKey": "c4a66111b0d06206b59c168234d32f02a4953d0a711281848ff2a0268798e3f9",
       "cacheKeys": [
         "c4a66111b0d06206b59c168234d32f02a4953d0a711281848ff2a0268798e3f9",
@@ -3690,8 +3855,8 @@
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
       "actorId": "chapter1-objective:returning_jackie",
-      "lineId": "line-14",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-jackie-jackie/line-14.mp3",
+      "lineId": "line-17",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-jackie-jackie/line-17.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "c36a883344351643828f4c5c8ccd2bf5cc27f39e1216b18e70547abc6607c754",
@@ -3705,8 +3870,8 @@
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
       "actorId": "chapter1-objective:returning_jackie",
-      "lineId": "line-15",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-jackie-jackie/line-15.mp3",
+      "lineId": "line-18",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-jackie-jackie/line-18.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "a2e42cd85f031769b898274848a14e6afb5c9d2557515061d2d36e190dd41858",
@@ -3720,12 +3885,12 @@
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
       "actorId": "chapter1-objective:returning_jackie",
-      "lineId": "line-16",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-jackie-jackie/line-16.mp3",
+      "lineId": "line-19",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-jackie-jackie/line-19.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "67da1acf0c89e2b4628b8503d10f43513d0cc662f9275db47cd2ddb0315bd5ab",
-      "bytes": 16344
+      "bytes": 71515
     },
     {
       "cacheKey": "2aef91b5470c482f3f93970742ed32f0f4da7c7f3be0a79d4d092054113a45e4",
@@ -3735,8 +3900,8 @@
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
       "actorId": "chapter1-objective:returning_jackie",
-      "lineId": "line-17",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-jackie-jackie/line-17.mp3",
+      "lineId": "line-20",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-jackie-jackie/line-20.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "f9c4f0af4ef474fc36ae2e8163980eab86efc7228eae3cb491b29dd6f38f290a",
@@ -3750,12 +3915,12 @@
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
       "actorId": "chapter1-objective:returning_jackie",
-      "lineId": "line-18",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-jackie-jackie/line-18.mp3",
+      "lineId": "line-21",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-jackie-jackie/line-21.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "ea68443b5be2b03cfc224b9f8a11c28d77af88e4e9e3635c3d86c038ef978f6b",
-      "bytes": 99518
+      "bytes": 97010
     },
     {
       "cacheKey": "9857f0050c22bc20c2734725aff9964c75e96d0df49cbc1bafee7a9118b31951",
@@ -3861,6 +4026,126 @@
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "86198295d12abf548b99e374a64173bbb57010d087cfe3fc515677648c30c781",
       "bytes": 71515
+    },
+    {
+      "cacheKey": "903b0f6f722d2830f458cee0cea4163a8dcd4193531826322abd3704eb96f3fd",
+      "cacheKeys": [
+        "903b0f6f722d2830f458cee0cea4163a8dcd4193531826322abd3704eb96f3fd",
+        "d46690f8c88c25a22b0be86b3c24f98b7b33923f3e20e71316978cde508da735"
+      ],
+      "actorKey": "business_owner:npc_outpost_ashline_foreman:8810000000019601:foreman calla ashe:foreman calla ashe",
+      "actorId": "chapter1-objective:returning_npc_outpost_ashline_foreman",
+      "lineId": "line-03",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-npc-outpost-ashline-foreman-foreman-calla-ashe/line-03.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "3ac981096e8b436f73dd9ad263a2cf0b337e4ce0ec1144900f57f1df4122eb2a",
+      "bytes": 11328
+    },
+    {
+      "cacheKey": "b1c7d83c0011b58ca5258e72c4092f8f14d1d0c10f5dfcf7b6ee6d529e38774b",
+      "cacheKeys": [
+        "b1c7d83c0011b58ca5258e72c4092f8f14d1d0c10f5dfcf7b6ee6d529e38774b",
+        "fbeaeea8d9baab005fc102f460ee17aef7542a188758a8fb8354d299294e11d0"
+      ],
+      "actorKey": "business_owner:npc_outpost_ashline_foreman:8810000000019601:foreman calla ashe:foreman calla ashe",
+      "actorId": "chapter1-objective:returning_npc_outpost_ashline_foreman",
+      "lineId": "line-04",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-npc-outpost-ashline-foreman-foreman-calla-ashe/line-04.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "cee9612a4364112f9a3ede8781fc991de4f2c568fb545fa24946ed44db5538c6",
+      "bytes": 118744
+    },
+    {
+      "cacheKey": "c4d77733b24bc955e5f468d0c64adf0c777236e955fc43b010569ff49ffccd53",
+      "cacheKeys": [
+        "c4d77733b24bc955e5f468d0c64adf0c777236e955fc43b010569ff49ffccd53",
+        "504cc5d39a1b8cbe3478be04f11bd8b31c3e7fa7505d2c6e9c8620f399a12834"
+      ],
+      "actorKey": "business_owner:npc_outpost_ashline_foreman:8810000000019601:foreman calla ashe:foreman calla ashe",
+      "actorId": "chapter1-objective:returning_npc_outpost_ashline_foreman",
+      "lineId": "line-05",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-npc-outpost-ashline-foreman-foreman-calla-ashe/line-05.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "c384dd588fc4e83a51fd8021b52c56822a77cd3e79b8abe3448de2434e7b250e",
+      "bytes": 20106
+    },
+    {
+      "cacheKey": "f1a7c363b1d4e7c751683934935cc9b14f7b14258cee396b03cd0f4e900486a9",
+      "cacheKeys": [
+        "f1a7c363b1d4e7c751683934935cc9b14f7b14258cee396b03cd0f4e900486a9",
+        "e2050df7d3314e214e281be471df13aa8db92aac34627b60bc5643798b91e8ea"
+      ],
+      "actorKey": "business_owner:npc_outpost_ashline_foreman:8810000000019601:foreman calla ashe:foreman calla ashe",
+      "actorId": "chapter1-objective:returning_npc_outpost_ashline_foreman",
+      "lineId": "line-06",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-npc-outpost-ashline-foreman-foreman-calla-ashe/line-06.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "0bbdf02a75a65fe9cc357b1b56c264522685c42a55ea9ad4d19e8142b26579ee",
+      "bytes": 134208
+    },
+    {
+      "cacheKey": "ca34f8348916fc23f5f249b0fb5af555337ba67b9706bba9e42b44136ecbb27b",
+      "cacheKeys": [
+        "ca34f8348916fc23f5f249b0fb5af555337ba67b9706bba9e42b44136ecbb27b",
+        "c5c679368a914d206900bde4710429ccbd4d7f87ecd551fd4ae5f7e062bd391c"
+      ],
+      "actorKey": "business_owner:npc_outpost_ashline_foreman:8810000000019601:foreman calla ashe:foreman calla ashe",
+      "actorId": "chapter1-objective:returning_npc_outpost_ashline_foreman",
+      "lineId": "line-07",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-npc-outpost-ashline-foreman-foreman-calla-ashe/line-07.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "00fa93da10e5b67c15aa0d41fd288c98c7baf4e761ed23b082eebd95996d84f3",
+      "bytes": 28047
+    },
+    {
+      "cacheKey": "30a85fa51377c62527a296ab84e7c2b50e2796451c39affa1ecce72e70197db3",
+      "cacheKeys": [
+        "30a85fa51377c62527a296ab84e7c2b50e2796451c39affa1ecce72e70197db3",
+        "5c92297a785307a2d5097361383561badbcf8743717676ae6c4c356c9b099402"
+      ],
+      "actorKey": "business_owner:npc_outpost_ashline_foreman:8810000000019601:foreman calla ashe:foreman calla ashe",
+      "actorId": "chapter1-objective:returning_npc_outpost_ashline_foreman",
+      "lineId": "line-08",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-npc-outpost-ashline-foreman-foreman-calla-ashe/line-08.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "3f7c4a29352c630866e415af95a70c37858132ce1ff58380ff13365e1fccf461",
+      "bytes": 112475
+    },
+    {
+      "cacheKey": "596ba614f58948d4b1ee1a901be854b8579eb304f8c3ae23671c33d540626da0",
+      "cacheKeys": [
+        "596ba614f58948d4b1ee1a901be854b8579eb304f8c3ae23671c33d540626da0",
+        "6c31c87adab2d0a25176b7b7259203a20b4f3a05a223afe6041665b70b54e12c"
+      ],
+      "actorKey": "business_owner:npc_outpost_ashline_foreman:8810000000019601:foreman calla ashe:foreman calla ashe",
+      "actorId": "chapter1-objective:returning_npc_outpost_ashline_foreman",
+      "lineId": "line-09",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-npc-outpost-ashline-foreman-foreman-calla-ashe/line-09.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "8be1b5ab2ef715849f6c2b841e9e8d76a95464e1d0daa22f50f38a73f3ceeee0",
+      "bytes": 20106
+    },
+    {
+      "cacheKey": "9338c9c0684ae7c6305413260ef4a460caa4786779d0f55707d47f930236aaa4",
+      "cacheKeys": [
+        "9338c9c0684ae7c6305413260ef4a460caa4786779d0f55707d47f930236aaa4",
+        "01039e1c363f63bbd369a1107b653bfe13b972799ffba459462bbb95fe42adf3"
+      ],
+      "actorKey": "business_owner:npc_outpost_ashline_foreman:8810000000019601:foreman calla ashe:foreman calla ashe",
+      "actorId": "chapter1-objective:returning_npc_outpost_ashline_foreman",
+      "lineId": "line-10",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-npc-outpost-ashline-foreman-foreman-calla-ashe/line-10.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "4e899de411696a9f08205257263626a05c9f1a5abec2cf549e9f4d1a6a1d5a86",
+      "bytes": 167645
     },
     {
       "cacheKey": "01909bfd83fa60a4eed5fd6b41c8336d4f41ef849f4e4dd7826d574c4fcae63a",
@@ -4043,6 +4328,96 @@
       "bytes": 58558
     },
     {
+      "cacheKey": "ed95bb64fb5ca6d330f57dbe7506a28b7a4c74ec895be08bc3b6ca6dbb5b799d",
+      "cacheKeys": [
+        "ed95bb64fb5ca6d330f57dbe7506a28b7a4c74ec895be08bc3b6ca6dbb5b799d",
+        "30a2d53bdf5fc1e91850fd5fc95fa8189b3f7d408e53e3eb9b11aad7d4ebd07e"
+      ],
+      "actorKey": "snapshot_grove:sil:8810000000019307:sil:sil",
+      "actorId": "chapter1-objective:returning_sil",
+      "lineId": "line-04",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-sil-sil/line-04.mp3",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.95|rate=-5%25|pitch=%2B3%25|volume=default|break=146|actor=snapshot_grove%3Asil%3A8810000000019307%3Asil%3Asil",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "31ea4bfb4a60d727d9e1867907198be5ae5cf020cb12402b9aa6dde34c6de43f",
+      "bytes": 86979
+    },
+    {
+      "cacheKey": "d046beb8e46bfde707b2ce989cc5ac6083256686ceed92dd434070d68dc7ed4f",
+      "cacheKeys": [
+        "d046beb8e46bfde707b2ce989cc5ac6083256686ceed92dd434070d68dc7ed4f",
+        "b9299fad8fbbdb84518ab7617f0826dfb6af663fd54eccd587dde6a8dbf69e32"
+      ],
+      "actorKey": "snapshot_grove:sil:8810000000019307:sil:sil",
+      "actorId": "chapter1-objective:returning_sil",
+      "lineId": "line-05",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-sil-sil/line-05.mp3",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.95|rate=-5%25|pitch=%2B3%25|volume=default|break=146|actor=snapshot_grove%3Asil%3A8810000000019307%3Asil%3Asil",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "5fd23759fb5efd53b724e0f97bfb3a83814364984c8ffe1026cdfa4fb63aa4be",
+      "bytes": 81546
+    },
+    {
+      "cacheKey": "10e42d82c8ea332017e774c07cf7a064924a10108b86d7223e157ba1d7c113bd",
+      "cacheKeys": [
+        "10e42d82c8ea332017e774c07cf7a064924a10108b86d7223e157ba1d7c113bd",
+        "75fec1ffe96b736222af47278fc25254fda160f97eaa43ce41d639bd75b303b8"
+      ],
+      "actorKey": "snapshot_grove:sil:8810000000019307:sil:sil",
+      "actorId": "chapter1-objective:returning_sil",
+      "lineId": "line-06",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-sil-sil/line-06.mp3",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.95|rate=-5%25|pitch=%2B3%25|volume=default|break=146|actor=snapshot_grove%3Asil%3A8810000000019307%3Asil%3Asil",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "a9e5134f1e1a56b71f98716db1af655773df948ee184085ed3f075bafe8961e1",
+      "bytes": 88233
+    },
+    {
+      "cacheKey": "95ab953ad4d49749791c44273ed7ae8ab0cd2a9b4a517229465cc1955dad4abe",
+      "cacheKeys": [
+        "95ab953ad4d49749791c44273ed7ae8ab0cd2a9b4a517229465cc1955dad4abe",
+        "556b3a696a519e25e7f90113b3f3375b40a0e47015c7a3c634d3590d56ba5427"
+      ],
+      "actorKey": "snapshot_grove:sil:8810000000019307:sil:sil",
+      "actorId": "chapter1-objective:returning_sil",
+      "lineId": "line-07",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-sil-sil/line-07.mp3",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.95|rate=-5%25|pitch=%2B3%25|volume=default|break=146|actor=snapshot_grove%3Asil%3A8810000000019307%3Asil%3Asil",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "2052833a066b1d2d564f37e911ed84f745db5bd4831f4a8578b7c6e99433cae5",
+      "bytes": 85725
+    },
+    {
+      "cacheKey": "2f237ea035382f2f2a1984700730692d734e3023c28b9523d4c87404b75f0e4e",
+      "cacheKeys": [
+        "2f237ea035382f2f2a1984700730692d734e3023c28b9523d4c87404b75f0e4e",
+        "23aa18c335e342b34983ebb1b54abc9d20a251dfdb7419f1fcce4c12af7f1aec"
+      ],
+      "actorKey": "snapshot_grove:sil:8810000000019307:sil:sil",
+      "actorId": "chapter1-objective:returning_sil",
+      "lineId": "line-08",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-sil-sil/line-08.mp3",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.95|rate=-5%25|pitch=%2B3%25|volume=default|break=146|actor=snapshot_grove%3Asil%3A8810000000019307%3Asil%3Asil",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "5c8e2381755d2acda751a0e3f2fb1f92ae734410c447580179c1fdab4dd7ffd8",
+      "bytes": 23031
+    },
+    {
+      "cacheKey": "ad9e2a9251e0c746a658b8ea8d62d2530717d8a804cbd5f9a780ac3852af38ea",
+      "cacheKeys": [
+        "ad9e2a9251e0c746a658b8ea8d62d2530717d8a804cbd5f9a780ac3852af38ea",
+        "390039c46bb23497323df4aeb085f7e109d0970f99ae057bda54ef42f0019263"
+      ],
+      "actorKey": "snapshot_grove:sil:8810000000019307:sil:sil",
+      "actorId": "chapter1-objective:returning_sil",
+      "lineId": "line-09",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-sil-sil/line-09.mp3",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.95|rate=-5%25|pitch=%2B3%25|volume=default|break=146|actor=snapshot_grove%3Asil%3A8810000000019307%3Asil%3Asil",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "0b2c905cc942e7c911fafdb9333c05f94f78ca5156c9969621738ae1c6cb653b",
+      "bytes": 80292
+    },
+    {
       "cacheKey": "4041c82554ad364c4d9baae32fc69a3f202dbff17fc53ef361d96c772a51165b",
       "cacheKeys": [
         "4041c82554ad364c4d9baae32fc69a3f202dbff17fc53ef361d96c772a51165b",
@@ -4101,6 +4476,21 @@
       "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "7214021cfad328235eea5aee56cd53a4c13c286087f391e6b7f39d0df8c8de07",
       "bytes": 79038
+    },
+    {
+      "cacheKey": "ad6093b7890904c52a7bb945ad723259777703d76af9139815deaebb89580523",
+      "cacheKeys": [
+        "ad6093b7890904c52a7bb945ad723259777703d76af9139815deaebb89580523",
+        "b7e3c94206ef8c5dbaa4c56c12859f07ea9d863984948534f20958b284bec163"
+      ],
+      "actorKey": "snapshot_grove:taye:8810000000019305:taye:taye",
+      "actorId": "chapter1-objective:returning_taye",
+      "lineId": "line-05",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-taye-taye/line-05.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.00|rate=-1%25|pitch=%2B1%25|volume=default|break=146|actor=snapshot_grove%3Ataye%3A8810000000019305%3Ataye%3Ataye",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "55fb6ae3d5ef378ac516a33ddba3fdaee0113f7e0a132233c7ea2a14a451c843",
+      "bytes": 130447
     },
     {
       "cacheKey": "214bbad90cfca6dab147eaf869a480d5e02392582d4228b035b2d939851a13d2",

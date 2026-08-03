@@ -12,6 +12,10 @@ import {
   isHarthmereBusinessCraftingStationEntityId,
   validateHarthmereBusinessCraftingStationSeeds,
 } from "@/shared/harthmere/business_crafting_station_seed";
+import {
+  harthmereBusinessInteriorForOutpost,
+  harthmereBusinessInteriorLocalToWorld,
+} from "@/shared/harthmere/business_interior_runtime";
 import { harthmereBusinessOwnerNpcSeedIds } from "@/shared/harthmere/business_owner_npc_seed";
 import { ensureHarthmereProductionCraftingCatalogue } from "@/shared/harthmere/mmo_crafting_catalogue";
 import {
@@ -65,22 +69,23 @@ describe("business crafting station seeds", () => {
     }
   });
 
-  it("places every station on the floor inside its building footprint", () => {
+  it("anchors every native interaction at the combined interior's primary station", () => {
     for (const seed of HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS) {
-      const site = HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES.find(
-        (candidate) => candidate.outpostId === seed.outpostId
+      const interior = harthmereBusinessInteriorForOutpost(seed.outpostId);
+      const station = interior?.collisionBoxes.find(
+        (box) => box.role === "primary_station"
       );
-      assert.ok(site, `no safe site for ${seed.outpostId}`);
-      const [x, y, z] = seed.position;
-      assert.ok(
-        x >= site!.footprint.xMin && x <= site!.footprint.xMax,
-        `${seed.outpostId} station x outside footprint`
+      assert.ok(interior, `no interior for ${seed.outpostId}`);
+      assert.ok(station, `no primary station for ${seed.outpostId}`);
+      const center = harthmereBusinessInteriorLocalToWorld(
+        interior!,
+        station!.center as [number, number, number]
       );
-      assert.ok(
-        z >= site!.footprint.zMin && z <= site!.footprint.zMax,
-        `${seed.outpostId} station z outside footprint`
-      );
-      assert.equal(y, site!.groundY, `${seed.outpostId} station off the floor`);
+      assert.deepEqual(seed.position, [
+        center[0],
+        center[1] - station!.size[2] / 2,
+        center[2],
+      ]);
     }
   });
 

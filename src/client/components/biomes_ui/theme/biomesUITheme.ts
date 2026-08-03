@@ -1600,6 +1600,30 @@ button.biomes-ui-card:disabled {
   min-height: 44px;
 }
 
+.biomes-ui-mobile-menu--phone {
+  width: auto;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.biomes-ui-mobile-menu--phone .biomes-ui-mobile-menu__button {
+  width: 44px;
+  min-width: 44px;
+  padding: 0;
+  gap: 0;
+}
+
+.biomes-ui-mobile-menu--phone .biomes-ui-mobile-menu__key {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+}
+
+.biomes-ui-mobile-menu--phone .biomes-ui-mobile-menu__label {
+  display: none;
+}
+
 .biomes-ui-mobile-menu__button:active {
   transform: scale(0.96);
   filter: brightness(1.18);
@@ -2077,6 +2101,10 @@ button.biomes-ui-card:disabled {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 6px;
   margin-top: 8px;
+}
+
+.biomes-ui-vitals-panel__stats {
+  display: contents;
 }
 
 .biomes-ui-vitals-chip {
@@ -2857,6 +2885,78 @@ button.biomes-ui-card:disabled {
   .biomes-ui-vitals-panel--mobile {
     width: min(54vw, 320px);
   }
+  .biomes-ui-vitals-panel--phone {
+    width: min(46vw, 190px);
+    padding: 7px 8px 8px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-panel__header {
+    gap: 5px;
+    margin-bottom: 5px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-panel__game {
+    max-width: 104px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-panel__title {
+    max-width: 104px;
+    font-size: 8px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-panel__state {
+    max-width: 58px;
+    padding: 2px 4px;
+    font-size: 7px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-panel__bars {
+    gap: 4px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-bar {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    align-items: center;
+    gap: 4px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-bar__meta {
+    justify-content: flex-start;
+    gap: 2px;
+    margin: 0;
+    font-size: 9px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-bar__icon {
+    width: 14px;
+    height: 14px;
+    font-size: 11px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-bar__track {
+    height: 7px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-panel__stats {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 3px;
+    margin-top: 5px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-panel__standing,
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-panel__footer {
+    display: contents;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-chip {
+    gap: 0;
+    padding: 2px;
+    border-radius: 6px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-chip__icon {
+    width: 14px;
+    height: 14px;
+    font-size: 11px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-chip__value {
+    font-size: 9px;
+    line-height: 1.1;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-chip__track {
+    display: none;
+  }
   .biomes-ui-vitals-panel--mobile .biomes-ui-vitals-panel__game,
   .biomes-ui-vitals-panel--mobile .biomes-ui-vitals-panel__title {
     max-width: 160px;
@@ -2937,7 +3037,7 @@ button.biomes-ui-card:disabled {
 .biomes-ui-current-objective-hud--phone {
   right: max(8px, env(safe-area-inset-right));
   bottom: max(112px, calc(env(safe-area-inset-bottom) + 100px));
-  width: min(56vw, 320px);
+  width: min(49vw, 320px);
   max-height: min(28dvh, 220px);
   overflow: auto;
   overscroll-behavior: contain;

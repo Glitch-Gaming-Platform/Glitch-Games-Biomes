@@ -1,8 +1,6 @@
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
-import {
-  harthmereBusinessOutpostRuntimeOffsetForTest,
-} from "@/client/game/renderers/local_dev/harthmere_business_outpost_buildings";
+import { harthmereBusinessOutpostRuntimeOffsetForTest } from "@/client/game/renderers/local_dev/harthmere_business_outpost_buildings";
 import {
   HARTHMERE_BUSINESS_OUTPOSTS,
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS,
@@ -16,16 +14,10 @@ export const HARTHMERE_BUSINESS_BOARD_PROCEDURAL_POLISH_VERSION =
   "harthmere-business-board-compact-service-list" as const;
 
 const BUSINESS_BOARD_ACCENTS = [
-  0x4cc9ff,
-  0xffd54f,
-  0x8ce99a,
-  0xff8fab,
-  0xb197fc,
-  0xffb74d,
+  0x4cc9ff, 0xffd54f, 0x8ce99a, 0xff8fab, 0xb197fc, 0xffb74d,
 ] as const;
 
-export interface HarthmereBusinessBoardMarkerLocation
-{
+export interface HarthmereBusinessBoardMarkerLocation {
   id: string;
   label: string;
   x: number;
@@ -67,7 +59,7 @@ export function nearestHarthmereBusinessBoardPhysicalPrompt(
         y?: number;
         z: number;
       }
-    | undefined,
+    | undefined
 ) {
   if (!playerPosition) return undefined;
   let best: HarthmereBusinessBoardMarkerLocation | undefined;
@@ -75,7 +67,7 @@ export function nearestHarthmereBusinessBoardPhysicalPrompt(
   for (const location of HARTHMERE_BUSINESS_BOARD_MARKER_LOCATIONS) {
     const distance = Math.hypot(
       location.x - playerPosition.x,
-      location.z - playerPosition.z,
+      location.z - playerPosition.z
     );
     if (
       distance > HARTHMERE_BUSINESS_BOARD_INTERACTION_RADIUS ||
@@ -116,7 +108,7 @@ function box(
   size: [number, number, number],
   position: [number, number, number],
   mat: THREE.MeshBasicMaterial,
-  part: string,
+  part: string
 ) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), mat);
   mesh.name = name;
@@ -132,7 +124,7 @@ function box(
 }
 
 export function createHarthmereBusinessBoardMarkerMesh(
-  location: HarthmereBusinessBoardMarkerLocation,
+  location: HarthmereBusinessBoardMarkerLocation
 ): THREE.Group {
   const offset = harthmereBusinessOutpostRuntimeOffsetForTest();
   const group = new THREE.Group();
@@ -157,29 +149,122 @@ export function createHarthmereBusinessBoardMarkerMesh(
     paper: material(0xf0ddb2),
     paperAlt: material(0xe5c78d),
     check: material(location.accentColor),
-    glow: material(accent.clone().lerp(new THREE.Color(0xffffff), 0.42).getHex()),
+    glow: material(
+      accent.clone().lerp(new THREE.Color(0xffffff), 0.42).getHex()
+    ),
     stone: material(0x9da6ad),
   };
 
-  box(group, "Business Board low stone base", [4.1, 0.22, 1.2], [0, 0.11, 0], mats.stone, "stone_base");
-  box(group, "Business Board left post", [0.28, 2.65, 0.28], [-1.85, 1.5, 0], mats.frame, "post");
-  box(group, "Business Board right post", [0.28, 2.65, 0.28], [1.85, 1.5, 0], mats.frame, "post");
-  box(group, "Business Board service list face", [3.35, 2.38, 0.18], [0, 1.72, -0.04], mats.face, "service_list_face");
-  box(group, "Business Board top rail", [3.75, 0.28, 0.26], [0, 3.02, -0.02], mats.wood, "top_rail");
-  box(group, "Business Board title strip", [2.38, 0.22, 0.09], [0, 2.72, -0.16], mats.dark, "title_strip");
-  box(group, "Business Board use F tile", [0.52, 0.48, 0.1], [1.35, 2.72, -0.18], mats.glow, "use_f_tile");
+  box(
+    group,
+    "Business Board low stone base",
+    [4.1, 0.22, 1.2],
+    [0, 0.11, 0],
+    mats.stone,
+    "stone_base"
+  );
+  box(
+    group,
+    "Business Board left post",
+    [0.28, 2.65, 0.28],
+    [-1.85, 1.5, 0],
+    mats.frame,
+    "post"
+  );
+  box(
+    group,
+    "Business Board right post",
+    [0.28, 2.65, 0.28],
+    [1.85, 1.5, 0],
+    mats.frame,
+    "post"
+  );
+  box(
+    group,
+    "Business Board service list face",
+    [3.35, 2.38, 0.18],
+    [0, 1.72, -0.04],
+    mats.face,
+    "service_list_face"
+  );
+  box(
+    group,
+    "Business Board top rail",
+    [3.75, 0.28, 0.26],
+    [0, 3.02, -0.02],
+    mats.wood,
+    "top_rail"
+  );
+  box(
+    group,
+    "Business Board title strip",
+    [2.38, 0.22, 0.09],
+    [0, 2.72, -0.16],
+    mats.dark,
+    "title_strip"
+  );
+  box(
+    group,
+    "Business Board use F tile",
+    [0.52, 0.48, 0.1],
+    [1.35, 2.72, -0.18],
+    mats.glow,
+    "use_f_tile"
+  );
 
   for (let i = 0; i < 5; i += 1) {
     const y = 2.34 - i * 0.38;
     const rowMat = i % 2 === 0 ? mats.paper : mats.paperAlt;
-    box(group, `Business Board listed service ${i + 1}`, [2.72, 0.26, 0.08], [0.12, y, -0.18], rowMat, "service_row");
-    box(group, `Business Board service checkbox ${i + 1}`, [0.18, 0.18, 0.09], [-1.2, y, -0.24], mats.check, "service_checkbox");
-    box(group, `Business Board service title line ${i + 1}`, [1.08, 0.045, 0.1], [-0.42, y + 0.045, -0.25], mats.dark, "service_text_line");
-    box(group, `Business Board service detail line ${i + 1}`, [0.78, 0.035, 0.1], [-0.57, y - 0.055, -0.25], mats.dark, "service_text_line");
-    box(group, `Business Board payout/status chip ${i + 1}`, [0.44, 0.08, 0.1], [1.08, y, -0.25], mats.check, "status_chip");
+    box(
+      group,
+      `Business Board listed service ${i + 1}`,
+      [2.72, 0.26, 0.08],
+      [0.12, y, -0.18],
+      rowMat,
+      "service_row"
+    );
+    box(
+      group,
+      `Business Board service checkbox ${i + 1}`,
+      [0.18, 0.18, 0.09],
+      [-1.2, y, -0.24],
+      mats.check,
+      "service_checkbox"
+    );
+    box(
+      group,
+      `Business Board service title line ${i + 1}`,
+      [1.08, 0.045, 0.1],
+      [-0.42, y + 0.045, -0.25],
+      mats.dark,
+      "service_text_line"
+    );
+    box(
+      group,
+      `Business Board service detail line ${i + 1}`,
+      [0.78, 0.035, 0.1],
+      [-0.57, y - 0.055, -0.25],
+      mats.dark,
+      "service_text_line"
+    );
+    box(
+      group,
+      `Business Board payout/status chip ${i + 1}`,
+      [0.44, 0.08, 0.1],
+      [1.08, y, -0.25],
+      mats.check,
+      "status_chip"
+    );
   }
 
-  box(group, "Business Board front access glow", [1.35, 0.035, 0.74], [0, 0.25, -0.76], mats.glow, "front_access_glow");
+  box(
+    group,
+    "Business Board front access glow",
+    [1.35, 0.035, 0.74],
+    [0, 0.25, -0.76],
+    mats.glow,
+    "front_access_glow"
+  );
   const light = new THREE.PointLight(location.accentColor, 0.7, 8, 1.8);
   light.name = "Business Board compact glow";
   light.position.set(0, 2.6, -0.65);
@@ -198,16 +283,21 @@ export class HarthmereBusinessBoardMarkerRenderer implements Renderer {
   public readonly name = HARTHMERE_BUSINESS_BOARD_PROCEDURAL_MARKER_VERSION;
   private readonly root = new THREE.Group();
 
-  constructor() {
+  constructor(private readonly mobileDevice = false) {
     this.root.name = `harthmere-business-board-markers root ${HARTHMERE_BUSINESS_BOARD_PROCEDURAL_MARKER_VERSION}`;
-    for (const location of HARTHMERE_BUSINESS_BOARD_MARKER_LOCATIONS) {
-      const marker = createHarthmereBusinessBoardMarkerMesh(location);
-      // The combined interior already renders the physical counter/dashboard.
-      // This hierarchy remains as a non-rendering interaction/debug anchor so
-      // the counter is not duplicated by a large procedural board.
-      marker.visible = false;
-      marker.userData.harthmereBusinessInteractionAnchorOnly = true;
-      this.root.add(marker);
+    // The combined interior owns the visible counter/dashboard. This renderer
+    // is an invisible debug hierarchy, so constructing hundreds of hidden
+    // objects on a memory-constrained phone provides no gameplay value.
+    if (!mobileDevice) {
+      for (const location of HARTHMERE_BUSINESS_BOARD_MARKER_LOCATIONS) {
+        const marker = createHarthmereBusinessBoardMarkerMesh(location);
+        // The combined interior already renders the physical counter/dashboard.
+        // This hierarchy remains as a non-rendering interaction/debug anchor so
+        // the counter is not duplicated by a large procedural board.
+        marker.visible = false;
+        marker.userData.harthmereBusinessInteractionAnchorOnly = true;
+        this.root.add(marker);
+      }
     }
     this.publishDebugBridge();
   }
@@ -222,6 +312,9 @@ export class HarthmereBusinessBoardMarkerRenderer implements Renderer {
     if (typeof window !== "undefined") {
       (window as any).__harthmereBusinessBoardMarkerDebug = {
         version: HARTHMERE_BUSINESS_BOARD_PROCEDURAL_MARKER_VERSION,
+        mobileDevice: this.mobileDevice,
+        loadedCount: this.root.children.length,
+        expectedCount: HARTHMERE_BUSINESS_BOARD_MARKER_LOCATIONS.length,
         boards: () =>
           HARTHMERE_BUSINESS_BOARD_MARKER_LOCATIONS.map((location) => ({
             id: location.id,
@@ -231,8 +324,8 @@ export class HarthmereBusinessBoardMarkerRenderer implements Renderer {
             position: [location.x, location.y, location.z],
             visible: this.root.children.some(
               (child) =>
-                child.userData.harthmereBusinessBoardMarkerId ===
-                  location.id && child.visible !== false,
+                child.userData.harthmereBusinessBoardMarkerId === location.id &&
+                child.visible !== false
             ),
           })),
       };
@@ -240,6 +333,6 @@ export class HarthmereBusinessBoardMarkerRenderer implements Renderer {
   }
 }
 
-export function makeHarthmereBusinessBoardMarkerRenderer() {
-  return new HarthmereBusinessBoardMarkerRenderer();
+export function makeHarthmereBusinessBoardMarkerRenderer(mobileDevice = false) {
+  return new HarthmereBusinessBoardMarkerRenderer(mobileDevice);
 }

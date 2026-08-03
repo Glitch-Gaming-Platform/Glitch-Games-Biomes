@@ -60,6 +60,7 @@ import {
 } from "@/shared/harthmere/premium_weapon_catalog";
 import { harthmereGeneratedInventoryIconUrl } from "@/shared/harthmere/generated/harthmere_inventory_icon_manifest";
 import { harthmereBusinessFurnitureAsset } from "@/shared/harthmere/generated/harthmere_business_furniture_manifest";
+import { harthmereOriginalInventoryIconUrl } from "@/shared/harthmere/original_inventory_icons";
 
 /**
  * Existing snapshot biscuits may donate presentation data to an exact
@@ -664,6 +665,7 @@ function harthmereBorrowedPresentation(
 function generatedInventoryIconPresentation(itemId: string) {
   const galoisIcon =
     harthmereBusinessFurnitureAsset(itemId)?.iconUrl ??
+    harthmereOriginalInventoryIconUrl(itemId) ??
     harthmereGeneratedInventoryIconUrl(itemId);
   return galoisIcon
     ? {
@@ -695,8 +697,12 @@ export function harthmereBiscuitForItemDefinition(
   const category = definition.category?.trim() || "Harthmere";
   const premiumWeapon = getHarthmerePremiumWeapon(definition.itemId);
   const furnitureAsset = harthmereBusinessFurnitureAsset(definition.itemId);
+  const isHarthmereCookingFurniture =
+    definition.itemId === "town_cookpot" ||
+    definition.itemId === "town_oven_range";
   const generatedInventoryIcon =
     furnitureAsset?.iconUrl ??
+    harthmereOriginalInventoryIconUrl(definition.itemId) ??
     harthmereGeneratedInventoryIconUrl(definition.itemId);
   const inventoryIcon =
     premiumWeapon?.inventoryIconUrl ?? generatedInventoryIcon;
@@ -764,6 +770,7 @@ export function harthmereBiscuitForItemDefinition(
             : {}),
         }
       : {}),
+    ...(isHarthmereCookingFurniture ? { isCraftingStation: true } : {}),
     ...(seedDefinition && cropBlockId && yieldItemId
       ? {
           isSeed: true,

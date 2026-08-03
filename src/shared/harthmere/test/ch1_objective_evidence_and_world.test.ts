@@ -198,28 +198,28 @@ describe("Chapter 1 objective evidence and canonical world", () => {
         flags: [],
         activeStepId: "the_examination",
       })?.place,
-      { kind: "anchor", anchor: "greenlamp_clinic" }
+      { kind: "anchor", anchor: "greenlamp_lou_post" }
     );
     assert.deepEqual(
       ch1StageDirectionFor("lou_ardan", {
         flags: ["ch1_ledger_surrendered"],
         activeStepId: "watch_him_go",
       })?.place,
-      { kind: "anchor", anchor: "returnstone_pad_office" }
+      { kind: "anchor", anchor: "returnstone_lou_post" }
     );
     assert.deepEqual(
       ch1StageDirectionFor("halden_rook", {
         flags: [],
         activeStepId: "say_the_sentence",
       })?.place,
-      { kind: "anchor", anchor: "gate_desert" }
+      { kind: "anchor", anchor: "gate_desert_rook_post" }
     );
     assert.deepEqual(
       ch1StageDirectionFor("jackie", {
         flags: [],
         activeStepId: "the_final_choice",
       })?.place,
-      { kind: "anchor", anchor: "grove_watch_house" }
+      { kind: "anchor", anchor: "grove_watch_house_jackie_post" }
     );
     assert.deepEqual(
       ch1ObjectiveTarget("ch1_a1_q05_the_fence_line", "not_this_small")
@@ -228,7 +228,7 @@ describe("Chapter 1 objective evidence and canonical world", () => {
     );
     assert.deepEqual(
       ch1ObjectiveTarget("ch1_a3_q03_three_days", "the_flinch")?.position,
-      CH1_ANCHORS.gate_desert
+      CH1_ANCHORS.gate_desert_jackie_post
     );
   });
 

@@ -6,6 +6,10 @@ import { useCheckPlaceableBuildingRequirements } from "@/client/game/helpers/pla
 import type { PlaceableInspectOverlay } from "@/client/game/resources/overlays";
 import { anItem } from "@/shared/game/item";
 import { harthmereCookStationKindForText } from "@/shared/harthmere/object_interaction_semantics";
+import {
+  harthmereAdditiveTownCookingStationKind,
+  isHarthmereAdditiveTownCookingStationEntityId,
+} from "@/shared/harthmere/additive_town_cooking_station_seed";
 import { useMemo } from "react";
 import { HARTHMERE_PLACED_COOK_STATION_RE } from "./craftingStationCookRouting";
 
@@ -18,14 +22,15 @@ export const CraftingStationOverlayComponent: React.FunctionComponent<{
     "/ecs/c/placeable_component",
     overlay.entityId
   );
+  const stationLabel = reactResources.use("/ecs/c/label", overlay.entityId);
+  const item = anItem(overlay.itemId);
+  const displayName = stationLabel?.text?.trim() || item.displayName;
 
   const meetsBuildingReqs = useCheckPlaceableBuildingRequirements(
     overlay.entityId
   );
 
   const title = useMemo(() => {
-    const item = anItem(overlay.itemId);
-    const displayName = item.displayName;
     if (meetsBuildingReqs) {
       return displayName;
     }
@@ -36,27 +41,32 @@ export const CraftingStationOverlayComponent: React.FunctionComponent<{
       return `${displayName} requires no roof to use`;
     }
     return `${displayName} requires ${reqs} to use`;
-  }, [meetsBuildingReqs, overlay.itemId]);
+  }, [displayName, item.buildingRequirements, meetsBuildingReqs]);
 
   if (!placeable) {
     return <></>;
   }
 
-  const item = anItem(overlay.itemId);
-  const stationText = `${overlay.itemId} ${item.displayName ?? ""}`;
-  const isCookStation = HARTHMERE_PLACED_COOK_STATION_RE.test(stationText);
+  const stationText = `${overlay.itemId} ${item.displayName ?? ""} ${
+    stationLabel?.text ?? ""
+  }`;
+  const isCookStation =
+    isHarthmereAdditiveTownCookingStationEntityId(overlay.entityId) ||
+    HARTHMERE_PLACED_COOK_STATION_RE.test(stationText);
 
   const shortcuts: InspectShortcuts = [];
   if (isCookStation) {
-    const stationKind = harthmereCookStationKindForText(stationText);
+    const stationKind =
+      harthmereAdditiveTownCookingStationKind(overlay.entityId) ??
+      harthmereCookStationKindForText(stationText);
     shortcuts.push({
-      title: meetsBuildingReqs ? `Cook at ${item.displayName}` : title,
+      title: meetsBuildingReqs ? `Cook at ${displayName}` : title,
       disabled: !meetsBuildingReqs,
       onKeyDown: () => {
         openHarthmereCookingStation({
           stationId: `ecs:${overlay.entityId}`,
           stationKind,
-          label: item.displayName,
+          label: displayName,
           entityId: overlay.entityId,
         });
       },

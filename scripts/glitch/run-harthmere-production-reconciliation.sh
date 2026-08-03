@@ -75,6 +75,29 @@ report_extension_terrain() {
   log "PASS additive Harthmere terrain report"
 }
 
+# HARTHMERE_AUTHORED_WATER: cut and fill the Brell.
+#
+# This runs BEFORE the sunken-surface repair, and the order is load-bearing.
+# Production deploys pass HARTHMERE_SKIP_EXTENSION_TERRAIN_SEED=1, and the
+# terrain seed is the only writer that can remove ground — the surface repair
+# below is add-only. So without this step the river could never be cut, and the
+# repair's authored-water exemption would leave those columns sunken forever
+# instead of filling them. Materialize first, then let the repair handle
+# everything that is genuinely damaged.
+#
+# Deliberately NOT gated by HARTHMERE_SKIP_EXTENSION_TERRAIN_SEED: skipping the
+# broad terrain reseed is a routine, safe choice; skipping the river is not.
+materialize_authored_water() {
+  if [ "${HARTHMERE_SKIP_AUTHORED_WATER_MATERIALIZE:-0}" = "1" ]; then
+    log "Skipping Harthmere authored-water materialization by request."
+    return
+  fi
+  log "START Harthmere authored-water materialization (river, mill race, basins)"
+  APPLY=1 \
+    node scripts/harthmere/materialize-harthmere-authored-water.cjs
+  log "PASS Harthmere authored-water materialization"
+}
+
 repair_extension_surface() {
   if [ "${HARTHMERE_SKIP_EXTENSION_SURFACE_REPAIR:-0}" = "1" ]; then
     log "Skipping additive Harthmere surface repair by request."
@@ -224,6 +247,10 @@ materialize_chapter1_world_buildings() {
 }
 
 if [ "${HARTHMERE_TOWN_REPAIR_ONLY:-0}" = "1" ]; then
+  # The river is authored world content, not an outpost/ECS extra, so it is
+  # restored in the town-only path too. Skipping the broad reconciliation must
+  # not mean skipping the Brell.
+  materialize_authored_water
   repair_harthmere_town
   verify_harthmere_town
   printf 'HARTHMERE_PRODUCTION_RECONCILIATION_READY tag=%s redis=%s:%s mode=town-only\n' \
@@ -232,6 +259,7 @@ if [ "${HARTHMERE_TOWN_REPAIR_ONLY:-0}" = "1" ]; then
 fi
 
 report_extension_terrain
+materialize_authored_water
 repair_extension_surface
 clear_building_interior_vegetation
 repair_harthmere_town

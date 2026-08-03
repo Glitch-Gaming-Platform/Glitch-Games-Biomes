@@ -112,6 +112,7 @@ type BasicImpact = {
   parts: ImpactPart[];
   light?: THREE.PointLight;
   elapsed: number;
+  framesRendered: number;
   duration: number;
   radius: number;
 };
@@ -159,6 +160,7 @@ type MagicImpact = {
   light?: THREE.PointLight;
   initialLightIntensity: number;
   elapsed: number;
+  framesRendered: number;
   duration: number;
   radius: number;
   profile: HarthmereMagicImpactProfile;
@@ -188,6 +190,7 @@ type ActiveMagicCharge = {
   rings: THREE.Mesh[];
   particles: THREE.InstancedMesh;
   elapsed: number;
+  framesRendered: number;
   duration: number;
   power: number;
   visualScale: number;
@@ -233,6 +236,10 @@ const MAX_ACTIVE_MAGIC_EXPLOSIONS = 12;
 const MAX_ACTIVE_MAGIC_CHARGES = 16;
 const MAX_PROJECTILE_LIGHTS = 10;
 const MAX_IMPACT_LIGHTS = 8;
+
+// Minimum number of rendered frames any combat visual is held for. Three frames
+// survives a 14 FPS session (~214 ms) while being invisible overhead at 60 FPS.
+const MIN_VISIBLE_FRAMES = 3;
 const MAGIC_CHARGE_PARTICLE_COUNT = 24;
 const MAGIC_CHARGE_MATRIX = new THREE.Matrix4();
 const MAGIC_CHARGE_POSITION = new THREE.Vector3();
@@ -714,6 +721,7 @@ function makePremiumImpact(
     parts,
     light,
     elapsed: 0,
+    framesRendered: 0,
     duration: missed ? Math.min(duration, 0.24) : duration,
     radius,
   } satisfies BasicImpact;
@@ -1238,6 +1246,7 @@ function makeAaaMagicImpact(input: {
     light,
     initialLightIntensity: profile.lightIntensity,
     elapsed: 0,
+    framesRendered: 0,
     duration: profile.durationSecs,
     radius: profile.radius,
     profile,
@@ -1508,6 +1517,7 @@ export class HarthmereProjectileVisualRuntime {
       rings,
       particles,
       elapsed: 0,
+      framesRendered: 0,
       duration: request.duration,
       power: THREE.MathUtils.clamp(Number(request.power ?? 0), 0, 1),
       visualScale: THREE.MathUtils.clamp(
@@ -2141,6 +2151,26 @@ export class HarthmereProjectileVisualRuntime {
     // for mixer/particle integration so a stalled frame cannot explode trails.
     const timelineDt = Number.isFinite(dt) ? Math.max(0, dt) : 0;
     const safeDt = THREE.MathUtils.clamp(timelineDt, 0, 0.05);
+    // Wall-clock progress alone cannot guarantee the player ever SEES an
+    // effect. A captured session ran at 14 FPS, where one frame is 71 ms: any
+    // visual whose duration is shorter than a frame reaches progress >= 1 on
+    // its very first update and is destroyed before it has been drawn a
+    // meaningful number of times. That is why projectiles, impacts and charges
+    // could be "fired" — with their GLB and sound correctly requested — and
+    // still never appear on screen.
+    //
+    // Holding every combat visual for a minimum number of RENDERED FRAMES
+    // rather than a minimum number of seconds makes visibility independent of
+    // frame rate. At 60 FPS this is ~50 ms and changes nothing, because these
+    // effects are already longer than that; at 14 FPS it is ~214 ms and is the
+    // difference between a visible telegraph and nothing at all.
+    const holdForVisibility = <T extends { framesRendered: number }>(
+      visual: T,
+      progress: number
+    ) => {
+      visual.framesRendered += 1;
+      return progress >= 1 && visual.framesRendered >= MIN_VISIBLE_FRAMES;
+    };
     for (
       let index = this.activeMagicCharges.length - 1;
       index >= 0;
@@ -2151,7 +2181,7 @@ export class HarthmereProjectileVisualRuntime {
       charge.mixer?.update(safeDt);
       const progress = Math.min(1, charge.elapsed / charge.duration);
       this.updateMagicChargeTransform(charge, progress);
-      if (progress >= 1) {
+      if (holdForVisibility(charge, progress)) {
         this.activeMagicCharges.splice(index, 1);
         this.magicChargeReleasedCount += 1;
         this.removeMagicCharge(charge);
@@ -2176,6 +2206,9 @@ export class HarthmereProjectileVisualRuntime {
         projectile.elapsed,
         projectile.visualScale
       );
+      // Contact follows authoritative wall time. If a low-FPS frame arrives
+      // after the hit, finish immediately and create the impact visual; the
+      // impact itself is held for MIN_VISIBLE_FRAMES below.
       if (progress >= 1) {
         this.active.splice(index, 1);
         this.finishProjectile(projectile);
@@ -2188,6 +2221,8 @@ export class HarthmereProjectileVisualRuntime {
       effect.mixer?.update(safeDt);
       const progress = Math.min(1, effect.elapsed / effect.duration);
       this.updateAttackShapeTransform(effect, progress);
+      // Beam/cone/area contact is authoritative too. Holding the telegraph
+      // here delays the visible impact past Anima's damage receipt.
       if (progress >= 1) {
         this.activeShapes.splice(index, 1);
         this.finishAttackShape(effect);
@@ -2236,7 +2271,7 @@ export class HarthmereProjectileVisualRuntime {
           impact.light.intensity *= Math.pow(0.02, safeDt / impact.duration);
         }
       }
-      if (progress >= 1) {
+      if (holdForVisibility(impact, progress)) {
         this.impacts.splice(index, 1);
         this.removeImpact(impact);
       }

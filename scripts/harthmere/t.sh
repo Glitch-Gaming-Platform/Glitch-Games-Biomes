@@ -11,6 +11,11 @@
 #   scripts/harthmere/t.sh grove:catalog  # pure-data 51-quest walk (topology only)
 #   scripts/harthmere/t.sh grove:live     # all 51 Grove live authority rows
 #   scripts/harthmere/t.sh ui             # BiomesUI tabs        (~2 s)
+#   scripts/harthmere/t.sh water          # river/still-water + repair exemptions
+#   scripts/harthmere/t.sh boards         # the four request boards
+#   scripts/harthmere/t.sh boards:e2e     # board requests through the trigger engine
+#   scripts/harthmere/t.sh jobs           # the MMO jobs board (~7 s) — NOT `boards`
+#   scripts/harthmere/t.sh postgimme      # Hoedown -> Battery Not Included
 #   scripts/harthmere/t.sh icons          # inventory icon assets + aliases + UI
 #   scripts/harthmere/t.sh gate           # quest + UI + types in one batch
 #   scripts/harthmere/t.sh cutscene       # cutscene generator   (~2 s)
@@ -91,6 +96,17 @@ CH1=(
   'src/shared/harthmere/test/ch1_*.test.ts'
   'src/shared/cutscene/test/ch1_scenes.test.ts'
   'src/server/harthmere/test/ch1_fragment_authority.test.ts'
+  'src/server/harthmere/test/ch1_encounter_scheduler_lease.test.ts'
+  'src/server/harthmere/test/ch1_prop_ecs_seed.test.ts'
+  'src/server/harthmere/test/ch1_warp_token.test.ts'
+  'src/pages/api/harthmere/test/chapter1_progress.test.ts'
+  'src/client/game/scripts/test/harthmere_npc_projection.test.ts'
+  'src/client/game/scripts/test/overlays_talk_radius.test.ts'
+  'src/client/game/cutscene/ch1_playback.test.ts'
+  'src/client/components/challenges/Chapter1NativeObjectivePrompt.test.ts'
+  'src/client/components/challenges/Chapter1PollingPerformance.test.ts'
+  'src/shared/harthmere/test/material_acquisition_guidance.test.ts'
+  'src/shared/harthmere/test/harthmere_business_storefront_purchase.test.ts'
 )
 QUESTS=(
   'src/shared/harthmere/test/ch1_live_fixes.test.ts'
@@ -137,12 +153,77 @@ GROVE=(
   'src/shared/harthmere/test/grove_giver_reassignment.test.ts'
   'src/shared/harthmere/test/grove_gate_enforcement.test.ts'
   'src/shared/harthmere/test/grove_waypoints_production_wiring.test.ts'
+  # Kept as its own file: it loads the ~53k-line generated placement map, and
+  # sharing a file with the I/O-bound wiring scan pushed that scan past Mocha's
+  # 5s ceiling.
+  'src/shared/harthmere/test/grove_waypoint_grounding.test.ts'
 )
 # Fountain inner loop: ids, projection and the reassignment, without parsing
 # the 38 story/economy/neighbour rows.
 GROVE_FOUNTAIN=(
   'src/shared/harthmere/test/grove_quest_catalog.test.ts'
   'src/shared/harthmere/test/grove_giver_reassignment.test.ts'
+)
+# HARTHMERE_AUTHORED_WATER / REQUEST BOARDS.
+#
+# `water` is the regression tier for "the river keeps getting filled in with
+# dirt": the authored-water predicate, the surface-repair exemptions, the
+# river/still-water geometry, and the fishability contract. Run it after ANY
+# change to the extension's terrain maintenance — the surface repair, the
+# unsolid-surface scan, or the seed writer — because all three used to treat
+# the Brell as damage.
+WATER=(
+  'src/shared/harthmere/test/harthmere_authored_water.test.ts'
+  'src/shared/harthmere/test/harthmere_authored_water_plan.test.ts'
+  'src/shared/harthmere/test/harthmere_river.test.ts'
+  'src/shared/harthmere/test/harthmere_still_water.test.ts'
+  'src/shared/harthmere/test/extension_surface_repair.test.ts'
+)
+# The four snapshot request boards: catalogue, per-board scoping, the physical
+# registry seam, and the panel projection. `boards:e2e` adds the trigger-engine
+# playthrough, which is the only tier that proves a request can actually be
+# filled.
+BOARDS=(
+  'src/shared/harthmere/test/native_request_boards.test.ts'
+  'src/shared/harthmere/test/native_request_board_locations.test.ts'
+  'src/client/components/biomes_ui/adapters/__tests__/nativeRequestBoardAdapter.test.ts'
+  'src/shared/harthmere/test/world_interaction_graphics.test.ts'
+  'src/client/game/renderers/local_dev/test/harthmere_request_board_markers.test.ts'
+  'src/client/components/biomes_ui/__tests__/biomesUIMountWorldObjectPanels.test.ts'
+  'src/client/components/challenges/claimRewardsEntityMatching.test.ts'
+  'src/server/logic/events/handlers/test/quest_step_validation.test.ts'
+  'src/server/harthmere/test/request_board_ecs_seed.test.ts'
+)
+BOARDS_E2E=(
+  'src/server/shared/triggers/test/native_request_board_progression.test.ts'
+)
+# THE MMO JOBS BOARD — a DIFFERENT system from `boards`.
+#
+# `boards` covers the four snapshot REQUEST boards (`native_request_boards.ts`).
+# The jobs board is `mmo_jobs_board_authority.ts`: posting, accepting, field
+# completion, escrow and rewards. Its 21 test files were in no preset at all and
+# ran only under `full`, which is why a critical read-vs-accept bug shipped with
+# a green suite. They cost ~7 s under the fast config.
+#
+# `jobs_board_auto_seed_determinism.test.ts` is the load-bearing one: the state
+# GET seeds without persisting, so the draw must be a function of durable state
+# or a job id stops denoting one job. Run this preset after ANY change to the
+# auto-seed path.
+JOBS=(
+  'src/shared/harthmere/test/harthmere_job_objective.test.ts'
+  'src/shared/harthmere/test/jobs_board_*.test.ts'
+  'src/shared/harthmere/test/live_mode_jobs_board_proximity.test.ts'
+  'src/shared/harthmere/test/mmo_jobs_board_*.test.ts'
+  'src/client/components/harthmere_jobs_board/__tests__/*.test.ts'
+  'src/client/components/challenges/HarthmereUnifiedHUD.jobsBoardContext.test.ts'
+  'src/client/components/challenges/harthmereJobRewardBridge.test.ts'
+  'src/pages/api/harthmere/test/live_mode_jobs_board_state_api.test.ts'
+)
+# Post-Gimme quest arc (Hoedown -> Battery Not Included).
+POSTGIMME=(
+  'src/shared/harthmere/test/native_post_gimme_contract.test.ts'
+  'src/shared/harthmere/test/native_post_gimme_world.test.ts'
+  'src/server/shared/triggers/test/native_post_gimme_progression.test.ts'
 )
 UI=('src/client/components/biomes_ui/__tests__/QuestsTab*.ts*')
 ICONS=(
@@ -173,7 +254,10 @@ cmd="${1:-ch1}"
 shift || true
 
 case "$cmd" in
-  ch1)      "${FAST[@]}" "${CH1[@]}" ;;
+  ch1)
+    "${FAST[@]}" "${CH1[@]}"
+    node scripts/harthmere/test-harthmere-deploy-chapter1-seed-gate.cjs
+    ;;
   quests)   "${FAST[@]}" "${QUESTS[@]}" ;;
   bible)    "${FAST[@]}" "${BIBLE[@]}" ;;
   grove)    "${FAST[@]}" "${GROVE[@]}" ;;
@@ -203,6 +287,17 @@ case "$cmd" in
       src/shared/harthmere/test/snapshot_grove_live_mode_backend.test.ts
     ;;
   ui)       "${FAST[@]}" "${UI[@]}" ;;
+  water)    "${FAST[@]}" "${WATER[@]}" ;;
+  boards)
+    node scripts/harthmere/test-world-interaction-graphics.cjs
+    "${FAST[@]}" "${BOARDS[@]}"
+    ;;
+  jobs)     "${FAST[@]}" "${JOBS[@]}" ;;
+  boards:e2e)
+    node scripts/harthmere/test-world-interaction-graphics.cjs
+    "${FAST[@]}" "${BOARDS[@]}" "${BOARDS_E2E[@]}"
+    ;;
+  postgimme) "${FAST[@]}" "${POSTGIMME[@]}" ;;
   icons)
     # Inventory icons cross three identity spellings: semantic ids, native
     # numeric Bikkie ids, and `b:<id>`. Keep the executable asset validator,

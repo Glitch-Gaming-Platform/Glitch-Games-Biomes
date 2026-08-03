@@ -38,17 +38,19 @@ from generate_business_interiors import (  # noqa: E402
     create_context,
     delete_context,
     export_context,
+    finish_object,
     gltfpack_path,
     join_by_material,
     look_at,
     make_material,
     move_to_collection,
     tint,
+    torus,
 )
 
 
-GENERATOR_VERSION = 1
-ASSET_VERSION = "harthmere-business-furniture-blender-v1"
+GENERATOR_VERSION = 2
+ASSET_VERSION = "harthmere-business-furniture-blender-v2-town-accents"
 
 
 @dataclass(frozen=True)
@@ -82,6 +84,27 @@ CATALOGUE: tuple[FurnitureAsset, ...] = (
     FurnitureAsset("lockbox", "Lockbox", "lockbox", (0.78, 0.68, 0.62), (1, 1, 1), (0.76, 0.62, 0.66), category="storage"),
     FurnitureAsset("wardrobe_storage", "Wardrobe", "cabinet", (1.82, 0.78, 2.72), (2, 3, 1), (1.80, 2.72, 0.76), category="storage"),
     FurnitureAsset("wall_lantern", "Wall Lantern", "wall_lantern", (0.52, 0.38, 0.82), (1, 1, 1), (0.50, 0.82, 0.36), surface="wall", placement_type="wallCenter", category="lighting"),
+    # Harthmere-authored town accents. These replace the mixed legacy OBJ and
+    # third-party prop-pack pieces that were visually inconsistent and much
+    # heavier than the shared furniture catalogue. Every accent is deliberately
+    # reusable, native-placeable and inventory-backed rather than welded into a
+    # one-off building mesh.
+    FurnitureAsset("town_forge_anvil", "Harthmere Forge Anvil", "anvil", (1.16, 0.76, 0.88), (2, 1, 1), (1.14, 0.88, 0.74), category="fixture", variant="forge"),
+    FurnitureAsset("town_workbench", "Harthmere Workbench", "workbench", (1.82, 0.86, 0.98), (2, 1, 1), (1.78, 0.98, 0.82), category="fixture", variant="workbench"),
+    FurnitureAsset("town_tool_rack", "Harthmere Tool Rack", "rack", (1.46, 0.52, 1.82), (2, 2, 1), (1.42, 1.80, 0.50), category="fixture", variant="tools"),
+    FurnitureAsset("town_rope_rack", "Harthmere Rope Rack", "rack", (1.38, 0.52, 1.68), (2, 2, 1), (1.34, 1.66, 0.50), category="fixture", variant="rope"),
+    FurnitureAsset("town_produce_crate", "Harthmere Produce Crate", "produce_bins", (1.22, 0.92, 0.86), (2, 1, 1), (1.18, 0.84, 0.88), category="storage", variant="produce"),
+    FurnitureAsset("town_wash_tub", "Harthmere Wash Tub", "trough", (1.42, 0.92, 0.82), (2, 1, 1), (1.38, 0.80, 0.88), category="fixture", variant="wash"),
+    FurnitureAsset("town_textile_drape", "Harthmere Textile Drape", "board", (1.32, 0.18, 1.50), (2, 2, 1), (1.28, 1.48, 0.16), surface="wall", placement_type="wallCenter", category="wall_decor", variant="textile"),
+    FurnitureAsset("town_record_stack", "Harthmere Record Stack", "shelf", (0.86, 0.56, 0.88), (1, 1, 1), (0.82, 0.86, 0.54), category="storage", variant="records"),
+    FurnitureAsset("town_reagent_shelf", "Harthmere Reagent Shelf", "potion_shelf", (1.22, 0.48, 1.68), (2, 2, 1), (1.18, 1.66, 0.46), category="storage", variant="reagents"),
+    FurnitureAsset("town_ward_focus", "Harthmere Ward Focus", "ward_plinth", (1.02, 1.02, 1.18), (2, 2, 2), (0.98, 1.16, 0.98), category="fixture", variant="ward"),
+    FurnitureAsset("town_chapel_pew", "Harthmere Chapel Pew", "bench", (2.42, 0.82, 1.00), (3, 1, 1), (2.38, 0.98, 0.78), category="furniture", variant="chapel"),
+    FurnitureAsset("town_chapel_altar", "Harthmere Chapel Altar", "plinth", (1.34, 1.02, 1.46), (2, 2, 2), (1.30, 1.44, 0.98), category="fixture", variant="chapel"),
+    FurnitureAsset("town_grave_tool_rack", "Harthmere Grave Tool Rack", "rack", (1.34, 0.48, 1.72), (2, 2, 1), (1.30, 1.70, 0.46), category="fixture", variant="grave_tools"),
+    FurnitureAsset("town_firewood_stack", "Harthmere Firewood Stack", "crate_cluster", (1.42, 0.82, 0.82), (2, 1, 1), (1.38, 0.80, 0.78), category="storage", variant="firewood"),
+    FurnitureAsset("town_cookpot", "Harthmere Cookpot", "cauldron", (1.24, 1.24, 1.12), (2, 2, 2), (1.20, 1.10, 1.20), category="fixture", variant="cooking"),
+    FurnitureAsset("town_oven_range", "Harthmere Oven Range", "kitchen_range", (1.48, 1.42, 2.42), (2, 3, 2), (1.44, 2.38, 1.38), category="fixture", variant="cooking"),
 )
 
 
@@ -104,6 +127,10 @@ def palette_for(asset: FurnitureAsset):
         return ((0.24, 0.14, 0.07), (0.40, 0.27, 0.13), (0.66, 0.46, 0.20))
     if asset.category == "business":
         return ((0.24, 0.14, 0.07), (0.18, 0.43, 0.52), (0.71, 0.55, 0.25))
+    if asset.category == "wall_decor":
+        return ((0.25, 0.13, 0.06), (0.39, 0.12, 0.10), (0.70, 0.57, 0.36))
+    if asset.category == "fixture":
+        return ((0.23, 0.13, 0.06), (0.28, 0.32, 0.34), (0.66, 0.48, 0.21))
     return ((0.28, 0.17, 0.085), (0.40, 0.24, 0.11), (0.70, 0.55, 0.30))
 
 
@@ -138,6 +165,53 @@ def add_variant_details(ctx, asset: FurnitureAsset) -> None:
             box(ctx, f"Fancy_Bed_finial_{'left' if x < 0 else 'right'}", (0.13, 0.13, 1.55), (x, d * 0.44, 0.78), "accent", bevel=0.025)
     elif asset.item_id == "display_shelf" and ctx.lod == 0:
         box(ctx, "Display_Shelf_header", (w * 0.82, 0.08, 0.22), (0, -d * 0.49, h * 0.91), "accent", bevel=0.025)
+    elif asset.item_id == "town_tool_rack":
+        for index, x in enumerate((-w * 0.28, 0.0, w * 0.28)):
+            box(ctx, f"Tool_Rack_handle_{index}", (0.08, d * 0.35, h * (0.55 + 0.08 * (index % 2))), (x, -d * 0.18, h * 0.48), "metal", rotation=(0, 0, (-0.22 + index * 0.22)), bevel=0.012)
+            if ctx.lod == 0:
+                box(ctx, f"Tool_Rack_head_{index}", (0.26, d * 0.38, 0.10), (x, -d * 0.18, h * (0.72 + 0.04 * (index % 2))), "accent", rotation=(0, 0, (-0.22 + index * 0.22)), bevel=0.012)
+    elif asset.item_id == "town_rope_rack":
+        for index, x in enumerate((-w * 0.26, 0.0, w * 0.26)):
+            bpy.ops.mesh.primitive_torus_add(
+                major_radius=0.18,
+                minor_radius=0.035,
+                major_segments=10 if ctx.lod == 0 else 6,
+                minor_segments=5 if ctx.lod == 0 else 3,
+                location=(x, -d * 0.32, h * (0.42 + 0.12 * (index % 2))),
+                rotation=(1.5708, 0, 0),
+            )
+            finish_object(ctx, bpy.context.object, "stock", 0.0)
+    elif asset.item_id == "town_textile_drape":
+        box(ctx, "Textile_Drape_cloth", (w * 0.82, d * 0.45, h * 0.78), (0, -d * 0.38, h * 0.48), "accent", bevel=0.035)
+        if ctx.lod == 0:
+            box(ctx, "Textile_Drape_band", (w * 0.62, d * 0.50, 0.10), (0, -d * 0.42, h * 0.62), "stock", bevel=0.012)
+    elif asset.item_id == "town_record_stack" and ctx.lod == 0:
+        for index in range(3):
+            box(ctx, f"Record_Stack_ledger_{index}", (w * (0.64 - 0.06 * index), d * 0.56, 0.10), (0.05 * (index - 1), -d * 0.08, h * (0.33 + 0.18 * index)), "neutral" if index != 1 else "accent", rotation=(0, 0, 0.05 * (index - 1)), bevel=0.012)
+    elif asset.item_id == "town_ward_focus":
+        torus(ctx, "Ward_Focus_ring", min(w, d) * 0.27, 0.055, (0, 0, h * 0.78), "light")
+        box(ctx, "Ward_Focus_crystal", (0.18, 0.18, h * 0.42), (0, 0, h * 0.78), "light", rotation=(0, 0, 0.785), bevel=0.025)
+    elif asset.item_id == "town_chapel_pew":
+        box(ctx, "Chapel_Pew_blue_ribbon", (w * 0.22, d * 0.06, h * 0.22), (0, -d * 0.52, h * 0.70), "accent", bevel=0.012)
+    elif asset.item_id == "town_chapel_altar":
+        box(ctx, "Chapel_Altar_cloth", (w * 0.84, d * 0.12, h * 0.58), (0, -d * 0.52, h * 0.54), "accent", bevel=0.025)
+        if ctx.lod == 0:
+            box(ctx, "Chapel_Altar_ribbon", (w * 0.14, d * 0.15, h * 0.74), (0, -d * 0.56, h * 0.56), "light", bevel=0.012)
+    elif asset.item_id == "town_grave_tool_rack":
+        for index, x in enumerate((-w * 0.24, w * 0.10, w * 0.30)):
+            box(ctx, f"Grave_Tool_handle_{index}", (0.07, d * 0.26, h * 0.72), (x, -d * 0.25, h * 0.47), "wood_dark", rotation=(0, 0, 0.08 * (index - 1)), bevel=0.01)
+            if ctx.lod == 0:
+                box(ctx, f"Grave_Tool_head_{index}", (0.26, d * 0.34, 0.12), (x, -d * 0.25, h * 0.78), "metal", rotation=(0, 0, 0.08 * (index - 1)), bevel=0.012)
+    elif asset.item_id == "town_firewood_stack":
+        for index, (x, z) in enumerate(((-0.34, 0.24), (0.0, 0.24), (0.34, 0.24), (-0.18, 0.52), (0.18, 0.52))):
+            bpy.ops.mesh.primitive_cylinder_add(
+                vertices=8 if ctx.lod == 0 else 6,
+                radius=0.16,
+                depth=d * 0.72,
+                location=(x * w, 0, z * h),
+                rotation=(1.5708, 0, 0),
+            )
+            finish_object(ctx, bpy.context.object, "wood_dark" if index % 2 else "wood", 0.01)
 
 
 def supported_eevee_engine(scene: bpy.types.Scene) -> str:
@@ -221,8 +295,7 @@ def write_typescript_manifest(entries: list[dict], output: Path) -> None:
     output.write_text(
         "// Generated by scripts/harthmere/blender/generate_business_furniture_catalogue.py.\n"
         "// Do not hand-edit; rebuild the Blender business furniture catalogue.\n\n"
-        'import { safeParseBiomesId } from "@/shared/ids";\n'
-        'import { harthmereNativeItemIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";\n\n'
+        'import { HARTHMERE_NATIVE_ITEM_ID_MANIFEST } from "@/shared/harthmere/harthmere_native_id_manifest";\n\n'
         'export type HarthmereBusinessFurniturePlacementType = "floorCenter" | "wallCenter" | "any";\n\n'
         "export interface HarthmereBusinessFurnitureAsset {\n"
         "  readonly displayName: string;\n"
@@ -237,6 +310,15 @@ def write_typescript_manifest(entries: list[dict], output: Path) -> None:
         "  readonly yawCorrectionRadians: number;\n"
         "}\n\n"
         f"export const HARTHMERE_BUSINESS_FURNITURE_ASSETS = {serialized} as const satisfies Readonly<Record<string, HarthmereBusinessFurnitureAsset>>;\n\n"
+        "const HARTHMERE_BUSINESS_FURNITURE_ITEM_ID_BY_NATIVE_ID = new Map<number, string>();\n"
+        "for (const [itemId, nativeId] of Object.entries(HARTHMERE_NATIVE_ITEM_ID_MANIFEST)) {\n"
+        "  if (\n"
+        "    !HARTHMERE_BUSINESS_FURNITURE_ITEM_ID_BY_NATIVE_ID.has(nativeId) ||\n"
+        '    itemId === "muckwad"\n'
+        "  ) {\n"
+        "    HARTHMERE_BUSINESS_FURNITURE_ITEM_ID_BY_NATIVE_ID.set(nativeId, itemId);\n"
+        "  }\n"
+        "}\n\n"
         "export function harthmereBusinessFurnitureAsset(\n"
         "  itemId: string | number | undefined\n"
         "): HarthmereBusinessFurnitureAsset | undefined {\n"
@@ -248,9 +330,11 @@ def write_typescript_manifest(entries: list[dict], output: Path) -> None:
         "    normalized as keyof typeof HARTHMERE_BUSINESS_FURNITURE_ASSETS\n"
         "  ];\n"
         "  if (direct) return direct;\n"
-        "  const nativeId = safeParseBiomesId(normalized);\n"
-        "  if (nativeId === undefined) return undefined;\n"
-        "  const semanticItemId = harthmereNativeItemIdForBiomesId(nativeId);\n"
+        "  if (!/^[0-9]+$/.test(normalized)) return undefined;\n"
+        "  const semanticItemId =\n"
+        "    HARTHMERE_BUSINESS_FURNITURE_ITEM_ID_BY_NATIVE_ID.get(\n"
+        "      Number(normalized)\n"
+        "    );\n"
         "  return semanticItemId\n"
         "    ? HARTHMERE_BUSINESS_FURNITURE_ASSETS[\n"
         "        semanticItemId as keyof typeof HARTHMERE_BUSINESS_FURNITURE_ASSETS\n"

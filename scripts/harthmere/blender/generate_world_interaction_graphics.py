@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate optimized Blender graphics for Harthmere gathering nodes and jobs boards.
+"""Generate optimized Blender graphics for Harthmere gathering nodes and boards.
 
 The generated GLBs are presentation only. Gathering authority, F interaction,
 tool/skill checks, respawn, yields, board proximity, and jobs-board mutations
@@ -36,8 +36,8 @@ import bpy
 from mathutils import Vector
 
 
-GENERATOR_VERSION = 1
-ASSET_VERSION = "harthmere-world-interaction-graphics-blender-v1"
+GENERATOR_VERSION = 3
+ASSET_VERSION = "harthmere-world-interaction-graphics-blender-v3"
 
 
 @dataclass(frozen=True)
@@ -100,12 +100,34 @@ JOBS_BOARD_VARIANTS = {
 }
 
 
+REQUEST_BOARD_VARIANTS = {
+    "fishing": {
+        "displayName": "Fishing Board",
+        "accent": (0.12, 0.48, 0.72),
+    },
+    "farming": {
+        "displayName": "Farming Bounties",
+        "accent": (0.36, 0.62, 0.18),
+    },
+    "industrial": {
+        "displayName": "Industrial Job Board",
+        "accent": (0.78, 0.36, 0.10),
+    },
+    "research": {
+        "displayName": "Collective Research Board",
+        "accent": (0.45, 0.28, 0.76),
+    },
+}
+
+
 def parse_args() -> argparse.Namespace:
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     parser.add_argument("--render-previews", action="store_true")
     parser.add_argument("--only", action="append", default=[])
+    parser.add_argument("--gathering-only", action="store_true")
+    parser.add_argument("--request-boards-only", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -266,7 +288,19 @@ def branch(ctx: BuildContext, name: str, start, end, radius: float, material="wo
 
 
 def ground_pad(ctx: BuildContext, material="stone", size=(2.5, 2.0), height=0.16):
-    box(ctx, "ground_pad", (size[0], size[1], height), (0, 0, height * 0.5), material, bevel=0.04)
+    # Gathering landmarks sit directly on the world's terrain. The old solid
+    # rectangular pads read as artificial backplates when placed on hills,
+    # roads, grass, or mud, so they are intentionally omitted from every LOD.
+    return None
+
+
+def ground_objects_at_origin(ctx: BuildContext) -> None:
+    """Keep the remaining silhouette grounded after omitting its old pad."""
+    if not ctx.objects:
+        return
+    minimum_z = scene_bounds(ctx.objects)["min"][2]
+    for obj in ctx.objects:
+        obj.location.z -= minimum_z
 
 
 def rock_cluster(ctx: BuildContext, *, count: int, material="stone", accent="accent", tall=False):
@@ -531,6 +565,7 @@ def build_gathering_node(ctx: BuildContext, node: GatheringNodeGraphic):
         build_scavenging_node(ctx, node.archetype)
     else:
         build_special_node(ctx, node.archetype)
+    ground_objects_at_origin(ctx)
 
 
 LETTER_PATTERNS: dict[str, tuple[tuple[int, int], ...]] = {
@@ -599,6 +634,106 @@ def build_jobs_board(ctx: BuildContext):
                 obj.scale.z * landmark_scale.z,
             )
         )
+
+
+def build_request_board_emblem(ctx: BuildContext, category: str) -> None:
+    """One unmistakable, texture-free guild emblem visible from both sides."""
+    first_object_index = len(ctx.objects)
+    center_z = 3.02
+    if category == "fishing":
+        ico(ctx, "fishing_fish_body", 0.34, (0.02, 0.0, center_z), "highlight", (1.55, 0.48, 0.72))
+        cone(ctx, "fishing_fish_tail", 0.30, 0.02, 0.34, (-0.62, 0.0, center_z), "accent", rotation=(0.0, math.pi / 2, 0.0), vertices=3)
+        for side in (-1, 1):
+            cylinder(ctx, f"fishing_eye_{side}", 0.055, 0.06, (0.36, side * 0.19, center_z + 0.06), "dark", rotation=(math.pi / 2, 0.0, 0.0), vertices=8, bevel=0)
+        for index, z in enumerate((2.70, 2.58)):
+            branch(ctx, f"fishing_wave_{index}", (-0.54, 0.0, z), (0.54, 0.0, z + (0.07 if index == 0 else -0.05)), 0.035, "accent")
+    elif category == "farming":
+        for index, x in enumerate((-0.28, 0.0, 0.28)):
+            branch(ctx, f"farming_stalk_{index}", (x, 0.0, 2.64), (x * 0.65, 0.0, 3.34), 0.045, "highlight")
+            for grain in range(3 if ctx.lod == 0 else 2):
+                grain_z = 3.02 + grain * 0.15
+                ico(ctx, f"farming_grain_{index}_{grain}", 0.095, (x * 0.65 + (0.10 if grain % 2 else -0.10), 0.0, grain_z), "accent", (0.65, 0.42, 1.15))
+        for side in (-1, 1):
+            ico(ctx, f"farming_leaf_{side}", 0.18, (side * 0.34, 0.0, 2.80), "green", (1.35, 0.45, 0.62))
+    elif category == "industrial":
+        torus(ctx, "industrial_gear_ring", 0.39, 0.095, (0.0, 0.0, center_z), "highlight", rotation=(math.pi / 2, 0.0, 0.0))
+        tooth_count = 8 if ctx.lod == 0 else 4
+        for index in range(tooth_count):
+            angle = index * math.tau / tooth_count
+            box(ctx, f"industrial_gear_tooth_{index}", (0.17, 0.18, 0.30), (math.cos(angle) * 0.53, 0.0, center_z + math.sin(angle) * 0.53), "accent", rotation=(0.0, -angle, 0.0), bevel=0.018)
+        cylinder(ctx, "industrial_gear_hub", 0.15, 0.24, (0.0, 0.0, center_z), "dark", rotation=(math.pi / 2, 0.0, 0.0), vertices=10, bevel=0.012)
+        box(ctx, "industrial_hammer_head", (0.54, 0.20, 0.18), (0.12, 0.0, 2.70), "metal", rotation=(0.0, -0.22, 0.0), bevel=0.025)
+        branch(ctx, "industrial_hammer_handle", (-0.36, 0.0, 2.46), (0.30, 0.0, 2.86), 0.055, "wood")
+    elif category == "research":
+        box(ctx, "research_book_left", (0.62, 0.22, 0.12), (-0.31, 0.0, 2.72), "paper", rotation=(0.0, -0.18, 0.0), bevel=0.025)
+        box(ctx, "research_book_right", (0.62, 0.22, 0.12), (0.31, 0.0, 2.72), "paper", rotation=(0.0, 0.18, 0.0), bevel=0.025)
+        ico(ctx, "research_flask_body", 0.30, (0.0, 0.0, 3.06), "accent", (1.0, 0.52, 0.86))
+        box(ctx, "research_flask_neck", (0.18, 0.20, 0.42), (0.0, 0.0, 3.38), "highlight", bevel=0.018)
+        box(ctx, "research_flask_rim", (0.34, 0.24, 0.10), (0.0, 0.0, 3.60), "metal", bevel=0.018)
+        if ctx.lod == 0:
+            for index, angle in enumerate((0.25, 2.25, 4.35)):
+                ico(ctx, f"research_spark_{index}", 0.075, (math.cos(angle) * 0.63, 0.0, 3.30 + math.sin(angle) * 0.28), "highlight", (0.8, 0.45, 1.25))
+    else:
+        raise ValueError(f"Unknown request-board category: {category}")
+
+    # Build the emblem once, then place a concrete mesh copy on each face. The
+    # first smoke preview caught the original at Y=0 inside the header plaque,
+    # which made a category board look like a generic blank board.
+    front_objects = list(ctx.objects[first_object_index:])
+    for index, obj in enumerate(front_objects):
+        obj.location.y -= 0.36
+        back = obj.copy()
+        if obj.data:
+            back.data = obj.data.copy()
+            back.data.name = blender_safe_name(f"{obj.data.name}_back")
+        back.name = blender_safe_name(f"{obj.name}_back_{index}")
+        back.location.y += 0.72
+        ctx.objects.append(back)
+
+
+def build_request_board(ctx: BuildContext, category: str) -> None:
+    """Large, double-sided request board with category-specific silhouette."""
+    box(ctx, "request_board_stone_foot", (4.05, 0.78, 0.20), (0.0, 0.0, 0.10), "stone", bevel=0.045)
+    for index, x in enumerate((-1.67, 1.67)):
+        box(ctx, f"request_board_post_{index}", (0.25, 0.30, 3.15), (x, 0.0, 1.67), "dark", bevel=0.035)
+        box(ctx, f"request_board_post_cap_{index}", (0.42, 0.44, 0.20), (x, 0.0, 3.35), "highlight", bevel=0.035)
+    box(ctx, "request_board_back", (3.48, 0.24, 2.18), (0.0, 0.0, 2.00), "wood", bevel=0.045)
+    box(ctx, "request_board_roof", (4.12, 0.92, 0.24), (0.0, 0.0, 3.70), "dark", rotation=(0.0, 0.05, 0.0), bevel=0.045)
+    box(ctx, "request_board_roof_trim", (3.78, 0.98, 0.11), (0.0, 0.0, 3.83), "accent", bevel=0.025)
+
+    notices = [
+        (-1.05, 2.24, 0.64, 0.58, -0.06),
+        (-0.34, 2.20, 0.58, 0.66, 0.04),
+        (0.36, 2.24, 0.66, 0.56, -0.04),
+        (1.07, 2.17, 0.52, 0.72, 0.06),
+        (-0.82, 1.48, 0.78, 0.52, 0.04),
+        (0.02, 1.45, 0.66, 0.56, -0.05),
+        (0.82, 1.48, 0.72, 0.52, 0.05),
+    ]
+    if ctx.lod == 1:
+        notices = notices[::2]
+    for face_index, face_sign in enumerate((-1, 1)):
+        face_y = face_sign * 0.145
+        notice_y = face_sign * 0.275
+        box(ctx, f"request_board_face_{face_index}", (3.18, 0.08, 1.88), (0.0, face_y, 1.96), "base", bevel=0.025)
+        box(ctx, f"request_board_header_{face_index}", (2.72, 0.10, 0.78), (0.0, face_sign * 0.285, 3.06), "accent", bevel=0.035)
+        for index, (x, z, width, height, rotation) in enumerate(notices):
+            material = "paper" if index % 3 else "highlight"
+            box(ctx, f"request_notice_{face_index}_{index}", (width, 0.035, height), (x, notice_y, z), material, rotation=(0.0, rotation, 0.0), bevel=0.012)
+            if ctx.lod == 0:
+                for line in range(2):
+                    box(ctx, f"request_ink_{face_index}_{index}_{line}", (width * (0.64 - line * 0.10), 0.014, 0.026), (x, face_sign * 0.302, z + height * 0.16 - line * height * 0.22), "dark", rotation=(0.0, rotation, 0.0), bevel=0)
+                cylinder(ctx, f"request_pin_{face_index}_{index}", 0.035, 0.025, (x, face_sign * 0.316, z + height * 0.35), "accent", rotation=(math.pi / 2, 0.0, 0.0), vertices=8, bevel=0)
+
+    build_request_board_emblem(ctx, category)
+    for x in (-1.90, 1.90):
+        branch(ctx, f"request_lantern_arm_{'l' if x < 0 else 'r'}", (x, 0.0, 1.92), (x, -0.48, 2.22), 0.038, "dark")
+        box(ctx, f"request_lantern_{'l' if x < 0 else 'r'}", (0.26, 0.24, 0.38), (x, -0.52, 2.00), "highlight", bevel=0.035)
+
+    landmark_scale = Vector((1.60, 1.12, 1.64))
+    for obj in ctx.objects:
+        obj.location = Vector((obj.location.x * landmark_scale.x, obj.location.y * landmark_scale.y, obj.location.z * landmark_scale.z))
+        obj.scale = Vector((obj.scale.x * landmark_scale.x, obj.scale.y * landmark_scale.y, obj.scale.z * landmark_scale.z))
 
 
 def create_context(slug: str, lod: int, colors: tuple[tuple[float, float, float], ...]) -> BuildContext:
@@ -811,7 +946,15 @@ def main() -> None:
     preview_dir = repo_root / "output" / "harthmere-world-interaction-graphics" / "previews"
     report_dir = repo_root / "output" / "harthmere-world-interaction-graphics" / "gltfpack-reports"
     selected = set(args.only)
-    valid = {node.node_id for node in GATHERING_NODES} | {f"jobs_board_{key}" for key in JOBS_BOARD_VARIANTS}
+    if args.gathering_only:
+        selected.update(node.node_id for node in GATHERING_NODES)
+    if args.request_boards_only:
+        selected.update(f"request_board_{key}" for key in REQUEST_BOARD_VARIANTS)
+    valid = (
+        {node.node_id for node in GATHERING_NODES}
+        | {f"jobs_board_{key}" for key in JOBS_BOARD_VARIANTS}
+        | {f"request_board_{key}" for key in REQUEST_BOARD_VARIANTS}
+    )
     unknown = selected - valid
     if unknown:
         raise SystemExit(f"Unknown --only asset(s): {', '.join(sorted(unknown))}")
@@ -837,8 +980,10 @@ def main() -> None:
         },
         "gatheringNodeLodPolicy": {"lod0MaxDistanceMeters": 18, "lod1MaxDistanceMeters": 64, "hiddenBeyondMeters": 96},
         "jobsBoardLodPolicy": {"lod0MaxDistanceMeters": 22, "lod1MaxDistanceMeters": 72, "hiddenBeyondMeters": 110},
+        "requestBoardLodPolicy": {"lod0MaxDistanceMeters": 22, "lod1MaxDistanceMeters": 72, "hiddenBeyondMeters": 110},
         "gatheringNodes": [],
         "jobsBoardVariants": {},
+        "requestBoardVariants": {},
     }
 
     for node in GATHERING_NODES:
@@ -892,6 +1037,31 @@ def main() -> None:
             "stats": {"lod0": {key: value for key, value in assets["lod0"].items() if key not in {"path", "bounds"}}, "lod1": {key: value for key, value in assets["lod1"].items() if key not in {"path", "bounds"}}},
         }
 
+    for category, spec in REQUEST_BOARD_VARIANTS.items():
+        slug = f"request_board_{category}"
+        if selected and slug not in selected:
+            continue
+        accent = spec["accent"]
+        colors = ((0.22, 0.12, 0.055), accent, (0.94, 0.72, 0.24))
+        assets = build_and_export(
+            slug=slug,
+            colors=colors,
+            builder=lambda ctx, category=category: build_request_board(ctx, category),
+            output_dir=output_root / "request_boards" / slug,
+            packer=packer,
+            report_dir=report_dir / "request_boards",
+            preview_dir=preview_dir / "request_boards",
+            render_previews=args.render_previews,
+        )
+        manifest["requestBoardVariants"][category] = {
+            "displayName": spec["displayName"],
+            "category": category,
+            "accentColor": "#%02x%02x%02x" % tuple(round(channel * 255) for channel in accent),
+            "assets": {"lod0": relative_url(repo_root, assets["lod0"]["path"]), "lod1": relative_url(repo_root, assets["lod1"]["path"])},
+            "bounds": assets["lod0"]["bounds"],
+            "stats": {"lod0": {key: value for key, value in assets["lod0"].items() if key not in {"path", "bounds"}}, "lod1": {key: value for key, value in assets["lod1"].items() if key not in {"path", "bounds"}}},
+        }
+
     manifest_path = repo_root / "public" / "assets" / "harthmere" / "manifest" / "world-interaction-graphics.json"
     if selected and manifest_path.exists():
         existing = json.loads(manifest_path.read_text())
@@ -899,13 +1069,17 @@ def main() -> None:
         gathered.update({entry["nodeId"]: entry for entry in manifest["gatheringNodes"]})
         variants = dict(existing.get("jobsBoardVariants", {}))
         variants.update(manifest["jobsBoardVariants"])
+        request_variants = dict(existing.get("requestBoardVariants", {}))
+        request_variants.update(manifest["requestBoardVariants"])
         manifest["gatheringNodes"] = [gathered[node.node_id] for node in GATHERING_NODES if node.node_id in gathered]
         manifest["jobsBoardVariants"] = {key: variants[key] for key in JOBS_BOARD_VARIANTS if key in variants}
+        manifest["requestBoardVariants"] = {key: request_variants[key] for key in REQUEST_BOARD_VARIANTS if key in request_variants}
     manifest["summary"] = {
         "gatheringNodeCount": len(manifest["gatheringNodes"]),
         "jobsBoardVariantCount": len(manifest["jobsBoardVariants"]),
-        "glbCount": len(manifest["gatheringNodes"]) * 2 + len(manifest["jobsBoardVariants"]) * 2,
-        "totalBytes": sum(entry["stats"][lod]["bytes"] for entry in manifest["gatheringNodes"] for lod in ("lod0", "lod1")) + sum(entry["stats"][lod]["bytes"] for entry in manifest["jobsBoardVariants"].values() for lod in ("lod0", "lod1")),
+        "requestBoardVariantCount": len(manifest["requestBoardVariants"]),
+        "glbCount": len(manifest["gatheringNodes"]) * 2 + len(manifest["jobsBoardVariants"]) * 2 + len(manifest["requestBoardVariants"]) * 2,
+        "totalBytes": sum(entry["stats"][lod]["bytes"] for entry in manifest["gatheringNodes"] for lod in ("lod0", "lod1")) + sum(entry["stats"][lod]["bytes"] for entry in manifest["jobsBoardVariants"].values() for lod in ("lod0", "lod1")) + sum(entry["stats"][lod]["bytes"] for entry in manifest["requestBoardVariants"].values() for lod in ("lod0", "lod1")),
     }
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")

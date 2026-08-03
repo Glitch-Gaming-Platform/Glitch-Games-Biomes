@@ -5,6 +5,10 @@ import {
   HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES,
 } from "@/shared/harthmere/business_customer_simulator";
 import { SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE } from "@/shared/harthmere/snapshot_grove_content";
+import {
+  harthmereBusinessPostClearOfEveryAisle,
+  harthmereBusinessStaffSidePost,
+} from "@/shared/harthmere/business_aisle_keep_out";
 
 // HARTHMERE_BUSINESS_OWNER_NPC_SEED
 //
@@ -262,17 +266,37 @@ function entityIdFromOffset(idOffset: number): BiomesId {
   return (Number(SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE) + idOffset) as BiomesId;
 }
 
-// Place the owner at the center of the building footprint so it always stands
-// inside the shop, on the building's ground level.
-function ownerPositionForSafeSite(site: {
-  groundY: number;
-  footprint: { xMin: number; xMax: number; zMin: number; zMax: number };
-}): Vec3 {
-  return [
+// HARTHMERE_BUSINESS_OWNER_POST
+// Place the owner behind their own service counter, on the staff side, clear of
+// the customer aisle.
+//
+// This used to return the centre of the building footprint. That reads fine as
+// "the owner stands in their shop" until the business became a real in-world
+// simulation: the footprint centre *is* the customer lane, so all nineteen
+// owners were parked as collidable one-metre bodies directly across the route
+// their own customers have to walk. A queued customer with a perfectly valid
+// path simply could not get past the shopkeeper.
+//
+// The staff-side post is also better staging — the owner is now where a
+// shopkeeper would actually stand — so this is not a compromise for the
+// simulation's benefit. The safe-site footprint centre remains the fallback for
+// anything without an audited interior.
+function ownerPositionForSafeSite(
+  outpostId: string,
+  site: {
+    groundY: number;
+    footprint: { xMin: number; xMax: number; zMin: number; zMax: number };
+  }
+): Vec3 {
+  const staffSide = harthmereBusinessStaffSidePost(outpostId);
+  if (staffSide) {
+    return [staffSide[0], site.groundY, staffSide[2]];
+  }
+  return harthmereBusinessPostClearOfEveryAisle([
     (site.footprint.xMin + site.footprint.xMax) / 2,
     site.groundY,
     (site.footprint.zMin + site.footprint.zMax) / 2,
-  ];
+  ]);
 }
 
 export const HARTHMERE_BUSINESS_OWNER_NPC_SEEDS: readonly HarthmereBusinessOwnerNpcSeed[] =
@@ -301,7 +325,7 @@ export const HARTHMERE_BUSINESS_OWNER_NPC_SEEDS: readonly HarthmereBusinessOwner
       roleTitle: copy.roleTitle,
       idOffset,
       entityId: entityIdFromOffset(idOffset),
-      position: ownerPositionForSafeSite(site),
+      position: ownerPositionForSafeSite(outpost.outpostId, site),
       orientation: [0, Number(outpost.position.rot) || 0] as Vec2,
       line: copy.line,
       ambientLines: [...copy.ambient],

@@ -302,7 +302,7 @@ describe("Biomes UI progression tabs", () => {
     );
     assert.ok(
       biomesInventoryItemIcon("seed_carrot").includes(
-        "/buckets/biomes-static/asset_data/icons/items/seed_carrot"
+        "/assets/harthmere/inventory_icons/generated/seed_carrot_"
       )
     );
     assert.equal(

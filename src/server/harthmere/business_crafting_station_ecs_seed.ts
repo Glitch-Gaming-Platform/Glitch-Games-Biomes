@@ -1,7 +1,6 @@
 import type { Change, ProposedChange } from "@/shared/ecs/change";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import {
-  Collideable,
   CraftingStationComponent,
   CreatedBy,
   Label,
@@ -99,7 +98,9 @@ function craftingStationEntityForSeed(
       item_id: seed.stationItemId,
     }),
     crafting_station_component: CraftingStationComponent.create(),
-    collideable: Collideable.create(),
+    // The combined interior owns visible geometry and the generated collision
+    // proxy owns fixture physics. This placeable remains only as a native
+    // crafting interaction anchor and is intentionally non-collidable.
     // Placeables are immovable by default (matches newPlaceable()).
     locked_in_place: LockedInPlace.create(),
     created_by: CreatedBy.create({ id: placerId, created_at: timestamp }),
@@ -117,11 +118,20 @@ export function buildHarthmereBusinessCraftingStationSeedChanges(input: {
   const nowSeconds = input.nowSeconds ?? secondsSinceEpoch();
   const changes: Change[] = [];
   for (const seed of HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS) {
-    changes.push({
-      kind: changeKindForSeed(seed.entityId, existingIds),
-      tick: input.tick,
-      entity: craftingStationEntityForSeed(seed, nowSeconds),
-    });
+    const kind = changeKindForSeed(seed.entityId, existingIds);
+    const entity = craftingStationEntityForSeed(seed, nowSeconds);
+    changes.push(
+      kind === "update"
+        ? {
+            kind,
+            tick: input.tick,
+            // Older revisions made the visible station placeable collide. The
+            // manifest proxy now owns that box, so explicitly clear the stale
+            // component during warm-world reconciliation.
+            entity: { ...entity, collideable: null },
+          }
+        : { kind, tick: input.tick, entity }
+    );
   }
   return changes;
 }

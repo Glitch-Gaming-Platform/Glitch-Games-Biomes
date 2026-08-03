@@ -41,10 +41,19 @@ export class BloomThresholdPass extends ShaderPass {
       // RGB with Depth
       target.texture.format = THREE.RGBAFormat;
       target.texture.type = THREE.HalfFloatType;
-      // Linear filter + mipmaps for upsampling next pass
       target.texture.minFilter = THREE.LinearFilter;
       target.texture.magFilter = THREE.LinearFilter;
-      target.texture.generateMipmaps = true;
+      // PERF (2026-08-03 render audit): mipmaps were being generated for this
+      // full-resolution RGBA16F target on every single frame and never
+      // sampled. three's textureNeedsGenerateMipmaps() keys purely off
+      // `generateMipmaps` and ignores the filter (three.cjs r185:71091), so a
+      // LinearFilter (non-mipmap) minFilter does NOT suppress the mip build --
+      // updateRenderTargetMipmap() ran a full pyramid rebuild every time the
+      // renderer switched away from this target. Downsampling for the bloom
+      // chain is done explicitly by the five BloomDownsamplePass targets
+      // (which correctly set generateMipmaps = false), so nothing ever read a
+      // mip level here. Purely wasted bandwidth; disabling is visually inert.
+      target.texture.generateMipmaps = false;
       target.stencilBuffer = false;
       target.depthBuffer = false;
       this.target = target;

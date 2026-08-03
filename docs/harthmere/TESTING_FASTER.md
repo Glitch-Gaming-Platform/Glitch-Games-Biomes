@@ -200,6 +200,14 @@ as an operational checklist, not background history:
   `experiments.typescript requires Node.js >= 22.6` / missing
   `module.stripTypeScriptTypes`. Print `node --version` before the expensive
   build and switch the PATH/runtime once; do not restart the client build.
+- **Pin `linux/amd64` when packaging `Dockerfile.biomes` on Apple Silicon.**
+  The production image intentionally installs audited AMD64-only Bazelisk,
+  Node/native modules, and runtime dependencies. An unqualified Docker Desktop
+  build on an ARM host can select `linux/arm64`, get as far as the Bazel setup,
+  and then fail under Rosetta with a missing x86-64 loader. Before packaging,
+  inspect the last accepted image architecture and run
+  `docker build --platform linux/amd64 -f Dockerfile.biomes ...`. Do not count
+  or retry an ARM candidate; it never packaged the application artifacts.
 - **Preflight `GLITCH_TITLE_TOKEN` before building a local Glitch image.** The
   unified launcher exits immediately when the token is absent, even when the
   code under test uses a `local-*` install identity. Verify that the secret is
@@ -4454,6 +4462,39 @@ required exact-image world without an OOM/restart, record that resource limit,
 retain the source/unit/type evidence, and do not manufacture acceptance by
 starting another full Redis/app lane.
 
+For native player-attack acceptance, do not place the test player at the
+canonical Grove start near `[484.25, 53, -207.51]`: that location is protected,
+so server authority correctly suppresses damage even when the browser attack
+input reaches the native ECS path. Derive the combat fixture from a
+exact-world fixture already used by the native round-trip harness rather than
+guessing an arbitrary coordinate. During the August 3, 2026 acceptance run,
+both the nominal hill point `[895, 62, -197]` and a live-entity seed near
+`[233.259, 30, -515.621]` rendered with the camera inside occluding snapshot
+terrain. The exact-world basic gathering-node fixture at `[2103, 53, -270]`,
+with the target at `[2105, 53, -270]`, was open and produced authoritative
+damage. Reload the client so its simulation starts at the authoritative fixture
+position, verify that the HUD does not show `Protected Area`, and capture the
+rendered view before attacking. An injected `UpdateNpcHealthEvent` proves only
+the health handler; it does not prove the keyboard or HUD attack path. Browser
+acceptance must originate from a real rendered key/button action and must
+observe the target's authoritative ECS health decrease. Record the selected
+native item before interpreting the HAR: `muckBusterRedux` is a placeable
+muck-clearing tool, so its `place_object` request is expected and is not a
+failed weapon event. Select a real native weapon before the attack action.
+Because native authority intentionally uses the crosshair ray rather than the
+legacy broad melee cone, an adjacent target is insufficient: place it on the
+actual camera ray and confirm the crosshair has entered its attack state before
+input. Biomes yaw `0` faces negative Z, yaw `Math.PI / 2` faces negative X, and
+yaw `-Math.PI / 2` faces positive X. Verify target geometry before blaming the
+health handler. Reuse an already-owned warm lane, wait for any coordinated
+artifact refresh to finish, and require the expected build ID, lifecycle
+readiness, literal Redis `PONG`, the E2E jump-control readiness marker, and zero
+container restarts/OOM kills. If a refreshed production-style `.next` artifact
+omits the static `/dev/harthmere-visual-auth` page, do not treat its 500 as a
+combat failure or rebuild the lane blindly; authenticate through the E2E API,
+preserve the browser cookie/storage session, and navigate directly to
+`/at/<username>` before repeating the acceptance action.
+
 When attaching a standalone exact-current Anima bundle to a retained focused
 web/Redis lane, point both `SHIM_SERVICE_HOST`/`SHIM_SERVICE_PORT` and
 `LOGIC_SERVICE_HOST`/`LOGIC_SERVICE_PORT` at that web container. Redis and HFC
@@ -4555,8 +4596,340 @@ failed browser row, confirm prior aborted session customers reached
 `cancelled`/`despawn_ready` or were removed; do not stack a new session on stale
 fixtures and misdiagnose collision escape as pathfinding failure.
 
+New native NPCs can briefly arrive in Anima through a partial HFC view. A
+simulator cache must refresh authoritative NPC type and size when the complete
+external state arrives; otherwise the entity can retain fallback locomotion
+despite correct later ECS metadata. Also validate the positive fixed duration
+at the final per-NPC tick boundary, not only when the batch starts. A late
+entity must never run physics with `dtSecs=0`.
+
+For audited customer routes, author the create orientation toward the first
+waypoint and set spawn jitter to zero. When a previous shift is still walking
+away from the same exterior source, defer only the overlapping new customer
+create until that source clears. Do not solve the overlap by teleporting,
+disabling collision, or moving the audited building anchors.
+
+Do not let an expired business session retain `waiting` tickets with queued or
+approaching spatial phases. Expiry, passive tick expiry, and manual end must all
+close the queue authoritatively: waiting tickets become `left`/`cancelled`, the
+current ticket is cleared, and the end timestamp is recorded. ECS should still
+defend against older persisted state by treating non-active sessions as
+cancelled. Before creating a replacement shift's NPCs, defer the whole create
+batch while any customer from another session for that same outpost remains on
+the route. Checking only the spawn point misses collisions farther along the
+shared entrance aisle.
+
+Native collision escape uses an exact upward velocity of `10` in the focused
+stack. If a routed customer has a valid A* path but settles near the entrance
+with `[0, 10, 0]`, inventory all retained session entities before editing
+pathfinding or terrain. Batch the session/economy evidence across the affected
+businesses, make one lifecycle fix, then rerun only failed business IDs.
+
+The current server Webpack TypeScript loader requires Node 22.6 or newer. If a
+host Node 20 build fails before source compilation, run it once with the
+workspace Node runtime on `PATH`; repeated host-runtime retries provide no new
+evidence.
+
 Smoke one business through entrance, service, departure, and safe despawn.
 After that passes, run all 19 rows serially in one browser context and one warm
 world. Persist each row immediately. If the batch exposes failures, fix them as
 one group and rerun only the failed `HARTHMERE_BUSINESS_E2E_IDS`; never replay
 already-green original mini-games or business rows.
+
+For combined Blender interiors, testing only manifest fixture coordinates is
+insufficient. Blender's Y-up glTF export can change the sign of the authored
+depth axis even when every manifest coordinate and preview is correct. Parse
+the actual compressed GLB node/accessor bounds for every LOD, apply the exact
+runtime root transform, and assert the resulting world AABB remains inside the
+audited native shell. Expose the same transformed world bounds through the
+browser debug bridge and require them in each live row; this catches entire
+catalogues rendered outside or above buildings without inspecting fixtures one
+at a time.
+
+Keep standalone contract scripts separate from Mocha. `t.sh file` accepts test
+files loaded by Mocha; a script that interprets `process.argv[2]` as its repo
+root must be invoked with `node scripts/...`. Mixing it into the Mocha file
+list makes the script consume Mocha's `--config` argument and creates a harness
+failure before product assertions run.
+
+### 4.33 Business-panel controls must stay dependency-light
+
+Do not import the spatial business HUD merely to render or unit-test the shift
+start/end control. The spatial HUD legitimately depends on ClientContext, THREE
+projection, native NPC state, and game resources; pulling it into the panel
+also pulls pathfinding, generated Galois shapes, renderer code, and msgpack into
+an otherwise small rendered-component test. This first failed at generated
+`shapes`, then at the browser test's fake Buffer implementation.
+
+Keep `HarthmereBusinessShiftControlPane` in its own React-and-adapter-only
+module. The full panel can then be bundled and browser-smoked without game
+renderer stubs, while the actual spatial HUD remains covered by exact-image
+browser evidence. When a rendered component imports `/public` assets or Bikkie
+data, run the whole affected file batch through `./b test <files...>`; do not
+mix it into `t.sh file`. If only one row failed after a completed batch, rerun
+that named row with `--grep` instead of replaying the green files.
+
+### 4.34 Preserve request identity when reading versioned ECS batches
+
+`/api/admin/ecs/get_with_version` returns one `[version, entity]` tuple for
+each requested ID, in request order. The first tuple member is a resource
+version, not the entity ID. Never build an entity map with that version as the
+key: multiple entities can legitimately share a version and silently collapse
+inside a Map, creating false missing-entity failures.
+
+When a bridge exposes only these ordered tuples, map each response row back to
+the original request by offset (`ids[offset]`) and use the tuple's second
+member as the entity. Add that exact mapping to the runner's static contract.
+If a batched authority check reports fewer rows than were seeded while startup
+logs prove the complete seed family was reconciled, inspect response identity
+mapping before rebuilding, reseeding, or changing product collision code.
+
+### 4.35 Hybrid ECS creates must explicitly initialize HFC authority
+
+Splitting only update deltas is insufficient for a native NPC created through
+`HybridWorldApi`. A mixed create sent to the hybrid API is persisted in regular
+ECS, but that does not guarantee a corresponding HFC hash. The NPC can render
+and appear in economy/session state while Anima sees no position or NPC state
+and never simulates it.
+
+For session-only native NPCs, apply the complete create to regular ECS first,
+then publish the create's HFC-classified components as an HFC update. Preserve
+that order so Sync never observes an HFC-only entity. Delete explicitly from
+both stores. Unit-test the actual apply helper with a HybridWorldApi and assert
+the ordered RC-create/HFC-update calls; checking only the generated create's
+component list does not prove the components reached both authorities.
+
+Also normalize both sides of actor/session identity comparisons in cleanup
+harnesses. A string-vs-number comparison can silently retain every failed
+session, leaving dozens of native customers for Anima to simulate and turning
+the next route test into contaminated evidence.
+
+Cleanup must still satisfy the same proximity validation as normal gameplay.
+For a retained multi-business actor, move through each business's audited staff
+point before ending that session. Inspect backend mutation warnings even when
+HTTP and the top-level response are successful; `economy_rejected:*` means the
+cleanup did not happen and must fail the harness immediately.
+
+## Business route geometry: contracts over the authored plan, not the world
+
+The 19-business in-world simulation added a class of contract worth calling out
+because it is cheap and catches a category that browser evidence historically
+had to find the expensive way.
+
+`business_route_clearance.ts` and `business_aisle_keep_out.ts` assert over the
+**authored materialization plan and seed tables** — the same data the seeder and
+any reconciliation replay consume. So they run in `.mocharc.fast.json` with no
+server bootstrap, complete in well under a second for all 19 businesses, and a
+green result means the _shipped_ world is walkable rather than that a fixture
+was well-formed.
+
+Two modelling rules, both learned by getting them wrong first:
+
+- **Collapse the edit stream last-write-wins before asking whether a voxel is
+  solid.** Dressing passes genuinely repaint voxels the shell already wrote.
+  Treating "some edit touched this position" as solid reports phantom walls and
+  misses real ones; the first version of the clearance checker declared the
+  Ashline door blocked at a row where a later pass had cleared it.
+- **A one-voxel step is walkable** (`maxStepHeight` is 1 for ordinary bodies).
+  Ignoring that reported every raised porch in Harthmere as impassable — six of
+  nineteen businesses failed for porch decking, burying the three real
+  obstructions. Carry foot level forward along the route, and require authored
+  solid support for any level _above_ the reference, or the model floats bodies
+  upward over open ground and cheerfully reports walls as walkable.
+
+### `./b test` still does not typecheck — and here it mattered
+
+The aisle sweep's generic constraint was wrong in three successive ways while
+every runtime assertion stayed green: ECS `Change` carries `ReadonlyPosition`
+over a `ReadonlyVec3f`, an `Update` is a delta whose components may be `null`,
+and a `Delete` has no `entity` key at all (which trips weak-type detection).
+None of that is visible to Mocha under `transpileOnly`.
+
+When the scoped project (`tsconfig.businessoverhaul.json`) is too slow for the
+edit loop, a **signature-mirror file** is a good stand-in: a tiny module that
+calls the new API exactly the way the real caller does, compiled under a
+throwaway config containing only that file. It typechecks the contract in a few
+seconds instead of minutes. Delete it afterwards; it is scaffolding, not a test.
+
+### 4.36 Business minigame choices must be tested through NPC talk
+
+A green `start_business_customer_session` request does not prove the minigame
+is playable. The Greenlamp production HAR on 2026-08-03 showed a committed
+shift followed by the ordinary NPC dialogue surface, so the player could never
+emit `serve_business_customer`.
+
+- Keep the always-visible spatial customer HUD status-only.
+- Open the actual `talk_to_npc` surface for the authoritative current ticket.
+- Assert the business service offers appear exactly once and generic `Chit
+Chat` / `Ask about this place` actions do not appear.
+- Capture separate screenshots for shift start behind the counter, customer at
+  counter, talk choices, committed reaction, departure and safe despawn.
+- The correct offer must not be visually marked from the authoritative
+  `requestedOfferId`; that would make the minigame answer itself.
+- HAR acceptance must include `serve_business_customer`, not just
+  `start_business_customer_session`.
+
+### 4.37 Do not let a slow materializer rewrite Anima-owned progress
+
+Business customer economy/session ticks and Anima operate at different
+cadences. The session materializer owns assignment, phase, reaction and route
+intent; Anima owns per-tick pathfinding and movement progress. Rewriting the
+whole custom `npc_state` every time the economy is polled can appear harmless
+in unit tests while resetting a live customer at the same doorway forever.
+
+- Treat unchanged materialization as a literal no-op, not an identical HFC
+  update.
+- Preserve `waypointIndex`, `pathfinding`, `progressPosition` and
+  `progressAtSeconds` when the authoritative route phase is unchanged.
+- Reset movement progress only on a real route/phase transition.
+- Edge-trigger reaction emotes and expiry timers; repeated polling must not
+  restart either one.
+- Test this by injecting Anima-advanced state, running another materialization
+  pass, and asserting that no ECS change is proposed.
+
+### 4.38 Shared quests and item transfers require conservation across replicas
+
+A single app process is not valid evidence for quest sharing. Run the inviter
+and invitee mutations as separate stateless replica calls against one shared
+Redis world record. Invite, accept, and progress must each escalate Redis
+`WATCH` to the shared-world key, and a subsequent read through the other
+replica must project the same canonical objective state. Two private Redis
+copies only prove two isolated single-player sessions and must not be counted.
+
+Quest invitations may only originate from a challenge the inviter already has
+`in_progress`. Resolve native challenge IDs back to the authored Grove/Bible
+quest identity on the server, and derive title, area, objective, reward,
+invite ID, and shared-party ID from server-owned data. Never accept an
+`available` challenge or client-authored metadata as invitation authority.
+Acceptance must materialize the invitee's native challenge, and each approved
+native quest-progress plan must be replay-safely fanned out to every numeric
+ECS party member. The shared Redis record remains the cross-replica journal
+projection; Anima and Gaia are not alternate quest authorities.
+
+Inventory handoff tests must assert conservation, not only a successful event:
+
+- move an offered trade stack to another slot before both players accept, then
+  assert the exact quantities reached the opposite inventories;
+- reject bound/equipped transfer candidates before they enter an offer;
+- mail only the requested count inside the parcel, reject zero counts, and
+  reject arbitrary containers presented as mailboxes.
+
+The live trade opener must not treat a delayed Sync projection as a rejected
+server mutation. On August 3, 2026, the native handler created one trade entity
+and wrote the same `active_trades` entry to both players, but the initiating
+browser's ten-second local-resource poll timed out under snapshot load. Inspect
+authoritative Redis/OOB state before editing the handler or replaying the full
+suite. The supported client path polls normal Sync first, then performs one
+same-origin authenticated OOB read of the initiating player and accepts only a
+new trade ID with the requested partner. This fallback discovers committed ECS
+state; it must never manufacture a client-only trade or reuse a known trade ID.
+Keep the Trade screen's explicit loading/not-found returns so the OOB fetch of
+the non-spatial trade entity has time to complete.
+
+These native handler rows import Bikkie/ECS server state. `t.sh file` omits the
+global `CONFIG` and Bikkie bootstrap by design, so its `CONFIG is not defined`
+failure is a harness signal, not product evidence. Run the smallest filtered
+`scripts/harthmere/t.sh full --grep ...` batch for those rows and keep the pure
+quest/adapter/Redis contracts on the fast preset.
+
+### 4.39 Iced snapshot placeables are not physical obstacles
+
+Warm snapshot Redis can retain an iced entity's previous `collideable` and
+`placeable_component` data even though Sync correctly treats the entity as
+logically deleted. Collision queries must reject `iced` before resolving any
+shape, or native Anima NPCs can stop against an invisible server-only body.
+
+Do not use an ECS `size` of zero to dismiss a placeable as harmless. Placeable
+collision comes from the Bikkie item's collidable bounds. When a moving NPC has
+a valid A* route and finite velocity but an unchanged position, batch-inspect
+nearby terrain and entities, resolve every placeable item ID, and record
+`iced`, item bounds and collision eligibility together.
+
+### 4.40 Recreate a retained exact-image lane from one captured specification
+
+The 2026-08-03 business pass lost substantial time to three avoidable runtime
+setup mistakes after the source batch was already green.
+
+- Next 16 must be invoked with `next build --webpack` for this repository. Use
+  `set -e` (or an equivalent checked runner) around the complete Next, server
+  webpack, artifact-current, and Docker sequence. Never let a failed client
+  build continue into packaging.
+- A Docker `--env-file` is data, not a shell script. Do not `source` it: values
+  such as `NODE_OPTIONS=--trace-uncaught --trace-warnings ...` can be split and
+  executed by the shell. Pass it directly to Docker and retrieve individual
+  secrets without printing them using a parser or `docker exec printenv`.
+- Before replacing a retained app or companion service, capture its complete
+  image, command, network, ports, mounts, and environment. Diff the proposed
+  replacement against that specification once. For a separate Anima container
+  in this lane, the required overrides included the app hostname for
+  `SHIM_SERVICE_HOST` and `LOGIC_SERVICE_HOST`, plus an absolute local
+  `GALOIS_STATIC_PREFIX` served by the app. Missing the first made Anima wait on
+  itself; missing the second made asset loading fail on a relative URL.
+- A bind mount follows the directory inode that existed when Docker created the
+  container. If a later build atomically replaces the host `.next` directory,
+  `/app/.next` can become empty inside the retained app even though the new host
+  `.next/BUILD_ID` exists. The already-running server and browser cache can keep
+  enough old code alive for HTTP and `e2e-jump.cjs ready` to remain green, so
+  readiness alone does not detect this stale-artifact state. Before Chromium,
+  require non-empty host and in-container `BUILD_ID` files with matching values.
+  Repair an orphaned mount with `refresh-warm-local-stack.cjs --build none`, but
+  only after its ownership gate reports no active compiler; never kill or race
+  another task's build to force an exact-current browser row.
+- Run the full preflight before Chromium: exact app/Anima image, packaged
+  `BUILD_ID`, app/Redis/Anima `RestartCount=0`, `OOMKilled=false`, literal Redis
+  `PONG`, realistic `DBSIZE`, app child-service readiness, Anima `/ready=OK`,
+  and `HFC Bootstrap complete`. Do not count a browser row begun before all of
+  them pass.
+- If the user ends the pass before the browser matrix runs, state that plainly.
+  Green source contracts and a valid image are not live acceptance.
+
+### 4.41 Request-board graphics and F-key browser tests
+
+The 2026-08-03 request-board pass exposed several traps that future board tests
+must avoid:
+
+- The four original Fishing, Farming, Industrial, and Collective Research
+  boards are snapshot NPC/quest-giver entities, not ordinary placeables. Keep
+  their native entity IDs, `quest_giver`, collision, challenge triggers, and
+  reward authority live; suppress only the legacy NPC body when the dedicated
+  Blender renderer owns the visual. A placeable-only audit will miss the old
+  bot/player meshes and can produce double rendering.
+- Test interaction ownership, not merely prompt existence. At Rolland Pond the
+  nearby Pondy Bot's `Feed` candidate previously won the same F key, so the HAR
+  contained no request-board API/quest activity even though a "Fishing Board"
+  label was visible. The live gate must record the dispatcher-selected
+  `harthmere:request-board:*` candidate, press the real F key, and observe the
+  native `talk_to_npc` quest modal for the exact board entity.
+- The Harthmere quay Fishing Board is a second physical entity for the original
+  Fishing Board catalogue. Browser and server claim validation must accept the
+  two IDs as equivalent while publishing the canonical authored request target
+  to the trigger engine. Test both physical anchors; passing only the snapshot
+  board does not prove the quay board.
+- Renderer changes made after a successful client build make that warm artifact
+  stale even when the server and tests are still green. Freeze source, rebuild
+  the client once, and prove the host and container report the same
+  `.next/BUILD_ID` before Chromium. Reloading cannot add a renderer branch that
+  is absent from the mounted bundle.
+- Matching `BUILD_ID` text alone is insufficient after an in-place warm refresh.
+  Also require `/app/.next/server/pages`, the target page HTML/chunk, and
+  `/app/.next/static` to exist from inside the running container. On August 3
+  the server process retained opened files and answered basic HTTP while its
+  bind mount showed an empty `/app/.next`; `/dev/harthmere-visual-auth` then
+  returned 500 and game pages stalled mid-load. Recreate only the app container
+  against the finished artifacts when the build replaced the directory inode.
+- A retained stack on custom ports must pass every readiness override. For the
+  final-minigames lane this means web `3417`, Sync `5307`, Redis `6493`, app
+  `harthmere-final-minigames-app`, and Redis
+  `harthmere-final-minigames-redis`. Running bare `e2e-jump.cjs ready` probes
+  `3000/3100/6379` and reports a false failure.
+- Run all five physical board locations in one authenticated browser context
+  and continue collecting failures instead of stopping at the first red row.
+  For every row retain: exact image/BUILD_ID, board ID/category/coordinates,
+  visible LOD with no fallback, selected F candidate, opened native quest
+  surface, browser/network failures, and a screenshot. Rerun only failed rows.
+- Before that one context opens, quiesce every earlier software-WebGL page using
+  the same app. A second authenticated/observer game tab can leave CDP screen
+  capture and DOM inspection timing out while lifecycle and HTTP checks remain
+  green. Close only the stale browser contexts, retain the warm stack, and
+  retry with one low-memory game tab; do not diagnose the board renderer from a
+  browser-control timeout.

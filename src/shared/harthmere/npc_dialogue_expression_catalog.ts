@@ -5,6 +5,7 @@ import {
 } from "@/shared/harthmere/npc_dialogue_expression_text_key";
 import type { HarthmereDialogueExpressionRecord } from "@/shared/harthmere/npc_dialogue_expression_types";
 import { snapshotGroveNpcEntityIdsEquivalent } from "@/shared/harthmere/snapshot_grove_ids";
+import type { BiomesId } from "@/shared/ids";
 
 const HARTHMERE_LOCAL_NPC_ID_BASE = 8_810_000_000_010_000;
 
@@ -62,8 +63,8 @@ function actorMatches(
 ) {
   if (record.actorEntityId !== undefined) {
     return snapshotGroveNpcEntityIdsEquivalent(
-      actor.entityId,
-      record.actorEntityId
+      actor.entityId as BiomesId,
+      record.actorEntityId as BiomesId
     );
   }
   const entityOffset = actor.entityId - HARTHMERE_LOCAL_NPC_ID_BASE;

@@ -211,8 +211,7 @@ export function formatBiomesLevelForVitalsForTest(value: unknown): string {
 
 export function nativeGoldBalanceForVitalsForTest(
   inventory:
-    | { currencies?: ReadonlyMap<string, { count?: bigint }> }
-    | undefined
+    { currencies?: ReadonlyMap<string, { count?: bigint }> } | undefined
 ) {
   const count = inventory?.currencies?.get(
     String(HARTHMERE_GOLD_ECS_CURRENCY_ID)
@@ -362,8 +361,8 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
     ? nativeHealth.hp <= 0
       ? "dead"
       : nativeHealth.lastDamageTime
-      ? "in_combat"
-      : "idle"
+        ? "in_combat"
+        : "idle"
     : display.combatState;
   // Mana, survival stamina, breath, and standing share the server-synced ECS
   // TriggerState used by attacks, consumables, drowning, and death. As soon as
@@ -395,10 +394,10 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
         notoriety: nativeVitals.notoriety,
         notorietyFloor: nativeVitals.notorietyFloor,
       }
-    : display.standing ?? reputation.regions.harthmere;
+    : (display.standing ?? reputation.regions.harthmere);
   const gold = useNativeVitals
     ? nativeGoldBalanceForVitalsForTest(nativeInventory)
-    : display.gold ?? legacyGold;
+    : (display.gold ?? legacyGold);
   const nativeProgression =
     readHarthmereNativeCombatProgression(nativeTriggerState);
   const useNativeProgression =
@@ -438,6 +437,10 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
       ref={panelHighlight.ref}
       className={`biomes-ui-vitals-panel ${
         clientConfig.showVirtualJoystick ? "biomes-ui-vitals-panel--mobile" : ""
+      } ${
+        clientConfig.mobileDevice && clientConfig.showVirtualJoystick
+          ? "biomes-ui-vitals-panel--phone"
+          : ""
       } ${highlightClassName(
         panelHighlight.blinking,
         panelHighlight.style
@@ -489,78 +492,80 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
         />
       </div>
 
-      <div className="biomes-ui-vitals-panel__standing">
-        <StandingChip
-          label="Like"
-          value={regional.likeability}
-          percent={signedStandingPercent(regional.likeability)}
-          tone="like"
-          uiId={UI_IDS.HUD_VITALS_LIKEABILITY}
-        />
-        <StandingChip
-          label="Law"
-          value={regional.legal}
-          percent={signedStandingPercent(regional.legal)}
-          tone="law"
-          uiId={UI_IDS.HUD_VITALS_LEGAL}
-        />
-        <StandingChip
-          label="Known"
-          value={regional.notoriety}
-          percent={notorietyPercent(regional.notoriety)}
-          tone="notoriety"
-          uiId={UI_IDS.HUD_VITALS_NOTORIETY}
-        />
-      </div>
-      <div className="biomes-ui-vitals-panel__footer">
-        <div
-          ref={goldHighlight.ref}
-          className={`biomes-ui-vitals-chip ${highlightClassName(
-            goldHighlight.blinking,
-            goldHighlight.style
-          )}`.trim()}
-          data-tone="notoriety"
-          data-ui-id={UI_IDS.HUD_VITALS_GOLD}
-          data-ui-blinking={goldHighlight.blinking ? "true" : undefined}
-          aria-label={`Gold ${gold}`}
-        >
-          <span className="biomes-ui-vitals-chip__label">
-            <span className="biomes-ui-vitals-chip__label-text">Gold</span>
-            <span
-              className="biomes-ui-vitals-chip__icon biomes-ui-vitals-chip__icon--gold"
-              aria-hidden
-            >
-              ●
-            </span>
-          </span>
-          <span className="biomes-ui-vitals-chip__value biomes-ui-vitals-chip__value--desktop">
-            {formatBiomesGoldForVitalsForTest(gold)}
-          </span>
-          <span className="biomes-ui-vitals-chip__value biomes-ui-vitals-chip__value--mobile">
-            {Math.max(0, Math.floor(gold))}
-          </span>
+      <div className="biomes-ui-vitals-panel__stats">
+        <div className="biomes-ui-vitals-panel__standing">
+          <StandingChip
+            label="Like"
+            value={regional.likeability}
+            percent={signedStandingPercent(regional.likeability)}
+            tone="like"
+            uiId={UI_IDS.HUD_VITALS_LIKEABILITY}
+          />
+          <StandingChip
+            label="Law"
+            value={regional.legal}
+            percent={signedStandingPercent(regional.legal)}
+            tone="law"
+            uiId={UI_IDS.HUD_VITALS_LEGAL}
+          />
+          <StandingChip
+            label="Known"
+            value={regional.notoriety}
+            percent={notorietyPercent(regional.notoriety)}
+            tone="notoriety"
+            uiId={UI_IDS.HUD_VITALS_NOTORIETY}
+          />
         </div>
-        <div
-          className="biomes-ui-vitals-chip"
-          data-tone="level"
-          aria-label={formatBiomesLevelForVitalsForTest(playerLevel)}
-          title={levelProgress}
-        >
-          <span className="biomes-ui-vitals-chip__label">
-            <span className="biomes-ui-vitals-chip__label-text">Level</span>
-            <span
-              className="biomes-ui-vitals-chip__icon biomes-ui-vitals-chip__icon--level"
-              aria-hidden
-            >
-              ▲
+        <div className="biomes-ui-vitals-panel__footer">
+          <div
+            ref={goldHighlight.ref}
+            className={`biomes-ui-vitals-chip ${highlightClassName(
+              goldHighlight.blinking,
+              goldHighlight.style
+            )}`.trim()}
+            data-tone="notoriety"
+            data-ui-id={UI_IDS.HUD_VITALS_GOLD}
+            data-ui-blinking={goldHighlight.blinking ? "true" : undefined}
+            aria-label={`Gold ${gold}`}
+          >
+            <span className="biomes-ui-vitals-chip__label">
+              <span className="biomes-ui-vitals-chip__label-text">Gold</span>
+              <span
+                className="biomes-ui-vitals-chip__icon biomes-ui-vitals-chip__icon--gold"
+                aria-hidden
+              >
+                ●
+              </span>
             </span>
-          </span>
-          <span className="biomes-ui-vitals-chip__value biomes-ui-vitals-chip__value--desktop">
-            {formatBiomesLevelForVitalsForTest(playerLevel)}
-          </span>
-          <span className="biomes-ui-vitals-chip__value biomes-ui-vitals-chip__value--mobile">
-            {playerLevel}
-          </span>
+            <span className="biomes-ui-vitals-chip__value biomes-ui-vitals-chip__value--desktop">
+              {formatBiomesGoldForVitalsForTest(gold)}
+            </span>
+            <span className="biomes-ui-vitals-chip__value biomes-ui-vitals-chip__value--mobile">
+              {Math.max(0, Math.floor(gold))}
+            </span>
+          </div>
+          <div
+            className="biomes-ui-vitals-chip"
+            data-tone="level"
+            aria-label={formatBiomesLevelForVitalsForTest(playerLevel)}
+            title={levelProgress}
+          >
+            <span className="biomes-ui-vitals-chip__label">
+              <span className="biomes-ui-vitals-chip__label-text">Level</span>
+              <span
+                className="biomes-ui-vitals-chip__icon biomes-ui-vitals-chip__icon--level"
+                aria-hidden
+              >
+                ▲
+              </span>
+            </span>
+            <span className="biomes-ui-vitals-chip__value biomes-ui-vitals-chip__value--desktop">
+              {formatBiomesLevelForVitalsForTest(playerLevel)}
+            </span>
+            <span className="biomes-ui-vitals-chip__value biomes-ui-vitals-chip__value--mobile">
+              {playerLevel}
+            </span>
+          </div>
         </div>
       </div>
     </aside>

@@ -136,7 +136,14 @@ export const ShortcutText: React.FunctionComponent<
   }, [centralizedWorldCandidate, props.disabled, props.keyCode, runShortcut]);
 
   const isMobileActionButton = Boolean(
-    clientConfig.showVirtualJoystick && props.keyCode && props.onKeyDown
+    clientConfig.showVirtualJoystick &&
+    props.keyCode &&
+    props.onKeyDown &&
+    !(
+      clientConfig.mobileDevice &&
+      centralizedWorldCandidate &&
+      props.keyCode === "KeyF"
+    )
   );
   const mobileActionLabel = props.keyCode?.replace(/^Key/, "") ?? "Action";
   const activateMobileAction = useCallback(() => {

@@ -27,6 +27,10 @@ import {
   HarthmereProjectileVisualRuntime,
   type HarthmereMagicImpactFeedback,
 } from "@/client/game/renderers/local_dev/harthmere_projectiles";
+import {
+  selectHarthmereMobileRuntimePlacements,
+  type HarthmereMobileRuntimePlacementCandidate,
+} from "@/client/game/renderers/local_dev/harthmere_mobile_runtime_streaming";
 import { emitHarthmereSoundEffect } from "@/shared/harthmere/sound_effect_manifest";
 import { HARTHMERE_PLAYER_ATTACK_TIMINGS } from "@/shared/harthmere/deliberate_combat";
 import {
@@ -204,6 +208,8 @@ import {
   HARTHMERE_SERVICE_BUILDING_VISUAL_DECOR_VERSION,
   type HarthmereServiceBuildingProfile,
 } from "@/shared/harthmere/service_building_visual_decor";
+import { HARTHMERE_BUILDINGS } from "@/shared/harthmere/harthmere_town_buildings";
+import { isHarthmereLegacyAdditiveTownInteriorPlacement } from "@/shared/harthmere/harthmere_additive_town_interiors";
 import { LIVE_ENTITY_ROBOT_PROTECTION_AREAS } from "@/shared/harthmere/live_entity_robot_energy_protection";
 import {
   harthmereLiveCreatureEvadeVisual,
@@ -372,6 +378,13 @@ type AnimatedInstance = {
   collisionBlockCount?: number;
   placementMeta?: HarthmerePlacementMetadata;
   robotProtectionAreaId?: string;
+  // HARTHMERE_POLISH_FAR_NPC_THROTTLE: seconds of animation time owed to this
+  // actor's mixer because it was skipped on throttled frames. AnimationMixer
+  // is delta-integrated, so feeding it a bare `dt` once every N frames would
+  // play the clip at 1/N speed (slow-motion) rather than at a reduced update
+  // rate. Accumulate the skipped time and flush it on the frames we do update,
+  // which keeps clips running at wall-clock speed with coarser stepping.
+  pendingMixerDt?: number;
   // HARTHMERE_POLISH_LOCOMOTION_CLIPS
   locomotion?: {
     idle?: THREE.AnimationAction;
@@ -389,6 +402,17 @@ type HarthmerePlacementRuntimeInstance = {
   lodTier: HarthmereLodTier;
   structuralGroupKey?: string;
 };
+
+// Safari on the physical iPhone has a 1.5 GB WebContent jetsam ceiling. The
+// desktop renderer intentionally keeps its existing eager world load, while
+// phones retain only the authored models surrounding the player. Bound decoded
+// prototypes separately from cloned placements because prototype textures and
+// geometry are the dominant retained memory.
+const HARTHMERE_MOBILE_RUNTIME_RADIUS_METERS = 82;
+const HARTHMERE_MOBILE_RUNTIME_MAX_PLACEMENTS = 180;
+const HARTHMERE_MOBILE_RUNTIME_MAX_PROTOTYPES = 24;
+const HARTHMERE_MOBILE_RUNTIME_NEW_PROTOTYPES_PER_REFRESH = 4;
+const HARTHMERE_MOBILE_RUNTIME_REFRESH_SECONDS = 0.75;
 
 type HarthmereModelForwardAxis = HarthmereForwardAxis;
 
@@ -1627,6 +1651,7 @@ type HarthmereRendererDebugWindow = typeof window & {
   __harthmereNpcCollisionLogEnabled?: boolean;
   __harthmereDumpNpcCollisionSummary?: () => unknown[];
   __harthmereTownLodStats?: Record<string, unknown>;
+  __harthmereMobileRuntimeStreaming?: Record<string, unknown>;
   __harthmereFloatingBlockIntegrityReport?: Record<string, unknown>;
   __harthmereTownRegistry?: Record<string, unknown>;
   __harthmereTownCollisionQuery?: Record<string, unknown>;
@@ -4358,14 +4383,31 @@ function harthmereNpcGroundedY(
 // rebuild the static cache.
 const HARTHMERE_OBSTACLE_GRID_CELL_METERS = 4.0;
 let harthmereNpcObstacleGridCache:
-  Map<string, HarthmereNpcCollisionObstacle[]> | undefined;
+  Map<number, HarthmereNpcCollisionObstacle[]> | undefined;
 let harthmereNpcObstacleGridStaticList:
   HarthmereNpcCollisionObstacle[] | undefined;
 let harthmereNpcObstacleGridDynamicList:
   HarthmereNpcCollisionObstacle[] | undefined;
 
-function harthmereObstacleGridKey(cx: number, cz: number): string {
-  return cx + "|" + cz;
+// PERF (2026-08-03 render audit): this key used to be the string `cx + "|" +
+// cz`. The grid hash itself was the right fix, but every probe still allocated
+// a string: findHarthmereNpcBodyCollisionObstacle samples 9 offsets, the sweep
+// runs that once per 0.42m of travel, and resolveHarthmereNpcWanderPosition
+// calls the sweep up to 3x -- tens of throwaway strings per moving NPC per
+// frame, all of which the GC then has to reclaim.
+//
+// Pack to a collision-free integer instead. cz is biased into
+// [0, 2*HARTHMERE_OBSTACLE_GRID_KEY_BIAS) and cx is scaled past it, so the key
+// is exact for |cx| < 2^31 and |cz| < 2^20 -- vastly beyond the town bounds --
+// while staying inside the 2^53 integer range where doubles are exact.
+const HARTHMERE_OBSTACLE_GRID_KEY_BIAS = 1 << 20;
+const HARTHMERE_OBSTACLE_GRID_KEY_STRIDE = HARTHMERE_OBSTACLE_GRID_KEY_BIAS * 2;
+
+function harthmereObstacleGridKey(cx: number, cz: number): number {
+  return (
+    cx * HARTHMERE_OBSTACLE_GRID_KEY_STRIDE +
+    (cz + HARTHMERE_OBSTACLE_GRID_KEY_BIAS)
+  );
 }
 
 function harthmereObstacleGridCellOf(coord: number): number {
@@ -4379,7 +4421,7 @@ function invalidateHarthmereNpcObstacleGrid(): void {
 }
 
 function harthmereNpcObstacleGrid(): Map<
-  string,
+  number,
   HarthmereNpcCollisionObstacle[]
 > {
   // Cheap freshness check: the static cache (built once from PLACEMENTS) and
@@ -4395,7 +4437,7 @@ function harthmereNpcObstacleGrid(): Map<
     return harthmereNpcObstacleGridCache;
   }
 
-  const grid = new Map<string, HarthmereNpcCollisionObstacle[]>();
+  const grid = new Map<number, HarthmereNpcCollisionObstacle[]>();
   const insert = (obstacle: HarthmereNpcCollisionObstacle) => {
     // Worst-case AABB extent after rotation: corner-to-corner diagonal of
     // the obstacle's local half-extents, plus its padding. This is a
@@ -6556,9 +6598,9 @@ export function createHarthmereBusinessOutpostInteriorDecorPlacements(
 // The voxel plans live in HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS and
 // are applied to the game world by the server via the live_mode_backend
 // "rebuild_business_outposts" / auto-revision path.
-// The building shell and board access object are pure procedural renderers; the
-// interior furniture/decor is runtime GLTF/OBJ/FBX so it reads like real stores
-// without turning shelves, counters, and workbenches into block collision stacks.
+// The building shell and board access object are pure procedural renderers.
+// Static authored interior furniture is rendered once by the combined GLB LOD
+// renderer; native collision comes from manifest-derived invisible proxies.
 function createHarthmereBusinessOutpostPlacements(): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
   for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS) {
@@ -9837,6 +9879,7 @@ type HarthmereRuntimePlacementCleanupReport = {
   removedRoadIntrusions: number;
   removedStreetBlocks: number;
   removedRoofBlocks: number;
+  removedLegacyTownInteriors: number;
   samples: string[];
   placements: RuntimePlacement[];
 };
@@ -9885,41 +9928,51 @@ const HARTHMERE_CLEAR_STREET_RECTS: ReadonlyArray<
   [478, 492, -198, -126],
 ];
 
-const HARTHMERE_ROOF_CLEAR_BOXES: ReadonlyArray<HarthmereRoofClearBox> = [
-  {
-    name: "traveler_hearth_player_house",
-    x0: 448,
-    x1: 466,
-    z0: -266,
-    z1: -246,
-    upper: true,
-  },
-  { name: "harthmere_stables", x0: 464, x1: 478, z0: -274, z1: -256 },
-  { name: "guard_yard_office", x0: 500, x1: 524, z0: -278, z1: -258 },
-  { name: "reeve_hall", x0: 550, x1: 582, z0: -272, z1: -250, upper: true },
-  { name: "dawn_loaf_bakery", x0: 418, x1: 442, z0: -204, z1: -184 },
-  { name: "brindle_provision_house", x0: 444, x1: 464, z0: -226, z1: -208 },
-  { name: "market_auction_office", x0: 500, x1: 518, z0: -226, z1: -208 },
-  { name: "brass_scale_bank", x0: 546, x1: 568, z0: -236, z1: -214 },
-  { name: "black_anvil_smithy", x0: 520, x1: 544, z0: -242, z1: -220 },
-  { name: "crafters_workshop", x0: 494, x1: 514, z0: -238, z1: -220 },
-  { name: "green_mortar_apothecary", x0: 448, x1: 466, z0: -184, z1: -168 },
-  { name: "wyrm_and_candle_magic_shop", x0: 508, x1: 528, z0: -178, z1: -158 },
-  {
-    name: "copper_kettle_inn",
-    x0: 532,
-    x1: 566,
-    z0: -208,
-    z1: -180,
-    upper: true,
-  },
-  { name: "saint_verena_chapel", x0: 466, x1: 494, z0: -150, z1: -128 },
-  { name: "river_dock_supply", x0: 574, x1: 602, z0: -196, z1: -176 },
-  { name: "dock_warehouse", x0: 574, x1: 600, z0: -170, z1: -150 },
-  { name: "mudden_ward_shelter", x0: 398, x1: 426, z0: -170, z1: -148 },
-  { name: "mudden_laundry_house", x0: 398, x1: 418, z0: -144, z1: -130 },
-  { name: "harthmere_watermill", x0: 418, x1: 440, z0: -122, z1: -104 },
-];
+// HARTHMERE_ROOF_CLEAR_BOXES — DERIVED, not copied.
+//
+// This list used to be nineteen hand-written rectangles duplicating the
+// authored building table, and it had already drifted: `harthmere_stables` was
+// recorded here at x 464..478 while the table said 440..458, so the roof
+// declutter pass had been protecting and clearing a patch of empty ground 24
+// voxels east of the actual stables for however long that copy sat here.
+//
+// Deriving it from `HARTHMERE_BUILDINGS` removes the whole class of bug and
+// extends the pass from nineteen buildings to every one it can serve safely.
+//
+// The height thresholds below only describe one- and two-storey shells: a
+// non-`upper` box clears props from relY 5.12 up, and an `upper` box clears the
+// core from 9.12 up. A four- or five-floor Mudden stack has real structure at
+// those heights, so those buildings are deliberately left out rather than
+// having their upper storeys treated as roof litter. That matches what the
+// hand-written list happened to do; now it is the stated rule.
+function harthmereDerivedRoofClearBoxes(): HarthmereRoofClearBox[] {
+  const boxes: HarthmereRoofClearBox[] = [];
+  for (const building of HARTHMERE_BUILDINGS) {
+    const floors = Math.max(1, building.floors ?? (building.upper ? 2 : 1));
+    if (floors > 2) {
+      continue;
+    }
+    const width = building.x1 - building.x0 + 1;
+    const depth = building.z1 - building.z0 + 1;
+    // `isInsideUpperRoofCore` insets by 4 on every side; a shell narrower than
+    // that has no core and the inset rectangle would invert.
+    if (floors === 2 && (width < 10 || depth < 10)) {
+      continue;
+    }
+    boxes.push({
+      name: building.name,
+      x0: building.x0,
+      x1: building.x1,
+      z0: building.z0,
+      z1: building.z1,
+      upper: floors >= 2,
+    });
+  }
+  return boxes;
+}
+
+const HARTHMERE_ROOF_CLEAR_BOXES: ReadonlyArray<HarthmereRoofClearBox> =
+  harthmereDerivedRoofClearBoxes();
 
 function isInsideRect(
   x: number,
@@ -10203,8 +10256,16 @@ function applyHarthmereRuntimePlacementCleanup(
   let removedRoadIntrusions = 0;
   let removedStreetBlocks = 0;
   let removedRoofBlocks = 0;
+  let removedLegacyTownInteriors = 0;
   for (const placement of placements) {
     const label = placement.name ?? placement.asset;
+    if (isHarthmereLegacyAdditiveTownInteriorPlacement(placement)) {
+      removedLegacyTownInteriors += 1;
+      if (samples.length < 24) {
+        samples.push(`legacy-town-interior:${label}`);
+      }
+      continue;
+    }
     if (shouldRemoveProductionDebugClutterPlacement(placement)) {
       removedProductionDebugClutter += 1;
       if (samples.length < 24) {
@@ -10251,6 +10312,7 @@ function applyHarthmereRuntimePlacementCleanup(
     removedRoadIntrusions,
     removedStreetBlocks,
     removedRoofBlocks,
+    removedLegacyTownInteriors,
     samples,
     placements: kept,
   };
@@ -28282,6 +28344,12 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
   private readonly spawnedLifePositions: Array<[number, number]> = [];
   private readonly deadCombatObjects = new WeakSet<THREE.Object3D>();
   private harthmerePlacementLodUpdateIn = 0;
+  private mobileRuntimePlacements: readonly RuntimePlacement[] = [];
+  private mobileRuntimeCandidates: readonly HarthmereMobileRuntimePlacementCandidate[] =
+    [];
+  private readonly mobilePlacementObjects = new Map<number, THREE.Object3D>();
+  private mobileRuntimeRefreshIn = 0;
+  private mobileRuntimeRefreshRunning = false;
   private elapsed = 0;
   private ready = false;
 
@@ -28312,7 +28380,10 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     });
   }
 
-  constructor(private readonly resources: ClientResources) {
+  constructor(
+    private readonly resources: ClientResources,
+    private readonly mobileDevice = false
+  ) {
     this.installHarthmerePlayerSwordVisuals();
     this.installHarthmereFacialExpressionBridge();
     this.root.name = "harthmere-rebuilt-town-and-wilds-root";
@@ -28323,6 +28394,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     this.installDebugBridge();
     debugHarthmereRenderer("renderer.constructor", {
       shouldRender: shouldRenderHarthmereRuntimeAssets(),
+      mobileDevice: this.mobileDevice,
       host: typeof window !== "undefined" ? window.location.hostname : "server",
     });
     if (typeof window !== "undefined") {
@@ -28340,8 +28412,16 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       );
     }
     if (shouldRenderHarthmereRuntimeAssets()) {
-      this.harthmereProjectileVisuals.preloadAll();
-      void this.loadAll();
+      if (this.mobileDevice) {
+        this.prepareMobileRuntimePlacements();
+        // The root already contains its lightweight debug overlay. Marking the
+        // renderer ready lets draw() obtain the real player/camera origin and
+        // begin bounded streaming without an eager world decode first.
+        this.ready = true;
+      } else {
+        this.harthmereProjectileVisuals.preloadAll();
+        void this.loadAll();
+      }
     }
   }
 
@@ -28350,16 +28430,30 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       return;
     }
     this.elapsed += Math.min(dt, 0.05);
-    const camera: THREE.Camera | undefined = (
-      scenes as { three?: { camera?: THREE.Camera } }
-    ).three?.camera;
+    // HARTHMERE_POLISH_FAR_NPC_THROTTLE_CAMERA_FIX (2026-08-03 render audit).
+    // This used to read `scenes.three.camera`. THREE.Scene has no `camera`
+    // property and nothing in the codebase assigns one, so `camera` was
+    // permanently undefined -- which made `hasCamera` false, which made
+    // `shouldUpdateMotion` unconditionally true, which meant the NEAR/MID/FAR
+    // gates below never fired and every animated actor ran the full path
+    // (mixer.update, wander integration, ground re-probe, swept collision,
+    // neighbour repulsion) every single frame. Read the real camera off the
+    // resource graph instead, which is the same source TerrainRenderer and the
+    // ECS cullers use.
+    //
+    // updateHarthmerePlacementLod was unaffected because harthmereLodOrigin()
+    // prefers window.__harthmereForwardArcRuntime.position and only falls back
+    // to the camera, so passing a real camera here strictly adds a fallback.
+    const camera: THREE.Camera | undefined =
+      this.resources.get("/scene/camera")?.three;
+    if (this.mobileDevice) {
+      this.updateMobileRuntimeAssetStreaming(dt, camera);
+    }
     this.updateHarthmerePlacementLod(dt, camera);
-    // HARTHMERE_POLISH_FAR_NPC_THROTTLE / current survey response.
-    // Cheap visibility + distance gate. We sample the player camera position
-    // through THREE.PerspectiveCamera convention via the renderer scene
-    // (scenes.three.camera). If it's not available yet, every NPC updates
-    // normally. Nearby actors animate every frame; mid/far actors are
-    // intentionally throttled so dense towns no longer pin the frame loop.
+    // Cheap visibility + distance gate. Nearby actors animate every frame;
+    // mid/far actors are intentionally throttled so dense towns no longer pin
+    // the frame loop. If the camera is somehow unavailable (client still
+    // booting), every NPC updates normally.
     this.harthmerePolishFrameCounter =
       (this.harthmerePolishFrameCounter ?? 0) + 1;
     const polishFrame = this.harthmerePolishFrameCounter;
@@ -28394,8 +28488,16 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         }
         continue;
       }
+      // Bank this frame's time regardless, then flush the whole debt on the
+      // frames this actor is scheduled to update. See `pendingMixerDt` on
+      // AnimatedInstance for why a bare `dt` here would look like slow-motion.
+      // `motionDt` is the delta to use for any other delta-integrated motion
+      // below (e.g. spin); wander and bob are functions of absolute
+      // `this.elapsed` and so step correctly without it.
+      const motionDt = (instance.pendingMixerDt ?? 0) + dt;
+      instance.pendingMixerDt = shouldUpdateMotion ? 0 : motionDt;
       if (instance.mixer && shouldUpdateMotion) {
-        instance.mixer.update(dt);
+        instance.mixer.update(motionDt);
       }
       if (this.deadCombatObjects.has(instance.object)) {
         continue;
@@ -28520,7 +28622,9 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         );
       }
       if (instance.spin) {
-        instance.object.rotation.y += instance.spin * dt;
+        // motionDt, not dt: spin is delta-integrated like the mixer, so on a
+        // throttled actor a bare dt would rotate at 1/8 or 1/16 speed.
+        instance.object.rotation.y += instance.spin * motionDt;
       }
     }
     this.reconcileHarthmereEcsLiveCreatures();
@@ -34071,15 +34175,6 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       actor.combatOffset ??
       actor.label;
     if (phase === "attack") {
-      const nowMs =
-        typeof performance !== "undefined" ? performance.now() : Date.now();
-      const lastAt = Number(
-        actor.object.userData.harthmereCreatureLastAttackSoundEventAtMs
-      );
-      if (!Number.isFinite(lastAt) || nowMs - lastAt > 10_000) {
-        actor.object.userData.harthmereCreatureAttackCount = 0;
-      }
-      actor.object.userData.harthmereCreatureLastAttackSoundEventAtMs = nowMs;
       const attackCount =
         Number(actor.object.userData.harthmereCreatureAttackCount ?? 0) + 1;
       actor.object.userData.harthmereCreatureAttackCount = attackCount;
@@ -34277,10 +34372,14 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     }
   }
 
-  private async loadHarthmerePrototypeBatch(keys: string[]) {
+  private async loadHarthmerePrototypeBatch(
+    keys: string[],
+    concurrencyOverride?: number
+  ) {
     const concurrency = Math.max(
       1,
-      HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS.prototypeLoadConcurrency
+      concurrencyOverride ??
+        HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS.prototypeLoadConcurrency
     );
     for (let i = 0; i < keys.length; i += concurrency) {
       const batch = keys.slice(i, i + concurrency);
@@ -34752,6 +34851,346 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     });
   }
 
+  private prepareMobileRuntimePlacements() {
+    const preparedRuntimePlacements =
+      prepareHarthmereRuntimePlacements(RUNTIME_PLACEMENTS);
+    this.mobileRuntimePlacements = [
+      ...preparedRuntimePlacements.placements,
+      ...CH1_DUNGEON_RUNTIME_PLACEMENTS,
+    ];
+    this.mobileRuntimeCandidates = this.mobileRuntimePlacements.flatMap(
+      (placement, index) => {
+        if (
+          isProceduralLifeKey(placement.asset) ||
+          isHarthmereEcsDrivenCreatureAsset(placement.asset) ||
+          !assetByKey.has(placement.asset)
+        ) {
+          return [];
+        }
+        return [
+          {
+            index,
+            asset: placement.asset,
+            x: placement.at[0],
+            z: placement.at[2],
+          },
+        ];
+      }
+    );
+
+    const win = harthmereRendererDebugWindow();
+    if (win) {
+      win.__harthmereFloatingBlockIntegrityReport = {
+        version: HARTHMERE_FLOATING_BLOCK_RUNTIME_VERSION,
+        rules: HARTHMERE_FLOATING_BLOCK_INTEGRITY_RULES,
+        authoredPlacements: RUNTIME_PLACEMENTS.length,
+        cleanedPlacements: RUNTIME_PLACEMENTS.length,
+        runtimePlacements: this.mobileRuntimePlacements.length,
+        removedFloating: preparedRuntimePlacements.removedFloating.length,
+        removedForPerformance:
+          preparedRuntimePlacements.removedForPerformance.length,
+        mobileStreaming: true,
+      };
+    }
+  }
+
+  private updateMobileRuntimeAssetStreaming(dt: number, camera?: THREE.Camera) {
+    this.mobileRuntimeRefreshIn -= dt;
+    if (this.mobileRuntimeRefreshIn > 0 || this.mobileRuntimeRefreshRunning) {
+      return;
+    }
+    const origin = this.harthmereLodOrigin(camera);
+    if (!origin) {
+      this.mobileRuntimeRefreshIn = 0.1;
+      return;
+    }
+
+    this.mobileRuntimeRefreshIn = HARTHMERE_MOBILE_RUNTIME_REFRESH_SECONDS;
+    this.mobileRuntimeRefreshRunning = true;
+    void this.refreshMobileRuntimeAssets(origin)
+      .then((moreAssetsNeeded) => {
+        if (moreAssetsNeeded) {
+          this.mobileRuntimeRefreshIn = Math.min(
+            this.mobileRuntimeRefreshIn,
+            0.2
+          );
+        }
+      })
+      .catch((error) => {
+        log.warn("Failed to refresh nearby Harthmere mobile runtime assets", {
+          error,
+        });
+      })
+      .finally(() => {
+        this.mobileRuntimeRefreshRunning = false;
+      });
+  }
+
+  private async refreshMobileRuntimeAssets(origin: readonly [number, number]) {
+    const selection = selectHarthmereMobileRuntimePlacements(
+      this.mobileRuntimeCandidates,
+      origin,
+      {
+        radiusMeters: HARTHMERE_MOBILE_RUNTIME_RADIUS_METERS,
+        maxPlacements: HARTHMERE_MOBILE_RUNTIME_MAX_PLACEMENTS,
+        maxAssets: HARTHMERE_MOBILE_RUNTIME_MAX_PROTOTYPES,
+      }
+    );
+    const desiredIndexes = new Set(selection.indexes);
+    const desiredAssets = new Set(selection.assetKeys);
+
+    for (const [index, object] of [...this.mobilePlacementObjects]) {
+      if (!desiredIndexes.has(index)) {
+        this.removeMobileRuntimePlacement(index, object);
+      }
+    }
+    this.pruneMobileRuntimePrototypes(desiredAssets);
+
+    const missingAssets = selection.assetKeys.filter(
+      (key) => !this.prototypes.has(key) && !this.failed.has(key)
+    );
+    await this.loadHarthmerePrototypeBatch(
+      missingAssets.slice(
+        0,
+        HARTHMERE_MOBILE_RUNTIME_NEW_PROTOTYPES_PER_REFRESH
+      ),
+      2
+    );
+
+    let instantiatedSinceYield = 0;
+    for (const index of selection.indexes) {
+      if (this.mobilePlacementObjects.has(index)) {
+        continue;
+      }
+      const placement = this.mobileRuntimePlacements[index];
+      if (!placement || !this.prototypes.has(placement.asset)) {
+        continue;
+      }
+      const object = this.instantiateHarthmereRuntimePlacement(placement);
+      if (!object) {
+        continue;
+      }
+      this.mobilePlacementObjects.set(index, object);
+      instantiatedSinceYield += 1;
+      if (instantiatedSinceYield >= 24) {
+        instantiatedSinceYield = 0;
+        await new Promise<void>((resolve) =>
+          window.requestAnimationFrame(() => resolve())
+        );
+      }
+    }
+
+    const win = harthmereRendererDebugWindow();
+    if (win) {
+      win.__harthmereMobileRuntimeStreaming = {
+        version: "harthmere-mobile-nearby-runtime-assets-v1",
+        origin,
+        radiusMeters: HARTHMERE_MOBILE_RUNTIME_RADIUS_METERS,
+        maxPlacements: HARTHMERE_MOBILE_RUNTIME_MAX_PLACEMENTS,
+        maxPrototypes: HARTHMERE_MOBILE_RUNTIME_MAX_PROTOTYPES,
+        selectedPlacements: selection.indexes.length,
+        selectedAssets: selection.assetKeys.length,
+        loadedPlacements: this.mobilePlacementObjects.size,
+        loadedPrototypes: this.prototypes.size,
+        remainingPrototypeLoads: Math.max(
+          0,
+          missingAssets.length -
+            HARTHMERE_MOBILE_RUNTIME_NEW_PROTOTYPES_PER_REFRESH
+        ),
+        failedPrototypes: this.failed.size,
+        at: Date.now(),
+      };
+    }
+
+    return (
+      selection.assetKeys.some(
+        (key) => !this.prototypes.has(key) && !this.failed.has(key)
+      ) ||
+      selection.indexes.some(
+        (index) =>
+          !this.mobilePlacementObjects.has(index) &&
+          this.prototypes.has(this.mobileRuntimePlacements[index]?.asset ?? "")
+      )
+    );
+  }
+
+  private removeMobileRuntimePlacement(index: number, object: THREE.Object3D) {
+    this.mobilePlacementObjects.delete(index);
+    object.removeFromParent();
+
+    for (let i = this.animated.length - 1; i >= 0; i -= 1) {
+      const animated = this.animated[i];
+      if (animated.object !== object) {
+        continue;
+      }
+      animated.mixer?.stopAllAction();
+      animated.mixer?.uncacheRoot(object);
+      this.animated.splice(i, 1);
+    }
+    const dropByObject = <T extends { object: THREE.Object3D }>(arr: T[]) => {
+      for (let i = arr.length - 1; i >= 0; i -= 1) {
+        if (arr[i].object === object) {
+          arr.splice(i, 1);
+        }
+      }
+    };
+    dropByObject(this.combatLifeInstances);
+    dropByObject(this.placementInstances);
+    object.traverse((child) => {
+      if (child instanceof THREE.SkinnedMesh) {
+        child.skeleton.dispose();
+      }
+    });
+  }
+
+  private pruneMobileRuntimePrototypes(retain: ReadonlySet<string>) {
+    for (const [key, prototype] of [...this.prototypes]) {
+      if (retain.has(key)) {
+        continue;
+      }
+      this.disposeHarthmereRuntimePrototype(prototype);
+      this.prototypes.delete(key);
+    }
+  }
+
+  private disposeHarthmereRuntimePrototype(prototype: RuntimePrototype) {
+    const geometries = new Set<THREE.BufferGeometry>();
+    const materials = new Set<THREE.Material>();
+    const textures = new Set<THREE.Texture>();
+    prototype.object.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      if (mesh.geometry) {
+        geometries.add(mesh.geometry);
+      }
+      const meshMaterials = Array.isArray(mesh.material)
+        ? mesh.material
+        : mesh.material
+          ? [mesh.material]
+          : [];
+      for (const material of meshMaterials) {
+        materials.add(material);
+      }
+      if (child instanceof THREE.SkinnedMesh) {
+        child.skeleton.dispose();
+      }
+    });
+    for (const material of materials) {
+      for (const value of Object.values(material)) {
+        if (value instanceof THREE.Texture) {
+          textures.add(value);
+        }
+      }
+    }
+    for (const texture of textures) {
+      texture.dispose();
+    }
+    for (const material of materials) {
+      material.dispose();
+    }
+    for (const geometry of geometries) {
+      geometry.dispose();
+    }
+  }
+
+  private instantiateHarthmereRuntimePlacement(
+    authoredPlacement: RuntimePlacement
+  ): THREE.Object3D | undefined {
+    const placement = this.resolveHarthmereRuntimePlacement(authoredPlacement);
+    if (isProceduralTownspersonKey(placement.asset)) {
+      if (this.addHarthmereProceduralLifePlacement(placement)) {
+        return undefined;
+      }
+    }
+    const prototype = this.prototypes.get(placement.asset);
+    if (prototype && !isProceduralTownspersonKey(placement.asset)) {
+      const asset = assetByKey.get(placement.asset);
+      const clone =
+        asset?.format === "fbx" || prototype.clips.length > 0
+          ? cloneSkeleton(prototype.object)
+          : prototype.object.clone(true);
+      clone.name = placement.name ?? placement.asset;
+      clone.position.set(...placement.at);
+      clone.rotation.y = placement.rot ?? 0;
+      const scale = placement.scale ?? asset?.defaultScale ?? 1;
+      clone.scale.setScalar(scale);
+      clone.userData.harthmereSharedPrototypeResources = true;
+      if (placement.light) {
+        const light = new THREE.PointLight(
+          placement.light.colour,
+          placement.light.intensity,
+          placement.light.distance ?? 18,
+          2
+        );
+        light.name = `${clone.name}-authored-light`;
+        light.position.set(0, 1.35 / Math.max(scale, 0.01), 0);
+        clone.add(light);
+      }
+      this.attachHarthmereTownWalkDebugMetadata(
+        placement,
+        clone,
+        scale,
+        prototype.clips.length
+      );
+      applyUniqueNpcVisualDecorations(placement, clone);
+      if (isProceduralTownspersonKey(placement.asset)) {
+        applyHarthmereRuntimeAppearanceToHumanObject(placement, clone);
+      }
+      this.root.add(clone);
+      this.registerHarthmerePlacementInstance(placement, clone);
+
+      const mixer = shouldAutoAnimateHarthmerePlacement({
+        asset: placement.asset,
+        meta: placement.meta,
+        hasClips: prototype.clips.length > 0,
+      })
+        ? new THREE.AnimationMixer(clone)
+        : undefined;
+      const animated =
+        placement.wander || placement.bob || placement.spin || mixer
+          ? {
+              object: clone,
+              asset: placement.asset,
+              base: [...placement.at] as [number, number, number],
+              rot: placement.rot ?? 0,
+              forwardAxis:
+                (
+                  clone.userData.harthmereAppearance as
+                    HarthmereCharacterAppearance | undefined
+                )?.forwardAxis ??
+                placement.appearance?.forwardAxis ??
+                harthmereModelForwardAxis(placement.asset),
+              bob: placement.bob,
+              spin: placement.spin,
+              wander: placement.wander,
+              mixer,
+              lastSafePosition: [...placement.at] as [number, number, number],
+              placementMeta: placement.meta,
+              robotProtectionAreaId: placement.robotProtectionAreaId,
+            }
+          : undefined;
+      if (animated) {
+        if (animated.mixer) {
+          startBestClip(
+            animated.mixer,
+            prototype.clips,
+            Boolean(placement.wander || placement.bob || placement.spin)
+          );
+          installHarthmereLocomotion(animated, prototype.clips);
+        }
+        this.animated.push(animated);
+      } else {
+        freezeStaticObjectMatrices(clone);
+      }
+      if (isProceduralLifeKey(placement.asset)) {
+        this.registerCombatLife(placement, clone, mixer, prototype.clips);
+      }
+      return clone;
+    }
+
+    this.addHarthmereProceduralLifePlacement(placement);
+    return undefined;
+  }
+
   private async loadAll() {
     const preparedRuntimePlacements =
       prepareHarthmereRuntimePlacements(RUNTIME_PLACEMENTS);
@@ -34853,101 +35292,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       ) {
         continue;
       }
-      const placement =
-        this.resolveHarthmereRuntimePlacement(authoredPlacement);
-      if (isProceduralTownspersonKey(placement.asset)) {
-        if (this.addHarthmereProceduralLifePlacement(placement)) {
-          continue;
-        }
-      }
-      const prototype = this.prototypes.get(placement.asset);
-      if (prototype && !isProceduralTownspersonKey(placement.asset)) {
-        const asset = assetByKey.get(placement.asset);
-        const clone =
-          asset?.format === "fbx" || prototype.clips.length > 0
-            ? cloneSkeleton(prototype.object)
-            : prototype.object.clone(true);
-        clone.name = placement.name ?? placement.asset;
-        clone.position.set(...placement.at);
-        clone.rotation.y = placement.rot ?? 0;
-        const scale = placement.scale ?? asset?.defaultScale ?? 1;
-        clone.scale.setScalar(scale);
-        if (placement.light) {
-          const light = new THREE.PointLight(
-            placement.light.colour,
-            placement.light.intensity,
-            placement.light.distance ?? 18,
-            2
-          );
-          light.name = `${clone.name}-authored-light`;
-          light.position.set(0, 1.35 / Math.max(scale, 0.01), 0);
-          clone.add(light);
-        }
-        this.attachHarthmereTownWalkDebugMetadata(
-          placement,
-          clone,
-          scale,
-          prototype.clips.length
-        );
-        applyUniqueNpcVisualDecorations(placement, clone);
-        if (isProceduralTownspersonKey(placement.asset)) {
-          applyHarthmereRuntimeAppearanceToHumanObject(placement, clone);
-        }
-        this.root.add(clone);
-        this.registerHarthmerePlacementInstance(placement, clone);
-
-        const mixer = shouldAutoAnimateHarthmerePlacement({
-          asset: placement.asset,
-          meta: placement.meta,
-          hasClips: prototype.clips.length > 0,
-        })
-          ? new THREE.AnimationMixer(clone)
-          : undefined;
-        const animated =
-          placement.wander || placement.bob || placement.spin || mixer
-            ? {
-                object: clone,
-                asset: placement.asset,
-                base: [...placement.at] as [number, number, number],
-                rot: placement.rot ?? 0,
-                forwardAxis:
-                  (
-                    clone.userData.harthmereAppearance as
-                      HarthmereCharacterAppearance | undefined
-                  )?.forwardAxis ??
-                  placement.appearance?.forwardAxis ??
-                  harthmereModelForwardAxis(placement.asset),
-                bob: placement.bob,
-                spin: placement.spin,
-                wander: placement.wander,
-                mixer,
-                lastSafePosition: [...placement.at] as [number, number, number],
-                placementMeta: placement.meta,
-                robotProtectionAreaId: placement.robotProtectionAreaId,
-              }
-            : undefined;
-        if (animated) {
-          if (animated.mixer) {
-            startBestClip(
-              animated.mixer,
-              prototype.clips,
-              Boolean(placement.wander || placement.bob || placement.spin)
-            );
-            installHarthmereLocomotion(animated, prototype.clips);
-          }
-          this.animated.push(animated);
-        } else {
-          // Static town/building clones make up most of this object graph.
-          // Their authored transforms are final; LOD only toggles visibility.
-          freezeStaticObjectMatrices(clone);
-        }
-        if (isProceduralLifeKey(placement.asset)) {
-          this.registerCombatLife(placement, clone, mixer, prototype.clips);
-        }
-        continue;
-      }
-
-      this.addHarthmereProceduralLifePlacement(placement);
+      this.instantiateHarthmereRuntimePlacement(authoredPlacement);
     }
     this.ready = true;
 
@@ -35157,8 +35502,11 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
   }
 }
 
-export function makeHarthmereRuntimeAssetsRenderer(resources: ClientResources) {
-  return new HarthmereRuntimeAssetsRenderer(resources);
+export function makeHarthmereRuntimeAssetsRenderer(
+  resources: ClientResources,
+  mobileDevice = false
+) {
+  return new HarthmereRuntimeAssetsRenderer(resources, mobileDevice);
 }
 
 // HARTHMERE_RUNTIME_LICENSED_CLOTHING_MODELS

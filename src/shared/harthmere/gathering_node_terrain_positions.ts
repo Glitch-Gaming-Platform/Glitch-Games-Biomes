@@ -4,8 +4,10 @@ import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 //
 // Gathering uses the same two coordinate frames as the rest of Harthmere:
 //
-// - Town nodes are authored in local Harthmere coordinates, shifted into the
-//   additive east extension, and placed on its deterministic feet plane Y=53.
+// - Town nodes are authored in local Harthmere coordinates and shifted into
+//   the additive east extension. Most use its deterministic feet plane Y=53;
+//   explicitly audited landmarks may override that height where the live
+//   terrain surface differs.
 // - Deep-wilds nodes remain on the original production map. That terrain is
 //   hilly, so their Y values come from a real open-sky terrain probe instead of
 //   the old flat y=53 hint.
@@ -16,7 +18,7 @@ import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 // burying or floating a node.
 
 export const HARTHMERE_GATHERING_NODE_TERRAIN_POSITIONS_VERSION =
-  "harthmere-gathering-node-terrain-2026-07-23" as const;
+  "harthmere-gathering-node-terrain-2026-08-03" as const;
 export const HARTHMERE_GATHERING_NODE_TERRAIN_PRODUCTION_REVISION =
   "biomes-node-vnet--0000190" as const;
 
@@ -35,6 +37,15 @@ export const HARTHMERE_ADDITIVE_TOWN_GATHERING_NODE_IDS: ReadonlySet<string> =
     "harthmere_chapel_relic_dig",
     "harthmere_wolf_carcass",
   ]);
+
+// World-space positions verified against the exact live terrain used by the
+// browser acceptance lane. Mudden sits below the extension's usual feet plane;
+// retaining Y=53 suppresses the F prompt and also fails server range checks.
+export const HARTHMERE_ADDITIVE_TOWN_GATHERING_NODE_POSITION_OVERRIDES: Readonly<
+  Record<string, ReadonlyVec3>
+> = {
+  harthmere_mudden_scrap: [2009, 39, -178],
+};
 
 export const HARTHMERE_ORIGINAL_HILLY_GATHERING_NODE_POSITIONS: Readonly<
   Record<string, ReadonlyVec3>
@@ -76,5 +87,13 @@ export function harthmereOriginalHillyGatheringNodePosition(
   nodeId: string
 ): Vec3 | undefined {
   const position = HARTHMERE_ORIGINAL_HILLY_GATHERING_NODE_POSITIONS[nodeId];
+  return position ? ([...position] as Vec3) : undefined;
+}
+
+export function harthmereAdditiveTownGatheringNodePositionOverride(
+  nodeId: string
+): Vec3 | undefined {
+  const position =
+    HARTHMERE_ADDITIVE_TOWN_GATHERING_NODE_POSITION_OVERRIDES[nodeId];
   return position ? ([...position] as Vec3) : undefined;
 }

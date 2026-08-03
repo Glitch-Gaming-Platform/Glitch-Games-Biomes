@@ -162,10 +162,15 @@ export class RenderPassComposer {
     size.height = Math.max(size.height, 1);
 
     // Shared depth
-    const depthTexture = new THREE.DepthTexture(
-      size.width * pixelRatio,
-      size.height * pixelRatio
-    );
+    // PERF (2026-08-03 render audit): `size` has ALREADY been multiplied by
+    // pixelRatio above, so multiplying again here allocated a depth texture
+    // pixelRatio^2 too large (4x the pixels at DPR 2, 9x at DPR 3). The first
+    // resizeBuffers() corrected the dimensions, so this was a transient
+    // startup spike rather than a steady-state leak -- but on a 4K display it
+    // was a >250MB allocation during boot, which is a plausible contributor to
+    // context-loss on constrained GPUs. Every other target here correctly uses
+    // the pre-scaled `size` directly (see secondaryColorTarget below).
+    const depthTexture = new THREE.DepthTexture(size.width, size.height);
     depthTexture.format = THREE.DepthFormat;
     depthTexture.type = THREE.UnsignedIntType;
     this.sharedBuffers.depth = depthTexture;

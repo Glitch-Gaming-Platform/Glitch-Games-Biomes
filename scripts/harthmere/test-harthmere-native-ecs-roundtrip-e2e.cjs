@@ -16786,10 +16786,23 @@ async function proveChapter1NpcLiveAudit(first) {
   const catalog = await bridgeCall(first.page, "chapter1NpcAuditCatalog");
   assert.equal(
     catalog.version,
-    "chapter1-npc-live-audit-v1",
+    "chapter1-npc-live-audit-v5",
     "unexpected Chapter One NPC audit catalog"
   );
   assert.equal(catalog.scenarios.length, 24, "NPC stage matrix is incomplete");
+  assert(
+    Array.isArray(catalog.retiredNpcEntityIds) &&
+      catalog.retiredNpcEntityIds.length > 0,
+    "NPC stage matrix must identify retired duplicate entity ids"
+  );
+  for (const entityId of catalog.retiredNpcEntityIds) {
+    const retired = await authoritativeEntity(first.page, Number(entityId));
+    assert.equal(
+      retired.entity,
+      undefined,
+      `retired duplicate NPC ${entityId} still exists in authoritative ECS`
+    );
+  }
   const entityIdByKey = chapter1NpcAuditEntityIdByKey(catalog);
   const captured = [];
   const stageResults = [];
@@ -16827,11 +16840,14 @@ async function proveChapter1NpcLiveAudit(first) {
       assert(id, `${scenario.id}: no canonical id for ${key}`);
       return id;
     });
-    const expectedAbsentIds = (scenario.expectedAbsentKeys ?? []).map((key) => {
-      const id = entityIdByKey.get(key);
-      assert(id, `${scenario.id}: no canonical absent id for ${key}`);
-      return id;
-    });
+    const expectedAbsentIds = [
+      ...catalog.retiredNpcEntityIds.map(Number),
+      ...(scenario.expectedAbsentKeys ?? []).map((key) => {
+        const id = entityIdByKey.get(key);
+        assert(id, `${scenario.id}: no canonical absent id for ${key}`);
+        return id;
+      }),
+    ];
     const expectedPositionById = new Map();
     for (const key of scenario.expectedPresentKeys) {
       const id = entityIdByKey.get(key);

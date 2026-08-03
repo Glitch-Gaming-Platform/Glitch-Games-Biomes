@@ -429,6 +429,17 @@ describe("Harthmere business outpost guide renderer current", () => {
     }
   });
 
+  it("does not construct invisible guide-building geometry on mobile", () => {
+    const renderer = makeHarthmereBusinessOutpostBuildingsRenderer(true);
+    const scenes = createNewScenes();
+    renderer.draw(scenes, 0.016);
+    const root = scenes.three.children.find((child) =>
+      child.name.includes(HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION)
+    );
+    assert.ok(root, "mobile debug root should remain available");
+    assert.equal(root!.children.length, 0);
+  });
+
   it("builds every outpost at its terrain-pad ground Y, not at the Grove's 53.05 base", () => {
     const {
       harthmereBusinessOutpostGroundY,
@@ -479,7 +490,7 @@ describe("Harthmere business outpost guide renderer current", () => {
     }
   });
 
-  it("places the owner NPC and visual-only furniture while boards are drawn by the dedicated procedural renderer", () => {
+  it("places the owner NPC without duplicating combined-interior furniture or procedural boards", () => {
     const start = SOURCE.indexOf(
       "function createHarthmereBusinessOutpostPlacements()"
     );
@@ -519,9 +530,10 @@ describe("Harthmere business outpost guide renderer current", () => {
       false,
       "business boards must come from the procedural marker renderer, not the runtime placement list"
     );
-    assert.ok(
+    assert.equal(
       body.includes("createHarthmereBusinessOutpostInteriorDecorPlacements"),
-      "business outposts must add real runtime furniture/decor placements after the server voxel shell"
+      false,
+      "combined-interior GLBs own authored fixtures; standalone runtime decor would double-render them"
     );
     // Must still place the owner NPC with proper cosmetics.
     assert.ok(

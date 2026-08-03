@@ -142,13 +142,10 @@ describe("harthmere business client session expiry guard", function () {
       })
     );
 
-    assert.ok(html.includes("Ready"));
-    assert.ok(html.includes("Start Shift"));
-    assert.ok(
-      html.includes("Start a shift to bring customer-only NPCs to the counter.")
-    );
+    assert.ok(html.includes("In-world customer shift"));
+    assert.ok(html.includes("Start shift at counter"));
     assert.equal(html.includes("Help please"), false);
-    assert.equal(html.includes("Shift Live"), false);
+    assert.equal(html.includes("Shift live:"), false);
   });
 
   it("surfaces the current customer for a live session", () => {

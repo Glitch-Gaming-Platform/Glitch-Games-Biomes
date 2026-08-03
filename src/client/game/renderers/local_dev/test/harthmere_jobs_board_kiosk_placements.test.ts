@@ -11,6 +11,7 @@ import {
   nearestHarthmereJobsBoardPhysicalPrompt,
 } from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
 import {
+  HARTHMERE_BUSINESS_JOBS_BOARD_FRONT_YAW,
   HARTHMERE_JOBS_BOARD_FRONT_FLIP_YAW,
   HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS,
   HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_VERSION,
@@ -62,6 +63,25 @@ describe("Harthmere Blender jobs-board placements", () => {
         [board!.x, board!.y, board!.z],
         [expected.x, expected.y, expected.z]
       );
+      assert.equal(board!.yaw, HARTHMERE_BUSINESS_JOBS_BOARD_FRONT_YAW);
+    }
+  });
+
+  it("flips only the 19 business boards and leaves Grove/town orientations untouched", () => {
+    const businessIds = new Set(
+      HARTHMERE_BUSINESS_OUTPOSTS.map(
+        (outpost) => `${outpost.outpostId}_jobs_board`
+      )
+    );
+    assert.equal(businessIds.size, 19);
+    for (const board of HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS) {
+      assert.equal(
+        board.yaw,
+        businessIds.has(board.id)
+          ? HARTHMERE_BUSINESS_JOBS_BOARD_FRONT_YAW
+          : HARTHMERE_JOBS_BOARD_FRONT_FLIP_YAW,
+        `${board.id} has the wrong scoped orientation`
+      );
     }
   });
 
@@ -104,7 +124,7 @@ describe("Harthmere Blender jobs-board placements", () => {
   it("keeps a cheap large fallback without runtime lights if a GLB fails", () => {
     const location = HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS[0];
     const fallback = createHarthmereJobsBoardKioskMesh(location);
-    assert.equal(fallback.rotation.y, HARTHMERE_JOBS_BOARD_FRONT_FLIP_YAW);
+    assert.equal(fallback.rotation.y, location.yaw);
     assert.equal(fallback.userData.harthmereJobsBoardFallback, true);
     assert.deepEqual(fallback.position.toArray(), [
       location.x,

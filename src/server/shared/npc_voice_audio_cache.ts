@@ -5,6 +5,7 @@ import {
   canonicalSnapshotGroveNpcEntityId,
   snapshotGroveNpcStableVoiceEntityId,
 } from "@/shared/harthmere/snapshot_grove_ids";
+import type { BiomesId } from "@/shared/ids";
 
 export const NPC_VOICE_AUDIO_CACHE_MANIFEST_VERSION =
   "npc-voice-audio-cache-v1";
@@ -129,8 +130,12 @@ function stableActorIdentity(actorKey: string | undefined) {
     if (!Number.isSafeInteger(entityId)) {
       continue;
     }
-    const canonical = Number(canonicalSnapshotGroveNpcEntityId(entityId));
-    const stable = Number(snapshotGroveNpcStableVoiceEntityId(entityId));
+    const canonical = Number(
+      canonicalSnapshotGroveNpcEntityId(entityId as BiomesId)
+    );
+    const stable = Number(
+      snapshotGroveNpcStableVoiceEntityId(entityId as BiomesId)
+    );
     if (canonical !== entityId || stable !== entityId) {
       return `snapshot-grove-entity:${stable}`;
     }

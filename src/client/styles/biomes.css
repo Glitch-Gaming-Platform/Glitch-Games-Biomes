@@ -10,3 +10,8 @@
 .biomes-canvas:focus {
   outline: none;
 }
+
+.biomes-canvas--mobile-look {
+  touch-action: none;
+  overscroll-behavior: none;
+}

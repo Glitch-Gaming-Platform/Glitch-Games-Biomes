@@ -8,6 +8,7 @@ import type {
 import type { Biscuit } from "@/shared/bikkie/schema/attributes";
 import type {
   Inventory,
+  ReadonlyActiveTrades,
   ReadonlyRecipeBook,
   Wearing,
 } from "@/shared/ecs/gen/components";
@@ -31,6 +32,60 @@ import { ok } from "assert";
 import { compact } from "lodash";
 
 export const INVENTORY_COLS = 9;
+
+type ActiveTrade = ReadonlyActiveTrades["trades"][number];
+
+export function findNewTradeWithPlayer(
+  activeTrades: ReadonlyActiveTrades | undefined,
+  otherUserId: BiomesId,
+  knownTradeIds: ReadonlySet<BiomesId>
+): ActiveTrade | undefined {
+  return activeTrades?.trades.find(
+    (trade) =>
+      (trade.id1 === otherUserId || trade.id2 === otherUserId) &&
+      !knownTradeIds.has(trade.trade_id)
+  );
+}
+
+export async function waitForNewTradeWithPlayer(input: {
+  otherUserId: BiomesId;
+  knownTradeIds: ReadonlySet<BiomesId>;
+  readLocalActiveTrades: () => ReadonlyActiveTrades | undefined;
+  fetchAuthoritativeActiveTrades: () => Promise<
+    ReadonlyActiveTrades | undefined
+  >;
+  localTimeoutMs?: number;
+}) {
+  try {
+    return await pollUntil(
+      () =>
+        findNewTradeWithPlayer(
+          input.readLocalActiveTrades(),
+          input.otherUserId,
+          input.knownTradeIds
+        ),
+      {
+        timeout: input.localTimeoutMs ?? 10000,
+        timeoutText: "Timed out waiting for trade to be created",
+      }
+    );
+  } catch (localTimeout) {
+    // The trade handler can commit to Redis before a heavily loaded Sync
+    // replica applies the player's active_trades delta. Read the same
+    // authoritative player entity through OOB once before declaring failure.
+    // TradeScreen also uses OOB for the trade entity, so returning this id does
+    // not invent client state or bypass native ECS authority.
+    const authoritative = findNewTradeWithPlayer(
+      await input.fetchAuthoritativeActiveTrades(),
+      input.otherUserId,
+      input.knownTradeIds
+    );
+    if (authoritative) {
+      return authoritative;
+    }
+    throw localTimeout;
+  }
+}
 
 export function inventorySelectionName(selection: HotBarSelection): string {
   if (selection.kind === "camera") {
@@ -403,7 +458,9 @@ export function eagerInventorySplit(
 }
 
 export async function beginTrade(
-  deps: ClientContextSubset<"events" | "userId" | "resources">,
+  deps: ClientContextSubset<
+    "events" | "userId" | "resources" | "oobFetcher"
+  >,
   otherUserId: BiomesId
 ): Promise<BiomesId> {
   const currentActiveTrades = deps.resources.get(
@@ -411,32 +468,25 @@ export async function beginTrade(
     deps.userId
   );
 
-  const knownTradeIds =
-    currentActiveTrades?.trades.map((e) => e.trade_id) ?? [];
+  const knownTradeIds = new Set(
+    currentActiveTrades?.trades.map((trade) => trade.trade_id) ?? []
+  );
 
   await deps.events.publish(
     new BeginTradeEvent({ id: deps.userId, id2: otherUserId })
   );
 
-  const newTrade = await pollUntil(
-    () => {
-      const currentActiveTrades = deps.resources.get(
-        "/ecs/c/active_trades",
-        deps.userId
-      );
-
-      const newTrade = currentActiveTrades?.trades.find(
-        (e) =>
-          (e.id1 === otherUserId || e.id2 === otherUserId) &&
-          !knownTradeIds.includes(e.trade_id)
-      );
-      return newTrade;
+  const newTrade = await waitForNewTradeWithPlayer({
+    otherUserId,
+    knownTradeIds,
+    readLocalActiveTrades: () =>
+      deps.resources.get("/ecs/c/active_trades", deps.userId),
+    fetchAuthoritativeActiveTrades: async () => {
+      const [, player] =
+        (await deps.oobFetcher.fetch([deps.userId]))[0] ?? [];
+      return player?.active_trades;
     },
-    {
-      timeout: 10000,
-      timeoutText: "Timed out waiting for trade to be created",
-    }
-  );
+  });
 
   ok(newTrade);
   return newTrade.trade_id;

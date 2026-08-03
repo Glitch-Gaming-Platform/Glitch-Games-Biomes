@@ -7,6 +7,7 @@
 // walkable samples inside both canonical dungeon terrain contracts.
 
 import { CH1_NEW_CAST } from "@/shared/harthmere/ch1_cast";
+import { ch1DungeonMechanicForObjective } from "@/shared/harthmere/ch1_dungeon_mechanics";
 import {
   CH1_DUNGEON_TERRAIN,
   ch1DungeonAuthoredToWorld,
@@ -152,14 +153,14 @@ function ch1CastPosition(
   switch (member.key) {
     case "iris_fen":
       return ch1DungeonAuthoredToWorld("ch1_dungeon_desert", {
-        x: 344,
-        y: -21,
+        x: 386,
+        y: -20,
         z: -56,
       });
     case "marrow":
       return ch1DungeonAuthoredToWorld("ch1_dungeon_desert", {
-        x: 350,
-        y: -21,
+        x: 391,
+        y: -20,
         z: -52,
       });
     case "nadia_sorrel":
@@ -271,23 +272,38 @@ const TARGET_ALIASES = new Map<string, Ch1Vec3>([
 const STEP_TARGET_OVERRIDES: Readonly<
   Record<string, { anchor: keyof typeof CH1_ANCHORS; castKey?: string }>
 > = {
-  the_examination: { anchor: "greenlamp_clinic", castKey: "lou_ardan" },
+  the_examination: { anchor: "greenlamp_lou_post", castKey: "lou_ardan" },
   not_this_small: { anchor: "gate_fence_sighting", castKey: "jackie" },
-  the_flinch: { anchor: "gate_desert", castKey: "jackie" },
-  say_the_sentence: { anchor: "gate_desert", castKey: "halden_rook" },
-  call_the_collapse: { anchor: "gate_desert", castKey: "halden_rook" },
+  the_flinch: { anchor: "gate_desert_jackie_post", castKey: "jackie" },
+  say_the_sentence: {
+    anchor: "gate_desert_rook_post",
+    castKey: "halden_rook",
+  },
+  call_the_collapse: {
+    anchor: "gate_desert_rook_post",
+    castKey: "halden_rook",
+  },
   rooks_rope: { anchor: "gate_winter", castKey: "halden_rook" },
-  hear_him_out: { anchor: "returnstone_pad_office", castKey: "lou_ardan" },
-  give_the_ledger: { anchor: "returnstone_pad_office", castKey: "lou_ardan" },
+  hear_him_out: { anchor: "returnstone_lou_post", castKey: "lou_ardan" },
+  give_the_ledger: { anchor: "returnstone_lou_post", castKey: "lou_ardan" },
   give_her_location: {
-    anchor: "returnstone_pad_office",
+    anchor: "returnstone_lou_post",
     castKey: "lou_ardan",
   },
-  the_word: { anchor: "returnstone_pad_office", castKey: "lou_ardan" },
-  watch_him_go: { anchor: "returnstone_pad_office", castKey: "lou_ardan" },
-  did_he_take_it: { anchor: "grove_watch_house", castKey: "jackie" },
-  the_whole_plan: { anchor: "grove_watch_house", castKey: "jackie" },
-  the_final_choice: { anchor: "grove_watch_house", castKey: "jackie" },
+  the_word: { anchor: "returnstone_lou_post", castKey: "lou_ardan" },
+  watch_him_go: { anchor: "returnstone_lou_post", castKey: "lou_ardan" },
+  did_he_take_it: {
+    anchor: "grove_watch_house_jackie_post",
+    castKey: "jackie",
+  },
+  the_whole_plan: {
+    anchor: "grove_watch_house_jackie_post",
+    castKey: "jackie",
+  },
+  the_final_choice: {
+    anchor: "grove_watch_house_jackie_post",
+    castKey: "jackie",
+  },
 };
 
 const DISTRICT_FALLBACKS: Readonly<Record<string, Ch1Vec3>> = {
@@ -398,6 +414,33 @@ function dungeonTarget(
     : undefined;
 }
 
+/**
+ * "Complete challenge" USED TO BE A LIE SEVEN TIMES OUT OF EIGHT.
+ *
+ * Only `the_procedure` has a real minigame UI (Chapter1ContainmentTriage). The
+ * other seven `minigame` steps are dungeon-zone crossings, and the trigger is
+ * deliberately `minigame` rather than `near_location` on all of them: see the
+ * authored comments in ch1_quests.ts. A proximity trigger would complete in
+ * native ECS without ever charging the water/fuel/light interval or the
+ * stamina and health consequence, which is exactly the bypass the survival
+ * mechanic exists to prevent. The TRIGGER is load-bearing and must not change.
+ *
+ * The LABEL is what was wrong. Three of those crossings ask the player to pick
+ * a route, and four are a committed crossing that spends supplies. Both are
+ * honest things to say; "Complete challenge" promised a minigame that does not
+ * exist and set the wrong expectation at both dungeons' signature moments.
+ */
+function minigameActionLabel(step: Ch1QuestStep): string {
+  if (step.id === "the_procedure") return "Complete challenge";
+  // The zone mechanic config is already the authority on which crossings make
+  // the player pick a route (`requiredChoice`), so the label reads off the same
+  // record that enforces it rather than a second hand-maintained list.
+  const mechanic = ch1DungeonMechanicForObjective(step.id);
+  if (mechanic?.requiredChoice) return "Choose route";
+  if (mechanic) return "Make the crossing";
+  return "Complete challenge";
+}
+
 function actionLabel(step: Ch1QuestStep): string {
   if (step.id === "the_tea") return "Drink Jackie's breakfast tea";
   if (step.id === "kit_check") return "Let Jackie check your kit";
@@ -418,7 +461,7 @@ function actionLabel(step: Ch1QuestStep): string {
     case "escort":
       return "Finish escort";
     case "minigame":
-      return "Complete challenge";
+      return minigameActionLabel(step);
     case "dialogue_choice":
       return "Choose response";
     case "sleep":

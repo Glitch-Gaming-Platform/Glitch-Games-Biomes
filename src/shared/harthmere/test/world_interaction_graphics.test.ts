@@ -12,6 +12,8 @@ import {
   HARTHMERE_GATHERING_NODE_GRAPHICS,
   HARTHMERE_GATHERING_NODE_GRAPHIC_LOD_POLICY,
   HARTHMERE_GATHERING_NODE_GROW_IN_SECONDS,
+  HARTHMERE_REQUEST_BOARD_GRAPHICS,
+  HARTHMERE_REQUEST_BOARD_GRAPHIC_LOD_POLICY,
   harthmereGatheringNodeGrowInTransform,
   harthmereGatheringNodeGraphic,
   harthmereWorldInteractionGraphicLod,
@@ -75,6 +77,31 @@ describe("Harthmere world-interaction Blender graphics", () => {
       ),
       "hidden"
     );
+  });
+
+  it("provides four distinct optimized request-board guild graphics", () => {
+    assert.deepEqual(Object.keys(HARTHMERE_REQUEST_BOARD_GRAPHICS).sort(), [
+      "farming",
+      "fishing",
+      "industrial",
+      "research",
+    ]);
+    assert.deepEqual(HARTHMERE_REQUEST_BOARD_GRAPHIC_LOD_POLICY, {
+      lod0MaxDistanceMeters: 22,
+      lod1MaxDistanceMeters: 72,
+      hiddenBeyondMeters: 110,
+    });
+    for (const [category, graphic] of Object.entries(
+      HARTHMERE_REQUEST_BOARD_GRAPHICS
+    )) {
+      assert.equal(graphic.category, category);
+      assert.notEqual(graphic.assets.lod0, graphic.assets.lod1);
+      for (const lod of ["lod0", "lod1"] as const) {
+        assert.equal(graphic.stats[lod].meshoptCompressed, true);
+        assert.equal(graphic.stats[lod].textureCount, 0);
+        assert.equal(graphic.stats[lod].imageCount, 0);
+      }
+    }
   });
 
   it("uses one bounded presentation-only grow-in for every gathering group", () => {
@@ -172,6 +199,14 @@ describe("Harthmere world-interaction Blender graphics", () => {
     assert.ok(rendererSource.includes("frustumCulled = true"));
     assert.ok(rendererSource.includes("GROW_IN_SECONDS"));
     assert.ok(rendererSource.includes("growInComplete"));
+    assert.ok(
+      rendererSource.includes('status.status !== "not-loaded"'),
+      "loaded no-surface landmarks must retain their audited Y"
+    );
+    assert.ok(
+      rendererSource.includes("auditedHintShardLoaded"),
+      "a loaded hint shard must not be hidden by absent distant vertical shards"
+    );
     assert.ok(
       rendererSource.includes("HARTHMERE_GATHERING_NODE_VISUAL_RESPAWN_EVENT")
     );

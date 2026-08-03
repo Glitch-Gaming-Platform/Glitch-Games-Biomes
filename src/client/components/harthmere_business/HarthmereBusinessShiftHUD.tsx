@@ -1,10 +1,18 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import type { HarthmereBusinessInterfaceAdapter } from "./businessInterfaceLiveAdapter";
-import { createHarthmereBusinessMiniGameDecisionForOffer } from "@/shared/harthmere/business_customer_simulator";
 import { deserializeNpcCustomState } from "@/shared/npc/serde";
 import type { BiomesId } from "@/shared/ids";
 import * as React from "react";
 import * as THREE from "three";
+import {
+  clearHarthmereBusinessCustomerTalkTarget,
+  publishHarthmereBusinessCustomerTalkTarget,
+  publishHarthmereBusinessCustomerTalkTargets,
+} from "./harthmereBusinessCustomerTalkState";
+import {
+  HARTHMERE_BUSINESS_MINIGAME_MUSIC_OVERRIDE_OWNER,
+  harthmereBusinessMinigameMusicTrack,
+} from "./businessMinigameMusic";
 
 export const HARTHMERE_BUSINESS_SHIFT_HUD_VERSION =
   "harthmere-business-spatial-shift-hud-v1" as const;
@@ -72,8 +80,6 @@ function SpatialCustomerCard({
     (candidate) => candidate.ticketId === ticketId
   );
   const { customerState, screen } = useProjectedEntityPosition(entityId);
-  const [pending, setPending] = React.useState(false);
-  const [message, setMessage] = React.useState<string>();
   const ready = customerState?.phase === "serving";
   const customerName = panel.currentNpc?.displayName ?? "Customer";
 
@@ -88,43 +94,41 @@ function SpatialCustomerCard({
   }, [audioManager, customerState?.reaction]);
 
   React.useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (!ready || pending || event.repeat) return;
-      const index = Number(event.key) - 1;
-      const offer = panel.offers[index];
-      if (!offer) return;
-      event.preventDefault();
-      void serve(offer.offerId);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  });
-
-  const serve = React.useCallback(
-    async (offerId: string) => {
-      if (!ready || pending) return;
-      setPending(true);
-      setMessage(undefined);
-      try {
-        await adapter.serveCustomer(
-          businessId,
-          offerId,
-          sessionId,
-          ticketId,
-          createHarthmereBusinessMiniGameDecisionForOffer(
-            panel.typeId as any,
-            offerId
-          )
-        );
-        setMessage("Service committed");
-      } catch (error) {
-        setMessage(error instanceof Error ? error.message : String(error));
-      } finally {
-        setPending(false);
-      }
-    },
-    [adapter, businessId, panel.typeId, pending, ready, sessionId, ticketId]
-  );
+    publishHarthmereBusinessCustomerTalkTarget({
+      adapter,
+      businessId,
+      businessType: panel.typeId,
+      sessionId,
+      ticketId,
+      entityId,
+      customerName,
+      askLine: ticket?.askLine ?? "What can you do for me?",
+      patienceRemaining: ticket?.patienceRemaining ?? 0,
+      requestedOfferId: ticket?.requestedOfferId,
+      phase: customerState?.phase,
+      ready,
+      offers: panel.offers,
+    });
+    // No cleanup here on purpose. The shift-level registry owns entry lifetime;
+    // this effect only *refines* the current customer with its live ECS phase,
+    // which is more accurate than the economy snapshot's `spatialPhase`.
+    // Clearing on unmount would deregister the customer the player is walking
+    // up to talk to, which is precisely the bug this registry exists to fix.
+  }, [
+    adapter,
+    businessId,
+    customerName,
+    customerState?.phase,
+    entityId,
+    panel.offers,
+    panel.typeId,
+    ready,
+    sessionId,
+    ticket?.askLine,
+    ticket?.patienceRemaining,
+    ticket?.requestedOfferId,
+    ticketId,
+  ]);
 
   React.useEffect(() => {
     const debug = {
@@ -139,8 +143,7 @@ function SpatialCustomerCard({
       customerName,
       correctOfferId: ticket?.requestedOfferId,
       offers: panel.offers.map((offer) => offer.offerId),
-      serveCorrect: () =>
-        ticket?.requestedOfferId ? serve(ticket.requestedOfferId) : undefined,
+      talkRequired: true,
     };
     (window as any).__harthmereBusinessShiftDebug = debug;
     return () => {
@@ -156,7 +159,6 @@ function SpatialCustomerCard({
     entityId,
     panel.offers,
     ready,
-    serve,
     sessionId,
     ticket?.requestedOfferId,
     ticketId,
@@ -185,10 +187,12 @@ function SpatialCustomerCard({
         background: "rgba(24, 20, 17, 0.9)",
         boxShadow: "0 10px 30px rgba(0,0,0,.38)",
         color: "#fff4db",
-        pointerEvents: "auto",
+        pointerEvents: "none",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+      <div
+        style={{ display: "flex", justifyContent: "space-between", gap: 10 }}
+      >
         <strong>{customerName}</strong>
         <span style={{ color: ready ? "#9ee6a2" : "#e9c985" }}>
           {ready
@@ -203,36 +207,11 @@ function SpatialCustomerCard({
       <p style={{ margin: "7px 0 10px", fontSize: 13, lineHeight: 1.35 }}>
         {ticket?.askLine ?? "The next customer is approaching."}
       </p>
-      {ready ? (
-        <div style={{ display: "grid", gap: 6 }}>
-          {panel.offers.map((offer, index) => (
-            <button
-              key={offer.offerId}
-              data-business-offer-id={offer.offerId}
-              type="button"
-              disabled={pending}
-              onClick={() => void serve(offer.offerId)}
-              style={{
-                border: "1px solid rgba(255,255,255,.18)",
-                borderRadius: 8,
-                padding: "8px 10px",
-                textAlign: "left",
-                color: "white",
-                background: "rgba(255,255,255,.08)",
-              }}
-            >
-              <b>{index + 1}.</b> {offer.label}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <p style={{ margin: 0, color: "#c9bda7", fontSize: 12 }}>
-          Keep the counter clear. The customer is using native pathing.
-        </p>
-      )}
-      {message ? (
-        <p style={{ margin: "8px 0 0", fontSize: 12 }}>{message}</p>
-      ) : null}
+      <p style={{ margin: 0, color: "#c9bda7", fontSize: 12 }}>
+        {ready
+          ? "Talk to this customer to choose the business service response."
+          : "Stay behind the counter. The customer is using native pathing."}
+      </p>
     </aside>
   );
 }
@@ -240,15 +219,43 @@ function SpatialCustomerCard({
 export function HarthmereBusinessShiftHUD({
   adapter,
   businessId,
+  insideBusiness = false,
 }: {
   adapter: HarthmereBusinessInterfaceAdapter;
   businessId?: string;
+  insideBusiness?: boolean;
 }) {
+  const { audioManager } = useClientContext();
   const panel = businessId
     ? adapter.getCustomerMiniGame(businessId)
     : undefined;
   const session = panel?.activeSession;
   const ticket = panel?.currentTicket;
+  const minigameMusicTrack = harthmereBusinessMinigameMusicTrack({
+    businessId,
+    insideBusiness,
+    sessionStatus: session?.status,
+  });
+
+  React.useEffect(() => {
+    audioManager.setBackgroundMusicOverride(
+      HARTHMERE_BUSINESS_MINIGAME_MUSIC_OVERRIDE_OWNER,
+      minigameMusicTrack
+    );
+    return () => {
+      audioManager.setBackgroundMusicOverride(
+        HARTHMERE_BUSINESS_MINIGAME_MUSIC_OVERRIDE_OWNER,
+        undefined
+      );
+    };
+  }, [
+    audioManager,
+    businessId,
+    insideBusiness,
+    minigameMusicTrack,
+    session?.sessionId,
+    session?.status,
+  ]);
 
   React.useEffect(() => {
     if (!businessId || !session || session.status !== "active") return;
@@ -269,6 +276,50 @@ export function HarthmereBusinessShiftHUD({
     };
   }, [adapter, businessId, session?.sessionId, session?.status]);
 
+  // HARTHMERE_BUSINESS_TALK_TARGET_REGISTRY
+  // Register every live customer of this shift, not only the one at the
+  // counter. The projected card is proximity- and visibility-gated; talking is
+  // not. Registering only the served customer meant anyone else in the queue
+  // opened the ordinary NPC dialogue — "Chit Chat", "Ask about this place" —
+  // from a person standing in a shop queue holding a service request.
+  //
+  // The registry is replaced wholesale so a served or departed ticket cannot
+  // leave a stale entry behind, which would offer service to a customer who has
+  // already walked out.
+  React.useEffect(() => {
+    if (!businessId || !panel || !session || session.status !== "active") {
+      clearHarthmereBusinessCustomerTalkTarget();
+      return;
+    }
+    publishHarthmereBusinessCustomerTalkTargets(
+      session.queue
+        .filter(
+          (entry) => entry.entityId !== undefined && entry.status === "waiting"
+        )
+        .map((entry) => ({
+          adapter,
+          businessId,
+          businessType: panel.typeId,
+          sessionId: session.sessionId,
+          ticketId: entry.ticketId,
+          entityId: entry.entityId as BiomesId,
+          customerName: entry.npcId,
+          askLine: entry.askLine,
+          patienceRemaining: entry.patienceRemaining,
+          requestedOfferId: entry.requestedOfferId,
+          phase: entry.spatialPhase,
+          // Only the session's current ticket may be served. A queued customer
+          // is real and talkable, but presenting offers for them would let the
+          // player serve out of order and break the spatial queue contract.
+          ready:
+            entry.ticketId === session.currentTicketId &&
+            entry.spatialPhase === "serving",
+          offers: panel.offers,
+        }))
+    );
+    return () => clearHarthmereBusinessCustomerTalkTarget();
+  }, [adapter, businessId, panel, session]);
+
   if (!businessId || !session) return null;
   return (
     <>
@@ -287,7 +338,8 @@ export function HarthmereBusinessShiftHUD({
           pointerEvents: "auto",
         }}
       >
-        {session.servedTicketIds.length}/{session.queue.length} served · {session.earnedGold} gold
+        {session.servedTicketIds.length}/{session.queue.length} served ·{" "}
+        {session.earnedGold} gold
         <button
           type="button"
           onClick={() =>
@@ -308,58 +360,5 @@ export function HarthmereBusinessShiftHUD({
         />
       ) : null}
     </>
-  );
-}
-
-export function HarthmereBusinessShiftControlPane({
-  adapter,
-  businessId,
-}: {
-  adapter: HarthmereBusinessInterfaceAdapter;
-  businessId: string;
-}) {
-  const panel = adapter.getCustomerMiniGame(businessId);
-  const session = panel.activeSession;
-  return (
-    <section
-      data-harthmere-business-in-world-shift-control="true"
-      style={{
-        padding: 16,
-        borderRadius: 12,
-        border: "1px solid rgba(255,255,255,.14)",
-        background: "rgba(255,255,255,.045)",
-      }}
-    >
-      <h3 style={{ margin: "0 0 8px" }}>In-world customer shift</h3>
-      <p style={{ margin: "0 0 12px", lineHeight: 1.45 }}>
-        Customers now enter through this building&apos;s real door, form a
-        spatial queue, approach the collidable counter, and leave through the
-        same exit. Close this dashboard after starting; service choices stay
-        beside the customer while normal third-person movement remains active.
-      </p>
-      {session ? (
-        <div>
-          <strong>
-            Shift live: {session.servedTicketIds.length}/{session.queue.length}
-          </strong>
-          <button
-            type="button"
-            onClick={() =>
-              void adapter.endCustomerSession(businessId, session.sessionId)
-            }
-            style={{ marginLeft: 10 }}
-          >
-            End safely
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => void adapter.startCustomerSession(businessId)}
-        >
-          Start shift at counter
-        </button>
-      )}
-    </section>
   );
 }

@@ -210,6 +210,16 @@ export function hasSelectedWorldInteractionCandidate(keyCode = "KeyF") {
   return selectedCandidate(keyCode) !== undefined;
 }
 
+export function useHasSelectedWorldInteractionCandidate(keyCode = "KeyF") {
+  return (
+    useSyncExternalStore(
+      subscribe,
+      () => selectedTokenForKey(keyCode),
+      () => undefined
+    ) !== undefined
+  );
+}
+
 /**
  * Invoke the same winner the keyboard dispatcher would choose. Hotbar tool
  * buttons and accessibility controls use this instead of calling individual

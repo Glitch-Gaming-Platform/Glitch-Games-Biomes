@@ -26,7 +26,15 @@ describe("Harthmere gathering node authority", () => {
     );
     assert.equal(additive.length, 10);
     assert.equal(hilly.length, 19);
-    assert.ok(additive.every((candidate) => candidate.position[1] === 53));
+    assert.ok(
+      additive
+        .filter((candidate) => candidate.id !== "harthmere_mudden_scrap")
+        .every((candidate) => candidate.position[1] === 53)
+    );
+    assert.deepEqual(
+      harthmereGatheringAuthorityNode("harthmere_mudden_scrap")?.position,
+      [2009, 39, -178]
+    );
     assert.ok(additive.every((candidate) => candidate.position[0] >= 1792));
     assert.ok(hilly.every((candidate) => candidate.position[0] < 1792));
     assert.ok(

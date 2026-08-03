@@ -2,6 +2,7 @@
 
 import assert from "assert";
 import {
+  buildHarthmereObsoleteSnapshotGroveNpcDeleteChanges,
   buildHarthmereSnapshotGroveNpcSeedProposedChanges,
   harthmereObsoleteSnapshotGroveNpcIds,
 } from "../snapshot_grove_npc_ecs_seed";
@@ -125,6 +126,38 @@ describe("snapshot Grove NPC ECS seed cosmetics", () => {
         },
       ]),
       [SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS.jackie]
+    );
+
+    assert.deepEqual(
+      buildHarthmereObsoleteSnapshotGroveNpcDeleteChanges({
+        tick: 42,
+        candidates: [
+          {
+            id: canonicalJackie,
+            label: "Jackie",
+            hasNpcMetadata: true,
+          },
+          {
+            id: SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS.jackie,
+            label: "Jackie",
+            hasNpcMetadata: true,
+          },
+          {
+            id: 7001 as any,
+            label: "Jackie",
+            hasNpcMetadata: false,
+            hasPlayerStatus: true,
+            hasRemoteConnection: true,
+          },
+        ],
+      }),
+      [
+        {
+          kind: "delete",
+          tick: 42,
+          id: SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS.jackie,
+        },
+      ]
     );
   });
 });

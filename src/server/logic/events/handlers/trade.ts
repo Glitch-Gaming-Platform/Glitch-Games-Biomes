@@ -8,10 +8,25 @@ import {
 import { q } from "@/server/logic/events/query";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import type { Delta } from "@/shared/ecs/gen/delta";
+import type { ReadonlyInventoryAssignmentPattern } from "@/shared/ecs/gen/types";
 import { patternAsBag } from "@/shared/game/inventory";
+import { isDroppableItem } from "@/shared/game/items";
 import { itemBagToString } from "@/shared/game/items_serde";
 import type { BiomesId } from "@/shared/ids";
 import { ok } from "assert";
+
+function assertTradeOfferIsTransferable(
+  offer: ReadonlyInventoryAssignmentPattern
+) {
+  for (const [ref, stack] of offer) {
+    if (ref.kind === "wearable") {
+      throw new RollbackError("Equipped items cannot be traded");
+    }
+    if (stack.count <= 0n || !isDroppableItem(stack.item)) {
+      throw new RollbackError("Bound or invalid items cannot be traded");
+    }
+  }
+}
 
 function deleteTrade(
   tradeId: BiomesId,
@@ -112,13 +127,14 @@ const acceptTradeHandler = makeEventHandler("acceptTradeEvent", {
         [player, playerTrader, otherTraderPlayer, otherTrader],
         [otherTraderPlayer, otherTrader, player, playerTrader],
       ] as const) {
+        assertTradeOfferIsTransferable(trader1.offer_assignment);
         const offer1Bag = patternAsBag(trader1.offer_assignment);
         const offer2Bag = patternAsBag(trader2.offer_assignment);
         if (player1.inventory.canTake(trader1.offer_assignment)) {
           player1.inventory.take(trader1.offer_assignment);
           player2.inventory.giveWithInventoryOverflow(offer1Bag);
         } else if (player1.inventory.tryTakeBag(offer1Bag)) {
-          player1.inventory.giveWithInventoryOverflow(offer1Bag);
+          player2.inventory.giveWithInventoryOverflow(offer1Bag);
         } else {
           throw new RollbackError(
             `Trade failed due to offer not in inventory of ${player1.id}`
@@ -147,6 +163,7 @@ const changeTradeOfferHandler = makeEventHandler("changeTradeOfferEvent", {
   apply: ({ player, trade }, event) => {
     const mutTrade = trade.mutableTrade();
     ok(player.id === mutTrade.trader1.id || player.id === mutTrade.trader2.id);
+    assertTradeOfferIsTransferable(event.offer);
     ok(player.inventory.canTake(event.offer));
 
     const trader =

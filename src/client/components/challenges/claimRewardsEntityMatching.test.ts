@@ -4,6 +4,10 @@ import {
   SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
   SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS,
 } from "@/shared/harthmere/snapshot_grove_ids";
+import {
+  HARTHMERE_DOCK_FISHING_BOARD,
+  HARTHMERE_FISHING_BOARD_ID,
+} from "@/shared/harthmere/native_request_boards";
 import assert from "assert";
 
 describe("native claim-rewards entity matching", () => {
@@ -53,6 +57,22 @@ describe("native claim-rewards entity matching", () => {
         canonicalResources,
         SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
         SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS.jackie
+      ),
+      true
+    );
+  });
+
+  it("matches the Harthmere quay Fishing Board to the canonical board leaf", () => {
+    const boardResources = {
+      get() {
+        return undefined;
+      },
+    } as any;
+    assert.equal(
+      claimRewardsStepMatchesEntity(
+        boardResources,
+        HARTHMERE_DOCK_FISHING_BOARD.entityId,
+        HARTHMERE_FISHING_BOARD_ID
       ),
       true
     );

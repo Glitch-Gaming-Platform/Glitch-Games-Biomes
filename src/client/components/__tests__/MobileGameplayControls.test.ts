@@ -32,6 +32,36 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(pointerLock.includes("this.setPointerLockDisabled(true)"));
   });
 
+  it("turns continuously with the exact finger held on the mobile game canvas", () => {
+    const view = read("src/client/components/BiomesView.tsx");
+    const css = read("src/client/styles/biomes.css");
+
+    assert.ok(view.includes("mobileLookTouchRef"));
+    assert.ok(view.includes("event.changedTouches[0]"));
+    assert.ok(view.includes("touch.identifier"));
+    assert.ok(
+      view.includes("touchWithIdentifier(event.touches, active.identifier)")
+    );
+    assert.ok(view.includes('input.moveTouchScreen("canvas", moveX, moveY)'));
+    assert.ok(view.includes("finishMobileLookTouch"));
+    assert.ok(
+      view.includes('document.addEventListener(\n        "touchstart"')
+    );
+    assert.ok(view.includes('document.addEventListener(\n        "touchmove"'));
+    assert.ok(view.includes("capture: true"));
+    assert.ok(view.includes("passive: false"));
+    assert.ok(view.includes('"[data-biomes-mobile-controls]"'));
+    assert.ok(view.includes('".biomes-ui-hotbar-hud"'));
+    assert.ok(view.includes("current.scrollHeight > current.clientHeight"));
+    assert.ok(view.includes("current.scrollWidth > current.clientWidth"));
+    assert.ok(view.includes("biomesMobileLookMoves"));
+    assert.ok(view.includes("data-biomes-mobile-look-drag={"));
+    assert.ok(view.includes("clientConfig.mobileDevice"));
+    assert.ok(css.includes(".biomes-canvas--mobile-look"));
+    assert.ok(css.includes("touch-action: none"));
+    assert.ok(css.includes("overscroll-behavior: none"));
+  });
+
   it("does not classify a pointerless desktop browser as mobile", () => {
     const config = read("src/client/game/client_config.ts");
     assert.ok(config.includes("void pointerLockSupported"));
@@ -78,6 +108,62 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(hud.includes("z-index: 1095"));
   });
 
+  it("hides mobile gameplay controls and BiomesUI during onboarding screens", () => {
+    const prompt = read(
+      "src/client/components/biomes_ui/BiomesUIOpenPrompt.tsx"
+    );
+    const joystick = read("src/client/components/JoystickInput.tsx");
+    const biomesUI = read("src/client/components/biomes_ui/BiomesUIMount.tsx");
+
+    assert.ok(
+      prompt.includes("export function useBiomesUINonGameplayScreenVisible()")
+    );
+    assert.ok(joystick.includes("useBiomesUINonGameplayScreenVisible"));
+    assert.ok(
+      joystick.includes("clientConfig.mobileDevice && nonGameplayScreenVisible")
+    );
+    assert.ok(biomesUI.includes("useBiomesUINonGameplayScreenVisible"));
+    assert.ok(
+      biomesUI.includes("clientConfig.mobileDevice && nonGameplayScreenVisible")
+    );
+  });
+
+  it("keeps the required mobile onboarding name form readable and touch-sized", () => {
+    const wakeup = read("src/client/components/WakeUpScreen.tsx");
+    const characterCss = read("src/client/styles/edit_character.css");
+
+    assert.ok(wakeup.includes("clientConfig.mobileDevice"));
+    assert.ok(wakeup.includes("harthmere-wakeup-name-entry"));
+    assert.ok(wakeup.includes('"flex w-full flex-col gap-3"'));
+    assert.ok(wakeup.includes("harthmere-wakeup-name-input"));
+    assert.ok(wakeup.includes("min-h-[44px] w-full"));
+    assert.ok(wakeup.includes("w-[min(92vw,24rem)]"));
+    assert.ok(
+      characterCss.includes(
+        ".harthmere-wakeup-name-entry .harthmere-wakeup-name-input"
+      )
+    );
+    assert.ok(characterCss.includes("font-size: 16px !important"));
+  });
+
+  it("keeps the phone character builder scrollable with reachable touch controls", () => {
+    const wakeup = read("src/client/components/WakeUpScreen.tsx");
+    const characterCss = read("src/client/styles/edit_character.css");
+
+    assert.ok(wakeup.includes("harthmere-wakeup-character-builder--mobile"));
+    assert.ok(wakeup.includes("harthmere-builder-options-scroll--mobile"));
+    assert.ok(
+      wakeup.includes('paddingTop: "max(8px, env(safe-area-inset-top))"')
+    );
+    assert.ok(
+      characterCss.includes(
+        ".harthmere-wakeup-character-builder--mobile [data-harthmere-builder-layout]"
+      )
+    );
+    assert.ok(characterCss.includes("max-height: none !important"));
+    assert.ok(characterCss.includes("min-height: 44px !important"));
+  });
+
   it("adds directional double-tap evade plus contained crouch and jump controls", () => {
     const joystick = read("src/client/components/JoystickInput.tsx");
     const input = read("src/client/game/context_managers/input.ts");
@@ -96,6 +182,21 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(joystick.includes("MOBILE_JOYSTICK_JUMP_SOURCE"));
     assert.match(joystick, /input\.setSyntheticAction\(\s*"jump"/);
     assert.ok(joystick.includes("containMobileControlEvent"));
+    assert.ok(joystick.includes("preventMobileBrowserNavigationGesture"));
+    assert.ok(
+      joystick.includes('document.addEventListener(\n      "touchstart"')
+    );
+    assert.ok(
+      joystick.includes('document.addEventListener(\n      "touchmove"')
+    );
+    assert.ok(joystick.includes("passive: false"));
+    assert.ok(joystick.includes("data-biomes-mobile-browser-back-guard"));
+    assert.ok(joystick.includes("MOBILE_MOVEMENT_HISTORY_GUARD_KEY"));
+    assert.ok(joystick.includes('window.addEventListener("popstate"'));
+    assert.ok(joystick.includes("window.history.pushState"));
+    assert.ok(hud.includes("padding-left: max(24px"));
+    assert.ok(hud.includes("bottom: max(76px"));
+    assert.ok(hud.includes("align-items: flex-start"));
     assert.ok(input.includes("setSyntheticAction"));
     assert.ok(player.includes("MOBILE_JOYSTICK_CROUCH_SOURCE"));
     assert.ok(player.includes("motionWithoutSyntheticSource"));
@@ -121,11 +222,15 @@ describe("mobile gameplay control wiring", () => {
 
   it("uses the phone memory profile and does not mount streaming media players", () => {
     const config = read("src/client/game/client_config.ts");
+    const audio = read("src/client/game/context_managers/audio_manager.ts");
     const spatialMedia = read("src/client/components/SpatialMediaPlayer.tsx");
     const css3dTv = read("src/client/components/css3d/CSS3DTV.tsx");
 
-    assert.ok(config.includes("MOBILE_VOXELOO_MEMORY_SCALE = 0.25"));
+    assert.ok(config.includes("MOBILE_VOXELOO_MEMORY_SCALE = 0.125"));
     assert.ok(config.includes("ret.forceRenderScale = 0.5"));
+    assert.ok(audio.includes("backgroundMusicTracksForDevice"));
+    assert.ok(audio.includes("shouldPrefetchAllAudioAssets"));
+    assert.ok(audio.includes("clientConfig.mobileDevice"));
     assert.ok(spatialMedia.includes("clientConfig.mobileDevice"));
     assert.ok(css3dTv.includes("mobileStaticMedia"));
   });
@@ -137,7 +242,7 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(player.includes("running = mobileJoystickRunState > 0"));
   });
 
-  it("replaces the R/J prompt with mobile Menu, Recipes, and Invite buttons", () => {
+  it("uses accessible icon-only phone Menu, Recipes, and Invite buttons", () => {
     const prompt = read(
       "src/client/components/biomes_ui/BiomesUIOpenPrompt.tsx"
     );
@@ -152,6 +257,7 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(prompt.includes('data-biomes-mobile-action="invite"'));
     assert.ok(prompt.includes('aria-label="Open Recipes"'));
     assert.ok(prompt.includes('aria-label="Invite friends"'));
+    assert.ok(prompt.includes("biomes-ui-mobile-menu__label"));
     assert.ok(ui.includes('onActiveTabChange("inventory")'));
     assert.ok(
       ui.includes(
@@ -162,6 +268,16 @@ describe("mobile gameplay control wiring", () => {
       prompt.includes("BIOMES_UI_QUESTS_SHORTCUT"),
       "desktop keeps its existing R/J prompt"
     );
+    const theme = read(
+      "src/client/components/biomes_ui/theme/biomesUITheme.ts"
+    );
+    assert.ok(
+      theme.includes(
+        ".biomes-ui-mobile-menu--phone .biomes-ui-mobile-menu__label"
+      )
+    );
+    assert.ok(theme.includes("width: 44px;"));
+    assert.ok(theme.includes("display: none;"));
   });
 
   it("makes mobile shortcut prompts tappable without leaking into canvas input", () => {
@@ -173,7 +289,28 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(shortcut.includes("event.detail === 0"));
   });
 
-  it("uses compact vital icons and a wider panel only at the mobile breakpoint", () => {
+  it("shows one contextual F button for the winning mobile world interaction", () => {
+    const joystick = read("src/client/components/JoystickInput.tsx");
+    const dispatcher = read(
+      "src/client/components/challenges/worldInteractionDispatcher.ts"
+    );
+    const hud = read("src/client/styles/hud.css");
+
+    assert.ok(dispatcher.includes("useHasSelectedWorldInteractionCandidate"));
+    assert.ok(
+      joystick.includes('useHasSelectedWorldInteractionCandidate("KeyF")')
+    );
+    assert.ok(joystick.includes("mobileInteractAvailable"));
+    assert.ok(joystick.includes('data-biomes-mobile-interact="true"'));
+    assert.ok(joystick.includes('aria-label="Interact or talk (F)"'));
+    assert.ok(
+      joystick.includes('invokeSelectedWorldInteractionForKey("KeyF")')
+    );
+    assert.ok(hud.includes(".joysticks--mobile .mobile-interact-button"));
+    assert.ok(hud.includes("env(safe-area-inset-right)"));
+  });
+
+  it("uses a compact one-row phone vitals strip without changing desktop", () => {
     const vitals = read(
       "src/client/components/biomes_ui/BiomesUIVitalsPanel.tsx"
     );
@@ -186,12 +323,57 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(vitals.includes("biomes-ui-vitals-chip__icon--gold"));
     assert.ok(vitals.includes("biomes-ui-vitals-chip__icon--level"));
     assert.ok(vitals.includes("biomes-ui-vitals-panel--mobile"));
+    assert.ok(vitals.includes("biomes-ui-vitals-panel--phone"));
+    assert.ok(vitals.includes("biomes-ui-vitals-panel__stats"));
     assert.ok(
       theme.includes(
         ".biomes-ui-vitals-panel--mobile .biomes-ui-vitals-bar__label-text"
       )
     );
     assert.ok(theme.includes("width: min(54vw, 320px);"));
+    assert.ok(theme.includes("width: min(46vw, 190px);"));
+    assert.ok(
+      theme.includes("grid-template-columns: repeat(5, minmax(0, 1fr));")
+    );
+    assert.ok(
+      theme.includes(
+        ".biomes-ui-vitals-panel--phone .biomes-ui-vitals-chip__track"
+      )
+    );
+  });
+
+  it("keeps phone menu actions horizontal and clear of movement controls", () => {
+    const prompt = read(
+      "src/client/components/biomes_ui/BiomesUIOpenPrompt.tsx"
+    );
+    const theme = read(
+      "src/client/components/biomes_ui/theme/biomesUITheme.ts"
+    );
+    assert.ok(prompt.includes("biomes-ui-mobile-menu__label"));
+    assert.ok(theme.includes(".biomes-ui-mobile-menu--phone {"));
+    assert.ok(theme.includes("flex-direction: row;"));
+    assert.ok(theme.includes("width: 44px;"));
+    assert.ok(theme.includes("width: min(49vw, 320px);"));
+  });
+
+  it("prevents repeated phone client mounts from reserving WASM more than once", () => {
+    const wasm = read("src/client/game/webasm.ts");
+    const config = read("src/client/game/client_config.ts");
+    assert.ok(wasm.includes("let mobileVoxelooLoad"));
+    assert.ok(wasm.includes("if (!clientConfig.mobileDevice)"));
+    assert.ok(wasm.includes("return mobileVoxelooLoad"));
+    assert.ok(wasm.includes("mobileVoxelooLoad = undefined"));
+    assert.ok(config.includes("MOBILE_VOXELOO_MEMORY_SCALE = 0.125"));
+  });
+
+  it("keeps missing-entity navigation aid cleanup phone-only", () => {
+    const mapManager = read("src/client/game/context_managers/map_manager.ts");
+    assert.ok(mapManager.includes("private mobileDevice: boolean"));
+    assert.ok(mapManager.includes("if (this.mobileDevice)"));
+    assert.ok(
+      mapManager.includes('log.prodError("No entity found for navigation aid"')
+    );
+    assert.ok(mapManager.includes("clientConfig.mobileDevice"));
   });
 
   it("keeps phone layout changes scoped away from pointerless desktop", () => {

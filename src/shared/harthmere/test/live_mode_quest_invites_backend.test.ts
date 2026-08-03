@@ -10,10 +10,12 @@ import {
   type HarthmereLiveModeBackendState,
 } from "../live_mode_backend";
 import type { HarthmereLiveModeAuthorityEnvelope } from "../live_mode_readiness";
+import { harthmereNativeQuestId } from "../harthmere_native_quests";
 
 const INVITER = "player_quest_inviter";
 const INVITEE = "player_quest_invitee";
 const THIRD = "player_quest_third";
+const QUEST_ID = "fountain_buttons_first";
 const NOW_MS = 1_702_000_000_000;
 const INVITER_POSITION = { x: 0, y: 64, z: 0 };
 const INVITEE_POSITION = { x: 4, y: 64, z: 0 };
@@ -59,7 +61,7 @@ function invitePayload(overrides: Record<string, unknown> = {}) {
   return {
     operation: "invite_to_quest",
     inviteeActorId: INVITEE,
-    questId: "grove_buttons",
+    questId: QUEST_ID,
     questTitle: "Buttons Before the Road",
     questArea: "The Grove",
     objectiveText: "Talk to Jackie and find the jobs board.",
@@ -78,6 +80,18 @@ function reduce(
   atMs = NOW_MS,
   serverTargetPosition = serverPositionForActorId(targetId)
 ) {
+  if (
+    payload.operation === "invite_to_quest" &&
+    !state.quests.active[QUEST_ID] &&
+    state.quests.completed[QUEST_ID] === undefined
+  ) {
+    state.quests.active[QUEST_ID] = {
+      stepId: "fountain_buttons_first_obj_01",
+      progress: 1,
+      source: "snapshot_grove",
+      title: "Buttons Before the Road",
+    };
+  }
   return reduceHarthmereLiveModeBackendState(
     state,
     envelope(actorId, payload, targetId, serverTargetPosition),
@@ -145,7 +159,7 @@ describe("Harthmere live-mode quest invites", () => {
     );
     assert.deepEqual(accepted.summary.warnings, []);
     assert.equal(Object.keys(accepted.state.questInvites.invites).length, 0);
-    assert.ok(accepted.state.quests.active.grove_buttons);
+    assert.ok(accepted.state.quests.active[QUEST_ID]);
 
     const inviteeSnapshot = createHarthmereLiveModeQuestClientSnapshot(
       accepted.state
@@ -300,6 +314,224 @@ describe("Harthmere live-mode quest invites", () => {
     assert.deepEqual(memberActorIds, [INVITEE, INVITER, THIRD].sort());
   });
 
+  it("lets either member advance canonical progress and projects completion to both", () => {
+    const invited = reduce(
+      defaultHarthmereLiveModeBackendState(INVITER, NOW_MS),
+      INVITER,
+      invitePayload(),
+      INVITEE
+    ).state;
+    const inviteId = Object.keys(invited.questInvites.invites)[0];
+    const inviteeState = defaultHarthmereLiveModeBackendState(INVITEE, NOW_MS);
+    inviteeState.questInvites = invited.questInvites;
+    const accepted = reduce(
+      inviteeState,
+      INVITEE,
+      {
+        operation: "respond_to_quest_invite",
+        inviteId,
+        response: "accept",
+      },
+      undefined,
+      NOW_MS + 1
+    );
+
+    const advancedByInvitee = reduce(
+      accepted.state,
+      INVITEE,
+      {
+        operation: "shared_quest_progress",
+        questId: QUEST_ID,
+        source: "snapshot_grove",
+        objectiveIndex: 0,
+        progress: 2,
+        stepId: "fountain_buttons_first_obj_02",
+      },
+      undefined,
+      NOW_MS + 2
+    );
+    assert.equal(
+      advancedByInvitee.state.questInvites.sharedQuests[
+        `shared_quest:${QUEST_ID}:${INVITER}`
+      ]?.activeState?.progress,
+      2
+    );
+    assert.equal(
+      advancedByInvitee.state.questInvites.sharedQuests[
+        `shared_quest:${QUEST_ID}:${INVITER}`
+      ]?.lastProgressActorId,
+      INVITEE
+    );
+
+    const inviterState = defaultHarthmereLiveModeBackendState(INVITER, NOW_MS);
+    mergeHarthmereLiveModeSharedWorldStateIntoBackend(
+      inviterState,
+      createHarthmereLiveModeSharedWorldState(
+        advancedByInvitee.state,
+        NOW_MS + 2
+      ),
+      NOW_MS + 2
+    );
+    assert.equal(inviterState.quests.active[QUEST_ID]?.progress, 2);
+
+    inviterState.quests.completed[QUEST_ID] = NOW_MS + 3;
+    delete inviterState.quests.active[QUEST_ID];
+    const completedByInviter = reduce(
+      inviterState,
+      INVITER,
+      { operation: "shared_quest_sync" },
+      undefined,
+      NOW_MS + 3
+    );
+    const inviteeAfterCompletion = defaultHarthmereLiveModeBackendState(
+      INVITEE,
+      NOW_MS
+    );
+    mergeHarthmereLiveModeSharedWorldStateIntoBackend(
+      inviteeAfterCompletion,
+      createHarthmereLiveModeSharedWorldState(
+        completedByInviter.state,
+        NOW_MS + 3
+      ),
+      NOW_MS + 3
+    );
+    assert.equal(inviteeAfterCompletion.quests.completed[QUEST_ID], NOW_MS + 3);
+    assert.equal(inviteeAfterCompletion.quests.active[QUEST_ID], undefined);
+    assert.equal(
+      createHarthmereLiveModeQuestClientSnapshot(inviteeAfterCompletion)
+        .sharedQuests[0]?.status,
+      "completed"
+    );
+  });
+
+  it("uses server-owned quest identity and metadata instead of client overrides", () => {
+    const result = reduce(
+      defaultHarthmereLiveModeBackendState(INVITER, NOW_MS),
+      INVITER,
+      invitePayload({
+        inviteId: "forged_invite",
+        sharedQuestId: "forged_shared",
+        questTitle: "Free Dragon Loot",
+        questArea: "Nowhere",
+        objectiveText: "Skip everything",
+        reward: "999999 gold",
+      }),
+      INVITEE
+    );
+    const invite = Object.values(result.state.questInvites.invites)[0];
+    assert.ok(invite);
+    assert.notEqual(invite.inviteId, "forged_invite");
+    assert.notEqual(invite.sharedQuestId, "forged_shared");
+    assert.equal(invite.questTitle, "Buttons Before the Road");
+    assert.equal(invite.questArea, "The Grove Fountain");
+    assert.notEqual(invite.objectiveText, "Skip everything");
+    assert.notEqual(invite.reward, "999999 gold");
+  });
+
+  it("materializes acceptance and each progress step for every numeric ECS party member", () => {
+    const inviter = "101";
+    const invitee = "202";
+    const nativeQuestId = harthmereNativeQuestId("grove", QUEST_ID)!;
+    const inviterState = defaultHarthmereLiveModeBackendState(inviter, NOW_MS);
+    inviterState.quests.active[QUEST_ID] = {
+      stepId: "fountain_buttons_first_obj_01",
+      progress: 1,
+      source: "snapshot_grove",
+      title: "Buttons Before the Road",
+    };
+    const inviteEnvelope: HarthmereLiveModeAuthorityEnvelope = {
+      ...envelope(
+        inviter,
+        invitePayload({ inviteeActorId: invitee }),
+        invitee,
+        {
+          x: 4,
+          y: 64,
+          z: 0,
+        }
+      ),
+      serverActorEntityId: 101 as any,
+      serverActorPosition: { x: 0, y: 64, z: 0 },
+      serverActorInProgressQuestIds: [String(nativeQuestId)],
+    };
+    const invited = reduceHarthmereLiveModeBackendState(
+      inviterState,
+      inviteEnvelope,
+      NOW_MS
+    );
+    const inviteId = Object.keys(invited.state.questInvites.invites)[0];
+    assert.ok(inviteId);
+
+    const inviteeState = defaultHarthmereLiveModeBackendState(invitee, NOW_MS);
+    inviteeState.questInvites = invited.state.questInvites;
+    const accepted = reduceHarthmereLiveModeBackendState(
+      inviteeState,
+      {
+        ...inviteEnvelope,
+        requestId: "numeric_accept",
+        idempotencyKey: "numeric_accept",
+        actorId: invitee,
+        serverActorEntityId: 202 as any,
+        serverActorPosition: { x: 4, y: 64, z: 0 },
+        serverActorInProgressQuestIds: [],
+        payload: {
+          operation: "respond_to_quest_invite",
+          inviteId,
+          response: "accept",
+        },
+      },
+      NOW_MS + 1
+    );
+    assert.ok(
+      accepted.summary.nativeEcsMaterializationPlans?.some(
+        (plan) => plan.kind === "quest_accept" && plan.actorId === invitee
+      )
+    );
+
+    const advanced = reduceHarthmereLiveModeBackendState(
+      accepted.state,
+      {
+        ...inviteEnvelope,
+        requestId: "numeric_progress",
+        idempotencyKey: "numeric_progress",
+        actorId: invitee,
+        serverActorEntityId: 202 as any,
+        serverActorPosition: { x: 4, y: 64, z: 0 },
+        serverActorInProgressQuestIds: [String(nativeQuestId)],
+        payload: {
+          operation: "shared_quest_progress",
+          questId: QUEST_ID,
+          source: "snapshot_grove",
+          objectiveIndex: 0,
+          progress: 2,
+          stepId: "fountain_buttons_first_obj_02",
+        },
+      },
+      NOW_MS + 2
+    );
+    const progressActorIds =
+      advanced.summary.nativeEcsMaterializationPlans
+        ?.filter((plan) => plan.kind === "quest_progress")
+        .map((plan) => plan.actorId)
+        .sort() ?? [];
+    assert.deepEqual(progressActorIds, [inviter, invitee].sort());
+  });
+
+  it("rejects a known but inactive quest", () => {
+    const inactive = defaultHarthmereLiveModeBackendState(INVITER, NOW_MS);
+    const result = reduceHarthmereLiveModeBackendState(
+      inactive,
+      envelope(INVITER, invitePayload(), INVITEE),
+      NOW_MS
+    );
+    assert.ok(
+      result.summary.warnings.includes(
+        "quest_invite_rejected:active_shareable_quest_required"
+      )
+    );
+    assert.equal(Object.keys(result.state.questInvites.invites).length, 0);
+  });
+
   it("rejects self invites, duplicates, and responses from the wrong actor", () => {
     const selfInvite = reduce(
       defaultHarthmereLiveModeBackendState(INVITER, NOW_MS),
@@ -329,7 +561,7 @@ describe("Harthmere live-mode quest invites", () => {
       INVITER,
       NOW_MS
     );
-    completedQuestState.quests.completed.grove_buttons = NOW_MS;
+    completedQuestState.quests.completed[QUEST_ID] = NOW_MS;
     const completedQuestInvite = reduce(
       completedQuestState,
       INVITER,

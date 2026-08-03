@@ -6,7 +6,11 @@ import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { freezeStaticObjectMatrices } from "@/client/game/renderers/static_object_matrices";
 import type { ClientResources } from "@/client/game/resources/types";
-import { harthmereGroundedFeetYWithMemory } from "@/client/game/util/harthmere_entity_grounding";
+import {
+  groundHarthmereLiveEntityFeetYWithStatus,
+  resolveHarthmereGroundedFeetY,
+  harthmereTerrainColumnLoaded,
+} from "@/client/game/util/harthmere_entity_grounding";
 import { loadGltf } from "@/client/game/util/gltf_helpers";
 import {
   HARTHMERE_GATHERING_NODE_WORLD_TARGETS,
@@ -37,6 +41,7 @@ type GatheringNodeVisual = {
   fallback?: THREE.Group;
   activeLod: HarthmereWorldInteractionGraphicLod;
   groundKnown: boolean;
+  groundStatus: "grounded" | "no-surface" | "not-loaded";
   requested: Set<"lod0" | "lod1">;
   failed: boolean;
   growInElapsedSeconds?: number;
@@ -163,6 +168,7 @@ export class HarthmereGatheringNodeMarkerRenderer implements Renderer {
         content,
         activeLod: "hidden",
         groundKnown: !resources,
+        groundStatus: resources ? "not-loaded" : "no-surface",
         requested: new Set(),
         failed: false,
         growInComplete: false,
@@ -263,19 +269,41 @@ export class HarthmereGatheringNodeMarkerRenderer implements Renderer {
       const dz = z - camera.z;
       if (dx * dx + dz * dz > maxDistanceSq) {
         visual.groundKnown = false;
+        visual.groundStatus = "not-loaded";
         visual.anchor.visible = false;
         continue;
       }
-      const feetY = harthmereGroundedFeetYWithMemory(
+      const cacheKey = `${Math.floor(x)}|${Math.floor(z)}|1`;
+      const status = groundHarthmereLiveEntityFeetYWithStatus(
         this.resources,
-        this.groundedFeetYByColumn,
         x,
         z,
         visual.target.position[1],
         true
       );
-      visual.groundKnown = feetY !== undefined;
-      if (feetY !== undefined) visual.anchor.position.y = feetY;
+      const resolved = resolveHarthmereGroundedFeetY(
+        status,
+        this.groundedFeetYByColumn.get(cacheKey)
+      );
+      const auditedHintShardLoaded = harthmereTerrainColumnLoaded(
+        this.resources,
+        x,
+        visual.target.position[1],
+        z
+      );
+      if (resolved.cache === undefined) {
+        this.groundedFeetYByColumn.delete(cacheKey);
+      } else {
+        this.groundedFeetYByColumn.set(cacheKey, resolved.cache);
+      }
+      visual.groundStatus = status.status;
+      visual.groundKnown =
+        status.status !== "not-loaded" ||
+        resolved.feetY !== undefined ||
+        auditedHintShardLoaded;
+      if (visual.groundKnown) {
+        visual.anchor.position.y = resolved.feetY ?? visual.target.position[1];
+      }
     }
   }
 
@@ -399,6 +427,7 @@ export class HarthmereGatheringNodeMarkerRenderer implements Renderer {
           activeLod: visual.activeLod,
           visible: visual.anchor.visible,
           grounded: visual.groundKnown,
+          groundStatus: visual.groundStatus,
           lod0Loaded: !!visual.lod0,
           lod1Loaded: !!visual.lod1,
           fallback: !!visual.fallback,

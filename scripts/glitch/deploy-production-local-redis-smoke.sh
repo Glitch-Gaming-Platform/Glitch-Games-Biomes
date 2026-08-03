@@ -2228,6 +2228,18 @@ const readLog = () => {
         stdio: "inherit",
       });
       if (audit.status !== 0) throw new Error(`Harthmere terrain audit failed (status ${audit.status}).`);
+      // HARTHMERE_CHAPTER1_SEED_READBACK. Terrain being valid says nothing
+      // about whether the Chapter 1 cast, the dungeon encounter bosses, the
+      // twelve testimony NPCs or either Elsewhen dungeon actually landed. A
+      // missing encounter NPC fails CLOSED in chapter1_progress ("still
+      // standing" in an empty room), so a silent seed miss is a permanent
+      // Act 3 stop with nothing in the logs. Runs after the terrain audit and
+      // before the readiness marker so a bad world cannot be declared ready.
+      const ch1Audit = spawnSync(process.execPath, ["scripts/harthmere/audit-production-chapter1-seed.cjs"], {
+        env: { ...process.env, NODE_PATH: nodePath },
+        stdio: "inherit",
+      });
+      if (ch1Audit.status !== 0) throw new Error(`Harthmere Chapter 1 seed readback failed (status ${ch1Audit.status}).`);
       console.log("HARTHMERE_TERRAIN_MAINTENANCE_READY");
       cleanup();
       return;

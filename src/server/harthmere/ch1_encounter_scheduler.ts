@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
 import {
+  CH1_ENCOUNTER_SCHEDULER_LEASE_MS,
+  holdsChapter1EncounterSchedulerLease,
+  refreshChapter1EncounterSchedulerLease,
+} from "@/server/harthmere/ch1_encounter_scheduler_lease";
+import {
   ch1SlotClaimKey,
   type Ch1SlotClaim,
 } from "@/server/harthmere/ch1_slot_claim";
@@ -84,10 +89,7 @@ function activeChapter1StepId(player: {
   challenges(): { in_progress: ReadonlySet<BiomesId> } | undefined;
   triggerState():
     | {
-        by_root: ReadonlyMap<
-          BiomesId,
-          ReadonlyMap<BiomesId, string | number>
-        >;
+        by_root: ReadonlyMap<BiomesId, ReadonlyMap<BiomesId, string | number>>;
       }
     | undefined;
 }) {
@@ -178,7 +180,7 @@ async function applyChapter1PartyHazards(input: {
             position: [...recoveryPosition] as [number, number, number],
             orientation: [...(player.orientation()?.v ?? [0, 0])] as [
               number,
-              number
+              number,
             ],
           } as const;
           await input.logicApi.publish(
@@ -245,8 +247,8 @@ async function applyChapter1PartyHazards(input: {
       activeStepId === "d2_whale_road"
         ? 55
         : activeStepId === "d2_the_breaking_year"
-        ? 45
-        : undefined;
+          ? 45
+          : undefined;
     if (carryLimit === undefined) continue;
     const target =
       activeStepId === "d2_whale_road"
@@ -449,50 +451,6 @@ export async function runChapter1EncounterSchedulerTick(input: {
  * short-circuits an unchanged tick into zero writes). This one is not, so it
  * takes an explicit lease and only the holder ticks.
  */
-export const CH1_ENCOUNTER_SCHEDULER_LEASE_KEY =
-  "harthmere:ch1:encounter-scheduler:leader";
-export const CH1_ENCOUNTER_SCHEDULER_LEASE_MS = 5_000;
-
-async function holdsEncounterSchedulerLease(
-  redis: {
-    primary: {
-      get?(key: string): Promise<string | null>;
-      set(...args: any[]): Promise<unknown>;
-    };
-  },
-  ownerId: string
-): Promise<boolean> {
-  // SET NX PX: first writer wins for the lease window, and the holder refreshes
-  // by writing the same value. A dropped replica's lease simply expires.
-  const acquired = await redis.primary.set(
-    CH1_ENCOUNTER_SCHEDULER_LEASE_KEY,
-    ownerId,
-    "PX",
-    CH1_ENCOUNTER_SCHEDULER_LEASE_MS,
-    "NX"
-  );
-  if (acquired) return true;
-  const refreshed = await redis.primary.set(
-    CH1_ENCOUNTER_SCHEDULER_LEASE_KEY,
-    ownerId,
-    "PX",
-    CH1_ENCOUNTER_SCHEDULER_LEASE_MS,
-    "XX"
-  );
-  // `XX` succeeds for any existing key, so confirm we are the owner.
-  return Boolean(refreshed) && (await isEncounterSchedulerOwner(redis, ownerId));
-}
-
-async function isEncounterSchedulerOwner(
-  redis: { primary: { get?(key: string): Promise<string | null> } },
-  ownerId: string
-): Promise<boolean> {
-  const current = await redis.primary.get?.(
-    CH1_ENCOUNTER_SCHEDULER_LEASE_KEY
-  );
-  return current === undefined || current === null || current === ownerId;
-}
-
 export function startChapter1EncounterScheduler(input: {
   worldApi: WorldApi;
   logicApi: LogicApi;
@@ -504,6 +462,7 @@ export function startChapter1EncounterScheduler(input: {
       process.env.GLITCH_RUNTIME === "1");
   let stopped = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let leaseHeartbeat: ReturnType<typeof setInterval> | undefined;
   let redisPromise: ReturnType<typeof connectToRedis> | undefined;
   if (!enabled) return { enabled: false, stop: () => void (stopped = true) };
   const redis = () => (redisPromise ??= connectToRedis("firehose"));
@@ -512,7 +471,30 @@ export function startChapter1EncounterScheduler(input: {
     if (stopped) return;
     try {
       const client = await redis();
-      if (await holdsEncounterSchedulerLease(client, ownerId)) {
+      if (await holdsChapter1EncounterSchedulerLease(client, ownerId)) {
+        if (!leaseHeartbeat) {
+          leaseHeartbeat = setInterval(
+            () => {
+              void refreshChapter1EncounterSchedulerLease(client, ownerId)
+                .then((retained) => {
+                  if (!retained && leaseHeartbeat) {
+                    clearInterval(leaseHeartbeat);
+                    leaseHeartbeat = undefined;
+                  }
+                })
+                .catch((error) => {
+                  log.error(
+                    "Chapter 1 encounter scheduler lease refresh failed",
+                    {
+                      error,
+                    }
+                  );
+                });
+            },
+            Math.floor(CH1_ENCOUNTER_SCHEDULER_LEASE_MS / 3)
+          );
+          leaseHeartbeat.unref?.();
+        }
         await runChapter1EncounterSchedulerTick({
           redis: client,
           worldApi: input.worldApi,
@@ -534,6 +516,7 @@ export function startChapter1EncounterScheduler(input: {
     stop: () => {
       stopped = true;
       if (timer) clearTimeout(timer);
+      if (leaseHeartbeat) clearInterval(leaseHeartbeat);
       void redisPromise?.then((client) =>
         client.quit("Chapter 1 encounter scheduler stopped")
       );

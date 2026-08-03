@@ -152,6 +152,22 @@ export function harthmereRequestBoardById(id: string) {
   return HARTHMERE_REQUEST_BOARDS.find((board) => board.id === id);
 }
 
+/** Every ECS entity whose legacy placeable mesh is replaced by the dedicated
+ * optimized request-board renderer. The entities themselves stay live: their
+ * position and quest_giver components remain the native interaction authority.
+ */
+export const HARTHMERE_REQUEST_BOARD_REPLACED_PLACEABLE_ENTITY_IDS =
+  Object.freeze(HARTHMERE_REQUEST_BOARDS.map((board) => board.entityId));
+
+export function isHarthmereRequestBoardEntityId(id: unknown) {
+  const numericId = Number(id);
+  return (
+    HARTHMERE_REQUEST_BOARDS.some(
+      (board) => Number(board.entityId) === numericId
+    ) || Number(HARTHMERE_DOCK_FISHING_BOARD.entityId) === numericId
+  );
+}
+
 // ---------------------------------------------------------------------------
 // The Harthmere dock board
 // ---------------------------------------------------------------------------
@@ -185,6 +201,26 @@ export const HARTHMERE_DOCK_FISHING_BOARD = Object.freeze({
   authoredPosition: [613, -174] as const,
   sharesCatalogueWith: HARTHMERE_FISHING_BOARD_ID,
 });
+
+/**
+ * The quay board is a second physical interaction anchor for the canonical
+ * Fishing Board catalogue. Native request leaves are authored against the
+ * original board entity id, so both client dialogue matching and server claim
+ * validation use this equivalence contract before publishing the canonical
+ * original id to the trigger engine.
+ */
+export function harthmereRequestBoardEntityIdsEquivalent(
+  expectedId: unknown,
+  actualId: unknown
+) {
+  if (Number(expectedId) === Number(actualId)) return true;
+  return (
+    (Number(expectedId) === Number(HARTHMERE_FISHING_BOARD_ID) &&
+      Number(actualId) === Number(HARTHMERE_DOCK_FISHING_BOARD.entityId)) ||
+    (Number(actualId) === Number(HARTHMERE_FISHING_BOARD_ID) &&
+      Number(expectedId) === Number(HARTHMERE_DOCK_FISHING_BOARD.entityId))
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Requests

@@ -43,7 +43,7 @@ describe("Harthmere native ECS combat rules", () => {
     );
 
     assert.equal(sword?.kind, "melee");
-    assert.equal(sword?.damagePerHit, 18);
+    assert.equal(sword?.damagePerHit, 32);
     assert.equal(sword?.levelRequirement, 2);
     assert.equal(heavy?.kind, "heavy");
     assert.ok((heavy?.reach ?? 0) > (sword?.reach ?? 0));

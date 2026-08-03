@@ -162,7 +162,9 @@ function genGraphicsSettingsResolved(
         ? { kind: "dynamic" }
         : { kind: "resolution", res: [1280, 720] },
       entityDrawLimit: "low",
-      drawDistance: "low",
+      drawDistance: lowQualityDrawDistanceForDevice(
+        context.clientConfig.mobileDevice
+      ),
       floraQuality: "low",
       postprocesses: {
         bloom: false,
@@ -243,6 +245,17 @@ function genGraphicsSettingsResolved(
   return customQuality;
 }
 
+export function lowQualityDrawDistanceForDevice(
+  mobileDevice: boolean
+): DrawDistance {
+  // The desktop low preset keeps enough range for landmarks and mouse-driven
+  // traversal. On a phone, 96m still makes Mobile Safari build and retain more
+  // terrain than the 128 MB startup profile is intended to support. Keep the
+  // phone preset at the existing very-low 64m tier; explicit URL diagnostics
+  // continue to win by selecting a forced quality or forceDrawDistance.
+  return mobileDevice ? "veryLow" : "low";
+}
+
 export function graphicsQualityForDevice({
   mobileDevice,
   forcedQuality,
@@ -292,17 +305,10 @@ function computeRenderScale(
     if (rendererController.profiler()?.supportsGpuTime() ?? false) {
       return { kind: "dynamic" };
     } else {
-      switch (clientConfig.gpuTier) {
-        case 3:
-          return { kind: "scale", scale: 1 };
-        case 2:
-        default:
-          return { kind: "scale", scale: 0.8 };
-        case 1:
-          return { kind: "scale", scale: 0.5 };
-        case 0:
-          return { kind: "scale", scale: 0.5 };
-      }
+      return {
+        kind: "scale",
+        scale: initialDynamicRenderScaleForGpuTier(clientConfig.gpuTier),
+      };
     }
   } else if (resolved.renderScale.kind === "retina") {
     return { kind: "scale", scale: window.devicePixelRatio };
@@ -310,6 +316,16 @@ function computeRenderScale(
     return { kind: "scale", scale: 1.0 };
   }
   return resolved.renderScale;
+}
+
+export function initialDynamicRenderScaleForGpuTier(gpuTier: number) {
+  if (gpuTier >= 3) {
+    return 1.0;
+  }
+  if (gpuTier === 2) {
+    return 0.8;
+  }
+  return 0.5;
 }
 
 const ENTITY_DRAW_LIMITS: {
@@ -407,7 +423,7 @@ function genGraphicsSettingsDynamic(
     computedSettings.renderScale.kind === "scale"
       ? computedSettings.renderScale.scale
       : (deps.get("/settings/graphics/dynamic_render_scale").value ??
-        (gpuTier <= 1 ? 0.5 : 1.0));
+        initialDynamicRenderScaleForGpuTier(gpuTier));
 
   const isDynamicDrawDistance = computedSettings.drawDistance === "dynamic";
   const dynamicDrawDistance = isDynamicDrawDistance

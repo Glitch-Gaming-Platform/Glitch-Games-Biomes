@@ -11,7 +11,11 @@ import {
   NpcState,
   Voice,
 } from "@/shared/ecs/gen/components";
-import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
+import type {
+  AsDelta,
+  Entity,
+  ReadonlyEntity,
+} from "@/shared/ecs/gen/entities";
 import {
   createHarthmereBusinessCustomerSpatialIntent,
   harthmereBusinessInteriorForType,
@@ -31,6 +35,7 @@ import {
   withHarthmereBodyAndFaceMarkers,
 } from "@/shared/harthmere/voxel_faces";
 import type { BiomesId } from "@/shared/ids";
+import { dist, yaw } from "@/shared/math/linear";
 import { LOCAL_DEV_HUMAN_NPC_TYPE_ID } from "@/shared/npc/bikkie";
 import {
   HARTHMERE_BUSINESS_CUSTOMER_BEHAVIOR_VERSION,
@@ -43,6 +48,19 @@ import {
 
 export const HARTHMERE_BUSINESS_CUSTOMER_SESSION_ECS_VERSION =
   "harthmere-business-customer-session-ecs-v1" as const;
+const BUSINESS_CUSTOMER_SPAWN_CLEARANCE_METERS = 1.25;
+
+function equalNpcStateData(
+  left: Uint8Array | undefined,
+  right: Uint8Array | undefined
+) {
+  if (left === right) return true;
+  if (!left || !right || left.byteLength !== right.byteLength) return false;
+  for (let index = 0; index < left.byteLength; index += 1) {
+    if (left[index] !== right[index]) return false;
+  }
+  return true;
+}
 
 export function partitionHarthmereBusinessCustomerSessionNpcChanges(
   changes: readonly ProposedChange[]
@@ -51,7 +69,12 @@ export function partitionHarthmereBusinessCustomerSessionNpcChanges(
   const updates = changes
     .filter((change) => change.kind === "update")
     .map((change) => change.entity);
-  const { rcChanges, hfcChanges } = partitionDeltasToUpdates(updates);
+  // ProposedChange exposes readonly component values, while the classifier is
+  // historically typed with mutable generated entities even though it only
+  // inspects component keys/values. Keep that type bridge local.
+  const { rcChanges, hfcChanges } = partitionDeltasToUpdates(
+    updates as AsDelta<Entity>[]
+  );
   return { baseChanges, rcChanges, hfcChanges };
 }
 
@@ -65,15 +88,41 @@ export async function applyHarthmereBusinessCustomerSessionNpcChanges(
 
   const { baseChanges, rcChanges, hfcChanges } =
     partitionHarthmereBusinessCustomerSessionNpcChanges(changes);
+  const creates = baseChanges.filter((change) => change.kind === "create");
+  const deletes = baseChanges.filter((change) => change.kind === "delete");
+  const createHfcChanges = partitionDeltasToUpdates(
+    creates.map((change) => change.entity) as AsDelta<Entity>[]
+  ).hfcChanges;
+
+  // HybridWorldApi applies a mixed create to regular ECS only. Publish the
+  // complete create there first so the entity exists for Sync, then mirror its
+  // high-frequency components into HFC so Anima can acquire it immediately.
+  // Deletes are likewise explicit in both stores instead of relying on the
+  // HybridWorldApi's best-effort background HFC cleanup.
+  if (creates.length || deletes.length) {
+    const baseResult = await worldApi.rc.apply({
+      changes: [...creates, ...deletes],
+    });
+    if (baseResult.outcome !== "success") {
+      return { outcome: baseResult.outcome };
+    }
+  }
+
   const results = await Promise.all([
-    ...(baseChanges.length
-      ? [worldApi.apply({ changes: baseChanges })]
-      : []),
-    ...(rcChanges.length
-      ? [worldApi.rc.apply({ changes: rcChanges })]
-      : []),
-    ...(hfcChanges.length
-      ? [worldApi.hfc.apply({ changes: hfcChanges })]
+    ...(rcChanges.length ? [worldApi.rc.apply({ changes: rcChanges })] : []),
+    ...(createHfcChanges.length || hfcChanges.length || deletes.length
+      ? [
+          worldApi.hfc.apply({
+            changes: [
+              ...createHfcChanges,
+              ...hfcChanges,
+              ...deletes.map((change) => ({
+                kind: "delete" as const,
+                id: change.id,
+              })),
+            ],
+          }),
+        ]
       : []),
   ]);
   const failed = results.find((result) => result.outcome !== "success");
@@ -123,7 +172,19 @@ function reactionAudio(reaction: HarthmereBusinessCustomerReaction) {
   }
 }
 
-function desiredPhase(ticket: HarthmereBusinessCustomerTicket) {
+function desiredPhase(
+  session: HarthmereBusinessCustomerSession,
+  ticket: HarthmereBusinessCustomerTicket
+) {
+  if (
+    session.status !== "active" &&
+    ticket.spatialPhase !== "departing" &&
+    ticket.spatialPhase !== "cancelled" &&
+    ticket.spatialPhase !== "despawn_ready" &&
+    ticket.spatialPhase !== "despawned"
+  ) {
+    return "cancelled";
+  }
   return ticket.spatialPhase;
 }
 
@@ -145,10 +206,7 @@ function preserveProgressedPhase(input: {
   ) {
     return existing;
   }
-  if (
-    input.desired === "approaching_counter" &&
-    existing === "serving"
-  ) {
+  if (input.desired === "approaching_counter" && existing === "serving") {
     return existing;
   }
   if (
@@ -185,7 +243,7 @@ function stateForTicket(input: {
   const record = harthmereBusinessInteriorForType(input.session.typeId);
   if (!record) return undefined;
   const phase = preserveProgressedPhase({
-    desired: desiredPhase(input.ticket),
+    desired: desiredPhase(input.session, input.ticket),
     existing: input.existing,
   });
   const intent = createHarthmereBusinessCustomerSpatialIntent({
@@ -236,6 +294,12 @@ function stateForTicket(input: {
         ? input.existing.reactionStartedAtSeconds
         : input.nowSeconds,
     audioCue: reactionAudio(intent.reaction),
+    ...(preserveRoute && input.existing?.progressPosition
+      ? { progressPosition: input.existing.progressPosition }
+      : {}),
+    ...(preserveRoute && input.existing?.progressAtSeconds !== undefined
+      ? { progressAtSeconds: input.existing.progressAtSeconds }
+      : {}),
   } satisfies BusinessCustomerState;
 }
 
@@ -275,12 +339,39 @@ export function buildHarthmereBusinessCustomerSessionNpcChanges(input: {
   const changes: ProposedChange[] = [];
 
   for (const session of customerSessions(input.economy)) {
-    for (const ticket of session.queue) {
+    const record = harthmereBusinessInteriorForType(session.typeId);
+    if (!record) continue;
+    const priorSessionStillOnRoute = [...existingEntities.values()].some(
+      (candidate) => {
+        const customer = candidate.npc_state?.data
+          ? deserializeNpcCustomState(candidate.npc_state.data).businessCustomer
+          : undefined;
+        return (
+          customer?.outpostId === record.outpostId &&
+          customer.sessionId !== session.sessionId &&
+          customer.phase !== "despawn_ready" &&
+          customer.phase !== "despawned"
+        );
+      }
+    );
+    for (const [ticketIndex, ticket] of session.queue.entries()) {
       const existing = existingEntities.get(ticket.entityId);
       const decoded = existing?.npc_state?.data
         ? deserializeNpcCustomState(existing.npc_state.data)
         : undefined;
       const existingCustomer = decoded?.businessCustomer;
+      if (
+        existing &&
+        session.status !== "active" &&
+        safeToDelete({ existing, actorPosition: input.actorPosition })
+      ) {
+        // Old/aborted shifts can overlap at their shared exterior source and
+        // become unable to walk apart. If that inactive customer is already
+        // outside the actor's safe visibility radius, remove it immediately;
+        // customers still near the player keep the real cancellation route.
+        changes.push({ kind: "delete", id: ticket.entityId });
+        continue;
+      }
       if (
         existing &&
         existingCustomer?.phase === "despawn_ready" &&
@@ -290,9 +381,26 @@ export function buildHarthmereBusinessCustomerSessionNpcChanges(input: {
         continue;
       }
 
+      const previousTicket = session.queue[ticketIndex - 1];
+      const previousExisting = previousTicket
+        ? existingEntities.get(previousTicket.entityId)
+        : undefined;
+      const previousCustomer = previousExisting?.npc_state?.data
+        ? deserializeNpcCustomState(previousExisting.npc_state.data)
+            .businessCustomer
+        : undefined;
+      const previousCustomerSettled =
+        !previousTicket ||
+        previousTicket.status !== "waiting" ||
+        (previousCustomer?.sessionId === session.sessionId &&
+          (previousCustomer.phase === "queued" ||
+            previousCustomer.phase === "serving"));
       const shouldCreate =
-        session.status === "active" && ticket.status === "waiting";
+        session.status === "active" &&
+        ticket.status === "waiting" &&
+        previousCustomerSettled;
       if (!existing && !shouldCreate) continue;
+      if (!existing && priorSessionStillOnRoute) continue;
 
       const businessState = stateForTicket({
         session,
@@ -303,12 +411,12 @@ export function buildHarthmereBusinessCustomerSessionNpcChanges(input: {
       if (!businessState) continue;
       const state = decoded ?? deserializeNpcCustomState(undefined);
       state.businessCustomer = businessState;
-      const npcState = NpcState.create({ data: serializeNpcCustomState(state) });
+      const npcState = NpcState.create({
+        data: serializeNpcCustomState(state),
+      });
       const customer = findHarthmereBusinessCustomerNpc(ticket.npcId);
       const displayName = customer?.displayName ?? "Business Customer";
-      const role = customer
-        ? `${customer.temperament} customer`
-        : "customer";
+      const role = customer ? `${customer.temperament} customer` : "customer";
       const description = customer
         ? `${customer.temperament}; ${customer.appearance.outfit}; ${customer.appearance.accessory}. ${ticket.askLine}`
         : ticket.askLine;
@@ -318,7 +426,14 @@ export function buildHarthmereBusinessCustomerSessionNpcChanges(input: {
         role,
         description,
       });
-      const emoteType = reactionEmote(ticket.reaction);
+      const reactionChanged =
+        !existingCustomer ||
+        existingCustomer.reaction !== businessState.reaction;
+      const phaseChanged =
+        !existingCustomer || existingCustomer.phase !== businessState.phase;
+      const emoteType = reactionChanged
+        ? reactionEmote(ticket.reaction)
+        : undefined;
       const emote = emoteType
         ? Emote.create({
             emote_type: emoteType,
@@ -328,18 +443,30 @@ export function buildHarthmereBusinessCustomerSessionNpcChanges(input: {
           })
         : undefined;
       const expires =
-        businessState.phase === "departing" ||
-        businessState.phase === "cancelled" ||
-        businessState.phase === "despawn_ready"
+        phaseChanged &&
+        (businessState.phase === "departing" ||
+          businessState.phase === "cancelled" ||
+          businessState.phase === "despawn_ready")
           ? Expires.create({ trigger_at: input.nowSeconds + 90 })
           : undefined;
 
       if (existing) {
+        const npcStateChanged = !equalNpcStateData(
+          existing.npc_state?.data,
+          npcState.data
+        );
+        if (!npcStateChanged && !emote && !expires) {
+          // Anima owns movement progress inside npc_state. A session tick that
+          // has no new authority must therefore be a no-op: rewriting the same
+          // entering/queued phase every two seconds erases Anima's progress
+          // fields and repeatedly restarts a customer at the door.
+          continue;
+        }
         changes.push({
           kind: "update",
           entity: {
             id: ticket.entityId,
-            npc_state: npcState,
+            ...(npcStateChanged ? { npc_state: npcState } : {}),
             ...(emote ? { emote } : {}),
             ...(expires ? { expires } : {}),
           },
@@ -347,7 +474,6 @@ export function buildHarthmereBusinessCustomerSessionNpcChanges(input: {
         continue;
       }
 
-      const record = harthmereBusinessInteriorForType(session.typeId)!;
       const intent = createHarthmereBusinessCustomerSpatialIntent({
         record,
         sessionId: session.sessionId,
@@ -358,14 +484,34 @@ export function buildHarthmereBusinessCustomerSessionNpcChanges(input: {
         phase: ticket.spatialPhase,
         reaction: ticket.reaction,
       });
+      const spawnOccupied = [...existingEntities.values()].some(
+        (candidate) =>
+          candidate.id !== ticket.entityId &&
+          candidate.position?.v &&
+          dist(candidate.position.v, intent.spawn) <
+            BUSINESS_CUSTOMER_SPAWN_CLEARANCE_METERS
+      );
+      if (spawnOccupied) {
+        // A previous shift can still be walking off-screen through this exact
+        // exterior source. Defer creation to the next materialization pass so
+        // native collision never has to explode two customers apart.
+        continue;
+      }
+      const initialTarget = intent.waypoints[0] ?? intent.entrance;
+      const initialYaw = yaw([
+        initialTarget[0] - intent.spawn[0],
+        0,
+        initialTarget[2] - intent.spawn[2],
+      ]);
       const base = prepareHarthmerePlayerLikeNpcForUniqueAppearance(
         npcEntity(
           {
             id: ticket.entityId,
             typeId: LOCAL_DEV_HUMAN_NPC_TYPE_ID,
             position: intent.spawn,
-            orientation: [0, 0],
+            orientation: [0, initialYaw],
             velocity: [0, 0, 0],
+            spawnPositionJitterRadius: 0,
             displayName,
             defaultDialog: `<text>${ticket.askLine}</text>`,
           },

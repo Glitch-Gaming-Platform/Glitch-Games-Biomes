@@ -256,8 +256,8 @@ function emoteDuration(
     animationSystemState.actions.arms[emoteType] === undefined
     ? DUMMY_EMOTE_DURATION
     : playsUntilInterrupted(EMOTE_PROPERTIES[emoteType].repeatType)
-    ? Infinity
-    : animationSystemState.actions.arms[emoteType]!.getClip().duration;
+      ? Infinity
+      : animationSystemState.actions.arms[emoteType]!.getClip().duration;
 }
 
 export type PlayerKnockback = {
@@ -351,7 +351,10 @@ export class Player {
   isLocal = false;
   takingSelfie = false;
 
-  constructor(deps: ClientResourceDeps, public readonly id: BiomesId) {
+  constructor(
+    deps: ClientResourceDeps,
+    public readonly id: BiomesId
+  ) {
     const syncTarget = deps.get("/server/sync_target");
     this.isLocal =
       syncTarget.kind === "localUser" ? syncTarget.userId === id : false;
@@ -856,7 +859,9 @@ export class Player {
     }
     const buffer = resources.cached("/audio/buffer", "audio/footsteps-dirt");
     if (!buffer) {
-      // If the audio hasn't been loaded yet, don't return anything.
+      // Phones intentionally avoid decoding every sound at startup. Begin the
+      // one buffer this player needs and use it on a later render tick.
+      fireAndForget(resources.get("/audio/buffer", "audio/footsteps-dirt"));
       return;
     }
     sound = new THREE.PositionalAudio(audioListener);
@@ -903,8 +908,7 @@ export class Player {
     const assetPath = sample(getAudioAssetPaths(assetType))!;
     const buffer = resources.cached("/audio/buffer", assetPath);
     if (!buffer) {
-      // If the audio buffer hasn't been loaded yet, then just don't set the
-      // sound.
+      fireAndForget(resources.get("/audio/buffer", assetPath));
       return;
     }
 
@@ -1170,7 +1174,11 @@ class RemoteScenePlayer extends UpdatableScenePlayer {
   private smoothedOrientation: Transition<number>;
   private previousTime: number | undefined;
 
-  constructor(tweaks: Tweaks, player: Player, private id: BiomesId) {
+  constructor(
+    tweaks: Tweaks,
+    player: Player,
+    private id: BiomesId
+  ) {
     super();
 
     this.smoothedPosition = makeBezierVec3LatencyTransition(

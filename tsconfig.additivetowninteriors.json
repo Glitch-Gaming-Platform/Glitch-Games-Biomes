@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false
+  },
+  "include": [
+    "src/shared/harthmere/harthmere_additive_town_interiors.ts",
+    "src/shared/harthmere/additive_town_interior_collision_seed.ts",
+    "src/shared/harthmere/additive_town_cooking_station_seed.ts",
+    "src/shared/harthmere/harthmere_building_interiors.ts",
+    "src/shared/harthmere/harthmere_native_id_manifest.ts",
+    "src/shared/harthmere/mmo_placeable_decor_catalogue.ts",
+    "src/server/harthmere/additive_town_interior_collision_ecs_seed.ts",
+    "src/server/harthmere/additive_town_cooking_station_ecs_seed.ts",
+    "src/server/shim/main.ts",
+    "src/client/game/renderers/local_dev/harthmere_additive_town_interiors.ts",
+    "src/client/game/renderers/local_dev/harthmere_assets.ts",
+    "src/client/game/renderers/renderers.ts",
+    "src/client/game/renderers/placeables.ts",
+    "src/client/game/scripts/overlays.ts",
+    "src/client/components/overlays/inspected/placeables/CraftingStationOverlayComponent.tsx",
+    "modules.d.ts"
+  ]
+}

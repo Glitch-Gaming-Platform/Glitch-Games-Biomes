@@ -24,6 +24,7 @@ import {
   normalizev,
   pitchAndYaw,
   scale,
+  shiftAABB,
   sub,
 } from "@/shared/math/linear";
 import type { AABB, ReadonlyVec3 } from "@/shared/math/types";
@@ -88,14 +89,20 @@ import {
   nullForce,
 } from "@/shared/physics/forces";
 import { moveBodyFluid, moveBodyWithClimbing } from "@/shared/physics/movement";
-import type { Force, HitFn } from "@/shared/physics/types";
-import { toClimbableIndex, yawVector } from "@/shared/physics/utils";
+import type { CollisionIndex, Force, HitFn } from "@/shared/physics/types";
+import {
+  intersecting,
+  toClimbableIndex,
+  yawVector,
+} from "@/shared/physics/utils";
 import _ from "lodash";
 
 export const ATTACKED_NPC_RETALIATION_FALLBACK =
   "ATTACKED_NPC_RETALIATION_FALLBACK";
 
 const focusedBusinessCustomerMovementProbes = new Set<BiomesId>();
+const focusedBusinessCustomerEscapeProbes = new Set<BiomesId>();
+const BUSINESS_CUSTOMER_GROUND_SUPPORT_PROBE_METERS = 0.05;
 
 /**
  * Anima owns the timing of persistent NPC status effects. Damage remains a
@@ -430,6 +437,23 @@ export function npcGroundWalkingForceCoefficient(input: {
   );
 }
 
+export function npcGroundSupportForceForLocomotion(input: {
+  locomotion: NpcLocomotionChoice;
+  isGrounded: boolean;
+  gravity: number;
+}): Force {
+  if (input.locomotion !== "businessCustomer" || !input.isGrounded) {
+    return nullForce;
+  }
+  // The live terrain collision index partitions adjacent floor spans at shard
+  // boundaries. A diagonal first step can otherwise apply gravity before the
+  // vertical collision constraint sees both supporting spans, sinking a
+  // customer into the floor and forcing escape motion on the next tick. Native
+  // grounded support cancels gravity only while support is actually present;
+  // downhill edges immediately restore normal falling/climbing physics.
+  return (dt) => [0, input.gravity * dt, 0];
+}
+
 export function npcForwardSpeedForLocomotion(input: {
   locomotion: NpcLocomotionChoice;
   forwardSpeed: number;
@@ -650,10 +674,13 @@ export function npcTickLogic(
   // Compute the NPC's AABB which is needed for physics and drowning logic.
   const aabb = anchorAndSizeToAABB(npc.position, npc.size);
   const movementType = getMovementTypeByNpcType(npc.type);
-  const focusedBusinessProbe =
+  const focusedBusinessCustomer =
     locomotion === "businessCustomer" &&
-    process.env.GLITCH_FOCUSED_NATIVE_E2E_STACK === "1" &&
-    !focusedBusinessCustomerMovementProbes.has(npc.id)
+    process.env.GLITCH_FOCUSED_NATIVE_E2E_STACK === "1";
+  const focusedBusinessProbe =
+    focusedBusinessCustomer &&
+    (!focusedBusinessCustomerMovementProbes.has(npc.id) ||
+      !focusedBusinessCustomerEscapeProbes.has(npc.id))
       ? {
           type: {
             id: npc.type.id,
@@ -733,25 +760,39 @@ export function npcTickLogic(
     lastDamageForce,
     force,
     movementType,
+    locomotion,
     captureDebug: focusedBusinessProbe !== undefined,
   });
 
   if (focusedBusinessProbe) {
+    const firstProbe = !focusedBusinessCustomerMovementProbes.has(npc.id);
+    const escapeProbe =
+      Math.max(...focusedPhysics!.movement.velocity.map(Math.abs)) >= 9.9;
+    if (
+      firstProbe ||
+      (escapeProbe && !focusedBusinessCustomerEscapeProbes.has(npc.id))
+    ) {
+      log.info("Focused business customer physics result", {
+        id: npc.id,
+        dtSecs,
+        firstProbe,
+        escapeProbe,
+        walkingForceCoefficient,
+        before: focusedBusinessProbe,
+        movementType,
+        orientationAfterRotate: focusedOrientationAfterRotate,
+        physics: focusedPhysics,
+        after: {
+          position: [...npc.position],
+          orientation: [...npc.orientation],
+          velocity: [...npc.velocity],
+        },
+      });
+    }
     focusedBusinessCustomerMovementProbes.add(npc.id);
-    log.info("Focused business customer physics result", {
-      id: npc.id,
-      dtSecs,
-      walkingForceCoefficient,
-      before: focusedBusinessProbe,
-      movementType,
-      orientationAfterRotate: focusedOrientationAfterRotate,
-      physics: focusedPhysics,
-      after: {
-        position: [...npc.position],
-        orientation: [...npc.orientation],
-        velocity: [...npc.velocity],
-      },
-    });
+    if (escapeProbe) {
+      focusedBusinessCustomerEscapeProbes.add(npc.id);
+    }
   }
 
   if (behavior.meander?.stayDistanceFromSpawn) {
@@ -775,6 +816,7 @@ function applyNpcPhysics({
   lastDamageForce,
   force,
   movementType,
+  locomotion,
   captureDebug = false,
 }: {
   env: Environment;
@@ -784,37 +826,40 @@ function applyNpcPhysics({
   lastDamageForce: ReadonlyVec3 | undefined;
   force: Force;
   movementType: MovementType;
+  locomotion: NpcLocomotionChoice;
   captureDebug?: boolean;
 }) {
   const metadata = env.resources.get("/ecs/metadata");
   const collisionHits: Array<{
+    probe: "support" | "physics";
     hit: AABB;
     entityId?: BiomesId;
   }> = [];
   // Define the intersection testing routine.
-  const collisionIndex = ([v0, v1]: AABB, fn: HitFn) => {
-    CollisionHelper.intersect(
-      (id) => env.resources.get("/physics/boxes", id),
-      env.table,
-      metadata,
-      [v0, v1],
-      (hit: AABB, entity?: ReadonlyEntity) => {
-        // Avoid self-intersections.
-        if (!entity || entity.id !== npc.id) {
-          if (captureDebug && collisionHits.length < 40) {
-            collisionHits.push({
-              hit: [
-                [...hit[0]],
-                [...hit[1]],
-              ],
-              entityId: entity?.id,
-            });
+  const collisionIndexFor = (probe: "support" | "physics") =>
+    (([v0, v1]: AABB, fn: HitFn) => {
+      CollisionHelper.intersect(
+        (id) => env.resources.get("/physics/boxes", id),
+        env.table,
+        metadata,
+        [v0, v1],
+        (hit: AABB, entity?: ReadonlyEntity) => {
+          // Avoid self-intersections.
+          if (!entity || entity.id !== npc.id) {
+            if (captureDebug && collisionHits.length < 80) {
+              collisionHits.push({
+                probe,
+                hit: [[...hit[0]], [...hit[1]]],
+                entityId: entity?.id,
+              });
+            }
+            return fn(hit);
           }
-          return fn(hit);
         }
-      }
-    );
-  };
+      );
+    }) satisfies CollisionIndex;
+  const collisionIndex = collisionIndexFor("physics");
+  const supportCollisionIndex = collisionIndexFor("support");
 
   // Define a routine to test if an NPC can climb on collision.
   const traversalProfile = npcGroundTraversalProfile(npc.size);
@@ -824,8 +869,23 @@ function applyNpcPhysics({
   );
   const groundLocomotionAabb = npcGroundLocomotionAabb(npc.position, npc.size);
 
-  const forces = [force];
   const globals = npcGlobals();
+  const isGrounded =
+    movementType === "walking" &&
+    intersecting(
+      supportCollisionIndex,
+      shiftAABB(groundLocomotionAabb, [
+        0,
+        -BUSINESS_CUSTOMER_GROUND_SUPPORT_PROBE_METERS,
+        0,
+      ])
+    );
+  const supportForce = npcGroundSupportForceForLocomotion({
+    locomotion,
+    isGrounded,
+    gravity: globals.gravity,
+  });
+  const forces = [force, supportForce];
 
   if (lastDamageForce) {
     const velocityDiff = scale(
@@ -883,6 +943,16 @@ function applyNpcPhysics({
           impulse: [...result.movement.impulse],
           velocity: [...result.movement.velocity],
         },
+        isGrounded,
+        globalsGravity: globals.gravity,
+        authoredForceSample: force(dtSecs, {
+          aabb: groundLocomotionAabb,
+          velocity: npc.velocity,
+        }),
+        supportForceSample: supportForce(dtSecs, {
+          aabb: groundLocomotionAabb,
+          velocity: npc.velocity,
+        }),
         collisionHits,
       }
     : undefined;

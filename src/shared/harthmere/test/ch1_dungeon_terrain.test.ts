@@ -634,8 +634,21 @@ describe("ch1 dungeon decor - the layer rule", () => {
     assert.doesNotMatch(focusedSeeder, /makeHarthmereNpcAppearanceConfig/);
     assert.match(focusedSeeder, /CH1_SEED_CAST_ONLY/);
     assert.match(focusedSeeder, /CH1_SEED_TERRAIN_ONLY/);
+    assert.match(focusedSeeder, /result\.outcome !== "success"/);
     assert.match(focusedSeeder, /CH1_SEEDED_CAST/);
+    assert.match(focusedSeeder, /CH1_DUNGEON_ENCOUNTER_NPCS/);
+    assert.match(focusedSeeder, /buildEncounterNpcEntity/);
+    assert.match(focusedSeeder, /Health\.create/);
+    assert.match(focusedSeeder, /buildReturningNpcEntity/);
+    assert.match(focusedSeeder, /CH1_SERGEANT_HOLT/);
+    assert.match(focusedSeeder, /resolveHarthmereProductionMarkerPosition/);
     assert.match(focusedSeeder, /CH1_TESTIMONY_NPC_SEEDS/);
+    assert.match(
+      focusedSeeder,
+      /buildHarthmereSnapshotGroveNpcSeedProposedChanges/
+    );
+    assert.match(focusedSeeder, /harthmereObsoleteSnapshotGroveNpcIds/);
+    assert.match(focusedSeeder, /SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS/);
     assert.match(focusedSeeder, /CH1_RETIRED_DUPLICATE_TESTIMONY_NPC_IDS/);
     assert.match(focusedSeeder, /CH1_RECLAIMED_CAST/);
     assert.doesNotMatch(
@@ -646,6 +659,14 @@ describe("ch1 dungeon decor - the layer rule", () => {
     assert.match(focusedSeeder, /ch1NormalizeOrdinaryWorldEastEdge/);
     assert.match(focusedSeeder, /portalOnlyWorldBoundary/);
     assert.match(focusedSeeder, /terrainByDungeon/);
+    assert.match(
+      focusedSeeder,
+      /case "iris_fen":[\s\S]{0,180}x: 386,[\s\S]{0,80}y: -20/
+    );
+    assert.match(
+      focusedSeeder,
+      /case "marrow":[\s\S]{0,180}x: 391,[\s\S]{0,80}y: -20/
+    );
     assert.doesNotMatch(
       focusedSeeder,
       /aabb\.v1\[0\] = CH1_ELSEWHEN_BAND_END_X/,

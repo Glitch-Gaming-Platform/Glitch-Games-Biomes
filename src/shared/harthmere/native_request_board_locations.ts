@@ -80,6 +80,78 @@ const CATEGORY_DISTRICT: Readonly<Record<HarthmereBoardCategory, string>> =
  */
 export const HARTHMERE_REQUEST_BOARD_INTERACTION_RADIUS = 4;
 
+export interface HarthmereRequestBoardPhysicalPromptRecord {
+  readonly boardId: string;
+  readonly boardEntityId: number;
+  readonly displayName: string;
+  readonly category: HarthmereBoardCategory;
+  readonly position: { x: number; y: number; z: number };
+  readonly radius: number;
+}
+
+/**
+ * The exact five request-board interaction anchors used by both the optimized
+ * renderer and the high-priority F dispatcher. Keeping one shared list stops
+ * the visible board, prompt radius and native quest target from drifting.
+ */
+export function harthmereRequestBoardPhysicalPromptRecords():
+  HarthmereRequestBoardPhysicalPromptRecord[] {
+  const records: HarthmereRequestBoardPhysicalPromptRecord[] =
+    HARTHMERE_REQUEST_BOARDS.map((board) => ({
+      boardId: harthmereRequestBoardJobsBoardId(board.id),
+      boardEntityId: Number(board.entityId),
+      displayName: board.label,
+      category: board.category,
+      position: {
+        x: board.snapshotPosition[0],
+        y: board.snapshotPosition[1],
+        z: board.snapshotPosition[2],
+      },
+      radius: HARTHMERE_REQUEST_BOARD_INTERACTION_RADIUS,
+    }));
+
+  const [quayX, quayZ] = HARTHMERE_DOCK_FISHING_BOARD.authoredPosition;
+  const quayWorld = shiftHarthmereAuthoredPositionToWorld([
+    quayX,
+    HARTHMERE_EXTENSION_FEET_Y,
+    quayZ,
+  ]);
+  records.push({
+    boardId: harthmereRequestBoardJobsBoardId(
+      HARTHMERE_DOCK_FISHING_BOARD.id
+    ),
+    boardEntityId: Number(HARTHMERE_DOCK_FISHING_BOARD.entityId),
+    displayName: HARTHMERE_DOCK_FISHING_BOARD.label,
+    category: HARTHMERE_DOCK_FISHING_BOARD.category,
+    position: { x: quayWorld[0], y: quayWorld[1], z: quayWorld[2] },
+    radius: HARTHMERE_REQUEST_BOARD_INTERACTION_RADIUS,
+  });
+  return records;
+}
+
+export function nearestHarthmereRequestBoardPhysicalPrompt(
+  playerPosition:
+    | { x: number; y?: number; z: number }
+    | undefined
+) {
+  if (!playerPosition) return undefined;
+  let best:
+    | HarthmereRequestBoardPhysicalPromptRecord
+    | undefined;
+  let bestDistance = Infinity;
+  for (const board of harthmereRequestBoardPhysicalPromptRecords()) {
+    const distance = Math.hypot(
+      board.position.x - playerPosition.x,
+      board.position.z - playerPosition.z
+    );
+    if (distance <= board.radius && distance < bestDistance) {
+      best = board;
+      bestDistance = distance;
+    }
+  }
+  return best ? { ...best, distance: bestDistance } : undefined;
+}
+
 export function harthmereRequestBoardJobsBoardLocations(): Record<
   string,
   HarthmereJobsBoardRecord

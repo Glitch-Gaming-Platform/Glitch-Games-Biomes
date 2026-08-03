@@ -156,6 +156,7 @@ import {
 import {
   harthmereCreatureAttackEventKey,
   harthmereCreatureIdleDelayMs,
+  harthmereCreatureIdleSoundEligible,
   harthmereCreatureShouldPlayAttackSound,
   harthmereCreatureSoundProfileForIdentity,
   type HarthmereCreatureSoundPhase,
@@ -1930,7 +1931,6 @@ export class NpcRenderState {
   private harthmereCreatureAttackCount = 0;
   private harthmereCreatureIdleSequence = 0;
   private nextHarthmereCreatureIdleSoundAtMs: number | undefined;
-  private lastHarthmereCreatureAttackAtMs: number | undefined;
   private lastHarthmereCreatureAttackEventKey: number | undefined;
   private readonly cutsceneHeldItemNode = new THREE.Group();
   private readonly cutsceneHeldItemAttachment: ItemAttachment;
@@ -2979,7 +2979,14 @@ export class NpcRenderState {
       secondsSinceEpoch,
       aabb,
       centerPosition,
-      sunDirection
+      sunDirection,
+      {
+        combatTargetActive: targetId !== undefined,
+        horizontalSpeed: Math.hypot(
+          harthmereDeathAwareNpcAnimationVelocity[0] ?? 0,
+          harthmereDeathAwareNpcAnimationVelocity[2] ?? 0
+        ),
+      }
     );
 
     // Update threejs animations.
@@ -3010,7 +3017,11 @@ export class NpcRenderState {
     secondsSinceEpoch: number,
     aabb: AABB,
     centerPosition: Vec3,
-    sunDirection: Vec3
+    sunDirection: Vec3,
+    creatureState: {
+      combatTargetActive: boolean;
+      horizontalSpeed: number;
+    }
   ) {
     this.tickOnHitEffects(
       secondsSinceEpoch,
@@ -3021,13 +3032,25 @@ export class NpcRenderState {
     this.tickOnAttackEffects(attackTime, secondsSinceEpoch, centerPosition);
     this.tickHarthmereBossFootsteps(secondsSinceEpoch, aabb, centerPosition);
 
-    const isIdle =
-      this.mixedMesh.animationSystemState.layerWeights.all.idle >
-      (this.wasIdle ? 0.5 : 0.9);
+    const idleAnimationWeight =
+      this.mixedMesh.animationSystemState.layerWeights.all.idle;
+    const idleAnimationWeightThreshold = this.wasIdle ? 0.5 : 0.9;
+    const isIdle = idleAnimationWeight > idleAnimationWeightThreshold;
     const creatureProfile = this.harthmereCreatureSoundProfile();
     if (creatureProfile) {
       const nowMs = secondsSinceEpoch * 1000;
-      if (isIdle && this.entity && this.entity.health.hp > 0) {
+      const creatureIdleEligible = harthmereCreatureIdleSoundEligible({
+        alive: Boolean(this.entity && this.entity.health.hp > 0),
+        inCombat:
+          creatureState.combatTargetActive ||
+          harthmereCreatureAttackEventKey(attackTime, secondsSinceEpoch) !==
+            undefined,
+        horizontalSpeed: creatureState.horizontalSpeed,
+        idleSpeedThreshold: HARTHMERE_NPC_BODY_LOCOMOTION_DEADZONE_SPEED,
+        idleAnimationWeight,
+        idleAnimationWeightThreshold,
+      });
+      if (creatureIdleEligible && this.entity) {
         if (this.nextHarthmereCreatureIdleSoundAtMs === undefined) {
           this.nextHarthmereCreatureIdleSoundAtMs =
             nowMs +
@@ -3132,14 +3155,6 @@ export class NpcRenderState {
     const creatureProfile = this.harthmereCreatureSoundProfile();
     let sound: AudioPath | undefined;
     if (creatureProfile && this.entity) {
-      const nowMs = secondsSinceEpoch * 1000;
-      if (
-        this.lastHarthmereCreatureAttackAtMs === undefined ||
-        nowMs - this.lastHarthmereCreatureAttackAtMs > 10_000
-      ) {
-        this.harthmereCreatureAttackCount = 0;
-      }
-      this.lastHarthmereCreatureAttackAtMs = nowMs;
       this.harthmereCreatureAttackCount += 1;
       if (
         harthmereCreatureShouldPlayAttackSound(

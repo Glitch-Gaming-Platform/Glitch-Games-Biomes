@@ -6,71 +6,50 @@ process.env.IS_SERVER = process.env.IS_SERVER || "1";
 
 const path = require("path");
 const fs = require("fs");
-const { connectToRedisWithLua } = require(path.join(
-  process.cwd(),
-  "src/server/shared/redis/connection"
-));
-const { RedisWorld } = require(path.join(
-  process.cwd(),
-  "src/server/shared/world/redis"
-));
-const { loadVoxeloo } = require(path.join(
-  process.cwd(),
-  "src/server/shared/voxeloo"
-));
-const { safeGetTerrainId } = require(path.join(
-  process.cwd(),
-  "src/shared/asset_defs/terrain"
-));
-const { blockPos } = require(path.join(
-  process.cwd(),
-  "src/shared/game/shard"
-));
-const {
-  loadBlockWrapper,
-  saveBlockWrapper,
-} = require(path.join(process.cwd(), "src/shared/wasm/biomes"));
-const {
-  HARTHMERE_BUILDINGS,
-} = require(path.join(
-  process.cwd(),
-  "src/shared/harthmere/harthmere_town_buildings"
-));
+const { connectToRedisWithLua } = require(
+  path.join(process.cwd(), "src/server/shared/redis/connection")
+);
+const { RedisWorld } = require(
+  path.join(process.cwd(), "src/server/shared/world/redis")
+);
+const { loadVoxeloo } = require(
+  path.join(process.cwd(), "src/server/shared/voxeloo")
+);
+const { safeGetTerrainId } = require(
+  path.join(process.cwd(), "src/shared/asset_defs/terrain")
+);
+const { blockPos } = require(path.join(process.cwd(), "src/shared/game/shard"));
+const { loadBlockWrapper, saveBlockWrapper } = require(
+  path.join(process.cwd(), "src/shared/wasm/biomes")
+);
+const { HARTHMERE_BUILDINGS } = require(
+  path.join(process.cwd(), "src/shared/harthmere/harthmere_town_buildings")
+);
 const {
   harthmereBuildingRoofBlockAt,
   harthmereBuildingRoofMaterial,
   harthmereBuildingRoofRise,
-} = require(path.join(
-  process.cwd(),
-  "src/shared/harthmere/harthmere_building_style"
-));
-const {
-  harthmereTownSurfaceMaterialAt,
-} = require(path.join(
-  process.cwd(),
-  "src/shared/harthmere/harthmere_town_surface"
-));
-const {
-  HARTHMERE_RETIRED_GENERIC_TOWNSPERSON_IDS,
-} = require(path.join(
-  process.cwd(),
-  "src/shared/harthmere/harthmere_npc_population_policy"
-));
-const {
-  HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS,
-} = require(path.join(
-  process.cwd(),
-  "src/shared/harthmere/business_customer_npc_seed"
-));
+} = require(
+  path.join(process.cwd(), "src/shared/harthmere/harthmere_building_style")
+);
+const { harthmereTownSurfaceMaterialAt } = require(
+  path.join(process.cwd(), "src/shared/harthmere/harthmere_town_surface")
+);
+const { HARTHMERE_RETIRED_GENERIC_TOWNSPERSON_IDS } = require(
+  path.join(
+    process.cwd(),
+    "src/shared/harthmere/harthmere_npc_population_policy"
+  )
+);
+const { HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS } = require(
+  path.join(process.cwd(), "src/shared/harthmere/business_customer_npc_seed")
+);
 const {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
   HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
   HARTHMERE_EXTENSION_GROUND_Y,
   harthmereExtensionTerrainEntityIdForShard,
-} = require(path.join(
-  process.cwd(),
-  "src/shared/harthmere/world_extension"
-));
+} = require(path.join(process.cwd(), "src/shared/harthmere/world_extension"));
 
 const APPLY = process.env.APPLY === "1";
 const APPLY_SHARD_BATCH_SIZE = Math.max(
@@ -124,7 +103,21 @@ function loadCanonicalTerrainBuilder() {
   // The production bundle owns the canonical terrain generator. Instrumenting
   // it in memory avoids duplicating that very large topology implementation,
   // while the false guard prevents the shim server from starting.
-  (0, eval)(instrumented);
+  const executeBundle = new Function(
+    "require",
+    "module",
+    "exports",
+    "__filename",
+    "__dirname",
+    instrumented
+  );
+  executeBundle(
+    require,
+    module,
+    module.exports,
+    bundlePath,
+    path.dirname(bundlePath)
+  );
   const builder = globalThis.__harthmereTownTerrainBuilder;
   delete globalThis.__harthmereTownTerrainBuilder;
   if (
@@ -272,11 +265,7 @@ async function applyTerrain(
     roofEdits: 0,
     clearedOldRoofBlocks: 0,
   };
-  for (
-    let start = 0;
-    start < entries.length;
-    start += APPLY_SHARD_BATCH_SIZE
-  ) {
+  for (let start = 0; start < entries.length; start += APPLY_SHARD_BATCH_SIZE) {
     const batch = entries.slice(start, start + APPLY_SHARD_BATCH_SIZE);
     const editor = world.edit();
     const entities = await editor.get(batch.map(([id]) => id));
@@ -409,7 +398,18 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error?.stack || error);
-  process.exit(1);
-});
+if (process.env.HARTHMERE_TOWN_REPAIR_LOADER_SELF_TEST === "1") {
+  const builder = loadCanonicalTerrainBuilder();
+  const specs = builder.localDevTerrainShardSpecs();
+  if (!Array.isArray(specs) || specs.length === 0) {
+    throw new Error("Canonical terrain builder self-test returned no shards");
+  }
+  console.log(
+    `HARTHMERE_TOWN_REPAIR_LOADER_READY terrainShards=${specs.length}`
+  );
+} else {
+  main().catch((error) => {
+    console.error(error?.stack || error);
+    process.exit(1);
+  });
+}

@@ -986,13 +986,18 @@ export class OverlayScript implements Script {
       HARTHMERE_ECS_NPC_COMBAT_REGISTRY_SCAN_RADIUS
     )) {
       seenNpcEntityIds.push(Number(entity.id));
+      const npcMetadata = entity.npc_metadata;
+      if (!npcMetadata) {
+        missingNpcEntityIds.push(Number(entity.id));
+        continue;
+      }
 
-      if (!isNpcTypeId(entity.npc_metadata.type_id)) {
+      if (!isNpcTypeId(npcMetadata.type_id)) {
         invalidNpcTypeEntityIds.push(Number(entity.id));
         continue;
       }
 
-      const npcType = idToNpcType(entity.npc_metadata.type_id);
+      const npcType = idToNpcType(npcMetadata.type_id);
       const becomeTheNPC = this.resources.get("/scene/npc/become_npc");
       const motionOverrides =
         becomeTheNPC.kind === "active" && becomeTheNPC.entityId === entity.id
@@ -1026,7 +1031,7 @@ export class OverlayScript implements Script {
       const bridgeText = harthmereEcsNpcCombatRegistryText(
         npcName,
         npcType.displayName,
-        entity.npc_metadata.type_id
+        npcMetadata.type_id
       );
       const species = harthmereEcsNpcCombatRegistrySpeciesFromText(bridgeText);
       const behavior = harthmereEcsNpcCombatRegistryBehaviorFromText(
@@ -1041,7 +1046,7 @@ export class OverlayScript implements Script {
       actors[String(entity.id)] = {
         offset: Number(entity.id),
         entityId: Number(entity.id),
-        npcTypeId: Number(entity.npc_metadata.type_id),
+        npcTypeId: Number(npcMetadata.type_id),
         label: npcName,
         asset: npcType.displayName,
         pos: [npcPos[0], npcPos[2]],
@@ -1100,15 +1105,19 @@ export class OverlayScript implements Script {
       localPlayer.player.position,
       MAX_NPC_OVERLAY_DIST
     )) {
-      if (!isNpcTypeId(entity.npc_metadata.type_id)) {
+      const npcMetadata = entity.npc_metadata;
+      if (!npcMetadata) {
+        continue;
+      }
+      if (!isNpcTypeId(npcMetadata.type_id)) {
         log.throttledError(
           10_000,
-          `Entity ${entity.id} has npc_metadata but invalid type_id (${entity.npc_metadata.type_id})`
+          `Entity ${entity.id} has npc_metadata but invalid type_id (${npcMetadata.type_id})`
         );
         continue;
       }
 
-      const npcType = idToNpcType(entity.npc_metadata.type_id);
+      const npcType = idToNpcType(npcMetadata.type_id);
 
       const shouldHideNameOverlay =
         getNpcBehavior(npcType).hideNameOverlay?.hideNameOverlay;
@@ -1146,7 +1155,7 @@ export class OverlayScript implements Script {
       const bridgeText = harthmereEcsNpcCombatBridgeText(
         npcName,
         npcType.displayName,
-        entity.npc_metadata.type_id
+        npcMetadata.type_id
       );
       const species = harthmereEcsNpcCombatSpeciesFromText(bridgeText);
       const behavior = harthmereEcsNpcCombatBehaviorFromText(
@@ -1156,7 +1165,7 @@ export class OverlayScript implements Script {
       ecsNpcCombatActorBridge[String(entity.id)] = {
         offset: Number(entity.id),
         entityId: Number(entity.id),
-        npcTypeId: Number(entity.npc_metadata.type_id),
+        npcTypeId: Number(npcMetadata.type_id),
         label: npcName,
         asset: npcType.displayName,
         pos: [npcPos[0], npcPos[2]],
@@ -1314,7 +1323,7 @@ export class OverlayScript implements Script {
           kind: "name",
           key: npcKey,
           entity,
-          name: presentation.label,
+          name: presentation.label ?? entity.label?.text ?? "NPC",
           typing: false,
           beginHide: true,
           entityId: entity.id,
@@ -1979,7 +1988,7 @@ export class OverlayScript implements Script {
         entityId: id,
         position: [pos[0], pos[1], pos[2]],
         isCraftingStation: true,
-        stationName: item.displayName,
+        stationName: entity.label?.text?.trim() || item.displayName,
       });
     }
 
@@ -2137,19 +2146,20 @@ export class OverlayScript implements Script {
       localPlayer.player.position,
       HARTHMERE_NPC_TALK_FALLBACK_RADIUS
     )) {
-      if (!isNpcTypeId(entity.npc_metadata.type_id)) {
+      const npcMetadata = entity.npc_metadata;
+      if (!npcMetadata || !isNpcTypeId(npcMetadata.type_id)) {
         continue;
       }
       // Muckers / hexers / huntable wildlife are combat creatures, not
       // conversational NPCs — never let them win the nearby-talk fallback (which
       // would otherwise shadow a real NPC standing next to them).
-      if (isHarthmereCombatCreatureNpcType(entity.npc_metadata.type_id)) {
+      if (isHarthmereCombatCreatureNpcType(npcMetadata.type_id)) {
         continue;
       }
       if (entity.health?.hp !== undefined && entity.health.hp <= 0) {
         continue;
       }
-      const npcType = idToNpcType(entity.npc_metadata.type_id);
+      const npcType = idToNpcType(npcMetadata.type_id);
       const motionOverrides =
         becomeTheNPC.kind === "active" && becomeTheNPC.entityId === entity.id
           ? becomeTheNPC

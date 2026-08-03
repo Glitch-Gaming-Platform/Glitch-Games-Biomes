@@ -4,9 +4,10 @@
 // Harthmere builds import it directly from the inventory, HUD runtime, and
 // grounded quest tests. Do not remove it when adding newer aliases.
 
-import type {
-  SnapshotGroveQuest,
-  SnapshotGroveTrigger,
+import {
+  SNAPSHOT_GROVE_QUESTS,
+  type SnapshotGroveQuest,
+  type SnapshotGroveTrigger,
 } from "@/shared/harthmere/snapshot_grove_content";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { groveQuest } from "@/shared/harthmere/grove/grove_quest_catalog";
@@ -200,6 +201,23 @@ export function snapshotGroveObjectiveRequiredCount(
  * silently returned catalog markers for a caller-supplied quest and moved the
  * first objective's marker onto the second one's.
  */
+const shippedMarkerIdsByQuestId: ReadonlyMap<string, readonly string[]> =
+  new Map(SNAPSHOT_GROVE_QUESTS.map((quest) => [quest.id, quest.markerIds]));
+
+/**
+ * The marker the RETIRED array ships for this objective, or undefined.
+ *
+ * Used only to tell "the caller handed us shipped data" apart from "the caller
+ * handed us its own markers", which is the distinction the retarget below
+ * depends on.
+ */
+function shippedMarkerId(
+  questId: string,
+  objectiveIndex: number
+): string | undefined {
+  return shippedMarkerIdsByQuestId.get(questId)?.[objectiveIndex];
+}
+
 export function snapshotGroveObjectiveTargetMarkerIds(
   quest: Pick<SnapshotGroveQuest, "id" | "markerIds">,
   objectiveIndex: number
@@ -208,6 +226,33 @@ export function snapshotGroveObjectiveTargetMarkerIds(
   // Explicit multi-target list: authored, catalog-owned, not caller-supplied.
   if (step?.targetMarkerIds?.length) return step.targetMarkerIds;
   const markerId = quest.markerIds[objectiveIndex];
+
+  // GROVE_GIVER_REASSIGNMENT_MARKERS:
+  //
+  // The four fountain lessons that moved from Jackie to Rosalyn were retargeted
+  // in `GROVE_QUEST_CATALOG` but NOT in the retired `SNAPSHOT_GROVE_QUESTS`
+  // array, which still names `npc_jackie` on their opening and closing
+  // objectives. The runtime already reads the GIVER from the catalog, so
+  // without this the player is offered the lesson by Rosalyn and then sent to
+  // Jackie by every marker surface — the map list, the step pins, the 3D
+  // objective props and the "return to your teacher" objective.
+  //
+  // The catalog is the reviewed source, so it wins. But it may only win when
+  // the caller is actually using shipped data: map-adapter fixtures and tests
+  // legitimately pass a quest whose markers differ from the shipped ones, and
+  // an earlier version of this function delegated wholesale and silently
+  // returned catalog markers for a caller-supplied quest — moving the first
+  // objective's marker onto the second one's. Comparing against the shipped row
+  // keeps both properties: shipped input is retargeted, custom input is
+  // honoured untouched.
+  //
+  // This does not touch `SNAPSHOT_GROVE_QUESTS` itself, and so cannot reach the
+  // four protected original-snapshot quest trees (Road Ahead, Busted, Get the
+  // Muck Out, Muck vs. Machine), which are Bikkie biscuits with their own ids
+  // and are not expressible in the Grove catalog at all.
+  if (step?.markerId && markerId === shippedMarkerId(quest.id, objectiveIndex)) {
+    return [step.markerId];
+  }
   return markerId ? [markerId] : [];
 }
 

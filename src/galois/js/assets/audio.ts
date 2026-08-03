@@ -91,7 +91,10 @@ export const audioAssets = {
 
   player_warp: ["audio/player-warp"],
 
-  music: ["audio/music-1"],
+  // Keep the authored overworld and original Grove themes as separate slots.
+  // The runtime selector chooses exactly one based on the player's region.
+  music: ["audio/muck-music-1"],
+  grove_music: ["audio/music-1"],
   muck_music: ["audio/muck-music-1"],
   cave_music: ["audio/harthmere-environment/cave-music-loop"],
   mountain_wind: ["audio/harthmere-environment/mountain-wind-loop"],

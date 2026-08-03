@@ -1366,7 +1366,7 @@ const HarthmereVoxelHeadShapeRow: React.FunctionComponent<{
 const CharacterWakeupContent: React.FunctionComponent<{
   onComplete: () => void;
 }> = ({ onComplete }) => {
-  const { userId, events } = useClientContext();
+  const { clientConfig, userId, events } = useClientContext();
   const [previewAppearance, setPreviewAppearance] = usePreviewAppearance();
   const [previewHair, setPreviewHair, wearableOverrides] = usePreviewHair();
   const [harthmereFace, setHarthmereFace] = useState(() =>
@@ -1912,16 +1912,27 @@ const CharacterWakeupContent: React.FunctionComponent<{
     <>
       <WakeUpText
         heading={`${BIOMES_GAME_NAME} character`}
-        className="harthmere-wakeup-character-builder w-[min(92rem,97vw)] py-2"
+        className={
+          clientConfig.mobileDevice
+            ? "harthmere-wakeup-character-builder harthmere-wakeup-character-builder--mobile w-full px-1 py-1"
+            : "harthmere-wakeup-character-builder w-[min(92rem,97vw)] py-2"
+        }
       >
         <div
           data-harthmere-builder-layout="supported-voxel-features"
           data-harthmere-builder-feature-version={
             HARTHMERE_BUILDER_FEATURE_AUDIT_VERSION
           }
-          className="grid max-h-[calc(100vh-6.25rem)] min-h-[min(40rem,calc(100vh-6.25rem))] w-full grid-cols-1 gap-5 overflow-hidden text-left lg:grid-cols-[minmax(22rem,30rem)_minmax(0,1fr)]"
+          className={
+            clientConfig.mobileDevice
+              ? "grid w-full grid-cols-1 gap-3 overflow-visible text-left"
+              : "grid max-h-[calc(100vh-6.25rem)] min-h-[min(40rem,calc(100vh-6.25rem))] w-full grid-cols-1 gap-5 overflow-hidden text-left lg:grid-cols-[minmax(22rem,30rem)_minmax(0,1fr)]"
+          }
         >
-          <aside className="border-amber-200/20 relative flex min-h-0 flex-col gap-4 overflow-hidden rounded-[2rem] border bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.18),rgba(15,23,42,0.94)_34%,rgba(2,6,23,0.96)_100%)] p-4 shadow-[0_24px_70px_rgba(0,0,0,0.42)] lg:row-span-2">
+          <aside
+            className="border-amber-200/20 relative flex min-h-0 flex-col gap-4 overflow-hidden rounded-[2rem] border bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.18),rgba(15,23,42,0.94)_34%,rgba(2,6,23,0.96)_100%)] p-4 shadow-[0_24px_70px_rgba(0,0,0,0.42)] lg:row-span-2"
+            data-harthmere-builder-preview-card="true"
+          >
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-amber-200/70 text-[0.68rem] font-black uppercase tracking-[0.22em]">
@@ -1967,7 +1978,11 @@ const CharacterWakeupContent: React.FunctionComponent<{
           </aside>
 
           <div
-            className="harthmere-builder-options-scroll"
+            className={
+              clientConfig.mobileDevice
+                ? "harthmere-builder-options-scroll harthmere-builder-options-scroll--mobile"
+                : "harthmere-builder-options-scroll"
+            }
             data-harthmere-builder-options-scroll="true"
           >
             <section className="border-white/14 from-black/48 to-slate-950/78 min-h-0 overflow-y-auto rounded-[2rem] border bg-gradient-to-b p-4 shadow-xl">
@@ -2046,7 +2061,11 @@ const CharacterWakeupContent: React.FunctionComponent<{
           type="primary"
           size="xl"
           glow
-          extraClassNames="w-full max-w-xl border border-amber-100/30 shadow-[0_0_40px_rgba(251,191,36,0.22)]"
+          extraClassNames={`w-full max-w-xl border border-amber-100/30 shadow-[0_0_40px_rgba(251,191,36,0.22)]${
+            clientConfig.mobileDevice
+              ? " sticky bottom-0 z-20 min-h-[44px]"
+              : ""
+          }`}
           onClick={startGame}
         >
           Create Hero
@@ -2059,7 +2078,8 @@ const CharacterWakeupContent: React.FunctionComponent<{
 const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
   onWakeup,
 }) => {
-  const { userId, events, reactResources, socialManager } = useClientContext();
+  const { clientConfig, userId, events, reactResources, socialManager } =
+    useClientContext();
   const [state, setState] = useState<WakeUpState>("initial");
   const cloudRestoreAutoWakeupRef = useRef(false);
   const [nameEntry, setNameEntry] = useState(() => {
@@ -2245,6 +2265,9 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
         >
           <WakeUpText
             heading="You are in a dark place with a mucky feeling..."
+            className={
+              clientConfig.mobileDevice ? "w-[min(92vw,28rem)] px-3" : undefined
+            }
             onTypingComplete={() => setShowContinue(true)}
           />
 
@@ -2262,14 +2285,26 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
     case "name-entry":
       return (
         <div className="absolute inset-0 flex items-center justify-center">
-          <WakeUpText heading="You vaguely recall a name..." key={state}>
+          <WakeUpText
+            heading="You vaguely recall a name..."
+            key={state}
+            className={
+              clientConfig.mobileDevice
+                ? "harthmere-wakeup-name-entry w-[min(92vw,24rem)] px-3"
+                : undefined
+            }
+          >
             {error && (
               <span className="font-semibold">
                 <MaybeError error={error} />
               </span>
             )}
             <motion.div
-              className="flex w-1/2 flex-col gap-1"
+              className={
+                clientConfig.mobileDevice
+                  ? "flex w-full flex-col gap-3"
+                  : "flex w-1/2 flex-col gap-1"
+              }
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -2283,12 +2318,19 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
                   setNameEntry(e.target.value);
                 }}
                 onEnter={doUsernameSave}
-                extraClassName="text-center font-semibold"
+                extraClassName={
+                  clientConfig.mobileDevice
+                    ? "harthmere-wakeup-name-input min-h-[44px] w-full text-center font-semibold"
+                    : "text-center font-semibold"
+                }
               />
               <DialogButton
                 type="primary"
                 size="xl"
                 glow
+                extraClassNames={
+                  clientConfig.mobileDevice ? "min-h-[44px] w-full" : undefined
+                }
                 disabled={nameEntry.length < 2 || savingName}
                 onClick={doUsernameSave}
               >
@@ -2300,7 +2342,23 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
       );
     case "character":
       return (
-        <div className="absolute inset-0 overflow-y-auto px-4 py-6">
+        <div
+          className={
+            clientConfig.mobileDevice
+              ? "absolute inset-0 overflow-y-auto px-2 py-2"
+              : "absolute inset-0 overflow-y-auto px-4 py-6"
+          }
+          style={
+            clientConfig.mobileDevice
+              ? {
+                  paddingTop: "max(8px, env(safe-area-inset-top))",
+                  paddingRight: "max(8px, env(safe-area-inset-right))",
+                  paddingBottom: "max(8px, env(safe-area-inset-bottom))",
+                  paddingLeft: "max(8px, env(safe-area-inset-left))",
+                }
+              : undefined
+          }
+        >
           <div className="flex min-h-full items-start justify-center">
             <CharacterWakeupContent
               onComplete={() => {
@@ -2339,6 +2397,9 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
           <WakeUpText
             heading={`${nameEntry}... wake up... wake up...`}
             key={"2"}
+            className={
+              clientConfig.mobileDevice ? "w-[min(92vw,28rem)] px-3" : undefined
+            }
             onTypingComplete={() => setShowWakeupContinue(true)}
           />
           <span

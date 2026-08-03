@@ -127,3 +127,37 @@ This is the shared failure log for the Harthmere business-interior and reusable-
   bounding boxes. Preview framing is now derived from those bounds as well.
 - Do not retry: do not trust a preview alone for scale. Require the manifest
   bounds gate (`width >= 6.5`, `height >= 6.4`) and an in-game screenshot.
+
+## 2026-08-03 — Request-board emblem hidden inside the double-sided header
+
+- Pipeline: `generate_world_interaction_graphics.py`, request-board variants.
+- Symptom: the first Fishing Board smoke build exported and compressed cleanly,
+  but its transparent preview showed a blank blue header instead of the fish
+  identity mark.
+- Cause: the emblem meshes were centered at local Y `0`, inside the board back
+  and its two face/header plaques. The GLB was structurally valid, so stats and
+  compression gates could not detect the visual failure.
+- Fix: build the category emblem once, move it to the front face, and duplicate
+  its concrete mesh data onto the back face. Fishing, Farming, Industrial and
+  Research previews now expose their fish, sheaf, gear/hammer and flask/book
+  silhouettes from either approach direction.
+- Do not retry: do not accept a category-board build from GLB validation alone.
+  Render the one-board transparent smoke preview and verify that its category
+  emblem is visibly outside the header before generating the four-board batch.
+
+## 2026-08-03 — Furniture generator Python failure returned exit code zero
+
+- Pipeline: `generate_business_furniture_catalogue.py` while adding the
+  Harthmere additive-town accent set.
+- Symptom: the full 30-item batch reached `town_ward_focus` (26/30), printed a
+  Python `NameError: name 'torus' is not defined`, quit Blender, and still
+  returned process exit code `0` to the caller.
+- Cause: `add_variant_details()` used the shared procedural `torus()` helper but
+  the furniture generator had not imported it from
+  `generate_business_interiors.py`.
+- Fix: import `torus`, run a selected `town_ward_focus` smoke build, then rerun
+  the complete catalogue so the partial selected manifest cannot survive.
+- Do not retry: never accept Blender's process exit code as the only success
+  signal. Require the final `[business-furniture] wrote ...` markers, the full
+  manifest item count, and the asset validator. A Python traceback with exit 0
+  is still a failed generation.

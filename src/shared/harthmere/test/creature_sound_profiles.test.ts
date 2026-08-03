@@ -5,6 +5,7 @@ import {
   harthmereCreatureAttackEventKey,
   harthmereCreatureAttackCadence,
   harthmereCreatureIdleDelayMs,
+  harthmereCreatureIdleSoundEligible,
   harthmereCreatureShouldPlayAttackSound,
   harthmereCreatureSoundEffectId,
   harthmereCreatureSoundProfileForIdentity,
@@ -12,7 +13,10 @@ import {
 } from "@/shared/harthmere/creature_sound_profiles";
 import { HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS } from "@/shared/harthmere/live_entity_production_seed";
 import { HARTHMERE_REMAINING_NPCS } from "@/shared/harthmere/npc_compendium";
-import { getHarthmereSoundEffect } from "@/shared/harthmere/sound_effect_manifest";
+import {
+  getHarthmereSoundEffect,
+  harthmereNpcSoundIdForIdentity,
+} from "@/shared/harthmere/sound_effect_manifest";
 import assert from "assert";
 
 const PHASES: readonly HarthmereCreatureSoundPhase[] = [
@@ -61,6 +65,36 @@ describe("Harthmere creature sound profiles", () => {
     }
   });
 
+  it("resolves the numbered live creatures shown in the no-sound report", () => {
+    const reportedCreatures = [
+      ["Road Pack Hex 1", "Road Pack Hex"],
+      ["Road Pack Hex 4", "Road Pack Hex"],
+      ["Road Muckmeadow Cow 1", "Road Muckmeadow Cow"],
+      ["Road Muckmeadow Rabbit 6", "Road Muckmeadow Rabbit"],
+      ["Road Muckmeadow Sheep 3", "Road Muckmeadow Sheep"],
+      ["Road Pack Muckling 2", "Road Pack Muckling"],
+    ] as const;
+
+    for (const [liveLabel, expectedProfile] of reportedCreatures) {
+      const profile = harthmereCreatureSoundProfileForIdentity({
+        text: liveLabel,
+      });
+      assert.equal(profile?.displayName, expectedProfile, liveLabel);
+      for (const phase of PHASES) {
+        const soundId = harthmereNpcSoundIdForIdentity(
+          { text: liveLabel },
+          phase
+        );
+        assert.equal(
+          soundId,
+          profile && harthmereCreatureSoundEffectId(profile, phase),
+          `${liveLabel}:${phase}`
+        );
+        assert.ok(getHarthmereSoundEffect(soundId), `${liveLabel}:${phase}`);
+      }
+    }
+  });
+
   it("covers every authored boss and Chapter 1 dungeon hostile", () => {
     for (const boss of HARTHMERE_BOSS_VISUAL_ASSETS) {
       assert.ok(
@@ -106,23 +140,82 @@ describe("Harthmere creature sound profiles", () => {
     }
   });
 
+  it("allows stationary creatures to idle-vocalize even when their animation blend is not idle", () => {
+    assert.equal(
+      harthmereCreatureIdleSoundEligible({
+        alive: true,
+        inCombat: false,
+        horizontalSpeed: 0,
+        idleSpeedThreshold: 0.06,
+        idleAnimationWeight: 0,
+        idleAnimationWeightThreshold: 0.9,
+      }),
+      true
+    );
+    assert.equal(
+      harthmereCreatureIdleSoundEligible({
+        alive: true,
+        inCombat: false,
+        horizontalSpeed: 1,
+        idleSpeedThreshold: 0.06,
+        idleAnimationWeight: 1,
+        idleAnimationWeightThreshold: 0.9,
+      }),
+      true
+    );
+    assert.equal(
+      harthmereCreatureIdleSoundEligible({
+        alive: true,
+        inCombat: true,
+        horizontalSpeed: 0,
+        idleSpeedThreshold: 0.06,
+        idleAnimationWeight: 1,
+        idleAnimationWeightThreshold: 0.9,
+      }),
+      false
+    );
+    assert.equal(
+      harthmereCreatureIdleSoundEligible({
+        alive: false,
+        inCombat: false,
+        horizontalSpeed: 0,
+        idleSpeedThreshold: 0.06,
+        idleAnimationWeight: 1,
+        idleAnimationWeightThreshold: 0.9,
+      }),
+      false
+    );
+  });
+
   it("plays attacks periodically instead of on every attack", () => {
     for (const profile of HARTHMERE_CREATURE_SOUND_PROFILES) {
       const cadence = harthmereCreatureAttackCadence(profile, 12345);
+      assert.deepEqual(profile.attackEvery, [2, 4], profile.id);
       assert.ok(cadence >= profile.attackEvery[0], profile.id);
       assert.ok(cadence <= profile.attackEvery[1], profile.id);
       assert.equal(
-        harthmereCreatureShouldPlayAttackSound(profile, 12345, 1),
+        harthmereCreatureShouldPlayAttackSound(profile, 12345, 0),
+        false,
+        profile.id
+      );
+      for (let attackCount = 1; attackCount < cadence; attackCount += 1) {
+        assert.equal(
+          harthmereCreatureShouldPlayAttackSound(
+            profile,
+            12345,
+            attackCount
+          ),
+          false,
+          `${profile.id}:${attackCount}`
+        );
+      }
+      assert.equal(
+        harthmereCreatureShouldPlayAttackSound(profile, 12345, cadence),
         true,
         profile.id
       );
       assert.equal(
-        harthmereCreatureShouldPlayAttackSound(profile, 12345, 2),
-        false,
-        profile.id
-      );
-      assert.equal(
-        harthmereCreatureShouldPlayAttackSound(profile, 12345, cadence + 1),
+        harthmereCreatureShouldPlayAttackSound(profile, 12345, cadence * 2),
         true,
         profile.id
       );

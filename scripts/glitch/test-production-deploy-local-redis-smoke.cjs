@@ -1175,6 +1175,7 @@ ok(
   harthmereProductionReconciliation.includes(
     [
       "report_extension_terrain",
+      "materialize_authored_water",
       "repair_extension_surface",
       "clear_building_interior_vegetation",
       "repair_harthmere_town",

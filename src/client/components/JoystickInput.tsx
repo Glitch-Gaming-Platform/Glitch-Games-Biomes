@@ -1,6 +1,14 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { isTouchDevice } from "@/client/components/contexts/PointerLockContext";
-import { containMobileControlEvent } from "@/client/components/mobileControlEvents";
+import {
+  containMobileControlEvent,
+  preventMobileBrowserNavigationGesture,
+} from "@/client/components/mobileControlEvents";
+import { useBiomesUINonGameplayScreenVisible } from "@/client/components/biomes_ui/BiomesUIOpenPrompt";
+import {
+  invokeSelectedWorldInteractionForKey,
+  useHasSelectedWorldInteractionCandidate,
+} from "@/client/components/challenges/worldInteractionDispatcher";
 import { useAnimation } from "@/client/util/animation";
 import {
   MOBILE_JOYSTICK_ACTION_PULSE_MS,
@@ -27,11 +35,18 @@ const Joystick = dynamic(
   }
 );
 
+const MOBILE_MOVEMENT_HISTORY_GUARD_KEY = "__biomesMobileMovementHistoryGuard";
+
 export const MaybeJoystickInput: React.FunctionComponent<{}> = React.memo(
   ({}) => {
     const { clientConfig } = useClientContext();
+    const nonGameplayScreenVisible = useBiomesUINonGameplayScreenVisible();
 
     if (!clientConfig.showVirtualJoystick) {
+      return <></>;
+    }
+
+    if (clientConfig.mobileDevice && nonGameplayScreenVisible) {
       return <></>;
     }
 
@@ -44,6 +59,8 @@ export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
   const touchDevice = isTouchDevice();
   const [mobileCrouchHeld, setMobileCrouchHeld] = useState(false);
   const [mobileJumpHeld, setMobileJumpHeld] = useState(false);
+  const mobileInteractAvailable =
+    useHasSelectedWorldInteractionCandidate("KeyF");
   const [joystickSize, setJoystickSize] = useState(() =>
     responsiveJoystickSize()
   );
@@ -63,6 +80,7 @@ export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
   const movementActionPulseNonceRef = useRef(0);
   const crouchPointerIdRef = useRef<number>(undefined);
   const jumpPointerIdRef = useRef<number>(undefined);
+  const movementControlsRef = useRef<HTMLDivElement>(null);
 
   const nowMs = () =>
     typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -193,6 +211,88 @@ export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
     };
   }, [input]);
 
+  useEffect(() => {
+    if (!clientConfig.mobileDevice) {
+      return;
+    }
+    const controls = movementControlsRef.current;
+    if (!controls) {
+      return;
+    }
+    const preventBrowserNavigation = (event: TouchEvent) => {
+      preventMobileBrowserNavigationGesture(event);
+    };
+    const options: AddEventListenerOptions = {
+      capture: true,
+      passive: false,
+    };
+    const gameplayUrl = window.location.href;
+    const guardedHistoryState = () => {
+      const state = window.history.state;
+      return typeof state === "object" && state !== null ? state : {};
+    };
+    const ensureMovementHistoryGuard = () => {
+      const state = guardedHistoryState();
+      if (state[MOBILE_MOVEMENT_HISTORY_GUARD_KEY] === true) {
+        return;
+      }
+      window.history.pushState(
+        {
+          ...state,
+          [MOBILE_MOVEMENT_HISTORY_GUARD_KEY]: true,
+        },
+        "",
+        gameplayUrl
+      );
+    };
+    const restoreMovementHistoryGuard = () => {
+      window.history.pushState(
+        {
+          ...guardedHistoryState(),
+          [MOBILE_MOVEMENT_HISTORY_GUARD_KEY]: true,
+        },
+        "",
+        gameplayUrl
+      );
+    };
+    const preventNavigationFromMovementControls = (event: TouchEvent) => {
+      const path = event.composedPath();
+      if (
+        path.includes(controls) ||
+        (event.target instanceof Node && controls.contains(event.target))
+      ) {
+        preventBrowserNavigation(event);
+      }
+    };
+    document.addEventListener(
+      "touchstart",
+      preventNavigationFromMovementControls,
+      options
+    );
+    document.addEventListener(
+      "touchmove",
+      preventNavigationFromMovementControls,
+      options
+    );
+    ensureMovementHistoryGuard();
+    window.addEventListener("pageshow", ensureMovementHistoryGuard);
+    window.addEventListener("popstate", restoreMovementHistoryGuard);
+    return () => {
+      document.removeEventListener(
+        "touchstart",
+        preventNavigationFromMovementControls,
+        options
+      );
+      document.removeEventListener(
+        "touchmove",
+        preventNavigationFromMovementControls,
+        options
+      );
+      window.removeEventListener("pageshow", ensureMovementHistoryGuard);
+      window.removeEventListener("popstate", restoreMovementHistoryGuard);
+    };
+  }, [clientConfig.mobileDevice]);
+
   useAnimation(() => {
     input.moveVirtualJoycon("left", ...leftPosRef.current);
     input.setSyntheticMotion(
@@ -215,7 +315,13 @@ export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
       }
     >
       {userId && (
-        <div className="mobile-movement-controls">
+        <div
+          ref={movementControlsRef}
+          className="mobile-movement-controls"
+          data-biomes-mobile-browser-back-guard={
+            clientConfig.mobileDevice ? "true" : undefined
+          }
+        >
           <div
             className="joystick left"
             role="group"
@@ -393,6 +499,28 @@ export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
             </button>
           )}
         </div>
+      )}
+      {userId && clientConfig.mobileDevice && mobileInteractAvailable && (
+        <button
+          type="button"
+          className="mobile-movement-button mobile-interact-button"
+          aria-label="Interact or talk (F)"
+          data-biomes-mobile-interact="true"
+          onPointerDown={(event) => {
+            containMobileControlEvent(event);
+            invokeSelectedWorldInteractionForKey("KeyF");
+          }}
+          onClick={(event) => {
+            containMobileControlEvent(event);
+            if (event.detail === 0) {
+              invokeSelectedWorldInteractionForKey("KeyF");
+            }
+          }}
+          onContextMenu={containMobileControlEvent}
+        >
+          <span className="mobile-movement-button__key">F</span>
+          <span className="mobile-movement-button__label">Interact</span>
+        </button>
       )}
       <div className="spacer" />
       {!touchDevice && (

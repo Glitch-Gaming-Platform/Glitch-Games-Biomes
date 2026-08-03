@@ -98,6 +98,17 @@ export function harthmereObsoleteSnapshotGroveNpcIds(
   ];
 }
 
+export function buildHarthmereObsoleteSnapshotGroveNpcDeleteChanges(input: {
+  tick: number;
+  candidates: readonly SnapshotGroveNamedNpcIdentityCandidate[];
+}): Change[] {
+  return harthmereObsoleteSnapshotGroveNpcIds(input.candidates).map((id) => ({
+    kind: "delete",
+    tick: input.tick,
+    id,
+  }));
+}
+
 export function buildHarthmereSnapshotGroveNpcSeedChanges(input: {
   tick: number;
   nowSeconds?: number;

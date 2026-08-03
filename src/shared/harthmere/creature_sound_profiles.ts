@@ -639,12 +639,10 @@ function profile(seed: ProfileSeed): HarthmereCreatureSoundProfile {
     lore: inferredLore(seed),
     signature: inferredSignature(seed),
     idleIntervalSeconds: idleInterval(size),
-    attackEvery:
-      seed.group === "boss"
-        ? ([2, 4] as const)
-        : seed.group === "bandit"
-        ? ([3, 5] as const)
-        : ([3, 6] as const),
+    // Creature battle vocals must remain occasional, but every archetype must
+    // be heard during a normal fight. A deterministic per-entity cadence keeps
+    // nearby copies from all vocalizing on the same swing.
+    attackEvery: [2, 4] as const,
   });
 }
 
@@ -734,6 +732,24 @@ export function harthmereCreatureIdleDelayMs(
   return seconds * 1000;
 }
 
+export function harthmereCreatureIdleSoundEligible(input: {
+  alive: boolean;
+  inCombat: boolean;
+  horizontalSpeed: number;
+  idleSpeedThreshold: number;
+  idleAnimationWeight: number;
+  idleAnimationWeightThreshold: number;
+}) {
+  if (!input.alive || input.inCombat) return false;
+  const stationary =
+    Number.isFinite(input.horizontalSpeed) &&
+    input.horizontalSpeed <= Math.max(0, input.idleSpeedThreshold);
+  const animationIsIdle =
+    Number.isFinite(input.idleAnimationWeight) &&
+    input.idleAnimationWeight > input.idleAnimationWeightThreshold;
+  return stationary || animationIsIdle;
+}
+
 export function harthmereCreatureAttackCadence(
   profile: HarthmereCreatureSoundProfile,
   identity: string | number
@@ -750,9 +766,9 @@ export function harthmereCreatureShouldPlayAttackSound(
   identity: string | number,
   attackCount: number
 ) {
-  if (attackCount <= 1) return true;
+  if (attackCount <= 0) return false;
   const cadence = harthmereCreatureAttackCadence(profile, identity);
-  return (attackCount - 1) % cadence === 0;
+  return attackCount % cadence === 0;
 }
 
 export function harthmereCreatureAttackEventKey(
@@ -816,7 +832,7 @@ function phaseTrigger(
     case "idle":
       return `While ${profile.displayName} remains outside attack mode, play at deterministic ${profile.idleIntervalSeconds[0]}-${profile.idleIntervalSeconds[1]} second intervals.`;
     case "attack":
-      return `On the first attack and then every deterministic ${profile.attackEvery[0]}-${profile.attackEvery[1]} attacks while Anima reports combat.`;
+      return `Every deterministic ${profile.attackEvery[0]}-${profile.attackEvery[1]} attacks while Anima reports combat.`;
     case "hit":
       return "When authoritative ECS health records a nonlethal hit.";
     case "death":

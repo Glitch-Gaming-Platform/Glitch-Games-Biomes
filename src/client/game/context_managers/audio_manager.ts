@@ -4,6 +4,7 @@ import {
   CH1_WINTER_DUNGEON_MUSIC_PATH,
   HARTHMERE_BATTLE_MUSIC_PATH,
   HARTHMERE_BOSS_BATTLE_MUSIC_PATH,
+  HARTHMERE_BUSINESS_MINIGAME_MUSIC_PATH,
   HARTHMERE_EXPLORATION_MUSIC_PATH,
   type AudioPath,
 } from "@/client/game/resources/audio";
@@ -39,6 +40,8 @@ export const VOLUME_TYPE_VOLUME_MULTIPLER = new Map<SettingsKey, number>([
   ["settings.volume.playerVoice", 1],
 ]);
 
+export const PLAYER_VOICE_GAME_AUDIO_DUCKING_GAIN = 0.42;
+
 export const ASSET_TYPE_VOLUME_MULTIPLER = new Map<AudioAssetType, number>([
   ["camera_select", 0.1],
   ["footsteps", 6.0],
@@ -54,18 +57,24 @@ function fixVolume(volume: number) {
 
 export type AudioTrackType =
   | "music"
+  | "grove_music"
   | "muck_music"
   | "cave_music"
   | "battle_music"
   | "boss_battle_music"
+  | "business_minigame_music"
   | "harthmere_music"
   | "ch1_sand_music"
   | "ch1_winter_music";
 
 export interface BackgroundMusicDiagnostics {
   running: boolean;
+  requestedTrack: AudioTrackType;
   currentTrack: AudioTrackType | undefined;
+  currentTrackPath: AudioPath | undefined;
+  overrideTrack: AudioTrackType | undefined;
   loadedTracks: AudioTrackType[];
+  loadedTrackPaths: Partial<Record<AudioTrackType, AudioPath>>;
   transitions: ReadonlyArray<{
     track: AudioTrackType;
     atMs: number;
@@ -111,15 +120,52 @@ export function resolvePathSpatialAudioOptions(
 
 export const DEFAULT_BACKGROUND_MUSIC_CROSSFADE_SECONDS = 5;
 export const COMBAT_MUSIC_CROSSFADE_SECONDS = 0.75;
+export const GROVE_MUSIC_TRANSITION_SECONDS = 0;
+export const BUSINESS_MINIGAME_MUSIC_TRANSITION_SECONDS = 0;
 const COMBAT_MUSIC_TRACKS: ReadonlySet<AudioTrackType> = new Set([
   "battle_music",
   "boss_battle_music",
 ]);
 
+const ALL_BACKGROUND_MUSIC_TRACKS: readonly AudioTrackType[] = [
+  "music",
+  "grove_music",
+  "muck_music",
+  "cave_music",
+  "battle_music",
+  "boss_battle_music",
+  "business_minigame_music",
+  "harthmere_music",
+  "ch1_sand_music",
+  "ch1_winter_music",
+];
+
+export function backgroundMusicTracksForDevice(
+  mobileDevice: boolean,
+  requestedTrack: AudioTrackType
+) {
+  return mobileDevice ? [requestedTrack] : [...ALL_BACKGROUND_MUSIC_TRACKS];
+}
+
+export function shouldPrefetchAllAudioAssets(mobileDevice: boolean) {
+  return !mobileDevice;
+}
+
 export function backgroundMusicCrossfadeSeconds(
   previousTrack: AudioTrackType | undefined,
   nextTrack: AudioTrackType
 ) {
+  // The Grove has its own established theme. Do not layer it with an incoming
+  // or outgoing world bed: two full songs are immediately audible as a bug.
+  if (previousTrack === "grove_music" || nextTrack === "grove_music") {
+    return GROVE_MUSIC_TRANSITION_SECONDS;
+  }
+  if (
+    previousTrack === "business_minigame_music" ||
+    nextTrack === "business_minigame_music"
+  ) {
+    return BUSINESS_MINIGAME_MUSIC_TRANSITION_SECONDS;
+  }
   return (previousTrack !== undefined &&
     COMBAT_MUSIC_TRACKS.has(previousTrack)) ||
     COMBAT_MUSIC_TRACKS.has(nextTrack)
@@ -129,6 +175,7 @@ export function backgroundMusicCrossfadeSeconds(
 
 interface AudioTrack {
   audio: THREE.Audio;
+  path: AudioPath;
 }
 
 export class AudioManager {
@@ -137,12 +184,15 @@ export class AudioManager {
   private audioTracks: Map<AudioTrackType, AudioTrack> = new Map();
   private currentTrack: AudioTrack | undefined;
   private currentTrackType: AudioTrackType | undefined;
+  private requestedTrackType: AudioTrackType = "music";
+  private backgroundMusicOverrides = new Map<string, AudioTrackType>();
   private backgroundMusicTransitions: Array<{
     track: AudioTrackType;
     atMs: number;
   }> = [];
 
   private backgroundMusicAttenuation = 0;
+  private playerVoiceDuckingActive = false;
   private prefetched = false;
   private muted = false;
   private underwaterEnvironmentActive = false;
@@ -166,7 +216,27 @@ export class AudioManager {
   private activePaths: MultiMap<AudioPath, THREE.Audio> = new MultiMap();
   private loadingPaths = new Set<AudioPath>();
 
-  constructor(private resources: ClientResources) {}
+  private readonly backgroundTrackPaths: Record<AudioTrackType, AudioPath>;
+  private mobileBackgroundMusicLoadingType: AudioTrackType | undefined;
+  private mobileBackgroundMusicLoadNonce = 0;
+
+  constructor(
+    private resources: ClientResources,
+    private readonly mobileDevice = false
+  ) {
+    this.backgroundTrackPaths = {
+      music: sample(getAudioAssetPaths("music"))!,
+      grove_music: sample(getAudioAssetPaths("grove_music"))!,
+      muck_music: sample(getAudioAssetPaths("muck_music"))!,
+      cave_music: sample(getAudioAssetPaths("cave_music"))!,
+      battle_music: HARTHMERE_BATTLE_MUSIC_PATH,
+      boss_battle_music: HARTHMERE_BOSS_BATTLE_MUSIC_PATH,
+      business_minigame_music: HARTHMERE_BUSINESS_MINIGAME_MUSIC_PATH,
+      harthmere_music: HARTHMERE_EXPLORATION_MUSIC_PATH,
+      ch1_sand_music: CH1_SAND_DUNGEON_MUSIC_PATH,
+      ch1_winter_music: CH1_WINTER_DUNGEON_MUSIC_PATH,
+    };
+  }
 
   stop() {
     this.stopUnderwaterAmbience();
@@ -200,6 +270,8 @@ export class AudioManager {
     this.audioTracks.clear();
     this.currentTrack = undefined;
     this.currentTrackType = undefined;
+    this.requestedTrackType = "music";
+    this.backgroundMusicOverrides.clear();
     this.backgroundMusicTransitions = [];
   }
 
@@ -208,6 +280,8 @@ export class AudioManager {
     this.activeAssets = old.activeAssets;
     this.activePaths = old.activePaths;
     this.loadingPaths = old.loadingPaths;
+    this.requestedTrackType = old.requestedTrackType;
+    this.backgroundMusicOverrides = new Map(old.backgroundMusicOverrides);
     old.stop();
   }
 
@@ -226,6 +300,9 @@ export class AudioManager {
   }
 
   prefetchAudioAssets() {
+    if (!shouldPrefetchAllAudioAssets(this.mobileDevice)) {
+      return;
+    }
     if (!this.prefetched) {
       prefetchAudioAssets(this.resources);
       this.prefetched = true;
@@ -263,8 +340,17 @@ export class AudioManager {
   getBackgroundMusicDiagnostics(): BackgroundMusicDiagnostics {
     return {
       running: Boolean(this.isRunning()),
+      requestedTrack: this.requestedTrackType,
       currentTrack: this.currentTrackType,
+      currentTrackPath: this.currentTrack?.path,
+      overrideTrack: this.getBackgroundMusicOverride(),
       loadedTracks: [...this.audioTracks.keys()].sort(),
+      loadedTrackPaths: Object.fromEntries(
+        [...this.audioTracks.entries()].map(([trackType, track]) => [
+          trackType,
+          track.path,
+        ])
+      ),
       transitions: [...this.backgroundMusicTransitions],
     };
   }
@@ -281,6 +367,7 @@ export class AudioManager {
         });
       }
       await this.audioListener.context.resume();
+      this.applyPlayerVoiceDucking(false);
       await this.startBackgroundMusic();
       this.prefetchAudioAssets();
     }
@@ -290,47 +377,96 @@ export class AudioManager {
     if (!this.audioListener || this.currentTrack) {
       return;
     }
-    const loadTrack = async (
-      audioTrackType: AudioTrackType,
-      assetPath: AudioPath
-    ) => {
-      if (!this.audioListener || this.audioTracks.has(audioTrackType)) {
-        return;
-      }
-      const audio = new THREE.Audio(this.audioListener);
-      const buffer = await this.resources.get("/audio/buffer", assetPath);
-      if (!buffer) {
-        // Should we try to start it later to avoid race conditions?
-        return;
-      }
-      audio.setBuffer(buffer);
-      audio.setLoop(true);
-      audio.setFilters(this.getBackgroundMusicFilters());
-      audio.gain.gain.value = 0;
-      audio.play();
-      this.audioTracks.set(audioTrackType, { audio });
-    };
+    await Promise.allSettled(
+      backgroundMusicTracksForDevice(
+        this.mobileDevice,
+        this.requestedTrackType
+      ).map((trackType) => this.loadBackgroundMusicTrack(trackType))
+    );
 
-    await Promise.allSettled([
-      loadTrack("music", sample(getAudioAssetPaths("music"))!),
-      loadTrack("muck_music", sample(getAudioAssetPaths("muck_music"))!),
-      loadTrack("cave_music", sample(getAudioAssetPaths("cave_music"))!),
-      loadTrack("battle_music", HARTHMERE_BATTLE_MUSIC_PATH),
-      loadTrack("boss_battle_music", HARTHMERE_BOSS_BATTLE_MUSIC_PATH),
-      loadTrack("harthmere_music", HARTHMERE_EXPLORATION_MUSIC_PATH),
-      loadTrack("ch1_sand_music", CH1_SAND_DUNGEON_MUSIC_PATH),
-      loadTrack("ch1_winter_music", CH1_WINTER_DUNGEON_MUSIC_PATH),
-    ]);
+    // AudioScript may select the player's real region while these buffers are
+    // still loading. Honor that latest request instead of forcing the legacy
+    // default world slot once preload completes.
+    this.setBackgroundMusicTrack(this.requestedTrackType);
+  }
 
-    this.setBackgroundMusicTrack("music");
+  private async loadBackgroundMusicTrack(audioTrackType: AudioTrackType) {
+    const listener = this.audioListener;
+    if (!listener || this.audioTracks.has(audioTrackType)) {
+      return;
+    }
+    const assetPath = this.backgroundTrackPaths[audioTrackType];
+    const buffer = await this.resources.get("/audio/buffer", assetPath);
+    if (!buffer || this.audioListener !== listener) {
+      return;
+    }
+    const audio = new THREE.Audio(listener);
+    audio.setBuffer(buffer);
+    audio.setLoop(true);
+    audio.setFilters(this.getBackgroundMusicFilters());
+    audio.gain.gain.value = 0;
+    audio.play();
+    this.audioTracks.set(audioTrackType, { audio, path: assetPath });
+  }
+
+  private releaseBackgroundMusicTracks() {
+    for (const track of this.audioTracks.values()) {
+      if (track.audio.isPlaying) {
+        track.audio.stop();
+      }
+      track.audio.disconnect();
+      this.resources.invalidate("/audio/buffer", track.path);
+    }
+    this.audioTracks.clear();
+    this.currentTrack = undefined;
+    this.currentTrackType = undefined;
+  }
+
+  private loadMobileBackgroundMusicTrack(trackType: AudioTrackType) {
+    if (
+      this.mobileBackgroundMusicLoadingType === trackType ||
+      this.audioTracks.has(trackType)
+    ) {
+      return;
+    }
+    const loadNonce = ++this.mobileBackgroundMusicLoadNonce;
+    this.mobileBackgroundMusicLoadingType = trackType;
+    this.releaseBackgroundMusicTracks();
+    fireAndForget(
+      this.loadBackgroundMusicTrack(trackType).finally(() => {
+        if (loadNonce !== this.mobileBackgroundMusicLoadNonce) {
+          const staleTrack = this.audioTracks.get(trackType);
+          if (staleTrack) {
+            if (staleTrack.audio.isPlaying) {
+              staleTrack.audio.stop();
+            }
+            staleTrack.audio.disconnect();
+            this.audioTracks.delete(trackType);
+            this.resources.invalidate("/audio/buffer", staleTrack.path);
+          }
+          return;
+        }
+        this.mobileBackgroundMusicLoadingType = undefined;
+        if (this.requestedTrackType === trackType) {
+          this.setBackgroundMusicTrack(trackType);
+        }
+      })
+    );
   }
 
   setBackgroundMusicTrack(trackType: AudioTrackType) {
+    // Remember selection requests made before the AudioContext or requested
+    // buffer is ready. startBackgroundMusic applies the latest one after load.
+    this.requestedTrackType = trackType;
     if (!this.audioListener) {
       return;
     }
     const context = this.audioListener.context;
     const newTrack = this.audioTracks.get(trackType);
+    if (!newTrack && this.mobileDevice) {
+      this.loadMobileBackgroundMusicTrack(trackType);
+      return;
+    }
     if (!newTrack || newTrack === this.currentTrack) {
       return;
     }
@@ -351,31 +487,59 @@ export class AudioManager {
       );
     }
 
-    // Crossfade volume to the current track.
+    // Crossfade volume to the current track. Region themes that require an
+    // exclusive handoff use a zero-second transition to avoid layering songs.
     for (const track of this.audioTracks.values()) {
       if (track !== this.currentTrack) {
         track.audio.gain.gain.cancelScheduledValues(context.currentTime);
-        track.audio.gain.gain.setValueAtTime(
-          track.audio.gain.gain.value,
-          context.currentTime
-        );
-        track.audio.gain.gain.linearRampToValueAtTime(
-          0,
-          context.currentTime + crossfadeSeconds
-        );
+        if (crossfadeSeconds === 0) {
+          track.audio.gain.gain.setValueAtTime(0, context.currentTime);
+        } else {
+          track.audio.gain.gain.setValueAtTime(
+            track.audio.gain.gain.value,
+            context.currentTime
+          );
+          track.audio.gain.gain.linearRampToValueAtTime(
+            0,
+            context.currentTime + crossfadeSeconds
+          );
+        }
       }
     }
     this.currentTrack?.audio.gain.gain.cancelScheduledValues(
       context.currentTime
     );
-    this.currentTrack?.audio.gain.gain.setValueAtTime(
-      this.currentTrack.audio.gain.gain.value,
-      context.currentTime
-    );
-    this.currentTrack?.audio.gain.gain.linearRampToValueAtTime(
-      this.getVolume("settings.volume.music"),
-      context.currentTime + crossfadeSeconds
-    );
+    if (this.currentTrack) {
+      if (crossfadeSeconds === 0) {
+        this.currentTrack.audio.gain.gain.setValueAtTime(
+          this.getVolume("settings.volume.music"),
+          context.currentTime
+        );
+      } else {
+        this.currentTrack.audio.gain.gain.setValueAtTime(
+          this.currentTrack.audio.gain.gain.value,
+          context.currentTime
+        );
+        this.currentTrack.audio.gain.gain.linearRampToValueAtTime(
+          this.getVolume("settings.volume.music"),
+          context.currentTime + crossfadeSeconds
+        );
+      }
+    }
+  }
+
+  setBackgroundMusicOverride(
+    owner: string,
+    trackType: AudioTrackType | undefined
+  ) {
+    this.backgroundMusicOverrides.delete(owner);
+    if (trackType) {
+      this.backgroundMusicOverrides.set(owner, trackType);
+    }
+  }
+
+  getBackgroundMusicOverride() {
+    return [...this.backgroundMusicOverrides.values()].at(-1);
   }
 
   setBackgroundMusicAttenuation(value: number) {
@@ -389,6 +553,36 @@ export class AudioManager {
   updateBackgroundMusicVolume() {
     const volume = this.getVolume("settings.volume.music");
     this.currentTrack?.audio.setVolume(volume);
+  }
+
+  setPlayerVoiceDucking(active: boolean) {
+    if (this.playerVoiceDuckingActive === active) {
+      return;
+    }
+    this.playerVoiceDuckingActive = active;
+    this.applyPlayerVoiceDucking(true);
+  }
+
+  private applyPlayerVoiceDucking(smooth: boolean) {
+    const listener = this.audioListener;
+    if (!listener) {
+      return;
+    }
+    const now = listener.context.currentTime;
+    const gain = listener.gain.gain;
+    const target = this.playerVoiceDuckingActive
+      ? PLAYER_VOICE_GAME_AUDIO_DUCKING_GAIN
+      : 1;
+    gain.cancelScheduledValues(now);
+    gain.setValueAtTime(gain.value, now);
+    if (smooth) {
+      gain.linearRampToValueAtTime(
+        target,
+        now + (this.playerVoiceDuckingActive ? 0.08 : 0.22)
+      );
+    } else {
+      gain.setValueAtTime(target, now);
+    }
   }
 
   private getBackgroundMusicFilters() {
@@ -863,5 +1057,9 @@ function prefetchAudioAssets(resources: ClientResources) {
 }
 
 export async function loadAudioManager(loader: RegistryLoader<ClientContext>) {
-  return new AudioManager(await loader.get("resources"));
+  const [resources, clientConfig] = await Promise.all([
+    loader.get("resources"),
+    loader.get("clientConfig"),
+  ]);
+  return new AudioManager(resources, clientConfig.mobileDevice);
 }

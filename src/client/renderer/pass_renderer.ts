@@ -8,6 +8,7 @@ import { RenderPassComposer } from "@/client/game/renderers/passes/composer";
 import type { RenderPass } from "@/client/game/renderers/passes/pass";
 import { SceneBasePass } from "@/client/game/renderers/passes/scene_base_pass";
 import { shaderErrorCallback } from "@/client/game/renderers/renderer_controller";
+import { getWebGlRendererInfo } from "@/client/renderer/webgl_renderer_info";
 import { log } from "@/shared/logging";
 import { floor2, scale2 } from "@/shared/math/linear";
 import type { Vec2 } from "@/shared/math/types";
@@ -70,6 +71,18 @@ export class PassRenderer {
       throw new UnsupportedWebGLError("Biomes requires WebGL 2.0.");
     }
 
+    const webGlRendererInfo = {
+      name,
+      softwareRendering,
+      ...getWebGlRendererInfo(context),
+    };
+    log.info(`WebGL Renderer Info is ${JSON.stringify(webGlRendererInfo)}`);
+    makeCvalHook({
+      path: ["renderer", name, "webgl"],
+      help: "WebGL renderer and vendor reported by the active render context.",
+      collect: () => webGlRendererInfo,
+    });
+
     configureGltfTextureTranscoding(this.threeRenderer);
 
     // Tell threejs not to sort objects by depth, so that we can sort manually,
@@ -86,7 +99,16 @@ export class PassRenderer {
       this.threeRenderer.dispose();
     });
 
-    this.threeRenderer.debug.checkShaderErrors = true;
+    // PERF (2026-08-03 render audit): checkShaderErrors makes every program
+    // link a synchronous getProgramParameter(LINK_STATUS) round-trip, which
+    // stalls the pipeline until the driver finishes linking. Valuable while
+    // authoring shaders, pure cost once the shaders are known-good. Keep it on
+    // outside production so shader regressions still surface loudly in dev,
+    // and keep onShaderError wired unconditionally so that if a program does
+    // fail to link in production we still get the log rather than a silent
+    // black screen.
+    this.threeRenderer.debug.checkShaderErrors =
+      process.env.NODE_ENV !== "production";
     this.threeRenderer.debug.onShaderError = shaderErrorCallback;
     // three@0.152 exposes outputColorSpace at runtime, while the repository's
     // pinned @types/three@0.151 predates that property.

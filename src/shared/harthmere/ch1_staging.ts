@@ -34,7 +34,7 @@ import {
   type Ch1Vec3,
 } from "@/shared/harthmere/ch1_ids";
 
-export const CH1_STAGING_VERSION = 2 as const;
+export const CH1_STAGING_VERSION = 5 as const;
 
 /** Somewhere a staged character can be, other than a Grove anchor. */
 export type Ch1StagePlace =
@@ -98,17 +98,17 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
     },
     {
       whenActiveStepIds: ["the_examination"],
-      place: { kind: "anchor", anchor: "greenlamp_clinic" },
+      place: { kind: "anchor", anchor: "greenlamp_lou_post" },
       activity: "Preparing the clean room for an examination.",
     },
     {
       whenAllFlags: [CH1_FLAGS.metLou],
-      place: { kind: "anchor", anchor: "greenlamp_clinic" },
+      place: { kind: "anchor", anchor: "greenlamp_lou_post" },
       activity: "Consulting on the Grove's memory-sickness cases.",
     },
     {
       whenAllFlags: [CH1_FLAGS.act5Complete],
-      place: { kind: "anchor", anchor: "returnstone_pad_office" },
+      place: { kind: "anchor", anchor: "returnstone_lou_post" },
       activity: "Waiting beside a Collective medical transport. Unhurried.",
       note: "The transport has been parked here since the day after Ashline. He does not mention that.",
     },
@@ -125,7 +125,7 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
         "the_word",
         "watch_him_go",
       ],
-      place: { kind: "anchor", anchor: "returnstone_pad_office" },
+      place: { kind: "anchor", anchor: "returnstone_lou_post" },
       activity:
         "Standing beside the Collective transport, waiting without hurry.",
     },
@@ -138,19 +138,19 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
     },
     {
       whenAllFlags: [CH1_FLAGS.gatePersistentOpen],
-      place: { kind: "anchor", anchor: "returnstone_pad_office" },
+      place: { kind: "anchor", anchor: "returnstone_cressa_post" },
       activity:
         "Presenting the cost of every option, in numbers, without threatening anyone.",
     },
     {
       whenAllFlags: [CH1_FLAGS.ledgerSurrendered],
       whenNoFlags: [CH1_FLAGS.complete],
-      place: { kind: "anchor", anchor: "returnstone_pad_office" },
+      place: { kind: "anchor", anchor: "returnstone_cressa_post" },
       activity: "Signing for the ledger.",
     },
     {
       whenEnding: "bargain",
-      place: { kind: "anchor", anchor: "returnstone_pad_office" },
+      place: { kind: "anchor", anchor: "returnstone_cressa_post" },
       activity:
         "Holding a credential, a lab assignment, and a seat at the table.",
     },
@@ -177,7 +177,7 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
     {
       whenAllFlags: [CH1_FLAGS.gatePersistentOpen],
       whenNoFlags: [CH1_FLAGS.act3Complete],
-      place: { kind: "anchor", anchor: "gate_desert" },
+      place: { kind: "anchor", anchor: "gate_desert_rook_post" },
       activity:
         "Standing at the treeline looking at footprints, waiting for someone to say the obvious sentence.",
       note: "He crossed a bridge he is not supposed to cross. That is the measure of how bad the footprints are.",
@@ -206,20 +206,20 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
     // above. These are the moments the scene genuinely happens at an aperture.
     {
       whenActiveStepIds: ["the_footprints", "say_the_sentence"],
-      place: { kind: "anchor", anchor: "gate_desert" },
+      place: { kind: "anchor", anchor: "gate_desert_rook_post" },
       activity:
         "Holding the treeline and waiting for the answer nobody wants to say aloud.",
     },
     {
       whenActiveStepIds: ["the_three_answers"],
-      place: { kind: "anchor", anchor: "gate_desert" },
+      place: { kind: "anchor", anchor: "gate_desert_rook_post" },
       activity: "Arguing, calmly, that the thing should be collapsed.",
     },
     {
       // "You do it to the second, in front of him" only works at a Mouth he can
       // watch close. Act 4 otherwise has him back at the bridge.
       whenActiveStepIds: ["call_the_collapse", "take_the_token"],
-      place: { kind: "anchor", anchor: "gate_desert" },
+      place: { kind: "anchor", anchor: "gate_desert_rook_post" },
       activity:
         "Watching an aperture he has failed to predict for two years, and timing it against you.",
     },
@@ -257,7 +257,7 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
     },
     {
       whenAllFlags: [CH1_FLAGS.act5Complete],
-      place: { kind: "anchor", anchor: "greenlamp_clinic" },
+      place: { kind: "anchor", anchor: "greenlamp_nadia_post" },
       activity: "In Doc's care, arguing with him about her own chart.",
       note: "One scene of Grove-side Sorrel, deliberately short. She must not be alone with the player for long before the handover.",
     },
@@ -277,7 +277,7 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
     },
     {
       whenAllFlags: [CH1_FLAGS.irisRescued],
-      place: { kind: "anchor", anchor: "lovely_locks_mirror" },
+      place: { kind: "anchor", anchor: "lovely_locks_iris_post" },
       activity:
         "A Grove resident now. Entirely calm, which is still the disturbing part.",
     },
@@ -290,7 +290,7 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
     },
     {
       whenAllFlags: [CH1_FLAGS.marrowSaved],
-      place: { kind: "anchor", anchor: "lovely_locks_mirror" },
+      place: { kind: "anchor", anchor: "lovely_locks_marrow_post" },
       activity: "Asleep in the sun near Iris. Non-negotiable.",
     },
   ],
@@ -303,7 +303,7 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
     },
     {
       whenAllFlags: [CH1_FLAGS.teakDetained],
-      place: { kind: "anchor", anchor: "grove_watch_house" },
+      place: { kind: "anchor", anchor: "grove_watch_house_teak_post" },
       activity:
         "Detained with Take Terra materials on him, refusing to confirm the only thing that would help.",
     },
@@ -391,18 +391,18 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
     },
     {
       whenActiveStepIds: ["the_flinch"],
-      place: { kind: "anchor", anchor: "gate_desert" },
+      place: { kind: "anchor", anchor: "gate_desert_jackie_post" },
       activity: "Waiting at the return aperture after three sleepless days.",
     },
     {
       whenAllFlags: [CH1_FLAGS.jackieExpelled],
-      place: { kind: "anchor", anchor: "grove_watch_house" },
+      place: { kind: "anchor", anchor: "grove_watch_house_jackie_post" },
       activity:
         "Sitting in the watch-house without offering a defence, held on Teak's evidence whether or not the player adds an accusation.",
     },
     {
       whenActiveStepIds: ["report_or_not"],
-      place: { kind: "anchor", anchor: "grove_watch_house" },
+      place: { kind: "anchor", anchor: "grove_watch_house_jackie_post" },
       activity:
         "Waiting in the watch-house while Holt takes the player's statement.",
     },
@@ -412,7 +412,7 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
         "the_whole_plan",
         "the_final_choice",
       ],
-      place: { kind: "anchor", anchor: "grove_watch_house" },
+      place: { kind: "anchor", anchor: "grove_watch_house_jackie_post" },
       activity: "Waiting in the watch-house, practical even now.",
     },
     {

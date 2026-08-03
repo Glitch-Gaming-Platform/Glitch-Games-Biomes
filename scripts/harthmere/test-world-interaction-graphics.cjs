@@ -49,6 +49,12 @@ function inspectGlb(publicUrl) {
 
 assert.equal(manifest.gatheringNodes.length, 29);
 assert.equal(Object.keys(manifest.jobsBoardVariants).length, 5);
+assert.deepEqual(Object.keys(manifest.requestBoardVariants).sort(), [
+  "farming",
+  "fishing",
+  "industrial",
+  "research",
+]);
 assert.equal(manifest.performance.runtimeLights, 0);
 assert.match(manifest.performance.compression, /EXT_meshopt_compression/);
 assert.equal(
@@ -118,9 +124,38 @@ for (const [variant, entry] of Object.entries(manifest.jobsBoardVariants)) {
   }
 }
 
-assert.equal(manifest.summary.glbCount, 68);
+for (const [category, entry] of Object.entries(
+  manifest.requestBoardVariants
+)) {
+  assert.equal(entry.category, category);
+  const width = entry.bounds.max[0] - entry.bounds.min[0];
+  const height = entry.bounds.max[2] - entry.bounds.min[2];
+  assert.ok(width >= 6.5, `${category} request-board width: ${width}`);
+  assert.ok(height >= 6.4, `${category} request-board height: ${height}`);
+  for (const lod of ["lod0", "lod1"]) {
+    const inspected = inspectGlb(entry.assets[lod]);
+    assert.equal(inspected.meshoptCompressed, true, `${category}:${lod}`);
+    assert.equal(
+      inspected.textureCount,
+      0,
+      `${category}:${lod} textures`
+    );
+    assert.equal(inspected.imageCount, 0, `${category}:${lod} images`);
+    assert.ok(
+      inspected.primitiveCount <= 8,
+      `${category}:${lod} primitives`
+    );
+    assert.ok(inspected.bytes < 65_000, `${category}:${lod} bytes`);
+    assert.equal(inspected.bytes, entry.stats[lod].bytes);
+    totalBytes += inspected.bytes;
+    maxBytes = Math.max(maxBytes, inspected.bytes);
+    maxPrimitives = Math.max(maxPrimitives, inspected.primitiveCount);
+  }
+}
+
+assert.equal(manifest.summary.glbCount, 76);
 assert.equal(totalBytes, manifest.summary.totalBytes);
-assert.ok(totalBytes < 1_000_000, `asset set is too large: ${totalBytes}`);
+assert.ok(totalBytes < 1_100_000, `asset set is too large: ${totalBytes}`);
 
 const gatheringRenderer = fs.readFileSync(
   path.join(
@@ -133,6 +168,13 @@ const boardRenderer = fs.readFileSync(
   path.join(
     repoRoot,
     "src/client/game/renderers/local_dev/harthmere_jobs_board_marker.ts"
+  ),
+  "utf8"
+);
+const requestBoardRenderer = fs.readFileSync(
+  path.join(
+    repoRoot,
+    "src/client/game/renderers/local_dev/harthmere_request_board_marker.ts"
   ),
   "utf8"
 );
@@ -150,9 +192,17 @@ const boardInteraction = fs.readFileSync(
   ),
   "utf8"
 );
+const requestBoardInteraction = fs.readFileSync(
+  path.join(
+    repoRoot,
+    "src/client/components/harthmere_request_board/HarthmereRequestBoardWorldInteraction.tsx"
+  ),
+  "utf8"
+);
 for (const [label, source] of [
   ["gathering renderer", gatheringRenderer],
   ["jobs-board renderer", boardRenderer],
+  ["request-board renderer", requestBoardRenderer],
 ]) {
   assert.ok(source.includes("loadGltf"), `${label} must load optimized GLBs`);
   assert.ok(
@@ -171,6 +221,11 @@ assert.ok(
 assert.ok(gatheringInteraction.includes(">F</span>"));
 assert.ok(boardInteraction.includes('keyCodes: ["KeyF", "KeyE"]'));
 assert.ok(boardInteraction.includes(">F</span>"));
+assert.ok(
+  requestBoardInteraction.includes('keyCodes: ["KeyF", "KeyE"]')
+);
+assert.ok(requestBoardInteraction.includes('kind: "talk_to_npc"'));
+assert.ok(requestBoardInteraction.includes(">F</span>"));
 
 console.log(
   JSON.stringify(
@@ -178,6 +233,7 @@ console.log(
       ok: true,
       gatheringNodes: manifest.gatheringNodes.length,
       jobsBoardVariants: Object.keys(manifest.jobsBoardVariants).length,
+      requestBoardVariants: Object.keys(manifest.requestBoardVariants).length,
       glbs: manifest.summary.glbCount,
       totalBytes,
       maxBytes,

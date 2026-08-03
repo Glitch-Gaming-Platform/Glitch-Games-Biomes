@@ -62,6 +62,7 @@ function check(label, fn) {
 
 const reconcile = fs.readFileSync(RECONCILE, "utf8");
 const audit = fs.readFileSync(AUDIT, "utf8");
+const townRepair = fs.readFileSync(TOWN_REPAIR, "utf8");
 
 /** Index of the phase CALL, not its function definition. */
 function callIndex(name) {
@@ -100,14 +101,16 @@ check("the deploy calls all four terrain phases", () => {
 
 check("the report runs before the repair", () => {
   assert.ok(
-    callIndex("report_extension_terrain") < callIndex("repair_extension_surface"),
+    callIndex("report_extension_terrain") <
+      callIndex("repair_extension_surface"),
     "the repair would run before the damage is described"
   );
 });
 
 check("the repair runs before the verification gate", () => {
   assert.ok(
-    callIndex("repair_extension_surface") < callIndex("verify_extension_terrain"),
+    callIndex("repair_extension_surface") <
+      callIndex("verify_extension_terrain"),
     "the gate would fire before the repair could fix anything — the original bug"
   );
 });
@@ -134,44 +137,72 @@ check("verification is the last terrain phase", () => {
   }
 });
 
-check("the town repair runs before every downstream town writer and audit", () => {
-  const repair = callIndex("repair_harthmere_town");
-  const verify = callIndex("verify_harthmere_town");
-  assert.ok(repair >= 0 && verify > repair, "town audit does not follow repair");
-  for (const phase of [
-    "materialize_business_outposts",
-    "materialize_connector_route",
-    "materialize_chapter1_world_buildings",
-    "verify_extension_terrain",
-  ]) {
-    const index = callIndex(phase);
+check(
+  "the town repair runs before every downstream town writer and audit",
+  () => {
+    const repair = callIndex("repair_harthmere_town");
+    const verify = callIndex("verify_harthmere_town");
     assert.ok(
-      index > repair && index < verify,
-      `${phase} must run after town repair and before its final audit`
+      repair >= 0 && verify > repair,
+      "town audit does not follow repair"
+    );
+    for (const phase of [
+      "materialize_business_outposts",
+      "materialize_connector_route",
+      "materialize_chapter1_world_buildings",
+      "verify_extension_terrain",
+    ]) {
+      const index = callIndex(phase);
+      assert.ok(
+        index > repair && index < verify,
+        `${phase} must run after town repair and before its final audit`
+      );
+    }
+  }
+);
+
+check(
+  "the town repair is armed and its audit ignores only the separate water gate",
+  () => {
+    const repairBody = reconcile.slice(
+      reconcile.indexOf("repair_harthmere_town() {"),
+      reconcile.indexOf("verify_extension_terrain() {")
+    );
+    const auditBody = reconcile.slice(
+      reconcile.indexOf("verify_harthmere_town() {"),
+      reconcile.indexOf("materialize_business_outposts() {")
+    );
+    assert.ok(repairBody.includes("APPLY=1"), "town repair runs as a dry run");
+    assert.ok(
+      repairBody.includes("repair-harthmere-town-production.cjs"),
+      "town repair script is not invoked"
+    );
+    assert.ok(
+      auditBody.includes("HARTHMERE_TOWN_REPAIR_SKIP_WATER=1") &&
+        auditBody.includes("audit-harthmere-town-repair.cjs"),
+      "town verification is not the focused persisted-world audit"
     );
   }
-});
+);
 
-check("the town repair is armed and its audit ignores only the separate water gate", () => {
-  const repairBody = reconcile.slice(
-    reconcile.indexOf("repair_harthmere_town() {"),
-    reconcile.indexOf("verify_extension_terrain() {")
-  );
-  const auditBody = reconcile.slice(
-    reconcile.indexOf("verify_harthmere_town() {"),
-    reconcile.indexOf("materialize_business_outposts() {")
-  );
-  assert.ok(repairBody.includes("APPLY=1"), "town repair runs as a dry run");
-  assert.ok(
-    repairBody.includes("repair-harthmere-town-production.cjs"),
-    "town repair script is not invoked"
-  );
-  assert.ok(
-    auditBody.includes("HARTHMERE_TOWN_REPAIR_SKIP_WATER=1") &&
-      auditBody.includes("audit-harthmere-town-repair.cjs"),
-    "town verification is not the focused persisted-world audit"
-  );
-});
+check(
+  "the packaged town repair evaluates shim with CommonJS require and has a loader self-test",
+  () => {
+    assert.ok(
+      townRepair.includes("new Function(") &&
+        townRepair.includes('"require"') &&
+        townRepair.includes("executeBundle(") &&
+        townRepair.includes("module.exports,") &&
+        townRepair.includes("path.dirname(bundlePath)"),
+      "town repair would evaluate dist/shim.js without CommonJS require"
+    );
+    assert.ok(
+      townRepair.includes("HARTHMERE_TOWN_REPAIR_LOADER_SELF_TEST") &&
+        townRepair.includes("HARTHMERE_TOWN_REPAIR_LOADER_READY"),
+      "town repair lacks an exact built-shim loader regression mode"
+    );
+  }
+);
 
 check("the report phase is non-fatal and the gate phase is not", () => {
   const reportBody = reconcile.slice(
@@ -213,7 +244,9 @@ check("the audit still fails hard by default", () => {
     "the non-fatal escape hatch is missing"
   );
   assert.ok(
-    audit.includes('throw new Error("Harthmere extension terrain audit failed")'),
+    audit.includes(
+      'throw new Error("Harthmere extension terrain audit failed")'
+    ),
     "the audit no longer throws, so nothing can gate a deploy"
   );
   // The escape hatch must be opt-in: the constant reads a specific env value.

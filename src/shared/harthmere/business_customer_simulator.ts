@@ -28,6 +28,11 @@ import {
   type HarthmereBusinessCustomerReaction,
   type HarthmereBusinessCustomerWorldPhase,
 } from "./business_interior_runtime";
+import {
+  HARTHMERE_BUSINESS_BODY_HEIGHT_VOXELS,
+  harthmereBusinessDoorJambColumns,
+  harthmereBusinessDoorwayColumns,
+} from "./business_route_clearance";
 
 export type {
   HarthmereBusinessMiniGameDecisionResult,
@@ -363,6 +368,7 @@ export interface HarthmereBusinessOutpost {
   building: {
     profile:
       | "bakery"
+      | "restaurant"
       | "provision"
       | "player_services"
       | "smithy"
@@ -1265,9 +1271,7 @@ export type HarthmereBusinessOutpostShellMaterial =
 
 export interface HarthmereBusinessOutpostBuildingStyleKit {
   referenceLanguage:
-    | "grove_wood_shop"
-    | "grove_stone_storefront"
-    | "grove_workshop_warehouse";
+    "grove_wood_shop" | "grove_stone_storefront" | "grove_workshop_warehouse";
   exteriorWall: HarthmereBusinessOutpostShellMaterial;
   foundation: "stone_foundation";
   roof: HarthmereBusinessOutpostShellMaterial;
@@ -1981,7 +1985,7 @@ function businessGraphics(
     [
       keyof typeof HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES,
       HarthmereBusinessBikkieGraphicRole,
-      string
+      string,
     ]
   >
 ) {
@@ -2480,7 +2484,7 @@ const CUSTOMER_ROWS: Array<
     number,
     1 | 2 | 3 | 4 | 5,
     string,
-    HarthmereBusinessCustomerAppearance
+    HarthmereBusinessCustomerAppearance,
   ]
 > = [
   [
@@ -6519,8 +6523,8 @@ export const HARTHMERE_BUSINESS_SERVICE_ANIMATION_CUE_SPECS: Readonly<
                 offer.satisfactionDelta >= 4
                   ? "delighted_accept"
                   : offer.satisfactionDelta >= 3
-                  ? "relieved_accept"
-                  : "quick_accept",
+                    ? "relieved_accept"
+                    : "quick_accept",
               safety: {
                 procedural: true,
                 voxelSafe: true,
@@ -7992,7 +7996,7 @@ export const HARTHMERE_BUSINESS_OUTPOSTS: readonly HarthmereBusinessOutpost[] =
         rot: 0,
       },
       building: {
-        profile: "bakery",
+        profile: "restaurant",
         width: 18,
         depth: 14,
         floors: 1,
@@ -8198,7 +8202,12 @@ function harthmereOutpostStructureTypeForProfile(
     profile === "player_services"
   )
     return "warehouse";
-  if (profile === "bakery" || profile === "provision") return "shop";
+  if (
+    profile === "bakery" ||
+    profile === "restaurant" ||
+    profile === "provision"
+  )
+    return "shop";
   return "workshop";
 }
 
@@ -9166,7 +9175,7 @@ type HarthmereBusinessThematicFixture = readonly [
   label: string,
   role: HarthmereBusinessOutpostInteriorFixtureRole,
   size: readonly [number, number, number],
-  colorHint: HarthmereBusinessOutpostInteriorFixture["colorHint"]
+  colorHint: HarthmereBusinessOutpostInteriorFixture["colorHint"],
 ];
 
 const HARTHMERE_BUSINESS_THEMATIC_INTERIOR_FIXTURES: Readonly<
@@ -9758,8 +9767,8 @@ function addHarthmereOutpostSiteGradingAndGarden(input: {
     input.styleKit.exteriorDressing === "market_baskets"
       ? blocks.hay
       : input.styleKit.exteriorDressing === "garden_planters"
-      ? blocks.moss
-      : blocks.moss;
+        ? blocks.moss
+        : blocks.moss;
 
   for (let x = site.xMin; x <= site.xMax; x += 1) {
     for (let z = site.zMin; z <= site.zMax; z += 1) {
@@ -9830,6 +9839,23 @@ function pushHarthmereOutpostVoxelEdit(
 
 const HARTHMERE_OUTPOST_TERRAIN_BLOCKS = BUILDING_SYSTEM_TERRAIN_BLOCKS;
 
+/**
+ * Voxel value that means "air" in a materialization edit stream. Used to clear
+ * a span that an earlier authoring pass filled — the edit stream is last write
+ * wins, so an explicit clear is the only way to guarantee a traversable
+ * opening regardless of the order the storefront dressing passes ran in.
+ */
+const HARTHMERE_OUTPOST_CLEAR_VOXEL = 0 as BiomesId;
+
+export function isHarthmereBusinessMaterializationVoxelEditValid(
+  edit: Pick<BuildingSystemVoxelEditSpec, "label" | "value">
+) {
+  return (
+    isTerrainID(Number(edit.value)) ||
+    (Number(edit.value) === 0 && edit.label === "demolition_cleanup")
+  );
+}
+
 type HarthmereBusinessOutpostVoxelPalette = {
   foundation: BiomesId;
   floor: BiomesId;
@@ -9890,10 +9916,10 @@ function harthmereOutpostVoxelPaletteForStyleKit(
       styleKit.exteriorDressing === "clean_clinic_lanterns"
         ? blocks.simpleGlass
         : styleKit.exteriorDressing === "market_baskets"
-        ? blocks.hay
-        : styleKit.exteriorDressing === "garden_planters"
-        ? blocks.moss
-        : blocks.oakLumber,
+          ? blocks.hay
+          : styleKit.exteriorDressing === "garden_planters"
+            ? blocks.moss
+            : blocks.oakLumber,
   };
 }
 
@@ -9923,10 +9949,10 @@ function harthmereOutpostFixtureVoxelValue(
     return /forge|repair|tool|workbench|anvil/.test(token)
       ? HARTHMERE_OUTPOST_TERRAIN_BLOCKS.stonePolished
       : /kitchen|cooking|hearth|meal|pot/.test(token)
-      ? HARTHMERE_OUTPOST_TERRAIN_BLOCKS.stoneBrick
-      : /crystal|stability|rune|arcane|ward|glow|portal|teleport/.test(token)
-      ? HARTHMERE_OUTPOST_TERRAIN_BLOCKS.simpleGlass
-      : HARTHMERE_OUTPOST_TERRAIN_BLOCKS.oakLumber;
+        ? HARTHMERE_OUTPOST_TERRAIN_BLOCKS.stoneBrick
+        : /crystal|stability|rune|arcane|ward|glow|portal|teleport/.test(token)
+          ? HARTHMERE_OUTPOST_TERRAIN_BLOCKS.simpleGlass
+          : HARTHMERE_OUTPOST_TERRAIN_BLOCKS.oakLumber;
   }
   if (/kitchen|cooking|hearth|meal|pot/.test(token))
     return HARTHMERE_OUTPOST_TERRAIN_BLOCKS.stoneBrick;
@@ -10009,9 +10035,9 @@ function pushHarthmereOutpostFixtureVoxels(input: {
     input.fixture.role === "stock_storage"
       ? "storage_container"
       : input.fixture.role === "dashboard_access" ||
-        input.fixture.role === "primary_station"
-      ? "business_marker"
-      : "interior";
+          input.fixture.role === "primary_station"
+        ? "business_marker"
+        : "interior";
 
   const blocks = HARTHMERE_OUTPOST_TERRAIN_BLOCKS;
   const pushIfFree = (
@@ -10114,8 +10140,8 @@ function pushHarthmereOutpostFixtureVoxels(input: {
         index % 3 === 0
           ? displayValue
           : index % 3 === 1
-          ? blocks.simpleGlass
-          : blocks.hay,
+            ? blocks.simpleGlass
+            : blocks.hay,
         "storage_container"
       );
       pushIfFree([sx, y + 2, sz], blocks.oakLumber, "interior");
@@ -10578,9 +10604,30 @@ function addHarthmereOutpostGuideVoxels(input: {
     tableWithSeatsLegacy(x1 - 5, z0 + 7, accentValue);
   };
 
-  // Grove-reference front door language: open 1x2 doorway, supported jambs,
-  // visible header, wide steps, and a grounded sign instead of floating props.
-  for (const x of [doorX - 2, doorX - 1, doorX, doorX + 1, doorX + 2]) {
+  // HARTHMERE_BUSINESS_DOORWAY_WIDTH
+  // Grove-reference front door language: supported jambs, visible header, wide
+  // steps, and a grounded sign instead of floating props — but a *traversable*
+  // opening.
+  //
+  // This used to author an "open 1x2 doorway": the shell's door columns were
+  // re-walled at `doorX ± 1`, leaving exactly one voxel open at `doorX`. A
+  // native NPC body is exactly one metre wide, so its swept AABB was coincident
+  // with the jamb faces on both sides and every business customer stalled just
+  // outside the door with the collision escape force on its rigid body. See
+  // `business_route_clearance.ts` for the full derivation and the contract that
+  // keeps this from regressing.
+  //
+  // The opening is now three voxels at body height with the jambs pushed out to
+  // `doorX ± 2`, which reads the same from the street and leaves a full voxel of
+  // margin around the body.
+  const doorwayColumns = harthmereBusinessDoorwayColumns(doorX);
+  const doorJambColumns = harthmereBusinessDoorJambColumns(doorX);
+  for (const x of [
+    ...doorJambColumns,
+    ...doorwayColumns,
+    doorX - 3,
+    doorX + 3,
+  ]) {
     pushHarthmereOutpostVoxelEdit(
       materializationPlan,
       [x, y0, z0 - 1],
@@ -10589,20 +10636,16 @@ function addHarthmereOutpostGuideVoxels(input: {
     );
   }
   for (let y = y0 + 1; y <= trimY; y += 1) {
-    pushHarthmereOutpostVoxelEdit(
-      materializationPlan,
-      [doorX - 1, y, z0],
-      blocks.oakLog,
-      "frame"
-    );
-    pushHarthmereOutpostVoxelEdit(
-      materializationPlan,
-      [doorX + 1, y, z0],
-      blocks.oakLog,
-      "frame"
-    );
+    for (const x of doorJambColumns) {
+      pushHarthmereOutpostVoxelEdit(
+        materializationPlan,
+        [x, y, z0],
+        blocks.oakLog,
+        "frame"
+      );
+    }
   }
-  for (const x of [doorX - 1, doorX + 1]) {
+  for (const x of doorJambColumns) {
     for (const y of [y0 + 1, y0 + 2]) {
       pushHarthmereOutpostVoxelEdit(
         materializationPlan,
@@ -10612,7 +10655,10 @@ function addHarthmereOutpostGuideVoxels(input: {
       );
     }
   }
-  for (const x of [doorX - 1, doorX, doorX + 1]) {
+  // The header spans the whole opening so the doorway still reads as a framed
+  // door rather than a hole in the wall. It sits at `trimY`, above the body
+  // band, so it never obstructs a walking customer.
+  for (const x of [...doorJambColumns, ...doorwayColumns]) {
     pushHarthmereOutpostVoxelEdit(
       materializationPlan,
       [x, trimY, z0],
@@ -10620,6 +10666,9 @@ function addHarthmereOutpostGuideVoxels(input: {
       "frame"
     );
   }
+  // The generic building shell now authors this same three-column opening.
+  // Do not emit zero-valued door edits here: the exterior approach lane below
+  // is the only intentional air-carve in the completed building plan.
   pushHarthmereOutpostVoxelEdit(
     materializationPlan,
     [doorX, trimY + 1, z0],
@@ -11534,6 +11583,103 @@ function addHarthmereOutpostBusinessSignature(input: {
   }
 }
 
+/**
+ * HARTHMERE_BUSINESS_APPROACH_LANE
+ *
+ * Guarantee a walkable lane from the apron to the front door.
+ *
+ * Business customers are real native NPC bodies that walk in from outside, so
+ * the approach has to be traversable by a swept one-metre AABB, not merely by
+ * the A* graph (which reasons about voxel centres and will happily route
+ * through a gap no body can fit). Exterior dressing is authored per business
+ * type and several of those passes legitimately place props across the front
+ * of the shop: glass display columns at Glassyard, planting beds at Southplot,
+ * porch framing at Westtrail. Each of those narrowed the lane below the body
+ * width for its own outpost.
+ *
+ * Rather than special-casing each storefront — which would break again the next
+ * time one is restyled — the lane is carved once, last, for every outpost:
+ *
+ * - the pad under the lane is made solid so the body always has support;
+ * - the body band above it is cleared across the full doorway width;
+ * - nothing above the body band is touched, so awnings, lintels, signage and
+ *   roof overhangs keep reading exactly as authored from the street.
+ *
+ * `HARTHMERE_BUSINESS_APPROACH_LANE_DEPTH_VOXELS` covers the whole span the
+ * customer route uses outside the shell: the authored spawn sits about nine and
+ * a half metres out, so twelve voxels leaves margin for the queue overflow line
+ * and the departure point without spilling past the graded plot.
+ */
+const HARTHMERE_BUSINESS_APPROACH_LANE_DEPTH_VOXELS = 12;
+
+/**
+ * Half-width of the graded apron, in voxels.
+ *
+ * This is not decoration: it is sized to contain every authored route anchor
+ * that lives outside the shell. `harthmereBusinessCustomerSpawnPoint` fans
+ * customers out to `entrance.x ± (2.6 + 1.1)` and
+ * `harthmereBusinessCustomerDeparturePoint` places exits at
+ * `entrance.x ± 3.4`, so four voxels either side covers the spawn fan, the
+ * overflow queue line and both departure points.
+ *
+ * Grading the whole apron rather than a three-voxel slot matters for two
+ * reasons. Customers spawn on the hilly additive-town terrain at an authored Y,
+ * and Harthmere has a long history of authored Y shipping verbatim onto ground
+ * that is not at that height; a flat pad under every spawn point removes that
+ * whole failure class. And a queue of bodies with authored spacing needs room
+ * to stand beside each other without shouldering one another into collision
+ * escape.
+ */
+const HARTHMERE_BUSINESS_APPROACH_LANE_HALF_WIDTH_VOXELS = 4;
+
+function addHarthmereOutpostCustomerApproachLane(input: {
+  materializationPlan: BuildingSystemMaterializationPlan;
+  origin: { x: number; y: number; z: number };
+  doorX: number;
+  buildingStyleKit: HarthmereBusinessOutpostBuildingStyleKit;
+}) {
+  const { materializationPlan, origin, doorX } = input;
+  const palette = harthmereOutpostVoxelPaletteForStyleKit(
+    input.buildingStyleKit
+  );
+  const doorwayColumns = new Set(harthmereBusinessDoorwayColumns(doorX));
+  for (
+    let dx = -HARTHMERE_BUSINESS_APPROACH_LANE_HALF_WIDTH_VOXELS;
+    dx <= HARTHMERE_BUSINESS_APPROACH_LANE_HALF_WIDTH_VOXELS;
+    dx += 1
+  ) {
+    const x = doorX + dx;
+    for (
+      let dz = 1;
+      dz <= HARTHMERE_BUSINESS_APPROACH_LANE_DEPTH_VOXELS;
+      dz += 1
+    ) {
+      const z = origin.z - dz;
+      // The doorway columns are the walked centre line and are always cleared.
+      // The flanking apron is graded flat and cleared too, but the first row
+      // outside the wall is left to the authored doorstep dressing so the
+      // storefront keeps its jambs, sign and step detail.
+      if (!doorwayColumns.has(x) && dz <= 1) continue;
+      // Walking surface in the outpost's own apron material, so the lane reads
+      // as a deliberate paved approach rather than a scar through the garden.
+      pushHarthmereOutpostVoxelEdit(
+        materializationPlan,
+        [x, origin.y, z],
+        palette.stair,
+        "safe_ground"
+      );
+      for (let dy = 1; dy <= HARTHMERE_BUSINESS_BODY_HEIGHT_VOXELS; dy += 1) {
+        pushHarthmereOutpostVoxelEdit(
+          materializationPlan,
+          [x, origin.y + dy, z],
+          HARTHMERE_OUTPOST_CLEAR_VOXEL,
+          "demolition_cleanup"
+        );
+      }
+    }
+  }
+}
+
 export function createHarthmereBusinessOutpostProceduralBuilding(
   outpost: HarthmereBusinessOutpost,
   activatedAtMs = 0
@@ -11633,6 +11779,22 @@ export function createHarthmereBusinessOutpostProceduralBuilding(
     origin,
     blueprint,
     styleKit: buildingStyleKit,
+  });
+  // HARTHMERE_BUSINESS_APPROACH_LANE
+  // Runs dead last, after every dressing, signature and grading pass, because
+  // the edit stream is last write wins and each of those passes is free to
+  // author props across the front of the building. Planters, glass display
+  // columns and porch posts had all landed in the customer's approach at
+  // different outposts, narrowing the lane below what a one-metre body can
+  // walk. Carving the lane here means no future storefront retouch can quietly
+  // wall the customers out again — and because this is the same authored plan
+  // the seeder and any world reconciliation replay, the guarantee survives
+  // deployment rather than being a one-off repair.
+  addHarthmereOutpostCustomerApproachLane({
+    materializationPlan,
+    origin,
+    doorX,
+    buildingStyleKit,
   });
   // Register the protected safe zone across the full graded site (plot + garden
   // ring) so muck monsters and Hexes stay non-aggressive and relocate away.
@@ -12483,14 +12645,14 @@ function harthmereBusinessPointToRectDistance(
     point.x < rect.xMin
       ? rect.xMin - point.x
       : point.x > rect.xMax
-      ? point.x - rect.xMax
-      : 0;
+        ? point.x - rect.xMax
+        : 0;
   const dz =
     point.z < rect.zMin
       ? rect.zMin - point.z
       : point.z > rect.zMax
-      ? point.z - rect.zMax
-      : 0;
+        ? point.z - rect.zMax
+        : 0;
   return Math.hypot(dx, dz);
 }
 
@@ -12725,7 +12887,7 @@ export function validateHarthmereBusinessOutpostProductionReadiness() {
     }
     if (
       record.materializationPlan.edits.some(
-        (edit) => !isTerrainID(Number(edit.value))
+        (edit) => !isHarthmereBusinessMaterializationVoxelEditValid(edit)
       )
     ) {
       gaps.push(
@@ -13036,7 +13198,7 @@ export const HARTHMERE_BUSINESS_OUTPOST_MAP_MARKERS: readonly HarthmereBusinessO
         position: [entrance.x, entrance.y, entrance.z] as [
           number,
           number,
-          number
+          number,
         ],
         kind: "business_outpost" as const,
         visibleOnWorldMap: true as const,

@@ -5,7 +5,7 @@ import assert from "assert";
 const cameraSelection: HotBarSelection = {
   kind: "camera",
   ref: { kind: "hotbar", idx: 0 },
-  mode: { kind: "fps", label: "First Person", modeType: "normal" },
+  mode: { kind: "fps", label: "First Person", zoom: 1, modeType: "normal" },
 };
 
 describe("InGameCameraHUD camera exit key ownership", () => {

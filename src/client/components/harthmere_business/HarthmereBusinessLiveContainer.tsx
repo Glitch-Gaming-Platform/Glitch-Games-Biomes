@@ -202,13 +202,17 @@ export function HarthmereBusinessLiveContainer({
           adapter={adapter}
           nearbyBusinessId={context.nearbyBusinessId}
           context={context}
-          initialTab="overview"
+          // The physical counter opens directly onto the minimal shift control,
+          // not the detached customer-card arena. Starting closes this panel;
+          // the spatial HUD then stays beside the real ECS customer.
+          initialTab="customers"
           onClose={onClose}
         />
       ) : null}
       <HarthmereBusinessShiftHUD
         adapter={adapter}
         businessId={context.nearbyBusinessId ?? undefined}
+        insideBusiness={context.insideBusiness === true}
       />
     </>
   );

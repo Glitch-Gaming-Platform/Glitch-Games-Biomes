@@ -20,7 +20,9 @@ import { makeHarthmereRuntimeAssetsRenderer } from "@/client/game/renderers/loca
 import { makeHarthmereBusinessBoardMarkerRenderer } from "@/client/game/renderers/local_dev/harthmere_business_board_marker";
 import { makeHarthmereBusinessOutpostBuildingsRenderer } from "@/client/game/renderers/local_dev/harthmere_business_outpost_buildings";
 import { makeHarthmereBusinessInteriorsRenderer } from "@/client/game/renderers/local_dev/harthmere_business_interiors";
+import { makeHarthmereAdditiveTownInteriorsRenderer } from "@/client/game/renderers/local_dev/harthmere_additive_town_interiors";
 import { makeHarthmereJobsBoardMarkerRenderer } from "@/client/game/renderers/local_dev/harthmere_jobs_board_marker";
+import { makeHarthmereRequestBoardMarkerRenderer } from "@/client/game/renderers/local_dev/harthmere_request_board_marker";
 import { makeHarthmereQuestObjectMarkersRenderer } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers";
 import { makeHarthmereGatheringNodeMarkersRenderer } from "@/client/game/renderers/local_dev/harthmere_gathering_node_markers";
 import { makeHarthmereLootDropMarkersRenderer } from "@/client/game/renderers/local_dev/harthmere_loot_drop_markers";
@@ -106,18 +108,32 @@ export async function buildRenderers(loader: RegistryLoader<ClientContext>) {
     makeDropsRenderer(table, resources, audioManager),
     makeNpcsRenderer(clientConfig, table, resources),
     makePlaceablesRenderer(clientConfig, audioManager, table, resources),
-    makeHarthmereRuntimeAssetsRenderer(resources),
-    makeHarthmereBusinessInteriorsRenderer(resources),
-    makeHarthmereBusinessOutpostBuildingsRenderer(),
-    makeHarthmereBusinessBoardMarkerRenderer(),
+    makeHarthmereRuntimeAssetsRenderer(resources, clientConfig.mobileDevice),
+    makeHarthmereBusinessInteriorsRenderer(
+      resources,
+      clientConfig.mobileDevice
+    ),
+    // The fixed 57-building additive town uses one compact, instanced Blender
+    // catalogue with 16m/28m LOD switching. Native invisible collision proxies
+    // and placeables own physics/interactions; these meshes are visual only.
+    makeHarthmereAdditiveTownInteriorsRenderer(resources),
+    makeHarthmereBusinessOutpostBuildingsRenderer(clientConfig.mobileDevice),
+    makeHarthmereBusinessBoardMarkerRenderer(clientConfig.mobileDevice),
     // Optimized Blender-authored landmark jobs boards with distance LOD and a
     // cheap load-failure fallback. The renderer shares five material-batched
     // variants across all physical board locations.
     makeHarthmereJobsBoardMarkerRenderer(resources),
+    // Four distinct native request-board categories (plus the quay fishing
+    // duplicate), rendered as large optimized double-sided Blender landmarks.
+    makeHarthmereRequestBoardMarkerRenderer(resources),
     // HARTHMERE_QUEST_OBJECT_MARKERS: small procedural stand-ins for
     // quest-linked Grove props so map objectives do not point at invisible
     // filtered/asset-dependent objects.
-    makeHarthmereQuestObjectMarkersRenderer(resources),
+    makeHarthmereQuestObjectMarkersRenderer(
+      resources,
+      undefined,
+      clientConfig.mobileDevice
+    ),
     // Blender-authored, terrain-grounded gathering graphics at every authored
     // position; authority and F interaction remain in their existing systems.
     // (with an F-prompt) instead of only inside the HUD menu.

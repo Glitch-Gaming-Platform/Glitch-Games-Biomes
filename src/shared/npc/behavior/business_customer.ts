@@ -47,6 +47,14 @@ export const zBusinessCustomerState = z.object({
   lastPhaseChangedAtSeconds: z.number().finite(),
   reactionStartedAtSeconds: z.number().finite().optional(),
   audioCue: z.string().optional(),
+  // Stall detection. Anima re-runs A* on a wedged body and keeps producing a
+  // valid path, so a moving path search proves ownership but not locomotion.
+  // These two fields record the last position at which the body demonstrably
+  // made progress, which is the only reliable signal that it is actually
+  // walking. Both are optional so state written by an older build deserializes
+  // unchanged and simply re-establishes progress on its next tick.
+  progressPosition: zVec3f.optional(),
+  progressAtSeconds: z.number().finite().optional(),
 });
 
 export const zBusinessCustomerComponent = z.object({
@@ -65,4 +73,5 @@ export type BusinessCustomerState = z.infer<typeof zBusinessCustomerState> & {
   staff: Vec3;
   departure: Vec3;
   waypoints: Vec3[];
+  progressPosition?: Vec3;
 };

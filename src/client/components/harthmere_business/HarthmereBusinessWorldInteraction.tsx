@@ -14,6 +14,7 @@ import {
 } from "@/shared/harthmere/business_customer_simulator";
 import {
   harthmereBusinessInteriorForOutpost,
+  harthmereBusinessInteriorContainingPosition,
   harthmereBusinessInteriorInteractionPoints,
 } from "@/shared/harthmere/business_interior_runtime";
 import { HarthmereBusinessLiveContainer } from "./HarthmereBusinessLiveContainer";
@@ -174,7 +175,14 @@ export function HarthmereBusinessWorldInteraction({
     ...HARTHMERE_BUSINESS_WORLD_BOARDS,
     ...dynamicBoards,
   ]);
-  const activeBusinessId = openBusinessId ?? activeBoard?.businessId;
+  const containingBusiness = harthmereBusinessInteriorContainingPosition(
+    businessPointFromJobsPoint(playerPosition)
+  );
+  const containingBusinessId = containingBusiness
+    ? harthmereBusinessOutpostBusinessId(containingBusiness.outpostId)
+    : undefined;
+  const activeBusinessId =
+    openBusinessId ?? activeBoard?.businessId ?? containingBusinessId;
   const targetFaced = harthmereWorldTargetIsFaced(
     camera,
     activeBoard?.position
@@ -184,9 +192,9 @@ export function HarthmereBusinessWorldInteraction({
     activeBusinessId
       ? {
           nearbyBusinessId: activeBusinessId,
-          insideBusiness: true,
+          insideBusiness: containingBusinessId === activeBusinessId,
           interactionKeyLabel: "F",
-          outpostId: activeBoard?.outpostId,
+          outpostId: activeBoard?.outpostId ?? containingBusiness?.outpostId,
           businessInteractionMarkerId: activeBoard?.markerId,
           businessInteractionPosition: activeBoard?.position,
         }
@@ -212,7 +220,7 @@ export function HarthmereBusinessWorldInteraction({
     };
   }, [activeBoard, cameraPosition, dynamicBoards, playerPosition]);
 
-  if (!activeBoard && !openBusinessId) return null;
+  if (!activeBoard && !openBusinessId && !containingBusiness) return null;
 
   return (
     <HarthmereBusinessLiveContainer

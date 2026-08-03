@@ -159,7 +159,7 @@ describe("Chapter 1 ambient fragment triggers", () => {
         position: [...CH1_ANCHORS.harthmere_bridge_center] as [
           number,
           number,
-          number
+          number,
         ],
       },
     });
@@ -212,7 +212,7 @@ describe("Chapter 1 ambient fragment triggers", () => {
         position: [...CH1_ANCHORS.shutter_cove_photo_marker] as [
           number,
           number,
-          number
+          number,
         ],
       },
     });
@@ -367,17 +367,13 @@ describe("Chapter 1 staging", () => {
       (npc) => npc.key === "jackie"
     );
     assert.equal(started?.useSeededBody, false);
-    assert.deepEqual(started?.position, [
-      ...CH1_ANCHORS.roadhouse_jackie_post,
-    ]);
+    assert.deepEqual(started?.position, [...CH1_ANCHORS.roadhouse_jackie_post]);
 
     const fence = ch1StageDirections({
       flags: [CH1_FLAGS.started],
       activeStepId: "walk_with_jackie",
     }).find((npc) => npc.key === "jackie");
-    assert.deepEqual(fence?.position, [
-      ...CH1_ANCHORS.broken_safe_zone_fence,
-    ]);
+    assert.deepEqual(fence?.position, [...CH1_ANCHORS.broken_safe_zone_fence]);
   });
 
   it("moves Rook to the Mouth he is actually watching", () => {
@@ -391,7 +387,10 @@ describe("Chapter 1 staging", () => {
     const desert = ch1StageDirectionFor("halden_rook", {
       flags: [CH1_FLAGS.started, CH1_FLAGS.gatePersistentOpen],
     });
-    assert.deepEqual(desert?.place, { kind: "anchor", anchor: "gate_desert" });
+    assert.deepEqual(desert?.place, {
+      kind: "anchor",
+      anchor: "gate_desert_rook_post",
+    });
     const winter = ch1StageDirectionFor("halden_rook", {
       flags: [
         CH1_FLAGS.started,
@@ -415,10 +414,10 @@ describe("Chapter 1 staging", () => {
     });
     const byKey = new Map(after.map((npc) => [npc.key, npc]));
     assert.deepEqual(byKey.get("iris_fen")?.position, [
-      ...CH1_ANCHORS.lovely_locks_mirror,
+      ...CH1_ANCHORS.lovely_locks_iris_post,
     ]);
     assert.deepEqual(byKey.get("marrow")?.position, [
-      ...CH1_ANCHORS.lovely_locks_mirror,
+      ...CH1_ANCHORS.lovely_locks_marrow_post,
     ]);
     assert.equal(byKey.get("lou_ardan")?.present, false);
     assert.equal(byKey.get("nadia_sorrel")?.present, false);

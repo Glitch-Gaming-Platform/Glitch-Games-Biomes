@@ -4,8 +4,9 @@
 
 export const HARTHMERE_BUSINESS_TAB_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
-  // The "customers" tab renders the customer mini-game pane.
-  customers: "Day Job Mini-Game",
+  // The customer-service tab is only a shift start/end control. Actual service
+  // remains spatial beside the real ECS customer in the third-person world.
+  customers: "In-World Shift",
   orders: "Orders",
   shopfront: "Shopfront",
   finance: "Finance",

@@ -126,6 +126,21 @@ export const PLAYER_MOVEMENT_ACTION_TIMING = {
   }
 >;
 
+/**
+ * Playback rate for the four authored dodge clips.
+ *
+ * `DodgeLeft/Right/Forward/Back` are 15 frames at 24 fps = 0.625 s, but the
+ * dodge action window in `PLAYER_MOVEMENT_ACTION_TIMING` is 0.50 s. Played at
+ * natural rate the action expires with 125 ms of clip left, so the landing and
+ * settle at the tail — the part that makes a dodge look like it finished rather
+ * than got interrupted — never reached the screen.
+ *
+ * `EvadeRoll` (0.75 s clip / 0.75 s window) and `DoubleJump` (0.50 s / 0.50 s)
+ * were already authored to their windows and need no correction.
+ */
+export const HARTHMERE_DODGE_CLIP_TIME_SCALE =
+  0.625 / PLAYER_MOVEMENT_ACTION_TIMING.dodge.durationSeconds;
+
 export type PlayerEvadeLateralSide = -1 | 1;
 
 /**
@@ -242,7 +257,11 @@ export function playerMovementActionAnimationName({
   if (action === "doubleJump") {
     return "doubleJump";
   }
-  if (action === "evade") {
+  // Keep the gameplay actions, stamina, motion, cooldowns, and network state
+  // unchanged; only exchange the clips presented for the desktop X/C actions.
+  // X still publishes `dodge` but now plays C's roll, while C still publishes
+  // `evade` and selects X's directional dodge from its travel direction.
+  if (action === "dodge") {
     return "evade";
   }
   const normalized = normalizeMovementActionDirection(direction, [

@@ -70,6 +70,12 @@ import {
   shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttack,
   shouldEngageHarthmereMousePrimaryAttack,
 } from "@/client/components/challenges/harthmereMousePrimaryAttackRules";
+import {
+  HARTHMERE_NATIVE_COMBAT_KEY_EVENT,
+  harthmereNativeCombatKeyInputSource,
+  routeHarthmereCombatKeyForAuthority,
+  type HarthmereCombatKeyAction,
+} from "@/client/components/challenges/harthmereNativeCombatKeyRouting";
 import { dispatchHarthmereLiveModeResponseEventsForTest } from "@/client/components/challenges/harthmereLiveModeClientEvents";
 import {
   harthmereCrosshairAimFromEvent,
@@ -1312,7 +1318,34 @@ export function performHarthmereMousePrimaryAttack(
   return { hitOffsets: [], candidateOffsets: [] };
 }
 
+function dispatchHarthmereNativeCombatKeyAction(
+  action: HarthmereCombatKeyAction
+) {
+  if (!isBrowser()) {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_NATIVE_COMBAT_KEY_EVENT, {
+      detail: { action },
+    })
+  );
+}
+
+/**
+ * Route every B/H/L entry point, including HUD buttons, through one authority.
+ * Native mode drives the selected item's canonical interaction; only explicit
+ * legacy mode may mutate the retired local combat simulator.
+ */
 export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
+  return routeHarthmereCombatKeyForAuthority({
+    action: attack,
+    nativeEcsAuthority: nativeBiomesEcsAuthorityEnabled(),
+    dispatchNativeInput: dispatchHarthmereNativeCombatKeyAction,
+    performLegacyAttack: performLegacyHarthmereKeyedAttack,
+  });
+}
+
+function performLegacyHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
   let state = readHarthmereMultiplayerCombatState();
   const targetOffset = state.currentTargetOffset;
   debugHarthmereKeyCombat("keyed.attack.start", {
@@ -1606,10 +1639,37 @@ function isTypingTarget(target: EventTarget | null) {
 }
 
 export function useHarthmereCombatHotkeys() {
+  const { input } = useClientContext();
   useEffect(() => {
     if (!isBrowser()) {
       return;
     }
+    const nativeCombatKeyHandler = (event: Event) => {
+      if (!nativeBiomesEcsAuthorityEnabled()) {
+        return;
+      }
+      const action = (
+        event as CustomEvent<{ action?: HarthmereCombatKeyAction }>
+      ).detail?.action;
+      if (action !== "basic" && action !== "heavy" && action !== "spark") {
+        return;
+      }
+
+      // InteractScript owns the selected item and cursor at the moment of the
+      // press. Pulsing its normal primary input keeps body/weapon animation,
+      // impact timing, UpdateNpcHealthEvent, server range/item validation, and
+      // Anima retaliation on the same native ECS action. The selected native
+      // item profile decides whether that action is basic, heavy, ranged, magic,
+      // or an ordinary non-combat use.
+      fireAndForget(
+        input.pulseMotion(
+          "primary_hold",
+          350,
+          harthmereNativeCombatKeyInputSource(action)
+        )
+      );
+      debugHarthmereKeyCombat("native.key.input", { action });
+    };
     const handler = (event: KeyboardEvent) => {
       if (
         event.defaultPrevented ||
@@ -1622,6 +1682,17 @@ export function useHarthmereCombatHotkeys() {
         return;
       }
       const code = event.code;
+      if (
+        nativeBiomesEcsAuthorityEnabled() &&
+        (code === HARTHMERE_COMBAT_KEY_BINDINGS.basic ||
+          code === HARTHMERE_COMBAT_KEY_BINDINGS.heavy ||
+          code === HARTHMERE_COMBAT_KEY_BINDINGS.spark)
+      ) {
+        // The module-level hard router already stopped propagation and emitted
+        // HARTHMERE_NATIVE_COMBAT_KEY_EVENT. Never run the retired simulator as
+        // a second authority if another listener still observes the key.
+        return;
+      }
       if (["Quote", "Tab", "KeyB", "KeyH", "KeyL", "KeyN"].includes(code)) {
         debugHarthmereKeyCombat("keyed.hotkey", { code });
       }
@@ -1660,6 +1731,10 @@ export function useHarthmereCombatHotkeys() {
         );
       }
     };
+    window.addEventListener(
+      HARTHMERE_NATIVE_COMBAT_KEY_EVENT,
+      nativeCombatKeyHandler
+    );
     window.addEventListener("keydown", handler, true);
     // The original snapshot routes mouse input through the selected native item
     // spec. A global mousedown listener cannot distinguish placing Muckwad from
@@ -1672,10 +1747,14 @@ export function useHarthmereCombatHotkeys() {
           HARTHMERE_LIVE_MODE_NPC_AI_TICK_INTERVAL_MS
         );
     return () => {
+      window.removeEventListener(
+        HARTHMERE_NATIVE_COMBAT_KEY_EVENT,
+        nativeCombatKeyHandler
+      );
       window.removeEventListener("keydown", handler, true);
       if (npcAiInterval !== undefined) window.clearInterval(npcAiInterval);
     };
-  }, []);
+  }, [input]);
 }
 
 export function useHarthmereMultiplayerCombatState() {
@@ -2091,9 +2170,8 @@ export const HarthmereMultiplayerCombatMenuPanel: React.FunctionComponent<{}> =
 // HUD/class/inventory panels can register their own capture listeners. The goal
 // is to make B/H/L deterministic and prevent older spell handlers from stealing
 // KeyB and routing it to Spark.
-const HARTHMERE_HARD_COMBAT_KEY_ROUTER_VERSION = "harthmere-hard-key-router";
-
-type HarthmereHardCombatKey = "basic" | "heavy" | "spark";
+const HARTHMERE_HARD_COMBAT_KEY_ROUTER_VERSION =
+  "harthmere-hard-key-router-native-ecs-v2";
 
 function isHarthmereTextEntryTarget(target: EventTarget | null) {
   const element = target instanceof HTMLElement ? target : undefined;
@@ -2127,7 +2205,7 @@ function isHarthmereGameplayMouseTarget(target: EventTarget | null) {
 
 function hardCombatActionForCode(
   code: string
-): HarthmereHardCombatKey | undefined {
+): HarthmereCombatKeyAction | undefined {
   if (code === "KeyB") {
     return "basic";
   }
@@ -2153,7 +2231,7 @@ function installHarthmereHardCombatKeyRouter() {
       __harthmereHardCombatKeyRouter?: {
         version: string;
         log: () => unknown[];
-        route: (action: HarthmereHardCombatKey) => void;
+        route: (action: HarthmereCombatKeyAction) => void;
       };
     };
 
@@ -2180,9 +2258,9 @@ function installHarthmereHardCombatKeyRouter() {
     }
   };
 
-  const route = (action: HarthmereHardCombatKey) => {
-    pushLog({ type: "route", action });
-    performHarthmereKeyedAttack(action);
+  const route = (action: HarthmereCombatKeyAction) => {
+    const authorityRoute = performHarthmereKeyedAttack(action);
+    pushLog({ type: "route", action, authorityRoute });
   };
 
   const handler = (event: KeyboardEvent) => {

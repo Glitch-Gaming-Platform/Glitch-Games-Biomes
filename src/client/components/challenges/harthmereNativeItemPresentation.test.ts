@@ -17,14 +17,42 @@ import {
   HARTHMERE_PREMIUM_WEAPON_VENDOR_STOCK,
 } from "@/shared/harthmere/premium_weapon_catalog";
 import { getHarthmereItemDefinition } from "@/shared/harthmere/mmo_inventory_authority";
-import { harthmereBiscuitForItemDefinition } from "@/shared/harthmere/harthmere_native_bikkie_items";
+import {
+  ensureHarthmereNativeItemCatalogue,
+  harthmereBiscuitForItemDefinition,
+} from "@/shared/harthmere/harthmere_native_bikkie_items";
 import type { Biscuit } from "@/shared/bikkie/schema/attributes";
 import {
   HARTHMERE_GENERATED_INVENTORY_ICON_URLS,
   harthmereGeneratedInventoryIconUrl,
 } from "@/shared/harthmere/generated/harthmere_inventory_icon_manifest";
+import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
+import { BikkieRuntime } from "@/shared/bikkie/active";
+import { NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID } from "@/shared/harthmere/native_road_ahead_contract";
+import { harthmereOriginalInventoryIconUrl } from "@/shared/harthmere/original_inventory_icons";
 
 describe("Harthmere native item presentation", () => {
+  before(() => {
+    ensureHarthmereNativeItemCatalogue();
+    BikkieRuntime.get().registerBiscuits(
+      new Map([
+        [
+          NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID,
+          {
+            id: NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID,
+            name: "muckwad",
+            displayName: "Muckwad",
+            galoisPath: "blocks/muckwad",
+            terrainName: "muckwad",
+            isBlock: true,
+            action: "place",
+            stackable: 99n,
+          } as Biscuit,
+        ],
+      ])
+    );
+  });
+
   it("uses Blender-rendered icons for generic and mismatched inventory items", () => {
     for (const itemId of ["antidote", "iron_ore", "bear_fat"]) {
       const expected = harthmereGeneratedInventoryIconUrl(itemId);
@@ -71,6 +99,130 @@ describe("Harthmere native item presentation", () => {
           `${runtimeItemId}: direct inventory icon resolver`
         );
       }
+    }
+  });
+
+  it("uses the original mined-voxel cube for Muckwad in inventory and hotbar presentations", () => {
+    const expectedIcon = resolveAssetUrlUntyped("icons/blocks/muckwad");
+    assert.ok(expectedIcon);
+    assert.notEqual(
+      expectedIcon,
+      harthmereGeneratedInventoryIconUrl("muckwad")
+    );
+
+    for (const itemId of [
+      "muckwad",
+      "muckwad_voxel_block",
+      String(NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID),
+      `b:${NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID}`,
+    ]) {
+      assert.equal(biomesInventoryItemIcon(itemId), expectedIcon, itemId);
+    }
+    assert.equal(getHarthmereItemDisplay("muckwad")?.icon, expectedIcon);
+  });
+
+  it("restores the original detailed workstation and furniture icons", () => {
+    const cases = [
+      ["1534621126189448", "icons/placeables/crafting_stations/log_workbench"],
+      ["1485695172010242", "icons/placeables/crafting_stations/oak_kitchen"],
+      [
+        "7539420629350105",
+        "icons/placeables/crafting_stations/oak_tailoring_booth",
+      ],
+      [
+        "4537020877769775",
+        "icons/placeables/crafting_stations/stone_thermoblaster",
+      ],
+      [
+        "2443541317223860",
+        "icons/placeables/crafting_stations/stone_thermolite",
+      ],
+      ["4537020877769721", "icons/placeables/arcade_machine"],
+      ["record_player", "icons/placeables/record_player"],
+      ["boombox", "icons/placeables/boombox"],
+      ["bench", "icons/placeables/furniture/bench"],
+      [
+        "harthmere_station_workbench",
+        "icons/placeables/crafting_stations/log_workbench",
+      ],
+      ["workbench", "icons/placeables/crafting_stations/log_workbench"],
+      [
+        "harthmere_station_kitchen",
+        "icons/placeables/crafting_stations/oak_kitchen",
+      ],
+      [
+        "harthmere_station_tailoring_booth",
+        "icons/placeables/crafting_stations/oak_tailoring_booth",
+      ],
+      [
+        "harthmere_station_thermoblaster",
+        "icons/placeables/crafting_stations/stone_thermoblaster",
+      ],
+      [
+        "harthmere_station_thermolite",
+        "icons/placeables/crafting_stations/stone_thermolite",
+      ],
+    ] as const;
+
+    for (const [itemId, assetPath] of cases) {
+      const expected = resolveAssetUrlUntyped(assetPath);
+      assert.ok(expected, itemId);
+      assert.equal(harthmereOriginalInventoryIconUrl(itemId), expected, itemId);
+      assert.equal(biomesInventoryItemIcon(itemId), expected, itemId);
+      assert.notEqual(
+        expected,
+        harthmereGeneratedInventoryIconUrl(itemId),
+        `${itemId}: original art must replace the generic generated machine`
+      );
+      const nativeId = harthmereNativeBiomesIdForItemId(itemId);
+      if (nativeId) {
+        assert.equal(
+          biomesInventoryItemIcon(`b:${nativeId}`),
+          expected,
+          `${itemId}: native ECS identity`
+        );
+      }
+    }
+  });
+
+  it("replaces only the legacy notebook-style seeds with physical crop-specific art", () => {
+    const notebookSeedIds = [
+      "7539420629350027",
+      "4537020877769703",
+      "seed_carrot",
+      "1760645252542797",
+      "7565606351305683",
+      "8772905953047597",
+      "4537020877769718",
+      "7539420629350033",
+      "4537020877769691",
+      "1534621126189364",
+      "seed_wheat",
+    ];
+
+    for (const itemId of notebookSeedIds) {
+      const generatedIcon = harthmereGeneratedInventoryIconUrl(itemId);
+      assert.ok(generatedIcon, itemId);
+      assert.equal(biomesInventoryItemIcon(itemId), generatedIcon, itemId);
+      assert.equal(
+        harthmereOriginalInventoryIconUrl(itemId),
+        undefined,
+        `${itemId}: do not restore the notebook icon`
+      );
+    }
+
+    for (const itemId of [
+      "1534621126189373", // Birch Seed
+      "1534621126189376", // Oak Seed
+      "4537020877769694", // Amanita Spores
+    ]) {
+      const generatedIcon = harthmereGeneratedInventoryIconUrl(itemId);
+      assert.ok(generatedIcon, itemId);
+      assert.equal(
+        biomesInventoryItemIcon(itemId),
+        generatedIcon,
+        `${itemId}: non-notebook seed artwork stays on its existing path`
+      );
     }
   });
 

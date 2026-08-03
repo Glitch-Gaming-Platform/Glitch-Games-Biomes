@@ -77,6 +77,8 @@ import { harthmereLiveServerAuthoritative } from "@/client/components/challenges
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
 import { safeGetTerrainName } from "@/shared/asset_defs/terrain";
 import { harthmereGeneratedInventoryIconUrl } from "@/shared/harthmere/generated/harthmere_inventory_icon_manifest";
+import { nativeVoxelBlockInventoryIcon } from "@/client/components/biomes_ui/adapters/inventoryItemPresentation";
+import { harthmereOriginalInventoryIconUrl } from "@/shared/harthmere/original_inventory_icons";
 import { isFishingRodItemId } from "@/shared/harthmere/fishing_rods";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { terrainIdToBlock } from "@/shared/bikkie/terrain";
@@ -3118,8 +3120,8 @@ function dynamicBiomesItemDefinition(
     (biomesId === BikkieIds.muckyTop
       ? BikkieIds.top
       : biomesId === BikkieIds.muckySkirt
-      ? BikkieIds.bottoms
-      : undefined);
+        ? BikkieIds.bottoms
+        : undefined);
   const equipmentSlot: EquipmentSlot | undefined = (() => {
     switch (nativeWearableSlot) {
       case BikkieIds.hat:
@@ -3161,12 +3163,12 @@ function dynamicBiomesItemDefinition(
   const category = authoritative
     ? localCategoryForAuthoritativeItem(authoritative)
     : semanticDefinition
-    ? semanticDefinition.category
-    : item?.isBlock
-    ? "crafting_material"
-    : equipmentSlot
-    ? "armor"
-    : "trade_good";
+      ? semanticDefinition.category
+      : item?.isBlock
+        ? "crafting_material"
+        : equipmentSlot
+          ? "armor"
+          : "trade_good";
   const icon =
     premiumWeapon?.inventoryIconUrl ??
     dynamicBiomesItemIcon(item, canonicalItemId) ??
@@ -3181,12 +3183,12 @@ function dynamicBiomesItemDefinition(
     category,
     subtype: authoritative
       ? `harthmere_${category}`
-      : semanticDefinition?.subtype ??
+      : (semanticDefinition?.subtype ??
         (item?.isBlock
           ? "biomes_voxel_block"
           : equipmentSlot
-          ? "biomes_wearable"
-          : "biomes_item"),
+            ? "biomes_wearable"
+            : "biomes_item")),
     quality: semanticDefinition?.quality ?? "common",
     icon,
     stackable: isStackable,
@@ -3198,10 +3200,10 @@ function dynamicBiomesItemDefinition(
       authoritative?.binding === "on_pickup"
         ? "bind_on_pickup"
         : authoritative?.binding === "on_equip"
-        ? "bind_on_equip"
-        : authoritative?.binding === "quest"
-        ? "quest_bound"
-        : semanticDefinition?.bindType ?? "unbound",
+          ? "bind_on_equip"
+          : authoritative?.binding === "quest"
+            ? "quest_bound"
+            : (semanticDefinition?.bindType ?? "unbound"),
     baseValue: authoritative?.baseValue ?? semanticDefinition?.baseValue ?? 0,
     durabilityMax:
       authoritative?.durabilityMax ?? semanticDefinition?.durabilityMax,
@@ -3240,10 +3242,10 @@ function itemDef(itemId: string): HarthmereItemDefinition | undefined {
         authoritative.binding === "on_pickup"
           ? "bind_on_pickup"
           : authoritative.binding === "on_equip"
-          ? "bind_on_equip"
-          : authoritative.binding === "quest"
-          ? "quest_bound"
-          : "unbound",
+            ? "bind_on_equip"
+            : authoritative.binding === "quest"
+              ? "quest_bound"
+              : "unbound",
       baseValue: authoritative.baseValue,
       durabilityMax: authoritative.durabilityMax,
       description: authoritativeHarthmereItemDescription(authoritative),
@@ -3309,7 +3311,11 @@ export function getHarthmereItemDisplay(
   return {
     id: def.id,
     name: def.name,
-    icon: harthmereGeneratedInventoryIconUrl(def.id) ?? def.icon,
+    icon:
+      nativeVoxelBlockInventoryIcon(def.id) ??
+      harthmereOriginalInventoryIconUrl(def.id) ??
+      harthmereGeneratedInventoryIconUrl(def.id) ??
+      def.icon,
     category: def.category,
     quality: def.quality,
     description: def.description,
@@ -5496,8 +5502,7 @@ function resetInventory() {
 }
 
 function readPendingVendorTradeRequest():
-  | HarthmereVendorTradeRequest
-  | undefined {
+  HarthmereVendorTradeRequest | undefined {
   if (!isBrowser()) {
     return undefined;
   }
@@ -5578,14 +5583,14 @@ function reputationPriceModifierForVendor(offset: number) {
     reputation.likeability >= 2_000
       ? 0.94
       : reputation.likeability <= -2_000
-      ? 1.16
-      : 1;
+        ? 1.16
+        : 1;
   const legal =
     reputation.legal >= 2_000
       ? 0.96
       : reputation.legal <= -5_000 && vendor?.lawfulService !== false
-      ? 1.25
-      : 1;
+        ? 1.25
+        : 1;
   return likeability * legal;
 }
 
@@ -5634,8 +5639,8 @@ function finalVendorSellQuoteForPlayer(
     reputation.likeability >= 2_000
       ? 1.08
       : reputation.likeability <= -2_000
-      ? 0.82
-      : 1;
+        ? 0.82
+        : 1;
   const legal =
     reputation.legal >= 2_000 && vendor.lawfulService !== false ? 1.04 : 1;
   return Math.max(
@@ -6508,10 +6513,10 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
                               {item.locked
                                 ? "locked"
                                 : item.bound
-                                ? "bound"
-                                : item.stolen
-                                ? "stolen"
-                                : "available to sell"}
+                                  ? "bound"
+                                  : item.stolen
+                                    ? "stolen"
+                                    : "available to sell"}
                             </span>
                           </div>
                           <p>{def.description}</p>

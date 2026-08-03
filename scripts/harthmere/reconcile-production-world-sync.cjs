@@ -41,6 +41,22 @@ const {
   harthmereBusinessCraftingStationSeedEntityIds,
 } = require("../../src/server/harthmere/business_crafting_station_ecs_seed");
 const {
+  buildHarthmereBusinessInteriorCollisionSeedProposedChanges,
+  harthmereBusinessInteriorCollisionSeedEntityIds,
+} = require("../../src/server/harthmere/business_interior_collision_ecs_seed");
+const {
+  buildHarthmereAdditiveTownInteriorCollisionSeedProposedChanges,
+  harthmereAdditiveTownInteriorCollisionSeedEntityIds,
+} = require("../../src/server/harthmere/additive_town_interior_collision_ecs_seed");
+const {
+  buildHarthmereAdditiveTownCookingStationSeedProposedChanges,
+  harthmereAdditiveTownCookingStationSeedEntityIds,
+} = require("../../src/server/harthmere/additive_town_cooking_station_ecs_seed");
+const {
+  buildHarthmereChapter1TestimonyNpcSeedProposedChanges,
+  harthmereChapter1TestimonyNpcSeedEntityIds,
+} = require("../../src/server/harthmere/ch1_testimony_npc_ecs_seed");
+const {
   createHarthmereLiveModeSharedWorldState,
   defaultHarthmereLiveModeBackendState,
   harthmereLiveModeSharedWorldStateKey,
@@ -98,6 +114,15 @@ function biomesIdSet(ids) {
 async function reconcileEcsSeeds(world, nowSeconds) {
   const seedFamilies = [
     {
+      // Grover and the other testimony witnesses predate the generic
+      // production family reconciler. Without an explicit family here, a
+      // deployment can contain the new source anchor while retaining the old
+      // persisted body beside Jackie indefinitely.
+      label: "Chapter 1 testimony NPCs",
+      ids: harthmereChapter1TestimonyNpcSeedEntityIds(),
+      build: buildHarthmereChapter1TestimonyNpcSeedProposedChanges,
+    },
+    {
       label: "live entities",
       ids: harthmereLiveEntityProductionSeedIds(),
       build: buildHarthmereLiveEntityProductionSeedProposedChanges,
@@ -145,6 +170,24 @@ async function reconcileEcsSeeds(world, nowSeconds) {
       label: "Business crafting stations",
       ids: harthmereBusinessCraftingStationSeedEntityIds(),
       build: buildHarthmereBusinessCraftingStationSeedProposedChanges,
+    },
+    {
+      // Non-rendering Position + Size + Collideable entities derived directly
+      // from the generated interior manifest. Native player/Newton/Anima
+      // physics all consume the same collideable selector.
+      label: "Business interior collision proxies",
+      ids: harthmereBusinessInteriorCollisionSeedEntityIds(),
+      build: buildHarthmereBusinessInteriorCollisionSeedProposedChanges,
+    },
+    {
+      label: "Additive-town interior collision proxies",
+      ids: harthmereAdditiveTownInteriorCollisionSeedEntityIds(),
+      build: buildHarthmereAdditiveTownInteriorCollisionSeedProposedChanges,
+    },
+    {
+      label: "Additive-town native cooking stations",
+      ids: harthmereAdditiveTownCookingStationSeedEntityIds(),
+      build: buildHarthmereAdditiveTownCookingStationSeedProposedChanges,
     },
   ];
   const requiredIds = seedFamilies.flatMap((family) => family.ids);
@@ -216,6 +259,99 @@ async function reconcileEcsSeeds(world, nowSeconds) {
     "required Harthmere ECS world seeds exist after reconciliation",
     stillMissing.length ? `missing=${stillMissing.join(",")}` : undefined
   );
+}
+
+async function reconcileChapter1TestimonyNpcHfcPositions(world, nowSeconds) {
+  const ids = harthmereChapter1TestimonyNpcSeedEntityIds();
+  const expectedChanges = buildHarthmereChapter1TestimonyNpcSeedProposedChanges(
+    {
+      nowSeconds,
+      existingIds: new Set(ids),
+    }
+  ).filter((change) => change.kind !== "delete");
+  const expectedById = new Map(
+    expectedChanges.map((change) => [Number(change.entity.id), change.entity])
+  );
+  const hfc = new HfcWorldApi(await connectToRedis("ecs-hfc"));
+  const driftXZ = (actual, expected) =>
+    !actual || !expected
+      ? Infinity
+      : Math.hypot(actual[0] - expected[0], actual[2] - expected[2]);
+
+  try {
+    const hfcPresent = new Set(await hfc.has(ids));
+    if (APPLY) {
+      // RedisWorld's large mixed-component batch path has historically left
+      // existing position-bearing rows unchanged. Re-apply each authored NPC
+      // separately before writing HFC so both the durable spawn metadata and
+      // the primary fallback position converge even in missing-only mode.
+      for (const change of expectedChanges) {
+        await world.apply({
+          changes: [{ kind: "update", entity: change.entity }],
+        });
+      }
+      const hfcChanges = expectedChanges.map((change) => ({
+        kind: hfcPresent.has(change.entity.id) ? "update" : "create",
+        entity: {
+          id: change.entity.id,
+          position: change.entity.position,
+          orientation: change.entity.orientation,
+          rigid_body: change.entity.rigid_body,
+        },
+      }));
+      for (const batch of chunk(hfcChanges, Math.max(1, BATCH_SIZE))) {
+        await hfc.apply({ changes: batch });
+      }
+    }
+
+    const [primaryEntities, hfcEntities] = await Promise.all([
+      world.get(ids),
+      hfc.get(ids),
+    ]);
+    const unresolved = [];
+    for (let index = 0; index < ids.length; index += 1) {
+      const id = ids[index];
+      const expected = expectedById.get(Number(id));
+      const primary = primaryEntities[index];
+      const hfcEntity = hfcEntities[index];
+      const primaryPosition = primary?.position()?.v;
+      const hfcPosition = hfcEntity?.position()?.v;
+      const effectivePosition = hfcPosition ?? primaryPosition;
+      const spawnPosition = primary?.npcMetadata()?.spawn_position;
+      if (
+        driftXZ(effectivePosition, expected?.position?.v) > 0.5 ||
+        driftXZ(spawnPosition, expected?.position?.v) > 0.5
+      ) {
+        unresolved.push({
+          id: String(id),
+          expected: expected?.position?.v,
+          primary: primaryPosition,
+          hfc: hfcPosition,
+          spawn: spawnPosition,
+        });
+      }
+    }
+    check(
+      unresolved.length === 0,
+      "Chapter 1 testimony positions persist in primary and HFC ECS",
+      unresolved.length
+        ? JSON.stringify({
+            count: unresolved.length,
+            sample: unresolved.slice(0, 5),
+          })
+        : undefined
+    );
+    console.log(
+      JSON.stringify({
+        phase: "chapter1_testimony_hfc_position_reconcile",
+        total: ids.length,
+        hfcPresent: hfcPresent.size,
+        apply: APPLY,
+      })
+    );
+  } finally {
+    await hfc.stop();
+  }
 }
 
 async function reconcileSharedLiveModeState(nowMs) {
@@ -601,6 +737,7 @@ async function main() {
   try {
     await world.waitForHealthy();
     await reconcileEcsSeeds(world, nowSeconds);
+    await reconcileChapter1TestimonyNpcHfcPositions(world, nowSeconds);
     await reconcileSnapshotGroveNamedNpcDuplicates(world);
     await repairLiveEntityPositions(world);
     await reconcileSharedLiveModeState(nowMs);
@@ -615,7 +752,13 @@ async function main() {
   console.log("\nRESULT: PASS");
 }
 
-main().catch((error) => {
-  console.error(error.stack || error.message || String(error));
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error.stack || error.message || String(error));
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  reconcileChapter1TestimonyNpcHfcPositions,
+};

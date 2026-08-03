@@ -18,7 +18,10 @@ import { gltfToThree } from "@/client/game/util/gltf_helpers";
 import { TimelineMatcher } from "@/client/game/util/timeline_matcher";
 import type { CharacterAnimationTiming } from "@/server/shared/minigames/ruleset/tweaks";
 import { HARTHMERE_CINEMATIC_ANIMATION_DEFINITIONS } from "@/shared/cutscene/cinematic_expressions";
-import { playerMovementActionAnimationName } from "@/shared/game/movement_actions";
+import {
+  HARTHMERE_DODGE_CLIP_TIME_SCALE,
+  playerMovementActionAnimationName,
+} from "@/shared/game/movement_actions";
 import { HARTHMERE_PLAYER_ATTACK_TIMINGS } from "@/shared/harthmere/deliberate_combat";
 import * as THREE from "three";
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -334,18 +337,42 @@ export const playerSystem = new AnimationSystem(
     },
     dodgeLeft: {
       fileAnimationName: "DodgeLeft",
+      // 15-frame clip at 24 fps is 0.625 s, but the dodge gameplay window
+      // is 0.50 s. Without retiming the action expires 125 ms early and the
+      // landing/settle at the tail of the clip never plays, so the dodge
+      // reads as cut off mid-recovery. EvadeRoll (0.75/0.75) and DoubleJump
+      // already match their windows.
+      timeScale: HARTHMERE_DODGE_CLIP_TIME_SCALE,
       backupFileAnimationNames: ["SidestepLeft", "Dodging", "Running", "Jump"],
     },
     dodgeRight: {
       fileAnimationName: "DodgeRight",
+      // 15-frame clip at 24 fps is 0.625 s, but the dodge gameplay window
+      // is 0.50 s. Without retiming the action expires 125 ms early and the
+      // landing/settle at the tail of the clip never plays, so the dodge
+      // reads as cut off mid-recovery. EvadeRoll (0.75/0.75) and DoubleJump
+      // already match their windows.
+      timeScale: HARTHMERE_DODGE_CLIP_TIME_SCALE,
       backupFileAnimationNames: ["SidestepRight", "Dodging", "Running", "Jump"],
     },
     dodgeForward: {
       fileAnimationName: "DodgeForward",
+      // 15-frame clip at 24 fps is 0.625 s, but the dodge gameplay window
+      // is 0.50 s. Without retiming the action expires 125 ms early and the
+      // landing/settle at the tail of the clip never plays, so the dodge
+      // reads as cut off mid-recovery. EvadeRoll (0.75/0.75) and DoubleJump
+      // already match their windows.
+      timeScale: HARTHMERE_DODGE_CLIP_TIME_SCALE,
       backupFileAnimationNames: ["Dodging", "Sidestep", "Running", "Jump"],
     },
     dodgeBack: {
       fileAnimationName: "DodgeBack",
+      // 15-frame clip at 24 fps is 0.625 s, but the dodge gameplay window
+      // is 0.50 s. Without retiming the action expires 125 ms early and the
+      // landing/settle at the tail of the clip never plays, so the dodge
+      // reads as cut off mid-recovery. EvadeRoll (0.75/0.75) and DoubleJump
+      // already match their windows.
+      timeScale: HARTHMERE_DODGE_CLIP_TIME_SCALE,
       backupFileAnimationNames: [
         "Dodging",
         "Sidestep",

@@ -93,6 +93,9 @@ const artifactsDir = path.resolve(
     path.join(root, "artifacts/harthmere-world-interaction-live-browser")
 );
 const reportPath = path.join(artifactsDir, `${runId}-report.json`);
+const resumeReportPath = process.env.HARTHMERE_E2E_RESUME_REPORT
+  ? path.resolve(process.env.HARTHMERE_E2E_RESUME_REPORT)
+  : undefined;
 const representativeScreenshots = new Set([
   "harthmere_north_iron_vein",
   "harthmere_orchard_softwood",
@@ -122,8 +125,35 @@ const report = {
   screenshots: [],
   jobsBoardRequests: [],
   browserFailures: [],
+  diagnosticFailures: [],
   failures: [],
 };
+
+if (resumeReportPath) {
+  const previous = JSON.parse(fs.readFileSync(resumeReportPath, "utf8"));
+  report.resumeEvidence = {
+    reportPath: resumeReportPath,
+    buildId: previous.lifecycle?.actualBuildId,
+    retainedJobsBoard: previous.jobsBoard?.status === "passed",
+    retainedInteractionCases: (previous.interactionCases ?? []).map(
+      (entry) => entry.case
+    ),
+    retainedNodeIds: (previous.nodes ?? []).map((entry) => entry.nodeId),
+  };
+  if (previous.jobsBoard?.status === "passed") {
+    report.jobsBoard = {
+      ...previous.jobsBoard,
+      retainedFromReport: resumeReportPath,
+    };
+  }
+  report.interactionCases = (previous.interactionCases ?? [])
+    .filter((entry) => entry.status === "passed")
+    .map((entry) => ({ ...entry, retainedFromReport: resumeReportPath }));
+  report.nodes = (previous.nodes ?? [])
+    .filter((entry) => entry.status === "passed")
+    .map((entry) => ({ ...entry, retainedFromReport: resumeReportPath }));
+  report.screenshots = [...(previous.screenshots ?? [])];
+}
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -250,7 +280,7 @@ function gameUrl() {
 }
 
 function isIgnoredBrowserNoise(text, source = "") {
-  return /chrome-extension:\/\/|twitch\.tv|ttvnw\.net|jtvnw\.net|googlevideo\.com|ERR_ABORTED|MasterPlaylist|no supported source|bluetooth is not allowed/i.test(
+  return /chrome-extension:\/\/|twitch\.tv|ttvnw\.net|jtvnw\.net|googlevideo\.com|ERR_ABORTED|MasterPlaylist|no supported source|bluetooth is not allowed|compute-pressure is not allowed|reactPlayerYouTube/i.test(
     `${text} ${source}`
   );
 }
@@ -341,6 +371,7 @@ async function openActor(browser) {
     undefined,
     { timeout: timeoutMs }
   );
+  await dismissEnterGame(page);
   return { context, page };
 }
 
@@ -406,10 +437,35 @@ async function waitFor(label, probe, predicate, timeout = timeoutMs) {
   );
 }
 
+async function dismissEnterGame(page) {
+  const enterGame = page.getByRole("button", { name: "Enter Game" });
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (!(await enterGame.isVisible().catch(() => false))) return;
+    await enterGame.evaluate((button) => button.click()).catch(() => undefined);
+    await delay(250);
+  }
+  assert.equal(
+    await enterGame.isVisible().catch(() => false),
+    false,
+    "Enter Game safety modal must close before world-interaction input"
+  );
+}
+
 async function placePlayer(page, position, lookAt) {
   const orientation = lookAtOrientation(position, lookAt);
-  await page.evaluate(
+  const liveTeleport = await page.evaluate(
     ({ id, position: nextPosition, orientation: nextOrientation }) => {
+      const teleport = globalThis.__harthmereLivePlayerDebug?.teleportTo;
+      const result =
+        typeof teleport === "function"
+          ? teleport({
+              x: nextPosition[0],
+              y: nextPosition[1],
+              z: nextPosition[2],
+              name: "worldInteractionGraphicsE2E",
+              reason: "Stream the authoritative gathering/jobs-board district",
+            })
+          : undefined;
       const resources = globalThis.clientContext?.resources;
       if (!resources) throw new Error("client resources unavailable");
       resources.update("/sim/player", id, (player) => {
@@ -422,9 +478,17 @@ async function placePlayer(page, position, lookAt) {
         localPlayer.player.orientation = [...nextOrientation];
         localPlayer.player.velocity = [0, 0, 0];
       });
+      return result;
     },
     { id: actorId, position, orientation }
   );
+  if (liveTeleport) {
+    assert.equal(
+      liveTeleport.teleported,
+      true,
+      `live player did not stream target ${position.join(",")}`
+    );
+  }
   await applyChanges(page, {
     kind: "update",
     entity: {
@@ -445,6 +509,8 @@ async function placePlayer(page, position, lookAt) {
       velocity: [0, 0, 0],
     })
   );
+  await delay(300);
+  await dismissEnterGame(page);
 }
 
 async function equip(page, itemIdentity) {
@@ -812,11 +878,12 @@ async function proveSkillRejection(page) {
     feedback: rejected,
     screenshot: await screenshot(page, "interaction-high-skill-rejection"),
   });
+  await equip(page, undefined);
 }
 
 async function proveJobsBoard(page) {
   const board = HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS.find(
-    (candidate) => candidate.boardId === "harthmere_grove_market_jobs_board"
+    (candidate) => candidate.boardId === "harthmere_town_market_jobs_board"
   );
   assert(board);
   const approach = [board.position.x, board.position.y, board.position.z - 2.5];
@@ -841,9 +908,11 @@ async function proveJobsBoard(page) {
       entry?.lod0Loaded === true &&
       entry?.fallback === false
   );
-  const prompt = page.getByTestId("harthmere-jobs-board-world-prompt");
+  const prompt = page.getByRole("button", {
+    name: `Read ${board.displayName}`,
+  });
   await prompt.waitFor({ state: "visible", timeout: timeoutMs });
-  assert.match(await prompt.innerText(), /Click or press F/i);
+  assert.match(await prompt.innerText(), /F[\s\S]*Job Board/i);
   const beforeScreenshot = await screenshot(page, "jobs-board-large-f-prompt");
   const requestCountBeforeF = report.jobsBoardRequests.length;
   await page.keyboard.press("KeyF");
@@ -890,6 +959,91 @@ async function proveJobsBoard(page) {
   await panel.waitFor({ state: "detached", timeout: timeoutMs });
 }
 
+function safeDiagnosticLabel(value) {
+  return String(value)
+    .replace(/[^a-z0-9_-]+/gi, "-")
+    .slice(0, 90);
+}
+
+async function browserDiagnosticSnapshot(page, nodeId) {
+  if (!page) return undefined;
+  return page
+    .evaluate((requestedNodeId) => {
+      const nodeRows = globalThis.__harthmereGatheringNodeGraphics?.nodes?.();
+      return {
+        url: location.href,
+        playerPosition:
+          globalThis.__harthmereLivePlayerDebug?.getPosition?.() ?? null,
+        requestedNode: requestedNodeId
+          ? nodeRows?.find((entry) => entry.nodeId === requestedNodeId)
+          : undefined,
+        visibleNodes: nodeRows?.filter((entry) => entry.visible).slice(0, 8),
+        jobsBoard: globalThis.__harthmereJobsBoardDebug
+          ? {
+              playerPosition:
+                globalThis.__harthmereJobsBoardDebug.playerPosition,
+              prompt: globalThis.__harthmereJobsBoardDebug.prompt,
+            }
+          : undefined,
+        gatheringPrompt: document
+          .querySelector(
+            '[data-testid="harthmere-gathering-node-world-prompt"]'
+          )
+          ?.textContent?.trim(),
+        buttons: [...document.querySelectorAll("button")]
+          .map(
+            (button) => button.getAttribute("aria-label") || button.textContent
+          )
+          .filter(Boolean)
+          .slice(0, 24),
+      };
+    }, nodeId)
+    .catch((error) => ({ diagnosticError: error?.message || String(error) }));
+}
+
+async function runDiagnosticStep(page, scope, id, operation, options = {}) {
+  try {
+    await operation();
+    persistReport();
+    return true;
+  } catch (error) {
+    const failure = {
+      scope,
+      id,
+      status: "failed",
+      error: error?.stack || String(error),
+      diagnostic: await browserDiagnosticSnapshot(page, options.nodeId),
+    };
+    try {
+      failure.screenshot = await screenshot(
+        page,
+        `failure-${safeDiagnosticLabel(scope)}-${safeDiagnosticLabel(id)}`
+      );
+    } catch {}
+    report.diagnosticFailures.push(failure);
+    if (scope === "jobs-board") {
+      report.jobsBoard = { status: "failed", failure };
+    } else if (scope === "interaction") {
+      report.interactionCases.push({ case: id, status: "failed", failure });
+    } else if (scope === "node") {
+      report.nodes = report.nodes.filter((row) => row.nodeId !== id);
+      report.nodes.push({
+        nodeId: id,
+        name: options.node?.name,
+        profession: options.node?.profession,
+        requiredTool: options.node?.requiredTool,
+        requiredSkill: options.node?.requiredSkill,
+        position: options.node ? [...options.node.position] : undefined,
+        status: "failed",
+        failure,
+      });
+    }
+    persistReport();
+    console.error(`FAIL ${scope} ${id}: ${error?.message || error}`);
+    return false;
+  }
+}
+
 async function main() {
   fs.mkdirSync(artifactsDir, { recursive: true });
   lifecyclePreflight();
@@ -907,12 +1061,70 @@ async function main() {
   let actor;
   try {
     actor = await openActor(browser);
-    await proveJobsBoard(actor.page);
+    if (report.jobsBoard.status !== "passed") {
+      await runDiagnosticStep(
+        actor.page,
+        "jobs-board",
+        "harthmere_town_market_jobs_board",
+        () => proveJobsBoard(actor.page)
+      );
+    }
 
-    await proveToolRejectionAndHarvest(actor.page);
-    await proveNoToolHarvest(actor.page);
-    await proveAnyFishingRod(actor.page);
-    await proveSkillRejection(actor.page);
+    if (
+      !report.interactionCases.some(
+        (entry) => entry.case === "orchard_axe_harvest_drop_pickup"
+      )
+    ) {
+      await runDiagnosticStep(
+        actor.page,
+        "interaction",
+        "orchard_interaction_batch",
+        () => proveToolRejectionAndHarvest(actor.page),
+        { nodeId: "harthmere_orchard_softwood" }
+      );
+    }
+    if (
+      !report.interactionCases.some(
+        (entry) => entry.case === "farm_no_tool_harvest"
+      )
+    ) {
+      await runDiagnosticStep(
+        actor.page,
+        "interaction",
+        "farm_no_tool_harvest",
+        () => proveNoToolHarvest(actor.page),
+        { nodeId: "harthmere_farm_crops" }
+      );
+    }
+    if (
+      !report.interactionCases.some(
+        (entry) => entry.case === "fishing_any_native_rod"
+      )
+    ) {
+      await runDiagnosticStep(
+        actor.page,
+        "interaction",
+        "fishing_any_native_rod",
+        () => proveAnyFishingRod(actor.page),
+        { nodeId: "harthmere_river_fishing_pool" }
+      );
+    }
+    if (
+      !report.interactionCases.some(
+        (entry) => entry.case === "high_skill_rejection"
+      )
+    ) {
+      await runDiagnosticStep(
+        actor.page,
+        "interaction",
+        "high_skill_rejection",
+        () => proveSkillRejection(actor.page),
+        { nodeId: "harthmere_river_clay" }
+      );
+    }
+    await runDiagnosticStep(actor.page, "cleanup", "clear-active-tool", () =>
+      equip(actor.page, undefined)
+    );
 
     for (
       let index = 0;
@@ -920,31 +1132,71 @@ async function main() {
       index += 1
     ) {
       const node = HARTHMERE_GATHERING_AUTHORITY_NODES[index];
-      if (!report.nodes.some((row) => row.nodeId === node.id)) {
-        await visitNode(actor.page, node, index);
+      if (
+        !report.nodes.some(
+          (row) => row.nodeId === node.id && row.status === "passed"
+        )
+      ) {
+        await runDiagnosticStep(
+          actor.page,
+          "node",
+          node.id,
+          () => visitNode(actor.page, node, index),
+          { nodeId: node.id, node }
+        );
       }
       persistReport();
     }
 
-    assert.equal(report.nodes.length, 29);
-    assert.equal(
-      report.nodes.filter((row) => row.status === "passed").length,
-      29
+    const requiredInteractionCases = [
+      "orchard_missing_axe",
+      "orchard_axe_harvest_drop_pickup",
+      "orchard_depleted",
+      "farm_no_tool_harvest",
+      "fishing_any_native_rod",
+      "high_skill_rejection",
+    ];
+    const passedInteractionCases = new Set(
+      report.interactionCases
+        .filter((entry) => entry.status === "passed")
+        .map((entry) => entry.case)
     );
-    assert.equal(report.interactionCases.length, 6);
-    assert.equal(
-      report.browserFailures.length,
-      0,
-      report.browserFailures.join("\n")
+    const passedNodeIds = new Set(
+      report.nodes
+        .filter((row) => row.status === "passed")
+        .map((row) => row.nodeId)
     );
-    report.status = "passed";
+    const acceptanceFailures = [];
+    if (report.jobsBoard.status !== "passed") {
+      acceptanceFailures.push("jobs_board");
+    }
+    for (const interactionCase of requiredInteractionCases) {
+      if (!passedInteractionCases.has(interactionCase)) {
+        acceptanceFailures.push(`interaction:${interactionCase}`);
+      }
+    }
+    for (const node of HARTHMERE_GATHERING_AUTHORITY_NODES) {
+      if (!passedNodeIds.has(node.id)) {
+        acceptanceFailures.push(`node:${node.id}`);
+      }
+    }
+    for (const browserFailure of report.browserFailures) {
+      acceptanceFailures.push(`browser:${browserFailure}`);
+    }
+    report.acceptanceFailures = acceptanceFailures;
+    report.status = acceptanceFailures.length ? "failed" : "passed";
+    if (acceptanceFailures.length) {
+      report.failures.push(
+        `Batch completed with ${acceptanceFailures.length} acceptance failures: ${acceptanceFailures.join(", ")}`
+      );
+    }
   } catch (error) {
     report.status = "failed";
     report.failures.push(error?.stack || String(error));
     try {
       await screenshot(actor?.page, "failure");
     } catch {}
-    throw error;
+    report.catastrophicFailure = true;
   } finally {
     report.finishedAt = new Date().toISOString();
     persistReport();
@@ -954,7 +1206,7 @@ async function main() {
   console.log(
     JSON.stringify(
       {
-        ok: true,
+        ok: report.status === "passed",
         reportPath,
         nodeRows: report.nodes.length,
         interactionCases: report.interactionCases.length,
@@ -965,6 +1217,7 @@ async function main() {
       2
     )
   );
+  if (report.status !== "passed") process.exitCode = 1;
 }
 
 main().catch((error) => {

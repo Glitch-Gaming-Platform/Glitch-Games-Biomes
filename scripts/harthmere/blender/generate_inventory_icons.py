@@ -28,6 +28,89 @@ REPO = Path(__file__).resolve().parents[3]
 TARGETS_PATH = Path(__file__).with_name("inventory_icon_targets.json")
 OUTPUT_DIR = REPO / "public/assets/harthmere/inventory_icons/generated"
 HIRES_DIR = OUTPUT_DIR / ".hires"
+FOOD_MODEL_DIR = (
+    REPO / "public/assets/harthmere/obj/props/food/quaternius_ultimate_food"
+)
+
+# Real food props retained in the repository. The broad icon pass used to map
+# dozens of unrelated meals onto the same bowl, fruit, or meat primitive. These
+# explicit sources make each edible read as itself before item-specific color,
+# garnish, and camera variation are applied in Blender.
+FOOD_MODEL_SPECS: dict[str, dict] = {
+    "7697913156978978": {"model": "Fish", "tint": "baked"},
+    "8091388084258471": {"model": "Banana"},
+    "1534621126189382": {"model": "Soda", "tint": "purple"},
+    "7539420629350039": {"special": "coffee_mug"},
+    "2071428426278062": {"model": "Bread"},
+    "4938764980403185": {"model": "Carrot"},
+    "8634397265856843": {"model": "CookingPot_Soup", "tint": "carrot"},
+    "2383589795907514": {"model": "Burger", "tint": "fish"},
+    "fresh_milk": {"model": "Bottle1", "tint": "milk"},
+    "1301706020415207": {"model": "Bottle2", "tint": "berry"},
+    "5721580247335569": {"model": "Soda", "tint": "green"},
+    "6797951239279598": {"model": "Turnip", "tint": "gold"},
+    "8085875300689262": {"special": "grapes"},
+    "hearty_stew": {"model": "CookingPot2_Soup", "tint": "stew"},
+    "1534621126189376": {"model": "BurgerPatty_Raw", "tint": "raw"},
+    "5754656948700981": {"model": "BurgerLarge", "tint": "muck"},
+    "8289848292759112": {"model": "BurgerPatty_Cooked"},
+    "6127458937593352": {"model": "Mushroom", "tint": "muck"},
+    "5510716275751533": {"special": "onion"},
+    "6179830381508309": {"special": "popcorn"},
+    "2373253326716704": {"model": "Turnip", "tint": "radish"},
+    "4732724694489497": {"special": "raspberry"},
+    "1534621126189838": {"model": "Mushroom", "tint": "red"},
+    "1902599429459579": {"model": "Carrot", "tint": "roasted"},
+    "2573780829056209": {
+        "model": "CookingPot2_Soup",
+        "tint": "roasted_carrot",
+    },
+    "2817032404062192": {"special": "coffee_beans"},
+    "3925790999496475": {"model": "Mushroom_Sliced", "tint": "roasted"},
+    "3724574399207457": {"special": "roasted_potatoes"},
+    "8241611436528618": {"model": "Pumpkin", "tint": "roasted"},
+    "8659204791920139": {"model": "Sashimi_Salmon2"},
+    "4734791988327185": {"special": "mushroom_tea"},
+    "2779132017025472": {"special": "strawberry"},
+    "1708273808636291": {"special": "sweet_corn"},
+    "1302395118326380": {"model": "Tomato"},
+    "5126199621773466": {"model": "Turnip"},
+    "berry_tart": {"special": "berry_tart"},
+    "worker_meal": {"model": "ChickenLeg", "garnish": "meal"},
+    "4089107212747129": {"model": "Lettuce_Whole"},
+    "grove_festival_skewer": {"special": "festival_skewer"},
+    "5289515835017799": {"model": "Fish", "tint": "clearwater"},
+    "7539420629350036": {"model": "Fish", "tint": "fish_silver"},
+    "fresh_carrot": {"model": "Carrot", "tint": "fresh"},
+    "2122421674296498": {"model": "Mushroom", "tint": "gold"},
+    "grilled_meat": {"model": "Steak_burned", "tint": "grilled"},
+    "loaf_bread": {"model": "Bread", "garnish": "sliced_bread"},
+    "6064751024492850": {"special": "potato"},
+    "7539420629350498": {"model": "Pumpkin"},
+    "7539420629350042": {"model": "Steak", "tint": "raw_muck"},
+    "5232320705487607": {"model": "Mushroom_Sliced", "tint": "red"},
+    "river_trout": {"model": "Fish", "tint": "trout"},
+    "road_ration": {"model": "Bread_Slice", "garnish": "ration"},
+    "apple_tart": {"special": "apple_tart"},
+    "wild_berries": {"special": "wild_berries"},
+}
+
+# These original Biomes icons are rectangular notebook/packet objects. Replace
+# only this subset with physical seed compositions; all other seed, tree-seed,
+# and spore artwork stays on its existing path.
+NOTEBOOK_SEED_IDS = {
+    "7539420629350027",  # Bellflower
+    "4537020877769703",  # Carrot
+    "seed_carrot",
+    "1760645252542797",  # Cotton
+    "7565606351305683",  # Mystery
+    "8772905953047597",  # Potato
+    "4537020877769718",  # Pumpkin
+    "7539420629350033",  # Raspberry
+    "4537020877769691",  # Strawberry
+    "1534621126189364",  # Wheat
+    "seed_wheat",
+}
 
 MATERIAL_CACHE: dict[tuple, bpy.types.Material] = {}
 ITEM_OBJECTS: list[bpy.types.Object] = []
@@ -39,6 +122,8 @@ def cli_args() -> argparse.Namespace:
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--only", default="")
+    parser.add_argument("--food-assets-only", action="store_true")
+    parser.add_argument("--seed-assets-only", action="store_true")
     return parser.parse_args(args)
 
 
@@ -190,6 +275,14 @@ def mats_for(target):
         "wax": material("wax", (0.55, 0.035, 0.028, 1), roughness=0.54),
         "black": material("black", (0.018, 0.024, 0.035, 1), roughness=0.68),
         "white": material("white", (0.86, 0.88, 0.84, 1), roughness=0.64),
+        "food_raw": material("food_raw", (0.62, 0.075, 0.085, 1), roughness=0.56),
+        "food_cooked": material("food_cooked", (0.38, 0.12, 0.045, 1), roughness=0.68),
+        "food_orange": material("food_orange", (0.92, 0.28, 0.035, 1), roughness=0.6),
+        "food_cream": material("food_cream", (0.92, 0.86, 0.68, 1), roughness=0.66),
+        "food_red": material("food_red", (0.72, 0.025, 0.035, 1), roughness=0.58),
+        "food_green": material("food_green", (0.12, 0.5, 0.12, 1), roughness=0.68),
+        "food_purple": material("food_purple", (0.38, 0.07, 0.58, 1), roughness=0.58),
+        "food_brown": material("food_brown", (0.22, 0.065, 0.02, 1), roughness=0.7),
     }
 
 
@@ -240,6 +333,137 @@ def model_seed(m, seed):
     for i in range(4):
         sphere("large seed", (-0.7 + i * 0.42, -0.55, 0.25 + (i % 2) * 0.18), (0.18, 0.09, 0.28), m["accent"], segments=10, rings=6)
     rune((0, -0.45, -0.18), 0.55, m, seed)
+
+
+SEED_COLOR_HINTS = {
+    "azalea": (0.92, 0.2, 0.42),
+    "banana": (0.94, 0.72, 0.08),
+    "bellflower": (0.15, 0.48, 0.92),
+    "birch": (0.86, 0.58, 0.24),
+    "blue mushroom": (0.18, 0.42, 0.95),
+    "cabbage": (0.25, 0.62, 0.2),
+    "carrot": (0.96, 0.32, 0.03),
+    "coffee": (0.28, 0.07, 0.02),
+    "corn": (0.96, 0.72, 0.08),
+    "cosmos": (0.88, 0.26, 0.65),
+    "cotton": (0.93, 0.91, 0.78),
+    "dandelion": (0.98, 0.78, 0.05),
+    "daylily": (0.95, 0.31, 0.08),
+    "fire flower": (0.95, 0.06, 0.02),
+    "flax": (0.3, 0.52, 0.92),
+    "gold mushroom": (0.98, 0.61, 0.05),
+    "golden turnip": (0.96, 0.64, 0.05),
+    "grape": (0.42, 0.12, 0.68),
+    "hemp": (0.18, 0.48, 0.14),
+    "lilac": (0.58, 0.3, 0.78),
+    "marigold": (0.98, 0.48, 0.04),
+    "morning glory": (0.32, 0.28, 0.88),
+    "muck": (0.45, 0.08, 0.58),
+    "nettle": (0.14, 0.46, 0.12),
+    "oak": (0.45, 0.2, 0.05),
+    "onion": (0.86, 0.83, 0.66),
+    "orchid": (0.73, 0.18, 0.72),
+    "peony": (0.92, 0.24, 0.54),
+    "plumeria": (0.96, 0.68, 0.74),
+    "potato": (0.58, 0.34, 0.12),
+    "pumpkin": (0.95, 0.34, 0.02),
+    "radish": (0.9, 0.04, 0.12),
+    "ramie": (0.22, 0.58, 0.28),
+    "raspberry": (0.8, 0.03, 0.18),
+    "red mushroom": (0.84, 0.03, 0.04),
+    "rose": (0.82, 0.03, 0.08),
+    "rubber": (0.48, 0.26, 0.12),
+    "sakura": (0.96, 0.48, 0.68),
+    "strawberry": (0.9, 0.03, 0.08),
+    "sunflower": (0.98, 0.72, 0.03),
+    "tomato": (0.88, 0.04, 0.02),
+    "turnip": (0.74, 0.42, 0.82),
+    "ultra violet": (0.35, 0.08, 0.72),
+    "wheat": (0.82, 0.58, 0.18),
+    "wood ear": (0.38, 0.16, 0.07),
+}
+
+
+def seed_color(target):
+    text = f"{target['id']} {target['name']}".lower()
+    for hint, color in SEED_COLOR_HINTS.items():
+        if hint in text:
+            return color
+    hue = (stable_seed(target["id"]) % 360) / 360
+    return colorsys.hsv_to_rgb(hue, 0.62, 0.9)
+
+
+def model_seed_identity(target, m, seed):
+    text = f"{target['id']} {target['name']}".lower()
+    color = seed_color(target)
+    crop = material(f"seed crop {target['id']}", (*color, 1), roughness=0.58)
+    crop_dark = material(
+        f"seed crop dark {target['id']}",
+        (*(max(0.02, channel * 0.42) for channel in color), 1),
+        roughness=0.7,
+    )
+    rng = random.Random(seed)
+
+    # No notebook or packet: show a small mound of physical seeds plus one
+    # crop cue. This reads correctly even in the compact hotbar.
+    seed_count = 9 if "wheat" in text or "cotton" in text else 7
+    for i in range(seed_count):
+        angle = i * 2.399
+        radius = 0.2 + 0.72 * math.sqrt(i / seed_count)
+        sphere(
+            "physical seed",
+            (math.cos(angle) * radius, rng.uniform(-0.08, 0.08), -0.45 + math.sin(angle) * radius * 0.56),
+            (0.2 + rng.uniform(-0.03, 0.03), 0.12, 0.3 + rng.uniform(-0.04, 0.04)),
+            crop_dark if i % 2 else crop,
+            segments=9,
+            rings=5,
+        )
+
+    if "carrot" in text:
+        cone("carrot crop cue", (0.62, 0, 0.62), 0.25, 0.04, 0.78, crop, vertices=10, rot=(math.pi, 0, -0.28))
+        for side in [-1, 0, 1]:
+            cone("carrot greens", (0.62 + side * 0.12, 0, 1.02), 0.07, 0.02, 0.34, m["leaf"], vertices=7, rot=(0, side * 0.18, 0))
+    elif "bellflower" in text:
+        cylinder("flower stem", (0.42, 0, 0.55), 0.05, 1.0, m["leaf"], vertices=8, rot=(0, -0.22, 0))
+        for side in [-1, 0, 1]:
+            cone("bellflower bloom", (0.26 + side * 0.28, 0, 1.0 - abs(side) * 0.12), 0.22, 0.08, 0.42, crop, vertices=8, rot=(math.pi, side * 0.2, 0))
+    elif "cotton" in text:
+        cylinder("cotton stem", (0.45, 0, 0.55), 0.055, 1.0, m["leaf"], vertices=8)
+        for x, z in [(0.2, 0.9), (0.48, 1.12), (0.74, 0.88)]:
+            sphere("cotton boll", (x, 0, z), (0.24, 0.2, 0.24), m["white"], segments=10, rings=6)
+    elif "potato" in text:
+        for x, z in [(0.35, 0.65), (0.72, 0.82)]:
+            sphere("potato cue", (x, 0, z), (0.34, 0.26, 0.28), crop, segments=10, rings=6)
+    elif "pumpkin" in text:
+        for x in [0.34, 0.58, 0.82]:
+            sphere("pumpkin cue", (x, 0, 0.78), (0.3, 0.26, 0.38), crop, segments=10, rings=6)
+        cylinder("pumpkin stem", (0.58, 0, 1.14), 0.05, 0.25, m["wood"], vertices=7)
+    elif "raspberry" in text:
+        for i in range(5):
+            angle = i * math.tau / 5
+            sphere("berry crop cue", (0.55 + math.cos(angle) * 0.26, 0, 0.78 + math.sin(angle) * 0.24), (0.18, 0.14, 0.18), crop, segments=9, rings=5)
+        sphere("berry leaf", (0.82, 0, 1.08), (0.3, 0.08, 0.14), m["leaf"], segments=9, rings=5)
+    elif "strawberry" in text:
+        cone("strawberry crop cue", (0.55, 0, 0.78), 0.42, 0.16, 0.8, crop, vertices=14, rot=(math.pi, 0, 0))
+        for angle in [0, 1.26, 2.52, 3.78, 5.04]:
+            sphere(
+                "strawberry leaf",
+                (0.55 + math.cos(angle) * 0.23, 0, 1.17 + math.sin(angle) * 0.1),
+                (0.2, 0.06, 0.1),
+                m["leaf"],
+                segments=8,
+                rings=5,
+            )
+        for x, z in [(0.4, 0.62), (0.68, 0.62), (0.48, 0.82), (0.65, 0.9)]:
+            sphere("strawberry surface seed", (x, -0.35, z), (0.035, 0.02, 0.05), m["gold"], segments=6, rings=4)
+    elif "wheat" in text:
+        for side in [-0.16, 0.08, 0.3]:
+            cylinder("wheat stem", (0.52 + side, 0, 0.62), 0.035, 1.05, m["leaf"], vertices=7, rot=(0, side * 0.3, 0))
+            for z in [0.78, 0.96, 1.14]:
+                sphere("wheat grain cue", (0.52 + side, 0, z), (0.11, 0.08, 0.2), crop, segments=8, rings=5)
+    else:
+        sphere("mystery seed core", (0.52, 0, 0.76), (0.4, 0.32, 0.44), m["glow"], segments=12, rings=7)
+        torus("mystery seed ring", (0.52, 0, 0.76), 0.56, 0.07, crop, rot=(math.pi / 2, 0, 0))
 
 
 def model_plant(m, seed):
@@ -343,6 +567,223 @@ def model_food(m, seed, kind):
         sphere("fruit", (0, 0, -0.05), (0.98, 0.72, 1.02), m["primary"], segments=18, rings=10)
         cylinder("stem", (0.12, 0, 0.92), 0.1, 0.62, m["wood"], vertices=9, rot=(0.1, -0.25, 0))
         sphere("leaf", (0.55, 0, 0.88), (0.52, 0.12, 0.23), m["leaf"], segments=10, rings=6)
+
+
+FOOD_TINTS = {
+    "baked": ((0.62, 0.2, 0.035), 0.76),
+    "purple": ((0.44, 0.04, 0.66), 0.72),
+    "carrot": ((0.95, 0.22, 0.025), 0.55),
+    "fish": ((0.74, 0.54, 0.29), 0.36),
+    "milk": ((0.96, 0.95, 0.85), 0.78),
+    "berry": ((0.7, 0.04, 0.24), 0.68),
+    "green": ((0.16, 0.65, 0.18), 0.68),
+    "gold": ((1.0, 0.58, 0.04), 0.72),
+    "stew": ((0.42, 0.13, 0.045), 0.38),
+    "raw": ((0.78, 0.06, 0.08), 0.66),
+    "muck": ((0.43, 0.07, 0.58), 0.48),
+    "radish": ((0.88, 0.03, 0.08), 0.66),
+    "red": ((0.8, 0.025, 0.035), 0.68),
+    "roasted": ((0.34, 0.075, 0.02), 0.48),
+    "roasted_carrot": ((0.62, 0.12, 0.015), 0.48),
+    "clearwater": ((0.08, 0.5, 0.82), 0.68),
+    "fish_silver": ((0.18, 0.42, 0.62), 0.58),
+    "fresh": ((0.98, 0.34, 0.02), 0.34),
+    "grilled": ((0.3, 0.07, 0.025), 0.44),
+    "raw_muck": ((0.65, 0.035, 0.18), 0.56),
+    "trout": ((0.18, 0.38, 0.16), 0.66),
+}
+
+
+def tint_imported_materials(objects, tint_name):
+    if not tint_name or tint_name not in FOOD_TINTS:
+        return
+    tint, blend = FOOD_TINTS[tint_name]
+    copied = {}
+    for obj in objects:
+        for slot in obj.material_slots:
+            source = slot.material
+            if not source:
+                continue
+            key = source.as_pointer()
+            if key not in copied:
+                target = source.copy()
+                target.name = f"{source.name}_{tint_name}"
+                base = tuple(source.diffuse_color[:3])
+                color = tuple(
+                    base[index] * (1 - blend) + tint[index] * blend
+                    for index in range(3)
+                )
+                target.diffuse_color = (*color, source.diffuse_color[3])
+                if target.use_nodes:
+                    bsdf = target.node_tree.nodes.get("Principled BSDF")
+                    if bsdf:
+                        bsdf.inputs["Base Color"].default_value = (*color, 1)
+                copied[key] = target
+            slot.material = copied[key]
+
+
+def import_food_model(model_name, seed, tint_name=None):
+    path = FOOD_MODEL_DIR / f"{model_name}.obj"
+    if not path.exists():
+        raise FileNotFoundError(f"Missing food model: {path}")
+    before = set(bpy.context.scene.objects)
+    bpy.ops.wm.obj_import(
+        filepath=str(path),
+        forward_axis="NEGATIVE_Z",
+        up_axis="Y",
+        use_split_objects=True,
+        use_split_groups=False,
+        validate_meshes=True,
+    )
+    imported = [
+        obj
+        for obj in bpy.context.scene.objects
+        if obj not in before and obj.type == "MESH"
+    ]
+    if not imported:
+        raise RuntimeError(f"Food model imported no meshes: {path}")
+    tint_imported_materials(imported, tint_name)
+
+    bounds = [obj.matrix_world @ Vector(corner) for obj in imported for corner in obj.bound_box]
+    low = Vector((min(p.x for p in bounds), min(p.y for p in bounds), min(p.z for p in bounds)))
+    high = Vector((max(p.x for p in bounds), max(p.y for p in bounds), max(p.z for p in bounds)))
+    center = (low + high) * 0.5
+    extent = high - low
+    largest = max(extent.x, extent.y, extent.z, 1e-6)
+    scale = 2.95 / largest
+
+    group = bpy.data.objects.new(f"{model_name} food presentation", None)
+    bpy.context.collection.objects.link(group)
+    for obj in imported:
+        obj.parent = group
+    group.scale = (scale, scale, scale)
+    group.location = (-center.x * scale, -center.y * scale, -center.z * scale)
+    rng = random.Random(seed)
+    group.rotation_euler = (
+        math.radians(rng.uniform(-5, 5)),
+        math.radians(rng.uniform(-10, 10)),
+        math.radians(rng.uniform(-12, 12)),
+    )
+    ITEM_OBJECTS.append(group)
+    return group
+
+
+def food_plate(m, z=-0.88, radius=1.05):
+    cylinder("food plate", (0, 0.14, z), radius, 0.14, m["white"], vertices=24)
+    torus("plate rim", (0, 0.14, z + 0.08), radius * 0.78, 0.07, m["gold"])
+
+
+def model_special_food(m, seed, kind):
+    rng = random.Random(seed)
+    if kind in {"coffee_mug", "mushroom_tea"}:
+        cylinder("ceramic mug", (0, 0, -0.18), 0.72, 1.35, m["food_cream"], vertices=18)
+        torus("mug handle", (0.74, 0, -0.08), 0.46, 0.12, m["food_cream"], rot=(math.pi / 2, 0, 0))
+        cylinder(
+            "drink surface",
+            (0, 0, 0.5),
+            0.58,
+            0.07,
+            m["food_brown"] if kind == "coffee_mug" else m["food_purple"],
+            vertices=20,
+        )
+        for i in range(3):
+            torus(
+                "steam curl",
+                (-0.28 + i * 0.28, 0, 0.82 + i * 0.18),
+                0.16,
+                0.025,
+                m["white"],
+                rot=(math.pi / 2, 0, 0),
+            )
+        if kind == "mushroom_tea":
+            sphere("mushroom garnish", (0.18, -0.56, 0.58), (0.22, 0.08, 0.12), m["food_red"], segments=10, rings=6)
+    elif kind in {"grapes", "raspberry", "wild_berries"}:
+        count = 10 if kind == "grapes" else 12
+        for i in range(count):
+            row = int(math.sqrt(i))
+            x = ((i % 4) - 1.5) * 0.34 + rng.uniform(-0.06, 0.06)
+            z = -0.65 + row * 0.4 + rng.uniform(-0.05, 0.05)
+            berry_mat = (
+                m["food_purple"]
+                if kind == "grapes" or (kind == "wild_berries" and i % 2)
+                else m["food_red"]
+            )
+            sphere("individual berry", (x, rng.uniform(-0.1, 0.1), z), (0.25, 0.2, 0.25), berry_mat, segments=12, rings=7)
+        cylinder("berry stem", (0.15, 0, 0.85), 0.06, 0.8, m["wood"], vertices=8, rot=(0, 0.4, 0))
+        sphere("berry leaf", (0.52, 0, 0.82), (0.46, 0.12, 0.22), m["leaf"], segments=10, rings=6)
+    elif kind == "onion":
+        sphere("onion bulb", (0, 0, -0.15), (0.92, 0.72, 0.9), m["food_cream"], segments=18, rings=10)
+        cone("onion root", (0, 0, -1.02), 0.28, 0.03, 0.48, m["paper"], vertices=12)
+        for side in [-0.25, 0, 0.25]:
+            cone("onion greens", (side, 0, 0.92), 0.13, 0.025, 1.0, m["food_green"], vertices=8, rot=(0, side, 0))
+    elif kind == "popcorn":
+        cone("popcorn carton", (0, 0, -0.35), 0.76, 0.98, 1.45, m["food_red"], vertices=4)
+        for i in range(14):
+            angle = i * 2.399
+            radius = 0.18 + 0.55 * math.sqrt(i / 14)
+            sphere("popcorn kernel", (math.cos(angle) * radius, math.sin(angle) * radius * 0.38, 0.35 + (i % 3) * 0.19), (0.22, 0.18, 0.18), m["food_cream"], segments=8, rings=5)
+    elif kind == "coffee_beans":
+        food_plate(m, z=-0.75, radius=1.0)
+        for i in range(9):
+            angle = i * math.tau / 9
+            sphere("coffee bean", (math.cos(angle) * 0.58, -0.08, -0.18 + math.sin(angle) * 0.5), (0.28, 0.16, 0.18), m["food_brown"], segments=10, rings=6)
+            cube("coffee bean crease", (math.cos(angle) * 0.58, -0.25, -0.18 + math.sin(angle) * 0.5), (0.025, 0.025, 0.16), m["black"], 0.01, rot=(0, 0, angle))
+    elif kind in {"roasted_potatoes", "potato"}:
+        if kind == "roasted_potatoes":
+            food_plate(m, z=-0.82, radius=1.04)
+        count = 5 if kind == "roasted_potatoes" else 3
+        for i in range(count):
+            x = (i - (count - 1) / 2) * 0.42
+            sphere("potato", (x, -0.06, -0.18 + (i % 2) * 0.34), (0.42, 0.31, 0.34), m["food_cooked"] if kind == "roasted_potatoes" else m["wood_light"], segments=12, rings=7)
+    elif kind == "sweet_corn":
+        model_food(m, seed, "corn")
+        cube("butter pat", (0.15, -0.56, 0.38), (0.35, 0.08, 0.22), m["gold"], 0.06, rot=(0, 0.15, -0.12))
+    elif kind == "strawberry":
+        cone("strawberry", (0, 0, -0.1), 0.86, 0.42, 1.75, m["food_red"], vertices=16, rot=(math.pi, 0, 0))
+        for angle in [0, 1.26, 2.52, 3.78, 5.04]:
+            sphere("strawberry leaf", (math.cos(angle) * 0.35, 0, 0.82 + math.sin(angle) * 0.18), (0.3, 0.08, 0.14), m["leaf"], segments=8, rings=5)
+        for i in range(12):
+            angle = i * 2.399
+            sphere("strawberry seed", (math.cos(angle) * 0.55, -0.52, -0.45 + (i % 4) * 0.28), (0.04, 0.025, 0.06), m["gold"], segments=6, rings=4)
+    elif kind in {"berry_tart", "apple_tart"}:
+        cylinder("tart crust", (0, 0, -0.35), 1.0, 0.5, m["wood_light"], vertices=20)
+        torus("crimped crust", (0, 0, -0.08), 0.86, 0.14, m["food_cream"])
+        filling = m["food_red"] if kind == "berry_tart" else m["food_orange"]
+        cylinder("tart filling", (0, 0, -0.03), 0.76, 0.14, filling, vertices=20)
+        count = 8 if kind == "berry_tart" else 6
+        for i in range(count):
+            angle = i * math.tau / count
+            sphere("tart fruit", (math.cos(angle) * 0.48, -0.08, 0.18 + math.sin(angle) * 0.18), (0.17, 0.13, 0.16), filling, segments=10, rings=6)
+    elif kind == "festival_skewer":
+        cylinder("wooden skewer", (0, 0, 0), 0.07, 3.0, m["wood_light"], vertices=8, rot=(0, 0.62, -0.1))
+        colors = [m["food_cooked"], m["food_red"], m["food_green"], m["food_orange"]]
+        for i in range(5):
+            sphere("skewer food", (-0.72 + i * 0.36, -0.04, -0.7 + i * 0.5), (0.31, 0.24, 0.3), colors[i % len(colors)], segments=10, rings=6)
+    else:
+        raise ValueError(f"Unknown special food kind: {kind}")
+
+
+def garnish_imported_food(m, seed, garnish):
+    if garnish == "meal":
+        food_plate(m, z=-0.92, radius=1.12)
+        for x, mat in [(-0.58, m["food_green"]), (0.58, m["food_orange"])]:
+            sphere("meal side", (x, -0.38, -0.2), (0.3, 0.18, 0.26), mat, segments=10, rings=6)
+    elif garnish == "sliced_bread":
+        cube("bread slice", (0.76, -0.46, -0.35), (0.42, 0.12, 0.62), m["food_cream"], 0.18, rot=(0, 0.12, -0.24))
+    elif garnish == "ration":
+        cube("ration cheese", (0.46, -0.5, -0.28), (0.48, 0.12, 0.34), m["gold"], 0.08, rot=(0, 0.1, -0.15))
+        sphere("ration apple", (-0.58, -0.34, -0.28), (0.35, 0.28, 0.36), m["food_red"], segments=12, rings=7)
+
+
+def model_food_asset(target, m, seed, spec):
+    special = spec.get("special")
+    if special:
+        model_special_food(m, seed, special)
+        return
+    import_food_model(spec["model"], seed, spec.get("tint"))
+    garnish = spec.get("garnish")
+    if garnish:
+        garnish_imported_food(m, seed, garnish)
 
 
 def model_parchment(m, seed, sealed=True):
@@ -514,6 +955,8 @@ def model_weapon(m, seed, kind):
 def classify(target):
     text = f"{target['id']} {target['name']}".lower()
     category = target["category"]
+    if target["id"] in FOOD_MODEL_SPECS: return "food:authored"
+    if target["id"] in NOTEBOOK_SEED_IDS: return "seed:physical"
     if category == "armor": return "cloak" if "cloak" in text else "armor"
     if "knot marker" in text: return "token"
     if category == "key": return "key"
@@ -586,7 +1029,9 @@ def classify(target):
 def build_model(target, m):
     kind = classify(target)
     seed = stable_seed(target["id"])
-    if kind == "block": model_block(m, seed)
+    if kind == "food:authored": model_food_asset(target, m, seed, FOOD_MODEL_SPECS[target["id"]])
+    elif kind == "seed:physical": model_seed_identity(target, m, seed)
+    elif kind == "block": model_block(m, seed)
     elif kind == "ore": model_ore(m, seed)
     elif kind == "ingot": model_ingot(m, seed)
     elif kind == "crystal": model_crystal(m, seed)
@@ -657,17 +1102,6 @@ def setup_scene(target):
     world.node_tree.nodes["Background"].inputs["Color"].default_value = (*tuple(c * 0.08 for c in dark), 1)
     world.node_tree.nodes["Background"].inputs["Strength"].default_value = 0.22
 
-    shadow = material("shadow", (0.008, 0.01, 0.015, 0.42), roughness=1)
-    sphere(
-        "contact shadow",
-        (0, 0.65, -1.72),
-        (1.35, 0.55, 0.12),
-        shadow,
-        segments=24,
-        rings=10,
-        item=False,
-    )
-
     bpy.ops.object.camera_add(location=(6.8, -10.4, 5.8))
     camera = bpy.context.object
     camera.data.type = "ORTHO"
@@ -728,6 +1162,10 @@ def main():
     args = cli_args()
     payload = json.loads(TARGETS_PATH.read_text())
     targets = payload["targets"]
+    if args.food_assets_only:
+        targets = [t for t in targets if t["id"] in FOOD_MODEL_SPECS]
+    if args.seed_assets_only:
+        targets = [t for t in targets if t["id"] in NOTEBOOK_SEED_IDS]
     if args.only:
         needles = [part.strip().lower() for part in args.only.split(",") if part.strip()]
         targets = [

@@ -1,6 +1,9 @@
 /// <reference types="mocha" />
 
-import { containMobileControlEvent } from "@/client/components/mobileControlEvents";
+import {
+  containMobileControlEvent,
+  preventMobileBrowserNavigationGesture,
+} from "@/client/components/mobileControlEvents";
 import assert from "assert";
 
 describe("mobile HUD pointer containment", () => {
@@ -18,5 +21,27 @@ describe("mobile HUD pointer containment", () => {
       "stopPropagation",
       "stopImmediatePropagation",
     ]);
+  });
+
+  it("prevents a cancelable mobile browser history gesture", () => {
+    let prevented = false;
+    preventMobileBrowserNavigationGesture({
+      cancelable: true,
+      preventDefault: () => {
+        prevented = true;
+      },
+    });
+    assert.equal(prevented, true);
+  });
+
+  it("does not call preventDefault after the browser commits a gesture", () => {
+    let prevented = false;
+    preventMobileBrowserNavigationGesture({
+      cancelable: false,
+      preventDefault: () => {
+        prevented = true;
+      },
+    });
+    assert.equal(prevented, false);
   });
 });

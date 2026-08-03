@@ -170,8 +170,12 @@ async function exerciseMovementJoystick(page) {
 
   await page.evaluate(() => {
     globalThis.__mobileJoystickPointerEvents = [];
+    globalThis.__mobileJoystickTouchEvents = [];
     const stick = document.querySelector(
       '[aria-label="Movement joystick"] [data-testid="joystick-base"] button'
+    );
+    const controls = document.querySelector(
+      '[data-biomes-mobile-browser-back-guard="true"]'
     );
     const record = (event) => {
       globalThis.__mobileJoystickPointerEvents.push({
@@ -185,6 +189,14 @@ async function exerciseMovementJoystick(page) {
     stick?.addEventListener("pointerdown", record);
     window.addEventListener("pointermove", record);
     window.addEventListener("pointerup", record);
+    const recordTouch = (event) => {
+      globalThis.__mobileJoystickTouchEvents.push({
+        type: event.type,
+        defaultPrevented: event.defaultPrevented,
+      });
+    };
+    controls?.addEventListener("touchstart", recordTouch);
+    controls?.addEventListener("touchmove", recordTouch);
   });
 
   const client = await page.target().createCDPSession();
@@ -194,7 +206,7 @@ async function exerciseMovementJoystick(page) {
   };
   const forward = {
     x: center.x,
-    y: box.y + Math.max(4, box.height * 0.12),
+    y: box.y + 1,
   };
   const startHit = await page.evaluate(({ x, y }) => {
     const element = document.elementFromPoint(x, y);
@@ -242,6 +254,7 @@ async function exerciseMovementJoystick(page) {
       "mobile-joystick"
     ),
     pointerEvents: globalThis.__mobileJoystickPointerEvents,
+    touchEvents: globalThis.__mobileJoystickTouchEvents,
   }));
   const active = { ...activeInput, startHit };
 
@@ -264,8 +277,45 @@ async function exerciseMovementJoystick(page) {
     Math.abs(active.forward) > 0.01 || Math.abs(active.lateral) > 0.01,
     `joystick produces movement input; got ${JSON.stringify(active)}`
   );
+  assert.equal(
+    active.run,
+    1,
+    `full joystick deflection runs instead of walking; got ${JSON.stringify(
+      active
+    )}`
+  );
+  assert(
+    active.touchEvents.some(
+      (event) => event.type === "touchstart" && event.defaultPrevented
+    ) &&
+      active.touchEvents.some(
+        (event) => event.type === "touchmove" && event.defaultPrevented
+      ),
+    `joystick owns touchstart and touchmove before browser history navigation; got ${JSON.stringify(
+      active.touchEvents
+    )}`
+  );
   assert.equal(released.run, 0, "joystick run input releases after touchend");
-  return { active, released };
+  const guardedUrl = await page.url();
+  await page.evaluate(() => window.history.back());
+  await sleep(350);
+  const historyGuard = await page.evaluate(() => ({
+    href: location.href,
+    state: history.state,
+  }));
+  assert.equal(
+    historyGuard.href,
+    guardedUrl,
+    `mobile gameplay consumes Safari Back instead of leaving the game; got ${JSON.stringify(
+      historyGuard
+    )}`
+  );
+  assert.equal(
+    historyGuard.state?.__biomesMobileMovementHistoryGuard,
+    true,
+    "mobile movement history guard is restored after Back"
+  );
+  return { active, released, historyGuard };
 }
 
 async function exerciseMovementButtons(page) {
@@ -424,6 +474,7 @@ async function exerciseMobileHud(page) {
       hotbar: rect(
         '[data-biomes-mobile-hotbar="true"] [aria-label="Action hotbar"]'
       ),
+      movementControls: rect('[data-biomes-mobile-browser-back-guard="true"]'),
       joystick: rect('[aria-label="Movement joystick"]'),
       crouch: rect('[data-biomes-mobile-crouch="true"]'),
       jump: rect('[data-biomes-mobile-jump="true"]'),
@@ -440,12 +491,28 @@ async function exerciseMobileHud(page) {
           ).filter((element) => getComputedStyle(element).display === "none")
             .length
         : 0,
+      visibleMenuLabels: Array.from(
+        document.querySelectorAll(
+          ".biomes-ui-mobile-menu--phone .biomes-ui-mobile-menu__label"
+        )
+      ).filter(visible).length,
+      visibleMovementLabels: Array.from(
+        document.querySelectorAll(
+          ".joysticks--mobile .mobile-movement-button__label"
+        )
+      ).filter(visible).length,
+      browserBackGuard: document.querySelectorAll(
+        '[data-biomes-mobile-browser-back-guard="true"]'
+      ).length,
+      browserHistoryGuard:
+        history.state?.__biomesMobileMovementHistoryGuard === true,
     };
   });
 
   assert(layout.minimap, "mini map is visible on mobile");
   assert(layout.menu, "mobile Menu and Recipes controls are visible");
   assert(layout.hotbar, "mobile hotbar is visible");
+  assert(layout.movementControls, "mobile movement control rail is visible");
   assert(layout.joystick, "movement joystick is visible for layout checks");
   assert(layout.crouch, "mobile crouch button is visible");
   assert(layout.jump, "mobile jump button is visible");
@@ -456,6 +523,32 @@ async function exerciseMobileHud(page) {
   assert(
     layout.menu.width >= 90,
     `mobile Menu and Recipes controls keep a usable width; got ${JSON.stringify(
+      layout
+    )}`
+  );
+  assert.equal(
+    layout.visibleMenuLabels,
+    0,
+    "phone Menu, Recipes, and Invite controls are icon-only"
+  );
+  assert.equal(
+    layout.visibleMovementLabels,
+    0,
+    "phone Crouch and Jump controls are icon-only"
+  );
+  assert.equal(
+    layout.browserBackGuard,
+    1,
+    "left-thumb movement region owns touch gestures before Safari navigation"
+  );
+  assert.equal(
+    layout.browserHistoryGuard,
+    true,
+    "phone gameplay installs a same-document Safari Back guard"
+  );
+  assert(
+    layout.movementControls.left >= 22,
+    `left-thumb movement controls stay outside Safari's edge-swipe zone; got ${JSON.stringify(
       layout
     )}`
   );
@@ -477,6 +570,13 @@ async function exerciseMobileHud(page) {
     `hotbar does not overlap crouch or jump; got ${JSON.stringify(layout)}`
   );
   assert(
+    !rectanglesOverlap(layout.objective, layout.crouch) &&
+      !rectanglesOverlap(layout.objective, layout.jump),
+    `current objective does not overlap crouch or jump; got ${JSON.stringify(
+      layout
+    )}`
+  );
+  assert(
     !rectanglesOverlap(layout.hotbar, layout.objective),
     `hotbar does not overlap the current objective; got ${JSON.stringify(
       layout
@@ -495,9 +595,15 @@ async function exerciseMobileHud(page) {
   assert(
     !layout.vitals ||
       Math.abs(
-        layout.vitals.width - Math.min(layout.viewport.width * 0.54, 320)
+        layout.vitals.width - Math.min(layout.viewport.width * 0.46, 190)
       ) <= 2,
     `mobile vitals match the authored viewport-capped width; got ${JSON.stringify(
+      layout
+    )}`
+  );
+  assert(
+    !layout.vitals || layout.vitals.height <= 150,
+    `phone vitals remain compact enough to preserve world visibility; got ${JSON.stringify(
       layout
     )}`
   );

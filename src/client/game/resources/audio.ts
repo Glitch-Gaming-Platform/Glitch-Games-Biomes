@@ -25,6 +25,9 @@ export const HARTHMERE_BOSS_BATTLE_MUSIC_PATH =
 export const HARTHMERE_EXPLORATION_MUSIC_PATH =
   "/assets/harthmere/audio/08-banners-at-first-light-loop.mp3" as const;
 
+export const HARTHMERE_BUSINESS_MINIGAME_MUSIC_PATH =
+  "/assets/harthmere/audio/harthmere-fiddle-race-v3-fast-loop.mp3" as const;
+
 export const CH1_SAND_DUNGEON_MUSIC_PATH =
   "/assets/harthmere/audio/09-embers-test-the-oath-loop.mp3" as const;
 

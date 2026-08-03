@@ -11,12 +11,14 @@ import {
   HARTHMERE_ACTIVE_QUEST_MARKER_CAP,
   HARTHMERE_ACTIVE_WORLD_OBJECT_MARKER_RENDER_POLICY,
   HARTHMERE_LUIS_REPAIR_CART_ASSET_URL,
+  HARTHMERE_MOBILE_QUEST_MARKER_MAX_NEARBY,
   HARTHMERE_QUEST_OBJECT_MARKER_VERSION,
   HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY,
   HARTHMERE_QUEST_OBJECT_MARKERS,
   isHarthmereJobsBoardFieldTargetAliasId,
   isHarthmereJobsBoardFieldTargetMarkerId,
   harthmereResolveWorldQuestBeaconMarkerId,
+  harthmereMobileQuestObjectMarkerIds,
   HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY,
   activeHarthmereQuestMarkerId,
   activeHarthmereQuestMarkerIds,
@@ -540,6 +542,47 @@ describe("Harthmere quest object procedural markers current", () => {
         `${markerId} must have real geometry instead of a beacon-only anchor`
       );
     }
+  });
+
+  it("keeps only required and nearby permanent quest props on mobile", () => {
+    const nearbyMarker = HARTHMERE_QUEST_OBJECT_MARKERS.find(
+      isVisibleHarthmereWorldObjectMarker
+    );
+    const requiredMarker = HARTHMERE_QUEST_OBJECT_MARKERS.find(
+      (marker) =>
+        marker.id !== nearbyMarker?.id &&
+        !isVisibleHarthmereWorldObjectMarker(marker)
+    );
+    assert.ok(nearbyMarker);
+    assert.ok(requiredMarker);
+    const selected = harthmereMobileQuestObjectMarkerIds(
+      new THREE.Vector3(
+        nearbyMarker!.position[0],
+        nearbyMarker!.position[1],
+        nearbyMarker!.position[2]
+      ),
+      new Set([requiredMarker!.id])
+    );
+    assert.ok(selected.includes(nearbyMarker!.id));
+    assert.ok(selected.includes(requiredMarker!.id));
+    assert.ok(selected.length <= HARTHMERE_MOBILE_QUEST_MARKER_MAX_NEARBY + 1);
+
+    const renderer = makeHarthmereQuestObjectMarkersRenderer(
+      undefined,
+      undefined,
+      true
+    );
+    const scenes = createNewScenes();
+    renderer.draw(scenes, 0.016);
+    const root = findRendererRoot(scenes);
+    assert.ok(root);
+    assert.equal(root!.children.length, 0);
+    renderer.syncActiveQuestMarkerId(requiredMarker!.id);
+    assert.equal(root!.children.length, 1);
+    assert.equal(
+      root!.children[0].userData.harthmereQuestObjectMarkerId,
+      requiredMarker!.id
+    );
   });
 
   it("draws the active Chapter 1 repair cart as a visible interaction target", () => {

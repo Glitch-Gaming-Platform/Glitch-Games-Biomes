@@ -151,6 +151,8 @@ export const PlayerVoiceChat: React.FunctionComponent = React.memo(() => {
       microphoneDeviceId: microphoneDeviceId || undefined,
       getOutputVolume: () =>
         audioManager.getVolume("settings.volume.playerVoice"),
+      setGameAudioDucking: (active) =>
+        audioManager.setPlayerVoiceDucking(active),
       onStatus: (nextStatus) => {
         if (clientRef.current === client) setStatus(nextStatus);
       },

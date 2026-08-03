@@ -18,6 +18,8 @@ import { useWithUnseenEmptyTransition } from "@/client/util/hooks";
 import { TalkToNPCMultiQuestSelector } from "@/client/components/challenges/TalkToNPCMultiQuestSelector";
 import { JACKIE_ID } from "@/client/util/nux/state_machines";
 import { completeHarthmereDailyTaskSoon } from "@/client/components/challenges/harthmereDailyTasks";
+import { HarthmereBusinessCustomerTalkDialog } from "@/client/components/harthmere_business/HarthmereBusinessCustomerTalkDialog";
+import { useHarthmereBusinessCustomerTalkTarget } from "@/client/components/harthmere_business/harthmereBusinessCustomerTalkState";
 import { AdminDeleteEvent, AdminIceEvent } from "@/shared/ecs/gen/events";
 import { reportFunnelStage } from "@/shared/funnel";
 import type { BiomesId } from "@/shared/ids";
@@ -91,6 +93,8 @@ export const TalkToNPCScreen: React.FunctionComponent<{
   const clientContext = useClientContext();
   const { resources, gardenHose, authManager } = clientContext;
   const isAdmin = authManager.currentUser.hasSpecialRole("admin");
+  const businessCustomerTalk =
+    useHarthmereBusinessCustomerTalkTarget(talkingToNPCId);
   const trueRelevantSteps = useRelevantStepsForEntity(talkingToNPCId);
   const [queryingStep, setQueryingStep] = useState(false);
   const [trackedQuest] = clientContext.mapManager.react.useTrackedQuestId();
@@ -147,7 +151,20 @@ export const TalkToNPCScreen: React.FunctionComponent<{
   };
 
   let dialogContent: JSX.Element;
-  if (queryingStep) {
+  if (businessCustomerTalk) {
+    // Session-only business customers are a distinct in-world minigame role.
+    // Talking to one must present the authoritative service offers, never the
+    // ambient Chit Chat / Ask about this place / reputation options. The
+    // screenshot+HAR production defect showed start_business_customer_session
+    // succeeded but opening the customer took this ordinary dialogue branch,
+    // so no serve_business_customer mutation was ever emitted.
+    dialogContent = (
+      <HarthmereBusinessCustomerTalkDialog
+        talkingToNPCId={talkingToNPCId}
+        onClose={onClose}
+      />
+    );
+  } else if (queryingStep) {
     dialogContent = (
       <TalkToNpc
         talkingToNpcId={talkingToNPCId}

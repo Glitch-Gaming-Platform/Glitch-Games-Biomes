@@ -28,6 +28,7 @@ import { CH1_QUESTS } from "@/shared/harthmere/ch1_quests";
 import { CH1_NEW_CAST } from "@/shared/harthmere/ch1_cast";
 import { ch1ObjectiveTarget } from "@/shared/harthmere/ch1_objective_targets";
 import { ch1StageDirections } from "@/shared/harthmere/ch1_staging";
+import { ch1NpcLiveAuditStaging } from "@/shared/harthmere/ch1_npc_live_audit";
 import { CH1_FRACTURE_GATES } from "@/shared/harthmere/ch1_fracture_gates";
 import { CH1_GATE_INTERACTION_RADIUS } from "@/shared/harthmere/ch1_live_gate";
 import {
@@ -255,6 +256,39 @@ describe("chapter 1 gate / story preemption", () => {
       }).find((npc) => npc.key === cast.key)!;
       if (!staged.present) {
         offenders.push(`${questId}/${stepId}: ${cast.displayName} is absent`);
+      }
+    }
+    assert.deepEqual(offenders, []);
+  });
+
+  it("never projects two visible canonical actors onto one objective-stage coordinate", () => {
+    const offenders: string[] = [];
+    for (const { questId, stepId, runtime } of chapterWalk()) {
+      const staged = ch1NpcLiveAuditStaging({
+        flags: runtime.flags,
+        ending: runtime.ending,
+        hallrChoice: runtime.hallrChoice,
+        activeQuestId: questId,
+        activeStepId: stepId,
+      });
+      assert.equal(
+        new Set(staged.map((npc) => Number(npc.entityId))).size,
+        staged.length,
+        `${questId}/${stepId}: one canonical actor was staged twice`
+      );
+      const visible = staged.filter((npc) => npc.present && npc.position);
+      for (let left = 0; left < visible.length; left += 1) {
+        for (let right = left + 1; right < visible.length; right += 1) {
+          if (
+            visible[left].position!.every(
+              (value, axis) => value === visible[right].position![axis]
+            )
+          ) {
+            offenders.push(
+              `${questId}/${stepId}: ${visible[left].displayName} and ${visible[right].displayName} @ ${visible[left].position!.join(",")}`
+            );
+          }
+        }
       }
     }
     assert.deepEqual(offenders, []);

@@ -27,6 +27,7 @@ import {
   harthmereStoryHeightOf,
   harthmereValidateBuildingInteriors,
 } from "../harthmere_building_interiors";
+import { harthmereAdditiveTownInteriorFixturesForBuilding } from "../harthmere_additive_town_interiors";
 
 function doorSpan(building: HarthmereBuilding): [number, number] {
   return building.doorSide === "north" || building.doorSide === "south"
@@ -92,11 +93,14 @@ describe("harthmere buildings - every one is enclosed and has a door", () => {
     }
   });
 
-  it("records the seven authored footprint overlaps rather than hiding them", () => {
-    // These are pre-existing: buildings whose shells interpenetrate. They are
-    // NOT fixed here — the brief was to enhance, not redesign — but the
-    // furniture generator has to know about them, so the count is pinned. If a
-    // future edit adds an eighth, that is worth noticing.
+  it("has no footprint overlaps left to work around", () => {
+    // This used to pin SEVEN overlapping pairs — buildings whose shells
+    // interpenetrated — because the brief at the time was to enhance the town,
+    // not redesign it, and the furniture generator merely had to know about
+    // them. The shell polish pass fixed the shells themselves, so the number is
+    // now zero. `insideAnotherBuilding()` in the furniture generator is kept
+    // regardless: it is the guard that makes a future overlap harmless rather
+    // than a crate appearing inside the neighbour's shop.
     const overlaps: string[] = [];
     for (let i = 0; i < HARTHMERE_BUILDINGS.length; i += 1) {
       for (let j = i + 1; j < HARTHMERE_BUILDINGS.length; j += 1) {
@@ -107,29 +111,34 @@ describe("harthmere buildings - every one is enclosed and has a door", () => {
         }
       }
     }
-    assert.equal(
-      overlaps.length,
-      7,
-      `authored footprint overlaps changed: ${overlaps.join(", ")}`
+    assert.deepEqual(
+      overlaps,
+      [],
+      `authored footprint overlaps came back: ${overlaps.join(", ")}`
     );
   });
 });
 
-describe("harthmere buildings - furniture only ever adds", () => {
+describe("harthmere buildings - structural lighting and manifest furniture only ever add", () => {
   it("passes its own validation", () => {
     assert.deepEqual(harthmereValidateBuildingInteriors(), []);
   });
 
-  it("furnishes all 57 buildings, not just the easy ones", () => {
+  it("retires coarse voxel furniture and furnishes all 57 through the authored manifest", () => {
     for (const building of HARTHMERE_BUILDINGS) {
       const furniture = harthmereBuildingFurniture(building);
       const realFurniture = furniture.filter(
         (box) => box.piece !== "ceiling_led"
       );
+      assert.equal(
+        realFurniture.length,
+        0,
+        `${building.name} still emits duplicate voxel furniture`
+      );
       assert.ok(
-        realFurniture.length > 0,
-        `${building.name} has no furniture — an empty room is the bug this ` +
-          `work exists to fix`
+        harthmereAdditiveTownInteriorFixturesForBuilding(building.name)
+          .length >= 5,
+        `${building.name} has no authoritative manifest furniture`
       );
     }
   });
@@ -278,22 +287,21 @@ describe("harthmere buildings - furniture only ever adds", () => {
   it("gives each kind of building the furniture it should have", () => {
     const piecesFor = (name: string) =>
       new Set(
-        harthmereBuildingFurniture(
-          HARTHMERE_BUILDINGS.find((b) => b.name === name)!
-        ).map((box) => box.piece)
+        harthmereAdditiveTownInteriorFixturesForBuilding(name).map(
+          (fixture) =>
+            fixture.furnitureItemId ?? fixture.asset ?? fixture.stationKind
+        )
       );
     const smithy = piecesFor("black_anvil_smithy");
-    assert.ok(smithy.has("anvil"), "the smithy has no anvil");
+    assert.ok(smithy.has("town_forge_anvil"), "the smithy has no anvil");
     const stables = piecesFor("harthmere_stables");
     assert.ok(
-      stables.has("straw_bunk") || stables.has("barrels"),
-      "the stables have neither straw nor barrels"
+      stables.has("small_bed") || stables.has("wood_container"),
+      "the stables have neither bunks nor storage"
     );
   });
 
-  it("lights every room without a lamp, because Biomes has no lamps", () => {
-    // Doc 4.3.3: no lamp, torch, lantern or candle placeable exists. Light is
-    // built into the structure out of emissive blocks.
+  it("keeps structure-owned emissive ceiling lighting", () => {
     let lit = 0;
     for (const building of HARTHMERE_BUILDINGS) {
       const hasLed = harthmereBuildingFurniture(building).some(

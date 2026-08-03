@@ -61,6 +61,7 @@ import { addToBag, bagContains, countOf, createBag } from "@/shared/game/items";
 import { anItem } from "@/shared/game/item";
 import { findItemEquippableSlot } from "@/shared/game/wearables";
 import {
+  applyCreatureLevelResistance,
   buildCreatureProgression,
   readCreatureProgression,
   scaleCreatureCombatStats,
@@ -354,9 +355,9 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
       npc.setMovementState(
         MovementState.create({
           action: "evade",
-          action_start_time: now,
-          action_expiry_time: now + 0.5,
-          invulnerability_expiry_time: now + 0.3,
+          action_start_time: now - 0.11,
+          action_expiry_time: now + 0.39,
+          invulnerability_expiry_time: now + 0.19,
           cooldown_expiry_time: now + 3,
           direction: [1, 0, 0],
         })
@@ -656,6 +657,34 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
       100,
       20
     );
+    const itemId = harthmereNativeBiomesIdForItemId("iron_longsword")!;
+    const itemProfile = harthmereNativeItemCombatProfile(anItem(itemId))!;
+    const attackerProgression = readHarthmereNativeCombatProgression(
+      logic.world.table.get(attacker)?.trigger_state
+    );
+    const attackerStats = harthmereNativeLevelStats(attackerProgression.level);
+    const targetStats = harthmereNativeLevelStats(target.profile.level);
+    const statDamage = applyHarthmereNativeAttackStats({
+      baseDamage: itemProfile.damagePerHit,
+      kind: itemProfile.kind,
+      stats: attackerStats,
+      targetEvasion: targetStats.evasion,
+      criticalSeed: [
+        attacker,
+        target.id,
+        attackerProgression.lastAttackMs,
+        itemId,
+      ],
+    });
+    const levelFactor = Math.max(
+      0.65,
+      Math.min(
+        1.75,
+        1 + (attackerProgression.level - target.profile.level) * 0.04
+      )
+    );
+    const rawDamage = Math.max(1, Math.round(statDamage.damage * levelFactor));
+    const expectedDamage = applyCreatureLevelResistance(rawDamage, 20);
 
     await logic.publish(
       new GameEvent(
@@ -668,9 +697,10 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
       )
     );
 
-    // The same level-2 sword deals 17 in the baseline case above. Level 20's
-    // 10% resistance rounds that authoritative damage to 15.
-    assert.equal(logic.world.table.get(target.id)?.health?.hp, 85);
+    assert.equal(
+      logic.world.table.get(target.id)?.health?.hp,
+      100 - expectedDamage
+    );
   });
 
   it("rejects non-combat hotbar items and under-level weapons", async () => {
@@ -1623,6 +1653,9 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     const seed = harthmereGroundedMuckMonsterSeedsInTerritory()[0];
     const levelOne = spawnNativeNpc(seed, [0, 0, 0], undefined, 1);
     const levelFive = spawnNativeNpc(seed, [0, 0, 0], undefined, 5);
+    editEntity(logic.world, player, (entity) => {
+      entity.setHealth(Health.create({ hp: 500, maxHp: 500 }));
+    });
 
     const attackFrom = (attacker: ReturnType<typeof spawnNativeNpc>) => {
       const receipt = stageNativeMeleeReceipt(attacker, player);
@@ -1631,13 +1664,13 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
 
     await attackFrom(levelOne);
     const levelOneDamage =
-      100 - (logic.world.table.get(player)?.health?.hp ?? 100);
+      500 - (logic.world.table.get(player)?.health?.hp ?? 500);
     editEntity(logic.world, player, (entity) => {
-      entity.setHealth(Health.create({ hp: 100, maxHp: 100 }));
+      entity.setHealth(Health.create({ hp: 500, maxHp: 500 }));
     });
     await attackFrom(levelFive);
     const levelFiveDamage =
-      100 - (logic.world.table.get(player)?.health?.hp ?? 100);
+      500 - (logic.world.table.get(player)?.health?.hp ?? 500);
 
     assert.ok(levelOneDamage > 0);
     assert.ok(levelFiveDamage > levelOneDamage);
@@ -1661,6 +1694,36 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
         migrationVersion: 1,
       });
     });
+    const itemId = harthmereNativeBiomesIdForItemId("iron_longsword")!;
+    const itemProfile = harthmereNativeItemCombatProfile(anItem(itemId))!;
+    const attackerProgression = readHarthmereNativeCombatProgression(
+      logic.world.table.get(attacker)?.trigger_state
+    );
+    const defenderProgression = readHarthmereNativeCombatProgression(
+      logic.world.table.get(defender)?.trigger_state
+    );
+    const attackerStats = harthmereNativeLevelStats(attackerProgression.level);
+    const defenderStats = harthmereNativeLevelStats(defenderProgression.level);
+    const statDamage = applyHarthmereNativeAttackStats({
+      baseDamage: itemProfile.damagePerHit,
+      kind: itemProfile.kind,
+      stats: attackerStats,
+      criticalSeed: [
+        attacker,
+        defender,
+        attackerProgression.lastAttackMs,
+        itemId,
+      ],
+    });
+    const expectedDamage = mitigateHarthmereNativeIncomingDamage({
+      rawDamage: statDamage.damage,
+      armor: defenderStats.armor,
+      defense: defenderStats.defense,
+      evasion: defenderStats.evasion,
+      accuracy: attackerStats.accuracy,
+      attackerLevel: attackerProgression.level,
+      defenderLevel: defenderProgression.level,
+    });
 
     const attack = () =>
       logic.publish(
@@ -1681,7 +1744,10 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     await attack();
 
     // The forged -999 is ignored and the immediate replay is cooldown-blocked.
-    assert.equal(logic.world.table.get(defender)?.health?.hp, 82);
+    assert.equal(
+      logic.world.table.get(defender)?.health?.hp,
+      100 - expectedDamage
+    );
     const attackerState = logic.world.table.get(attacker)?.trigger_state;
     assert.ok(readHarthmereNativeSkillTotalXp(attackerState, "combat") > 0);
     assert.ok(

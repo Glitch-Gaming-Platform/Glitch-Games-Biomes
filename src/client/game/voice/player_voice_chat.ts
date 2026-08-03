@@ -8,15 +8,18 @@ import { clamp } from "lodash";
 
 export const PLAYER_VOICE_TOGGLE_CODE = "F8";
 export const PLAYER_VOICE_TOGGLE_LABEL = "F8";
-export const PLAYER_VOICE_FULL_VOLUME_RADIUS = 4;
-export const PLAYER_VOICE_AUDIBLE_RADIUS = 24;
-export const PLAYER_VOICE_PEER_CONNECT_RADIUS = 32;
-export const PLAYER_VOICE_PEER_DISCONNECT_RADIUS = 40;
+export const PLAYER_VOICE_FULL_VOLUME_RADIUS = 8;
+export const PLAYER_VOICE_AUDIBLE_RADIUS = 32;
+export const PLAYER_VOICE_PEER_CONNECT_RADIUS = 36;
+export const PLAYER_VOICE_PEER_DISCONNECT_RADIUS = 44;
 
 const PLAYER_VOICE_HEARTBEAT_MS = 15_000;
 const PLAYER_VOICE_HELLO_MS = 8_000;
-const PLAYER_VOICE_POLL_MS = 500;
+const PLAYER_VOICE_POLL_IDLE_MS = 250;
 const PLAYER_VOICE_SPATIAL_UPDATE_MS = 250;
+const PLAYER_VOICE_ACTIVITY_HOLD_MS = 450;
+const PLAYER_VOICE_AUDIO_LEVEL_THRESHOLD = 0.012;
+const PLAYER_VOICE_DIAGNOSTICS_MS = 10_000;
 
 export function playerVoiceControlAvailable(input: {
   showVirtualJoystick: boolean;
@@ -38,6 +41,7 @@ type VoicePacketType =
 type VoiceParticipant = {
   player_id: string;
   status?: string;
+  last_sequence?: number;
 };
 
 type VoiceRoom = {
@@ -48,6 +52,7 @@ type VoiceRoom = {
 
 type VoicePacket = {
   player_id: string;
+  recipient_player_id?: string;
   packet_type: VoicePacketType;
   payload: string;
   sequence: number;
@@ -77,6 +82,10 @@ type VoicePeer = {
   audio?: HTMLAudioElement;
   pendingCandidates: RTCIceCandidateInit[];
   makingOffer: boolean;
+  statsPending: boolean;
+  receivingSpeech: boolean;
+  lastAudibleAtMs: number;
+  lastDiagnosticsAtMs: number;
 };
 
 export type PlayerVoiceStatusState =
@@ -100,7 +109,13 @@ type PlayerVoiceClientDeps = {
   resources: ClientResources;
   microphoneDeviceId?: string;
   getOutputVolume: () => number;
+  setGameAudioDucking: (active: boolean) => void;
   onStatus: (status: PlayerVoiceStatus) => void;
+};
+
+type PlayerVoiceResumeState = {
+  roomId: string;
+  voiceToken: string;
 };
 
 class PlayerVoiceRequestError extends Error {
@@ -178,11 +193,12 @@ export function playerVoiceProximityVolume(
   }
   const falloffDistance =
     PLAYER_VOICE_AUDIBLE_RADIUS - PLAYER_VOICE_FULL_VOLUME_RADIUS;
-  return clamp(
-    ((PLAYER_VOICE_AUDIBLE_RADIUS - distance) / falloffDistance) * outputVolume,
+  const remaining = clamp(
+    (PLAYER_VOICE_AUDIBLE_RADIUS - distance) / falloffDistance,
     0,
     1
   );
+  return clamp(Math.sqrt(remaining) * outputVolume, 0, 1);
 }
 
 export function shouldInitiatePlayerVoiceOffer(
@@ -250,6 +266,56 @@ export function playerVoiceIceServersFromConfig(
   });
 }
 
+export function playerVoiceIceTransportPolicyFromConfig(
+  connectionConfig: Record<string, unknown> | undefined
+): RTCIceTransportPolicy {
+  const policy =
+    connectionConfig?.iceTransportPolicy ??
+    connectionConfig?.ice_transport_policy;
+  return policy === "relay" ? "relay" : "all";
+}
+
+function playerVoiceResumeStorageKey(playerId: string) {
+  return `harthmere.playerVoice.${playerId}`;
+}
+
+function readPlayerVoiceResumeState(
+  playerId: string
+): PlayerVoiceResumeState | undefined {
+  try {
+    const raw = window.sessionStorage.getItem(
+      playerVoiceResumeStorageKey(playerId)
+    );
+    const parsed = raw ? asRecord(JSON.parse(raw)) : undefined;
+    if (
+      typeof parsed?.roomId === "string" &&
+      typeof parsed.voiceToken === "string"
+    ) {
+      return {
+        roomId: parsed.roomId,
+        voiceToken: parsed.voiceToken,
+      };
+    }
+  } catch {
+    // Session storage can be unavailable in hardened/private browser contexts.
+  }
+  return undefined;
+}
+
+function writePlayerVoiceResumeState(
+  playerId: string,
+  state: PlayerVoiceResumeState
+) {
+  try {
+    window.sessionStorage.setItem(
+      playerVoiceResumeStorageKey(playerId),
+      JSON.stringify(state)
+    );
+  } catch {
+    // Reconnect still works within the current client instance without storage.
+  }
+}
+
 export class GlitchPlayerVoiceClient {
   private stopped = true;
   private speaking = false;
@@ -258,14 +324,15 @@ export class GlitchPlayerVoiceClient {
   private voiceToken?: string;
   private lastSequence = 0;
   private iceServers: RTCIceServer[] = [];
+  private iceTransportPolicy: RTCIceTransportPolicy = "all";
   private peers = new Map<string, VoicePeer>();
   private heartbeatTimer?: number;
   private helloTimer?: number;
   private pollTimer?: number;
   private spatialTimer?: number;
   private reconnectTimer?: number;
-  private signalQueue = Promise.resolve();
   private reconnectAttempts = 0;
+  private gameAudioDucked = false;
 
   constructor(private readonly deps: PlayerVoiceClientDeps) {}
 
@@ -324,7 +391,11 @@ export class GlitchPlayerVoiceClient {
           noiseSuppression: true,
           autoGainControl: true,
           channelCount: 1,
+          sampleRate: 48_000,
         },
+      });
+      this.localStream.getAudioTracks().forEach((track) => {
+        track.contentHint = "speech";
       });
       this.setLocalTrackEnabled(false);
       document.addEventListener("pointerdown", this.retryAudioPlayback, true);
@@ -362,6 +433,7 @@ export class GlitchPlayerVoiceClient {
     this.voiceToken = undefined;
     this.voiceRoom = undefined;
     this.closeAllPeers();
+    this.setGameAudioDucking(false);
     this.localStream?.getTracks().forEach((track) => track.stop());
     this.localStream = undefined;
     this.emitStatus("off");
@@ -393,8 +465,15 @@ export class GlitchPlayerVoiceClient {
   }
 
   private async joinVoiceRoom() {
+    const resumeState = readPlayerVoiceResumeState(this.localPlayerId);
     const response = await playerVoiceRequest<VoiceJoinResponse>("voiceJoin", {
       display_name: this.deps.displayName,
+      ...(resumeState
+        ? {
+            voice_room_id: resumeState.roomId,
+            voice_token: resumeState.voiceToken,
+          }
+        : {}),
     });
     if (
       response.available === false ||
@@ -410,8 +489,18 @@ export class GlitchPlayerVoiceClient {
     }
     this.voiceRoom = response.voice_room;
     this.voiceToken = response.voice_token;
-    this.lastSequence = 0;
+    const joinSequence = Number(response.participant?.last_sequence ?? 0);
+    this.lastSequence = Number.isFinite(joinSequence)
+      ? Math.max(0, joinSequence)
+      : 0;
+    writePlayerVoiceResumeState(this.localPlayerId, {
+      roomId: response.voice_room.id,
+      voiceToken: response.voice_token,
+    });
     this.iceServers = playerVoiceIceServersFromConfig(
+      response.voice_room.connection_config
+    );
+    this.iceTransportPolicy = playerVoiceIceTransportPolicyFromConfig(
       response.voice_room.connection_config
     );
     this.reconnectAttempts = 0;
@@ -469,7 +558,7 @@ export class GlitchPlayerVoiceClient {
     this.reconnectTimer = undefined;
   }
 
-  private schedulePoll(delay = PLAYER_VOICE_POLL_MS) {
+  private schedulePoll(delay = PLAYER_VOICE_POLL_IDLE_MS) {
     if (this.stopped) {
       return;
     }
@@ -482,12 +571,16 @@ export class GlitchPlayerVoiceClient {
       this.schedulePoll();
       return;
     }
+    let nextPollDelay = PLAYER_VOICE_POLL_IDLE_MS;
     try {
       const raw = await playerVoiceRequest<unknown>("voicePoll", {
         voice_token: token,
         after_sequence: this.lastSequence,
       });
       const packets = voicePacketsFromResponse(raw);
+      if (packets.length > 0) {
+        nextPollDelay = 0;
+      }
       for (const packet of packets) {
         this.lastSequence = Math.max(this.lastSequence, packet.sequence);
         await this.handlePacket(packet).catch((error) => {
@@ -503,7 +596,7 @@ export class GlitchPlayerVoiceClient {
         this.handleRuntimeRequestFailure(error);
       }
     } finally {
-      this.schedulePoll();
+      this.schedulePoll(nextPollDelay);
     }
   }
 
@@ -576,23 +669,27 @@ export class GlitchPlayerVoiceClient {
     );
   }
 
-  private sendPacket(packetType: VoicePacketType, payload: string) {
+  private sendPacket(
+    packetType: VoicePacketType,
+    payload: string,
+    recipientPlayerId?: string
+  ) {
     const token = this.voiceToken;
     if (!token || this.stopped) {
       return Promise.resolve();
     }
-    const send = () =>
-      playerVoiceRequest("voicePacket", {
-        voice_token: token,
-        packet_type: packetType,
-        payload,
-      }).catch((error) => {
+    return playerVoiceRequest("voicePacket", {
+      voice_token: token,
+      packet_type: packetType,
+      payload,
+      ...(recipientPlayerId ? { recipient_player_id: recipientPlayerId } : {}),
+    })
+      .then(() => undefined)
+      .catch((error) => {
         if (this.voiceToken === token) {
           this.handleRuntimeRequestFailure(error);
         }
       });
-    this.signalQueue = this.signalQueue.then(send, send).then(() => undefined);
-    return this.signalQueue;
   }
 
   private async handlePacket(packet: VoicePacket) {
@@ -617,6 +714,16 @@ export class GlitchPlayerVoiceClient {
       if (shouldInitiatePlayerVoiceOffer(this.localPlayerId, remotePlayerId)) {
         await this.makeOffer(remotePlayerId);
       }
+      return;
+    }
+
+    if (
+      packet.packet_type === "speaking" &&
+      typeof payload.speaking === "boolean"
+    ) {
+      // This is microphone state, not voice activity. Actual ducking is driven
+      // by inbound RTP audio levels below so open microphones do not suppress
+      // the game mix continuously.
       return;
     }
 
@@ -658,11 +765,18 @@ export class GlitchPlayerVoiceClient {
     if (existing) {
       return existing;
     }
-    const connection = new RTCPeerConnection({ iceServers: this.iceServers });
+    const connection = new RTCPeerConnection({
+      iceServers: this.iceServers,
+      iceTransportPolicy: this.iceTransportPolicy,
+    });
     const peer: VoicePeer = {
       connection,
       pendingCandidates: [],
       makingOffer: false,
+      statsPending: false,
+      receivingSpeech: false,
+      lastAudibleAtMs: 0,
+      lastDiagnosticsAtMs: 0,
     };
     this.peers.set(remotePlayerId, peer);
     for (const track of this.localStream?.getTracks() ?? []) {
@@ -679,7 +793,8 @@ export class GlitchPlayerVoiceClient {
           from: this.localPlayerId,
           to: remotePlayerId,
           candidate: event.candidate.toJSON(),
-        } satisfies PlayerVoiceSignalPayload)
+        } satisfies PlayerVoiceSignalPayload),
+        remotePlayerId
       );
     };
     connection.ontrack = (event) => {
@@ -694,7 +809,12 @@ export class GlitchPlayerVoiceClient {
       document.body.appendChild(audio);
       peer.audio = audio;
       this.updatePeerVolume(remotePlayerId, peer);
-      void audio.play().catch(() => undefined);
+      void audio.play().catch((error) => {
+        log.warn("Player voice media playback needs user interaction", {
+          error,
+          remotePlayerId,
+        });
+      });
     };
     connection.onconnectionstatechange = () => {
       if (
@@ -740,7 +860,8 @@ export class GlitchPlayerVoiceClient {
         from: this.localPlayerId,
         to: remotePlayerId,
         description: { type: description.type, sdp: description.sdp },
-      } satisfies PlayerVoiceSignalPayload)
+      } satisfies PlayerVoiceSignalPayload),
+      remotePlayerId
     );
   }
 
@@ -772,7 +893,17 @@ export class GlitchPlayerVoiceClient {
         this.removePeer(remotePlayerId);
         continue;
       }
-      this.updatePeerVolume(remotePlayerId, peer, distance);
+      const effectiveVolume = this.updatePeerVolume(
+        remotePlayerId,
+        peer,
+        distance
+      );
+      void this.updatePeerStats(
+        remotePlayerId,
+        peer,
+        distance,
+        effectiveVolume
+      );
     }
   }
 
@@ -781,12 +912,104 @@ export class GlitchPlayerVoiceClient {
     peer: VoicePeer,
     distance = this.peerDistance(remotePlayerId)
   ) {
+    const effectiveVolume = playerVoiceProximityVolume(
+      distance,
+      this.deps.getOutputVolume()
+    );
     if (peer.audio) {
-      peer.audio.volume = playerVoiceProximityVolume(
-        distance,
-        this.deps.getOutputVolume()
-      );
+      peer.audio.volume = effectiveVolume;
     }
+    return effectiveVolume;
+  }
+
+  private async updatePeerStats(
+    remotePlayerId: string,
+    peer: VoicePeer,
+    distance: number,
+    effectiveVolume: number
+  ) {
+    if (peer.statsPending || peer.connection.connectionState === "closed") {
+      return;
+    }
+    peer.statsPending = true;
+    try {
+      const report = await peer.connection.getStats();
+      const rows: Record<string, unknown>[] = [];
+      report.forEach((entry) => {
+        rows.push(entry as unknown as Record<string, unknown>);
+      });
+      const inboundAudio = rows.find(
+        (row) =>
+          row.type === "inbound-rtp" &&
+          (row.kind === "audio" || row.mediaType === "audio")
+      );
+      const audioLevel = Number(inboundAudio?.audioLevel ?? 0);
+      const now = Date.now();
+      if (
+        Number.isFinite(audioLevel) &&
+        audioLevel >= PLAYER_VOICE_AUDIO_LEVEL_THRESHOLD
+      ) {
+        peer.lastAudibleAtMs = now;
+      }
+      const receivingSpeech =
+        peer.connection.connectionState === "connected" &&
+        now - peer.lastAudibleAtMs <= PLAYER_VOICE_ACTIVITY_HOLD_MS;
+      if (receivingSpeech !== peer.receivingSpeech) {
+        peer.receivingSpeech = receivingSpeech;
+        this.updateGameAudioDucking();
+      }
+
+      if (now - peer.lastDiagnosticsAtMs >= PLAYER_VOICE_DIAGNOSTICS_MS) {
+        peer.lastDiagnosticsAtMs = now;
+        const candidatePair = rows.find(
+          (row) =>
+            row.type === "candidate-pair" &&
+            row.state === "succeeded" &&
+            (row.nominated === true || row.selected === true)
+        );
+        const remoteCandidate = rows.find(
+          (row) => row.id === candidatePair?.remoteCandidateId
+        );
+        log.info("Player voice WebRTC stats", {
+          remotePlayerId,
+          connectionState: peer.connection.connectionState,
+          iceConnectionState: peer.connection.iceConnectionState,
+          candidateType: remoteCandidate?.candidateType,
+          protocol: remoteCandidate?.protocol,
+          roundTripTime: candidatePair?.currentRoundTripTime,
+          jitter: inboundAudio?.jitter,
+          packetsLost: inboundAudio?.packetsLost,
+          audioLevel,
+          distance,
+          effectiveVolume,
+        });
+      }
+    } catch (error) {
+      const now = Date.now();
+      if (now - peer.lastDiagnosticsAtMs >= PLAYER_VOICE_DIAGNOSTICS_MS) {
+        peer.lastDiagnosticsAtMs = now;
+        log.warn("Player voice WebRTC stats unavailable", {
+          error,
+          remotePlayerId,
+        });
+      }
+    } finally {
+      peer.statsPending = false;
+    }
+  }
+
+  private updateGameAudioDucking() {
+    this.setGameAudioDucking(
+      [...this.peers.values()].some((peer) => peer.receivingSpeech)
+    );
+  }
+
+  private setGameAudioDucking(active: boolean) {
+    if (this.gameAudioDucked === active) {
+      return;
+    }
+    this.gameAudioDucked = active;
+    this.deps.setGameAudioDucking(active);
   }
 
   private removePeer(remotePlayerId: string) {
@@ -804,6 +1027,7 @@ export class GlitchPlayerVoiceClient {
       peer.audio.remove();
     }
     this.peers.delete(remotePlayerId);
+    this.updateGameAudioDucking();
     this.emitStatus(this.voiceToken ? "connected" : "reconnecting");
   }
 

@@ -18,6 +18,7 @@ import {
   stubClientResourceValue,
 } from "@/client/game/interact/item_types/test_helpers";
 import type { WithActionThottler } from "@/client/game/interact/types";
+import type { Cursor } from "@/client/game/resources/cursor";
 import type { LocalPlayer } from "@/client/game/resources/local_player";
 import type { Player } from "@/client/game/resources/players";
 import { loadVoxeloo } from "@/server/shared/voxeloo";
@@ -109,20 +110,21 @@ describe("Attack and Destroy Spec", () => {
           spawn_orientation: [0, 0],
         },
       } as any;
-      const cursor = resources.get("/scene/cursor");
+      const cursor = resources.get("/scene/cursor") as Cursor;
       stubClientResourceValue(resources, "/scene/cursor", {
         ...cursor,
         attackableEntities: [target],
       });
+      const publish = deps.events.publish as unknown as sinon.SinonStub;
 
       itemSpec.onAttackStart([target], hotbarItemInfo());
       assert.equal(localPlayer.startAttack.callCount, 1);
-      assert.equal(deps.events.publish.callCount, 0);
+      assert.equal(publish.callCount, 0);
 
       await fakeTime.tickAsync(399);
-      assert.equal(deps.events.publish.callCount, 0);
+      assert.equal(publish.callCount, 0);
       await fakeTime.tickAsync(1);
-      assert.equal(deps.events.publish.callCount, 1);
+      assert.equal(publish.callCount, 1);
     } finally {
       fakeTime.restore();
     }

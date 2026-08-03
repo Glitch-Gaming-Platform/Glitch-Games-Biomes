@@ -78,9 +78,17 @@ describe("Chapter 1 objective targets", () => {
   });
 
   it("keeps named Chapter 1 NPC objectives on their real seeded identities", () => {
+    const examination = ch1ObjectiveTarget(
+      "ch1_a2_q04_the_visiting_doctor",
+      "the_examination"
+    )!;
+    assert.equal(examination.source, "npc");
+    assert.deepEqual(examination.position, CH1_ANCHORS.greenlamp_lou_post);
+
     const lou = ch1ObjectiveTarget("ch1_a6_q01_the_case", "hear_him_out")!;
     assert.equal(lou.source, "npc");
     assert.ok(lou.entityId);
+    assert.deepEqual(lou.position, CH1_ANCHORS.returnstone_lou_post);
     const sorrel = ch1ObjectiveTarget(
       "ch1_a5_d2_the_long_winter_mouth",
       "d2_sorrels_camp"
@@ -94,7 +102,10 @@ describe("Chapter 1 objective targets", () => {
       "report_or_not"
     )!;
     assert.equal(statement.label, "Grove Watch House");
-    assert.deepEqual(statement.position, CH1_ANCHORS.grove_watch_house);
+    assert.deepEqual(
+      statement.position,
+      CH1_ANCHORS.grove_watch_house_holt_post
+    );
     assert.equal(statement.source, "npc");
     assert.equal(statement.entityId, CH1_SERGEANT_HOLT.entityId);
     assert.ok(statement.position[0] < 1792);

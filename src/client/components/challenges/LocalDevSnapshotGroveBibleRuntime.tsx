@@ -53,6 +53,7 @@ import {
   groveQuestGateReasons,
 } from "@/shared/harthmere/grove/grove_quest_gate";
 import { groveLandmarkWorldPosition } from "@/shared/harthmere/grove/grove_waypoints";
+import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
 import { snapshotGroveAmbientLineForNpc } from "@/shared/harthmere/snapshot_grove_ambient_dialogue";
 import {
   HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT,
@@ -836,6 +837,22 @@ export function mostRecentlyCompletedSnapshotGroveQuestForNpcForTest(
   return undefined;
 }
 
+/**
+ * Every step marker for a quest, in step order, retargeted the same way a
+ * single objective's marker is.
+ *
+ * The "All marked stops" list used to read `quest.markerIds` straight off the
+ * retired array. That is the one marker surface that does not go through
+ * `snapshotGroveObjectiveMarkerIdForProgress`, so it kept naming Jackie for
+ * Rosalyn's four reassigned lessons after every other surface had been fixed.
+ */
+function snapshotGroveQuestStepMarkerIds(quest: SnapshotGroveQuest): string[] {
+  return quest.markerIds.map(
+    (markerId, index) =>
+      snapshotGroveObjectiveTargetMarkerIds(quest, index)[0] ?? markerId
+  );
+}
+
 function currentMarkerForQuest(
   quest: SnapshotGroveQuest,
   objectiveIndex: number,
@@ -849,15 +866,73 @@ function currentMarkerForQuest(
   return markerId ? snapshotGroveLandmarkById(markerId) : undefined;
 }
 
+/**
+ * Landmark -> the world position every player-facing surface must agree on.
+ *
+ * TWO STEPS, AND BOTH ARE LOAD-BEARING.
+ *
+ * 1. `groveLandmarkWorldPosition` lifts a landmark out of the retired Y=54
+ *    authored datum. That is necessary but NOT sufficient: it lifts onto ONE
+ *    FLAT PLANE (`SNAPSHOT_GROVE_LIVE_MARKER_Y` = 71), which is only true at
+ *    the fountain plaza. The Grove is hilly.
+ * 2. `resolveHarthmereProductionMarkerPosition` replaces that plane with the
+ *    scanned production surface for this marker id.
+ *
+ * Skipping step 2 is not a small error. Measured against the checked-in
+ * placement map, 79 of the 108 Grove landmarks have a scanned record, and the
+ * flat plane is wrong at most of them — Ranger Jane's post is at 49 (22 blocks
+ * below the plane), Old Coop 59, Luis's cart 64, Mel's workbench 64, Alexis 74.
+ * A pin on the plane is a player walking to empty air or to a spot 22 blocks
+ * under the hillside they can see.
+ *
+ * This is the rule in docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP.md:
+ * "All player-facing surfaces must point at the same `recommendedPosition`",
+ * "live helper landmarks should resolve through
+ * `resolveHarthmereProductionMarkerPosition`", and "do not fix one bad item by
+ * adding a magic `+1`, `-17`, `y=54`, or `y=70`". The un-stranded value is
+ * passed as the FALLBACK, which is what the resolver returns for the 29
+ * landmarks the scan does not cover.
+ *
+ * NO MARKER OFFSET IS ADDED. `ch1_objective_targets.ts` adds +1 because it is
+ * placing a 3D objective prop above the scanned feet-Y; this is a navigation
+ * aid, and `mapPinnedDestination.activeBiomesUIMapPinFromMarkerForTest` — the
+ * BiomesUI map pin for the same marker — consumes `recommendedPosition`
+ * unmodified. Adding an offset here would make the HUD pin and the map pin
+ * disagree by one block for the same landmark, which is the exact divergence
+ * the placement-map doc forbids.
+ */
+export function snapshotGroveLandmarkPinPosition(
+  landmark: SnapshotGroveLandmark
+): Vec3 {
+  return resolveHarthmereProductionMarkerPosition({
+    markerId: landmark.id,
+    fallback: groveLandmarkWorldPosition(landmark),
+  });
+}
+
+/**
+ * TAKES A LANDMARK, NOT A POSITION — deliberately.
+ *
+ * The previous signature took a `Vec3`, which made grounding a per-call-site
+ * decision. Four call sites made it four different ways: two passed a resolved
+ * position and two passed `marker.position` / `stepMarker.position` raw, so the
+ * "All marked stops" list and the "Pin <marker>" button dropped pins on the
+ * authored datum while the quest arrow used the lifted one.
+ *
+ * Narrowing the parameter to the landmark itself makes that class of bug
+ * unrepresentable: there is no longer a way to hand this function an
+ * unresolved coordinate.
+ */
 function pinSnapshotGroveLandmark(
   mapManager: {
     addNavigationAid: (aid: any, id?: number) => number;
     removeNavigationAid?: (id: number) => void;
   },
-  position: Vec3,
+  landmark: SnapshotGroveLandmark,
   navAidId: number = snapshotGroveStepNavAidId(0),
   autoremoveWhenNear = false
 ) {
+  const position = snapshotGroveLandmarkPinPosition(landmark);
   const markerPersistence = autoremoveWhenNear
     ? SNAPSHOT_GROVE_ACTIVE_MARKER_AUTOREMOVE
     : SNAPSHOT_GROVE_QUEST_CONTROLLED_MARKER;
@@ -928,7 +1003,7 @@ function pinAllSnapshotGroveQuestMarkers(
   if (activeMarker) {
     pinSnapshotGroveLandmark(
       mapManager,
-      groveLandmarkWorldPosition(activeMarker),
+      activeMarker,
       snapshotGroveStepNavAidId(0),
       true
     );
@@ -2435,7 +2510,7 @@ export function useSnapshotGroveNpcDialog(
         onPerformed: () => {
           pinSnapshotGroveLandmark(
             mapManager,
-            groveLandmarkWorldPosition(marker),
+            marker,
             snapshotGroveStepNavAidId(objectiveIndex)
           );
           requestSnapshotGroveLandmarkOnMapForBiomesUI(marker);
@@ -2965,7 +3040,7 @@ const SnapshotGroveMapHUDWithClientContext: React.FunctionComponent<{
             All marked stops
           </div>
           <div className="space-y-1">
-            {quest.markerIds.map((markerId, stepIndex) => {
+            {snapshotGroveQuestStepMarkerIds(quest).map((markerId, stepIndex) => {
               const stepMarker = snapshotGroveLandmarkById(markerId);
               const isActiveStep = stepIndex === objectiveIndex;
               const isPastStep = stepIndex < objectiveIndex;
@@ -2982,7 +3057,7 @@ const SnapshotGroveMapHUDWithClientContext: React.FunctionComponent<{
                     if (stepMarker) {
                       pinSnapshotGroveLandmark(
                         mapManager,
-                        stepMarker.position,
+                        stepMarker,
                         snapshotGroveStepNavAidId(stepIndex)
                       );
                     }
@@ -3086,7 +3161,7 @@ const SnapshotGroveMapHUDWithClientContext: React.FunctionComponent<{
           onClick={() =>
             pinSnapshotGroveLandmark(
               mapManager,
-              marker.position,
+              marker,
               snapshotGroveStepNavAidId(objectiveIndex)
             )
           }

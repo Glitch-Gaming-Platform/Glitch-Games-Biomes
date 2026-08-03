@@ -31,40 +31,44 @@ const CAVE_LAYOUTS = {
   deep_spindle_massive_cave: {
     progressionLevel: 4,
     packCenters: [
-      [714, -32, -379],
-      [724, -32, -369],
-      [734, -32, -359],
+      [714, -379],
+      [724, -369],
+      [734, -359],
     ],
   },
   harthmere_core_massive_cave: {
     progressionLevel: 5,
     packCenters: [
-      [924, -2, -315],
-      [956, -1, -315],
-      [940, 0, -281],
+      [924, -315],
+      [956, -315],
+      [939, -281],
     ],
   },
   harthmere_far_hollow_massive_cave: {
     progressionLevel: 6,
     packCenters: [
-      [956, 12, -690],
-      [988, 13, -690],
-      [972, 14, -656],
+      [956, -690],
+      [988, -690],
+      [971, -656],
     ],
   },
   harthmere_high_vault_massive_cave: {
     progressionLevel: 7,
     packCenters: [
-      [178, 101, 293],
-      [210, 102, 293],
-      [194, 103, 327],
+      [178, 293],
+      [210, 293],
+      [193, 327],
     ],
   },
 } as const satisfies Record<
   (typeof HARTHMERE_INDISWORM_CAVE_IDS)[number],
   {
     progressionLevel: number;
-    packCenters: readonly [Vec3, Vec3, Vec3];
+    packCenters: readonly [
+      readonly [number, number],
+      readonly [number, number],
+      readonly [number, number],
+    ];
   }
 >;
 
@@ -129,8 +133,11 @@ export const HARTHMERE_INDISWORM_SPAWNS: readonly HarthmereIndiswormSpawnDescrip
           caveLabel: cave.label,
           position: [
             center[0] + offset[0],
-            center[1] + offset[1],
-            center[2] + offset[2],
+            // Cave bounds use the walkable feet plane as y0. The confirmed
+            // cave anchors are mid-volume observation points and would leave
+            // these human-sized worms visibly floating several blocks up.
+            cave.bounds.y0 + offset[1],
+            center[1] + offset[2],
           ],
           orientation: [
             0,

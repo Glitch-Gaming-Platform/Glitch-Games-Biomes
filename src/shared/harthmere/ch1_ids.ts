@@ -148,7 +148,8 @@ export const CH1_ANCHORS = {
   gus_baker: [486, 70, -126],
   fern_grower: [496, 70, -118],
   carlo_cook: [498, 70, -133],
-  rin_forager: [510, 70, -155],
+  // Production terrain readback measures this raised forager post at y=73.
+  rin_forager: [510, 73, -155],
   mel_handyman: [488, 64, -218],
   luis_repair_cart: [486, 64, -209],
   grove_wishing_well: [490, 70, -148],
@@ -162,6 +163,8 @@ export const CH1_ANCHORS = {
   ranger_jane: [450, 50, -260],
   shutter_cove_photo_marker: [560, 74, -182],
   lovely_locks_mirror: [407, 75, -126],
+  lovely_locks_iris_post: [396, 75, -126],
+  lovely_locks_marrow_post: [396, 75, -131],
   rat_crowns_den: [418, 56, -237],
 
   // --- Wider map ---
@@ -169,9 +172,13 @@ export const CH1_ANCHORS = {
   // Roofed businesses use their canonical entrance/interior floor records,
   // never the nearest open-sky surface. The previous values were roof tops.
   greenlamp_clinic: [656, 65, -193],
+  greenlamp_lou_post: [652, 65, -193],
+  greenlamp_nadia_post: [660, 65, -193],
   ashline_containment_works: [674, 67, -56],
   ashline_refinery_intake: [674, 67, -52],
   returnstone_pad_office: [42, 41, -41],
+  returnstone_cressa_post: [38, 41, -41],
+  returnstone_lou_post: [46, 41, -41],
   lanternrest_road_inn: [606, 48, -496],
   muck_scarred_helix: [232, 33, -506],
   harthmere_bridge_center: [904, 58, -209],
@@ -244,6 +251,11 @@ export const CH1_ANCHORS = {
   gate_fence_sighting: [543, 69, -221],
   // Act 2 close: the first persistent gate. Dungeon 1 entrance.
   gate_desert: [648, 54, -462],
+  // Rook and Jackie share the return-aperture scene in Act 3, but must never
+  // share one interaction body. These posts sit on the same measured shelf,
+  // four metres to either side of the Mouth and eight metres apart.
+  gate_desert_rook_post: [644, 54, -462],
+  gate_desert_jackie_post: [652, 54, -462],
   // Act 5: the cold gate at the far edge of the anchor field. Dungeon 2.
   gate_winter: [232, 33, -506],
   // Act 6 epilogue: the gate that does not close. Shares the fence ridge with
@@ -252,6 +264,12 @@ export const CH1_ANCHORS = {
   // Act 6: a separate enclosed watch house south-west of the road-house.
   grove_watch_house_door: [473, 70, -152],
   grove_watch_house: [473, 70, -148],
+  // Distinct interior posts keep the canonical actors in one room without
+  // stacking their bodies or letting a nearby actor steal the intended Talk
+  // prompt. All three are on the watch-house Y=69 floor (feet Y=70).
+  grove_watch_house_holt_post: [470, 70, -147],
+  grove_watch_house_teak_post: [475, 70, -147],
+  grove_watch_house_jackie_post: [475, 70, -151],
 } as const satisfies Record<string, Ch1Vec3>;
 
 export type Ch1AnchorKey = keyof typeof CH1_ANCHORS;

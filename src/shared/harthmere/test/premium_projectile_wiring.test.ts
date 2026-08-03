@@ -10,7 +10,6 @@ import {
   harthmereNativeItemIdForBiomesId,
 } from "@/shared/harthmere/harthmere_native_item_ids";
 import {
-  HARTHMERE_AUTHORITATIVE_IMPACT_EPSILON_SECS,
   HARTHMERE_DIRECT_RANGED_ATTACK_VISUAL_IDS,
   HARTHMERE_PROJECTILE_MAX_FLIGHT_SECS,
   HARTHMERE_PROJECTILE_MIN_FLIGHT_SECS,
@@ -49,7 +48,7 @@ describe("premium projectile native wiring", () => {
     }
   });
 
-  it("keeps every projectile readable and aligns hostile visuals to the authoritative dodge window", () => {
+  it("keeps every projectile readable while preserving authoritative impact timing", () => {
     const speeds = HARTHMERE_PROJECTILE_VISUALS.map(({ speed }) => speed);
     assert.equal(Math.min(...speeds), 15);
     assert.equal(Math.max(...speeds), 58);
@@ -86,7 +85,7 @@ describe("premium projectile native wiring", () => {
         speedMetersPerSecond: fireball.speed,
         authoritativeImpactSecs: 0.1,
       }),
-      0.1
+      HARTHMERE_PROJECTILE_MIN_FLIGHT_SECS
     );
     assert.equal(
       harthmereProjectileFlightDurationSecs({
@@ -94,7 +93,7 @@ describe("premium projectile native wiring", () => {
         speedMetersPerSecond: fireball.speed,
         authoritativeImpactSecs: 0,
       }),
-      HARTHMERE_AUTHORITATIVE_IMPACT_EPSILON_SECS
+      HARTHMERE_PROJECTILE_MIN_FLIGHT_SECS
     );
     assert.equal(
       harthmereAuthoritativeImpactRemainingSecs({
@@ -208,7 +207,7 @@ describe("premium projectile native wiring", () => {
       /hex/i.test(`${key} ${displayName}`)
     );
     assert.equal(archer?.projectileVisualId, "bandit_archer_shot");
-    assert.equal(archer?.attackStrikeMomentSecs, 0.85);
+    assert.equal(archer?.attackStrikeMomentSecs, 1.1);
     assert.deepEqual(
       harthmereNativeNpcProjectilePresentation({
         profile: archer,
@@ -217,7 +216,7 @@ describe("premium projectile native wiring", () => {
       }),
       {
         projectileVisualId: "bandit_archer_shot",
-        windupSecs: 0.85,
+        windupSecs: 1.1,
       }
     );
     assert.equal(thaedryn?.projectileVisualId, "thaedryn_resonance");
@@ -238,14 +237,15 @@ describe("premium projectile native wiring", () => {
     const hexBosses = hexes.filter(({ isBoss }) => isBoss);
     assert.ok(standardHexes.length > 0);
     assert.ok(hexBosses.length >= 2);
-    assert.equal(HARTHMERE_HEX_FIREBALL_CAST_TIME_SECS, 1);
+    assert.equal(HARTHMERE_HEX_FIREBALL_CAST_TIME_SECS, 1.3);
     assert.ok(
       standardHexes.every(
         ({ rangedAttacks }) =>
           rangedAttacks?.length === 1 &&
           rangedAttacks[0].abilityId === "fireball" &&
           rangedAttacks[0].cooldownSecs === 20 &&
-          rangedAttacks[0].castTimeSecs === 1 &&
+          rangedAttacks[0].castTimeSecs ===
+            HARTHMERE_HEX_FIREBALL_CAST_TIME_SECS &&
           harthmereMagicChargeDurationSecs({
             damageType: rangedAttacks[0].damageType,
             projectileVisualId: rangedAttacks[0].projectileVisualId,
@@ -447,7 +447,7 @@ describe("premium projectile native wiring", () => {
         attackDistance: 24,
         hitRadius: 1.1,
         coneAngleDeg: undefined,
-        windupSecs: 0.95,
+        windupSecs: attack.castTimeSecs,
         magic: true,
         chargeTimeSecs,
         chargeStartedAt: 50,

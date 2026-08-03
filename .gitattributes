@@ -52,6 +52,7 @@ public/assets/harthmere/audio/08-banners-at-first-light-loop.mp3 -text -filter -
 public/assets/harthmere/audio/09-embers-test-the-oath-loop.mp3 -text -filter -merge -diff
 public/assets/harthmere/audio/11-no-crown-above-the-storm-loop.mp3 -text -filter -merge -diff
 public/assets/harthmere/audio/freesound-gamestudio-drop-coin-384921.mp3 -text -filter -merge -diff
+public/assets/harthmere/audio/harthmere-fiddle-race-v3-fast-loop.mp3 -text -filter -merge -diff
 
 # These generated Chapter 1 asset sets stay below GitHub's per-file limit and
 # must remain cloneable while this repository's Git LFS budget is exhausted.
@@ -65,6 +66,7 @@ public/assets/harthmere/glb/gathering_nodes/** -text -filter -merge -diff
 public/assets/harthmere/glb/jobs_boards/** -text -filter -merge -diff
 public/assets/harthmere/glb/projectiles/** -text -filter -merge -diff
 public/assets/harthmere/glb/quest/** -text -filter -merge -diff
+public/assets/harthmere/glb/request_boards/** -text -filter -merge -diff
 public/assets/harthmere/glb/weapons/** -text -filter -merge -diff
 public/assets/harthmere/inventory_icons/** -text -filter -merge -diff
 public/assets/harthmere/projectile_previews/** -text -filter -merge -diff

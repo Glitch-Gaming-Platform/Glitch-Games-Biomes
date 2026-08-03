@@ -196,6 +196,14 @@ export class CollisionHelper {
 }
 
 export function isCollidable(entity: ReadonlyEntity): boolean {
+  if (entity.iced) {
+    // Iced entities are logically deleted: Sync removes them from clients and
+    // active-world indexes exclude them. Warm snapshot worlds can still retain
+    // their ECS components, including collideable/placeable metadata, so they
+    // must not leave an invisible server-side collision body behind.
+    return false;
+  }
+
   if (entity.health && entity.health.hp <= 0) {
     // Dead entities don't cause collisions.
     return false;

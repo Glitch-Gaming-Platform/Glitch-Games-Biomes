@@ -938,6 +938,14 @@ describe("mmo economy business customer sessions", function () {
       `expected expiry rejection, got ${expiredServe.warnings.join(", ")}`,
     );
     assert.equal(sessions(expiredServe.economy)[0].status, "expired");
+    assert.equal(sessions(expiredServe.economy)[0].currentTicketId, undefined);
+    assert.ok(
+      sessions(expiredServe.economy)[0].queue.every(
+        (ticket) =>
+          ticket.status !== "waiting" && ticket.spatialPhase === "cancelled",
+      ),
+      "expiry must send every waiting customer through native cancellation cleanup",
+    );
 
     // A second serve attempt on the now-dead session reports it is not active
     // (this is the warning the live client kept hitting while stuck).

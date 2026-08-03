@@ -27,6 +27,7 @@
 // dependencies so it can be unit-tested directly.
 
 import type { BiomesId } from "@/shared/ids";
+import { harthmereRequestBoardEntityIdsEquivalent } from "@/shared/harthmere/native_request_boards";
 import { snapshotGroveNpcEntityIdsEquivalent } from "@/shared/harthmere/snapshot_grove_ids";
 import type { MetaState } from "@/shared/triggers/base_schema";
 import { deserializeTriggerState } from "@/shared/triggers/state";
@@ -377,6 +378,10 @@ export function validateClaimStep(
     const expected = claimLeaf.returnNpcTypeId;
     const matches =
       snapshotGroveNpcEntityIdsEquivalent(expected, claimEntity.entityId) ||
+      harthmereRequestBoardEntityIdsEquivalent(
+        expected,
+        claimEntity.entityId
+      ) ||
       (claimEntity.npcTypeId !== undefined &&
         expected === claimEntity.npcTypeId) ||
       (claimEntity.placeableItemId !== undefined &&

@@ -106,6 +106,8 @@ export const HARTHMERE_ACTIVE_QUEST_MARKER_BLUE = 0x5bd7ff;
 export const HARTHMERE_ACTIVE_QUEST_MARKER_CAP = 0xffffff;
 
 const ACTIVE_QUEST_BEACON_REFRESH_SECONDS = 0.25;
+export const HARTHMERE_MOBILE_QUEST_MARKER_LOAD_DISTANCE_METERS = 80;
+export const HARTHMERE_MOBILE_QUEST_MARKER_MAX_NEARBY = 24;
 
 // HARTHMERE_JOBS_BOARD_FIELD_TARGET_PROPS
 // Business job-template targets and outpost starter work stations are permanent
@@ -266,6 +268,37 @@ export const HARTHMERE_QUEST_OBJECT_MARKERS: readonly HarthmereQuestObjectMarker
     ),
     ...resolvedJobsBoardQuestMarkers(),
   ];
+
+const HARTHMERE_QUEST_OBJECT_MARKER_BY_ID = new Map(
+  HARTHMERE_QUEST_OBJECT_MARKERS.map((marker) => [marker.id, marker])
+);
+
+export function harthmereMobileQuestObjectMarkerIds(
+  position: THREE.Vector3,
+  requiredMarkerIds: ReadonlySet<string> = new Set()
+): readonly string[] {
+  const ids = new Set(
+    [...requiredMarkerIds].filter((id) =>
+      HARTHMERE_QUEST_OBJECT_MARKER_BY_ID.has(id)
+    )
+  );
+  const maxDistanceSquared =
+    HARTHMERE_MOBILE_QUEST_MARKER_LOAD_DISTANCE_METERS ** 2;
+  const nearby = HARTHMERE_QUEST_OBJECT_MARKERS.filter(
+    isVisibleHarthmereWorldObjectMarker
+  )
+    .map((marker) => ({
+      marker,
+      distanceSquared:
+        (marker.position[0] - position.x) ** 2 +
+        (marker.position[2] - position.z) ** 2,
+    }))
+    .filter(({ distanceSquared }) => distanceSquared <= maxDistanceSquared)
+    .sort((a, b) => a.distanceSquared - b.distanceSquared)
+    .slice(0, HARTHMERE_MOBILE_QUEST_MARKER_MAX_NEARBY);
+  for (const { marker } of nearby) ids.add(marker.id);
+  return [...ids];
+}
 
 export function isVisibleHarthmereWorldObjectMarker(
   markerOrId: HarthmereQuestObjectMarker | string
@@ -735,6 +768,22 @@ export function createHarthmereActiveQuestMarkerBeacon(): THREE.Group {
   return beacon;
 }
 
+function disposeHarthmereQuestMarker(root: THREE.Object3D) {
+  const dispose = (object: THREE.Object3D) => {
+    // Authored repair-cart clones share their geometry/materials with the
+    // retained prototype. Detach that subtree without disposing shared data.
+    if (object.userData.harthmereRepairCartAsset === true) return;
+    for (const child of object.children) dispose(child);
+    if (!(object instanceof THREE.Mesh)) return;
+    object.geometry.dispose();
+    const materials = Array.isArray(object.material)
+      ? object.material
+      : [object.material];
+    for (const material of materials) material.dispose();
+  };
+  dispose(root);
+}
+
 export class HarthmereQuestObjectMarkersRenderer implements Renderer {
   public readonly name = HARTHMERE_QUEST_OBJECT_MARKER_VERSION;
   private readonly root = new THREE.Group();
@@ -750,6 +799,7 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
   private chapter1ObjectiveMarkerId: string | undefined;
   private chapter1ObjectiveProjectionSignature: string | undefined;
   private activeQuestStateRefreshSeconds = 0;
+  private mobileProximityRefreshSeconds = 0;
   private elapsedSeconds = 0;
   private repairCartPrototype: THREE.Object3D | undefined;
   private repairCartAssetLoading: Promise<void> | undefined;
@@ -757,38 +807,95 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
 
   constructor(
     private readonly resources?: ClientResources,
-    private readonly repairCartAssetLoader: HarthmereRepairCartAssetLoader = createGltfLoader()
+    private readonly repairCartAssetLoader: HarthmereRepairCartAssetLoader = createGltfLoader(),
+    private readonly mobileDevice = false
   ) {
     this.root.name = `harthmere-quest-object-markers root ${HARTHMERE_QUEST_OBJECT_MARKER_VERSION}`;
-    for (const marker of HARTHMERE_QUEST_OBJECT_MARKERS) {
-      const isVisibleWorldObject = isVisibleHarthmereWorldObjectMarker(marker);
-      const shouldRenderMesh =
-        shouldRenderHarthmereQuestObjectMarkerMesh(marker);
-      const mesh = shouldRenderMesh
-        ? createHarthmereQuestObjectMarkerMesh(marker)
-        : createHarthmereQuestObjectMarkerAnchor(marker);
-      mesh.visible = isVisibleWorldObject;
-      if (isVisibleWorldObject) {
-        mesh.userData.harthmereQuestObjectMarkerAlwaysVisible = true;
-        mesh.userData.harthmereQuestObjectMarkerRenderPolicy =
-          HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY;
-      } else if (shouldRenderMesh) {
-        mesh.userData.harthmereQuestObjectMarkerRenderPolicy =
-          HARTHMERE_ACTIVE_WORLD_OBJECT_MARKER_RENDER_POLICY;
+    if (!mobileDevice) {
+      for (const marker of HARTHMERE_QUEST_OBJECT_MARKERS) {
+        this.ensureMarker(marker);
       }
-      const beacon = createHarthmereActiveQuestMarkerBeacon();
-      mesh.add(beacon);
-      // Remember the authored world XZ + hint Y so we can re-ground the marker
-      // onto real terrain each frame (markers are outdoor quest beacons).
-      mesh.userData.harthmereMarkerWorldXZ = [
-        marker.position[0],
-        marker.position[2],
-      ];
-      mesh.userData.harthmereMarkerHintY = marker.position[1];
-      this.markerMeshes.set(marker.id, mesh);
-      this.activeBeacons.set(marker.id, beacon);
-      this.root.add(mesh);
     }
+  }
+
+  private ensureMarker(marker: HarthmereQuestObjectMarker): THREE.Group {
+    const existing = this.markerMeshes.get(marker.id);
+    if (existing) return existing;
+    const isVisibleWorldObject = isVisibleHarthmereWorldObjectMarker(marker);
+    const shouldRenderMesh = shouldRenderHarthmereQuestObjectMarkerMesh(marker);
+    const mesh = shouldRenderMesh
+      ? createHarthmereQuestObjectMarkerMesh(marker)
+      : createHarthmereQuestObjectMarkerAnchor(marker);
+    mesh.visible = isVisibleWorldObject;
+    if (isVisibleWorldObject) {
+      mesh.userData.harthmereQuestObjectMarkerAlwaysVisible = true;
+      mesh.userData.harthmereQuestObjectMarkerRenderPolicy =
+        HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY;
+    } else if (shouldRenderMesh) {
+      mesh.userData.harthmereQuestObjectMarkerRenderPolicy =
+        HARTHMERE_ACTIVE_WORLD_OBJECT_MARKER_RENDER_POLICY;
+    }
+    const beacon = createHarthmereActiveQuestMarkerBeacon();
+    mesh.add(beacon);
+    // Remember the authored world XZ + hint Y so we can re-ground the marker
+    // onto real terrain each frame (markers are outdoor quest beacons).
+    mesh.userData.harthmereMarkerWorldXZ = [
+      marker.position[0],
+      marker.position[2],
+    ];
+    mesh.userData.harthmereMarkerHintY = marker.position[1];
+    this.markerMeshes.set(marker.id, mesh);
+    this.activeBeacons.set(marker.id, beacon);
+    this.root.add(mesh);
+    if (this.repairCartPrototype) {
+      replaceHarthmereRepairCartFallbackWithAsset(
+        mesh,
+        this.repairCartPrototype
+      );
+    }
+    return mesh;
+  }
+
+  private removeMarker(markerId: string) {
+    const mesh = this.markerMeshes.get(markerId);
+    if (!mesh) return;
+    this.root.remove(mesh);
+    disposeHarthmereQuestMarker(mesh);
+    this.markerMeshes.delete(markerId);
+    this.activeBeacons.delete(markerId);
+    // The shared grounding helper keys memory by world column, not marker id.
+    // This mobile set is deliberately tiny, so clearing prevents stale columns
+    // from accumulating as the player crosses the world.
+    this.groundedFeetYByColumn.clear();
+  }
+
+  private syncMobileMarkers() {
+    if (!this.mobileDevice || !this.resources) return;
+    const requiredMarkerIds = new Set<string>();
+    if (this.activeMarkerId) requiredMarkerIds.add(this.activeMarkerId);
+    for (const id of this.visibleSnapshotGroveMarkerIds) {
+      requiredMarkerIds.add(id);
+    }
+    const activePinMarkerId = readActiveBiomesUIMapPin()?.markerId;
+    if (activePinMarkerId) requiredMarkerIds.add(activePinMarkerId);
+    const desiredMarkerIds = new Set(
+      harthmereMobileQuestObjectMarkerIds(
+        this.resources.get("/scene/camera").three.position,
+        requiredMarkerIds
+      )
+    );
+    if (this.chapter1ObjectiveMarkerId) {
+      desiredMarkerIds.add(this.chapter1ObjectiveMarkerId);
+    }
+    for (const id of desiredMarkerIds) {
+      const marker = HARTHMERE_QUEST_OBJECT_MARKER_BY_ID.get(id);
+      if (marker) this.ensureMarker(marker);
+    }
+    for (const id of [...this.markerMeshes.keys()]) {
+      if (!desiredMarkerIds.has(id)) this.removeMarker(id);
+    }
+    // Newly-created meshes need the current visibility/beacon state.
+    this.applyActiveQuestMarkerId(this.activeMarkerId);
   }
 
   private applyLoadedRepairCartAsset(): void {
@@ -802,6 +909,14 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
   }
 
   private queueRepairCartAssetLoad(): void {
+    if (
+      this.mobileDevice &&
+      ![...this.markerMeshes.values()].some(
+        (mesh) => mesh.userData.harthmereQuestObjectVisualKind === "repair_cart"
+      )
+    ) {
+      return;
+    }
     if (
       this.repairCartPrototype ||
       this.repairCartAssetLoading ||
@@ -952,11 +1067,7 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
       (this.chapter1ObjectiveMarkerId !== nextId ||
         this.chapter1ObjectiveProjectionSignature !== nextSignature)
     ) {
-      const old = this.markerMeshes.get(this.chapter1ObjectiveMarkerId);
-      if (old) this.root.remove(old);
-      this.markerMeshes.delete(this.chapter1ObjectiveMarkerId);
-      this.activeBeacons.delete(this.chapter1ObjectiveMarkerId);
-      this.groundedFeetYByColumn.delete(this.chapter1ObjectiveMarkerId);
+      this.removeMarker(this.chapter1ObjectiveMarkerId);
       this.chapter1ObjectiveMarkerId = undefined;
       this.chapter1ObjectiveProjectionSignature = undefined;
     }
@@ -1013,6 +1124,14 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
 
   private applyActiveQuestMarkerId(markerId: string | undefined): void {
     this.activeMarkerId = markerId;
+    if (this.mobileDevice) {
+      const markerIds = new Set(this.visibleSnapshotGroveMarkerIds);
+      if (markerId) markerIds.add(markerId);
+      for (const id of markerIds) {
+        const marker = HARTHMERE_QUEST_OBJECT_MARKER_BY_ID.get(id);
+        if (marker) this.ensureMarker(marker);
+      }
+    }
     for (const [id, beacon] of this.activeBeacons) {
       const active = id === markerId;
       const markerGroup = this.markerMeshes.get(id);
@@ -1046,6 +1165,9 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
     }
     (window as any).__harthmereQuestObjectMarkerDebug = {
       version: HARTHMERE_QUEST_OBJECT_MARKER_VERSION,
+      mobileDevice: this.mobileDevice,
+      expectedMarkerCount: HARTHMERE_QUEST_OBJECT_MARKERS.length,
+      loadedMarkerCount: this.markerMeshes.size,
       repairCartAssetUrl: HARTHMERE_LUIS_REPAIR_CART_ASSET_URL,
       repairCartAssetLoaded: Boolean(this.repairCartPrototype),
       repairCartAssetFailed: this.repairCartAssetFailed,
@@ -1075,12 +1197,19 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
     // large, so bypass addToScenes()'s per-frame classification/dependency
     // traversals and route the root directly to the stock-material pass.
     scenes.three.add(this.root);
-    this.queueRepairCartAssetLoad();
     this.activeQuestStateRefreshSeconds -= dt;
     if (this.activeQuestStateRefreshSeconds <= 0) {
       this.activeQuestStateRefreshSeconds = ACTIVE_QUEST_BEACON_REFRESH_SECONDS;
       this.refreshActiveQuestMarkerFromLocalState();
     }
+    if (this.mobileDevice) {
+      this.mobileProximityRefreshSeconds -= Math.min(dt, 0.5);
+      if (this.mobileProximityRefreshSeconds <= 0) {
+        this.mobileProximityRefreshSeconds = 0.25;
+        this.syncMobileMarkers();
+      }
+    }
+    this.queueRepairCartAssetLoad();
     this.animateActiveBeacons(dt);
     this.groundVisibleMarkers();
     this.debugRefreshSeconds -= Math.min(dt, 0.5);
@@ -1093,10 +1222,12 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
 
 export function makeHarthmereQuestObjectMarkersRenderer(
   resources?: ClientResources,
-  repairCartAssetLoader?: HarthmereRepairCartAssetLoader
+  repairCartAssetLoader?: HarthmereRepairCartAssetLoader,
+  mobileDevice = false
 ) {
   return new HarthmereQuestObjectMarkersRenderer(
     resources,
-    repairCartAssetLoader
+    repairCartAssetLoader,
+    mobileDevice
   );
 }

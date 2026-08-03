@@ -27,6 +27,10 @@ import {
   SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
   SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS,
 } from "@/shared/harthmere/snapshot_grove_ids";
+import {
+  HARTHMERE_DOCK_FISHING_BOARD,
+  HARTHMERE_FISHING_BOARD_ID,
+} from "@/shared/harthmere/native_request_boards";
 import type { StoredTriggerDefinition } from "@/shared/triggers/schema";
 import assert from "assert";
 
@@ -365,6 +369,42 @@ describe("validateClaimStep — quest step server-authoritative validation", () 
           canonicalClaimFromEntityId(result, SNAPSHOT_GROVE_JACKIE_ENTITY_ID),
           SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS.jackie,
           "firehose identity must retain the immutable authored leaf id"
+        );
+      }
+    });
+
+    it("accepts the quay Fishing Board while publishing the canonical authored board id", () => {
+      const trigger: StoredTriggerDefinition = {
+        kind: "seq",
+        id: SEQ_ROOT,
+        triggers: [
+          {
+            kind: "challengeClaimRewards",
+            id: TALK_START,
+            returnNpcTypeId: HARTHMERE_FISHING_BOARD_ID,
+            allowDefaultNavigationAid: true,
+          } as StoredTriggerDefinition,
+        ],
+      };
+      const result = validateClaimStep({
+        challengeId: QUEST_ID,
+        stepId: TALK_START,
+        questTrigger: trigger,
+        challenges: challengesWith({ inProgress: [QUEST_ID] }),
+        triggerStateForChallenge: firedState(),
+        claimEntity: {
+          entityId: HARTHMERE_DOCK_FISHING_BOARD.entityId,
+          isMyRobot: false,
+        },
+      });
+      assert.equal(result.ok, true);
+      if (result.ok) {
+        assert.equal(
+          canonicalClaimFromEntityId(
+            result,
+            HARTHMERE_DOCK_FISHING_BOARD.entityId
+          ),
+          HARTHMERE_FISHING_BOARD_ID
         );
       }
     });

@@ -21,6 +21,7 @@ describe("BiomesUIMount world-object interaction surfaces", () => {
   it("keeps the existing working F prompt surfaces mounted", () => {
     for (const component of [
       "HarthmereJobsBoardWorldInteraction",
+      "HarthmereRequestBoardWorldInteraction",
       "HarthmereWantedBoardWorldInteraction",
       "HarthmereBusinessWorldInteraction",
       "HarthmerePropertyForSaleWorldInteraction",

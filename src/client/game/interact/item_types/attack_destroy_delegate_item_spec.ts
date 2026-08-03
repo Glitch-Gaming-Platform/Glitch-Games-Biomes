@@ -867,7 +867,8 @@ export function harthmereAttackTimingClass(
     item?.displayName ?? ""
   }`.toLowerCase();
   if (
-    item?.twoHanded === true ||
+    (item as (Item & { readonly twoHanded?: boolean }) | undefined)
+      ?.twoHanded === true ||
     /two.?hand|greatsword|maul|war.?axe/.test(descriptor)
   ) {
     return "heavy";

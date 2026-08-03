@@ -7,6 +7,7 @@ import {
 } from "../material_acquisition_guidance";
 import { harthmereNativeBiomesIdForItemId } from "../harthmere_native_item_ids";
 import { CH1_QUESTS } from "../ch1_quests";
+import { CH1_ANCHORS } from "../ch1_ids";
 import { ch1ObjectiveMaterialRequirements } from "../ch1_material_objectives";
 import { SNAPSHOT_GROVE_LIVE_NPC_FEET_Y } from "../snapshot_grove_content";
 
@@ -170,8 +171,10 @@ describe("Harthmere material acquisition guidance", () => {
       assert.ok(route?.markerPosition, `${sourceName} needs a map position`);
       assert.equal(
         route!.markerPosition![1],
-        SNAPSHOT_GROVE_LIVE_NPC_FEET_Y,
-        `${sourceName} must use the live Grove floor instead of retired Y=53`
+        sourceName === "Rin the Forager"
+          ? CH1_ANCHORS.rin_forager[1]
+          : SNAPSHOT_GROVE_LIVE_NPC_FEET_Y,
+        `${sourceName} must use its measured live Grove floor instead of retired Y=53`
       );
       assert.deepEqual(
         route!.markerPosition,

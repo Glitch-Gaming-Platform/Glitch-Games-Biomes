@@ -13,6 +13,8 @@ import { safeParseBiomesId } from "@/shared/ids";
 import { resolveBinaryAttribute } from "@/shared/util/dye_helpers";
 import { getHarthmerePremiumWeapon } from "@/shared/harthmere/premium_weapon_catalog";
 import { harthmereGeneratedInventoryIconUrl } from "@/shared/harthmere/generated/harthmere_inventory_icon_manifest";
+import { harthmereNativeBiomesIdForItemId } from "@/shared/harthmere/harthmere_native_item_ids";
+import { harthmereOriginalInventoryIconUrl } from "@/shared/harthmere/original_inventory_icons";
 
 export function humanizeBiomesInventoryItemId(
   itemId: string,
@@ -117,6 +119,36 @@ function biomesBikkieItemIcon(itemId: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Mined voxels already have canonical Galois inventory renders generated from
+ * the same block textures used by terrain. Prefer those cube icons over the
+ * broad Harthmere replacement catalogue so the hotbar shows what was mined.
+ */
+export function nativeVoxelBlockInventoryIcon(
+  itemId: string
+): string | undefined {
+  const normalized = itemId.replace(/^b:/, "");
+  const biomesId =
+    safeParseBiomesId(normalized) ??
+    harthmereNativeBiomesIdForItemId(normalized);
+  const muckwadBiomesId = harthmereNativeBiomesIdForItemId("muckwad");
+  if (
+    normalized === "muckwad" ||
+    normalized === "muckwad_voxel_block" ||
+    (biomesId !== undefined && biomesId === muckwadBiomesId)
+  ) {
+    // Muckwad is the tutorial's real terrain block. Resolve its canonical cube
+    // without waiting for the Bikkie overlay to finish initializing; otherwise
+    // an early inventory render falls through to the generic generated lump and
+    // can remain cached for the session.
+    return resolveAssetUrlUntyped("icons/blocks/muckwad");
+  }
+  if (!biomesId) return undefined;
+  const item = anItem(biomesId);
+  if (!item?.isBlock) return undefined;
+  return biomesBikkieItemIcon(String(biomesId));
+}
+
 function fallbackInventoryGlyph(itemId: string) {
   const readable = humanizeBiomesInventoryItemId(itemId, itemId);
   const letters = readable.match(/[A-Za-z0-9]/g)?.join("") ?? "";
@@ -139,6 +171,10 @@ export function biomesInventoryItemVisual(itemId: string) {
 export function biomesInventoryItemIcon(itemId: string): string {
   const premiumWeapon = getHarthmerePremiumWeapon(itemId);
   if (premiumWeapon) return premiumWeapon.inventoryIconUrl;
+  const voxelBlockIcon = nativeVoxelBlockInventoryIcon(itemId);
+  if (voxelBlockIcon) return voxelBlockIcon;
+  const originalIcon = harthmereOriginalInventoryIconUrl(itemId);
+  if (originalIcon) return originalIcon;
   const generatedIcon = harthmereGeneratedInventoryIconUrl(itemId);
   if (generatedIcon) return generatedIcon;
   const bikkieIcon = biomesBikkieItemIcon(itemId);

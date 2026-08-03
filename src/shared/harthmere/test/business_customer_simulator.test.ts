@@ -17,6 +17,7 @@ import {
   HARTHMERE_BUSINESS_REFERENCE_INTERIOR_TEMPLATE_BY_TYPE,
   HARTHMERE_BUSINESS_SCENARIO_MODIFIERS,
   isPointInsideHarthmereBusinessSafeSite,
+  isHarthmereBusinessMaterializationVoxelEditValid,
   validateHarthmereBusinessOutpostSafeSiting,
   HARTHMERE_BUSINESS_SERVICE_ANIMATION_CUE_SPECS,
   HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG,
@@ -984,22 +985,24 @@ describe("business_customer_simulator", () => {
       assert.equal(record.queueNode.x, doorX);
       assert.equal(record.serviceCounter.x, doorX);
       for (const y of [record.origin.y + 1, record.origin.y + 2]) {
-        assert.equal(
-          wallPositions.has([doorX, y, record.origin.z].join(":")),
-          false,
-          `${outpost.outpostId} must keep the report-specified 1x2 south-wall doorway void clear`
-        );
+        for (const x of [doorX - 1, doorX, doorX + 1]) {
+          assert.equal(
+            wallPositions.has([x, y, record.origin.z].join(":")),
+            false,
+            `${outpost.outpostId} must keep the three-voxel south-wall doorway clear`
+          );
+        }
       }
       assert.equal(
         wallPositions.has(
-          [doorX - 1, record.origin.y + 1, record.origin.z].join(":")
+          [doorX - 2, record.origin.y + 1, record.origin.z].join(":")
         ),
         true,
         `${outpost.outpostId} must keep a solid wall jamb left of the doorway`
       );
       assert.equal(
         wallPositions.has(
-          [doorX + 1, record.origin.y + 1, record.origin.z].join(":")
+          [doorX + 2, record.origin.y + 1, record.origin.z].join(":")
         ),
         true,
         `${outpost.outpostId} must keep a solid wall jamb right of the doorway`
@@ -1021,11 +1024,9 @@ describe("business_customer_simulator", () => {
       const terrain = (name: string) => safeGetTerrainId(name) as any;
       for (const edit of record.materializationPlan.edits) {
         assert.equal(
-          isTerrainID(Number(edit.value)),
+          isHarthmereBusinessMaterializationVoxelEditValid(edit),
           true,
-          `${outpost.outpostId} edit ${edit.label} at ${edit.position.join(
-            ":"
-          )} must publish a real terrain block id, not a Bikkie item id`
+          `${outpost.outpostId} edit ${edit.label} at ${edit.position.join(":")} must publish terrain or an explicit demolition air carve`
         );
       }
       assert.ok(
@@ -1431,14 +1432,14 @@ describe("business_customer_simulator", () => {
         point[0] < rect.minX
           ? rect.minX - point[0]
           : point[0] > rect.maxX
-          ? point[0] - rect.maxX
-          : 0;
+            ? point[0] - rect.maxX
+            : 0;
       const dz =
         point[2] < rect.minZ
           ? rect.minZ - point[2]
           : point[2] > rect.maxZ
-          ? point[2] - rect.maxZ
-          : 0;
+            ? point[2] - rect.maxZ
+            : 0;
       return Math.hypot(dx, dz);
     };
 
@@ -1765,9 +1766,9 @@ describe("business_customer_simulator", () => {
       // Every edit remains a real terrain voxel (no Bikkie/item ids, no holes).
       assert.ok(
         record.materializationPlan.edits.every((edit) =>
-          isTerrainID(Number(edit.value))
+          isHarthmereBusinessMaterializationVoxelEditValid(edit)
         ),
-        `${outpost.outpostId} grading must use only terrain voxels`
+        `${outpost.outpostId} grading must use terrain voxels or explicit approach-lane air carves`
       );
     }
   });

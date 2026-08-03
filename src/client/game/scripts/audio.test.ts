@@ -1,6 +1,8 @@
 import {
+  BUSINESS_MINIGAME_MUSIC_TRANSITION_SECONDS,
   COMBAT_MUSIC_CROSSFADE_SECONDS,
   DEFAULT_BACKGROUND_MUSIC_CROSSFADE_SECONDS,
+  GROVE_MUSIC_TRANSITION_SECONDS,
   backgroundMusicCrossfadeSeconds,
   type AudioManager,
   type AudioTrackType,
@@ -11,6 +13,7 @@ import {
   CH1_WINTER_DUNGEON_MUSIC_PATH,
   HARTHMERE_BATTLE_MUSIC_PATH,
   HARTHMERE_BOSS_BATTLE_MUSIC_PATH,
+  HARTHMERE_BUSINESS_MINIGAME_MUSIC_PATH,
   HARTHMERE_EXPLORATION_MUSIC_PATH,
   resolveAudioUrl,
 } from "@/client/game/resources/audio";
@@ -20,10 +23,12 @@ import {
   AudioScript,
   COMBAT_MUSIC_DAMAGE_GRACE_SECONDS,
   MOUNTAIN_WIND_AUDIO_PATH,
+  GROVE_MUSIC_REGION_BOUNDS,
   healthIndicatesRecentCombatDamage,
   selectBackgroundMusicTrack,
   shouldPlayMountainWind,
 } from "@/client/game/scripts/audio";
+import { getAudioAssetPaths } from "@/galois/assets/audio";
 import { ch1ElsewhenSlot } from "@/shared/harthmere/ch1_elsewhen_region";
 import {
   HARTHMERE_BOSS_MUSIC_ENTITY_IDS,
@@ -92,6 +97,7 @@ function audioHarness() {
   let playerHealth = health(100);
   let mediaVolume = 1;
   let activeMinigame = false;
+  let backgroundMusicOverride: AudioTrackType | undefined;
   let playerPos: [number, number, number] = [0, 0, 0];
   let npcs: ReturnType<typeof npc>[] = [];
   let audioSources: TestAudioSource[] = [];
@@ -159,6 +165,9 @@ function audioHarness() {
     setBackgroundMusicTrack(track: AudioTrackType) {
       tracks.push(track);
     },
+    getBackgroundMusicOverride() {
+      return backgroundMusicOverride;
+    },
     setBackgroundMusicAttenuation(value: number) {
       attenuations.push(value);
     },
@@ -217,6 +226,9 @@ function audioHarness() {
     setActiveMinigame(value: boolean) {
       activeMinigame = value;
     },
+    setBackgroundMusicOverride(value: AudioTrackType | undefined) {
+      backgroundMusicOverride = value;
+    },
     setPlayerPos(value: [number, number, number]) {
       playerPos = value;
     },
@@ -230,10 +242,41 @@ function audioHarness() {
 }
 
 describe("combat background music", () => {
+  it("routes world, combat, and dungeon slots to the authored soundtrack", () => {
+    assert.deepEqual(getAudioAssetPaths("music"), ["audio/muck-music-1"]);
+    assert.deepEqual(getAudioAssetPaths("grove_music"), ["audio/music-1"]);
+    assert.deepEqual(
+      getAudioAssetPaths("music"),
+      getAudioAssetPaths("muck_music")
+    );
+    assert.equal(
+      HARTHMERE_BATTLE_MUSIC_PATH,
+      "/assets/harthmere/audio/hauntsync-rpg-battle-chiptune.webm"
+    );
+    assert.equal(
+      CH1_SAND_DUNGEON_MUSIC_PATH,
+      "/assets/harthmere/audio/09-embers-test-the-oath-loop.mp3"
+    );
+    assert.equal(
+      CH1_WINTER_DUNGEON_MUSIC_PATH,
+      "/assets/harthmere/audio/09-embers-test-the-oath-loop.mp3"
+    );
+    assert.equal(
+      HARTHMERE_BUSINESS_MINIGAME_MUSIC_PATH,
+      "/assets/harthmere/audio/harthmere-fiddle-race-v3-fast-loop.mp3"
+    );
+    assert.ok(
+      getAudioAssetPaths("music").every((assetPath) =>
+        assetPath.includes("muck-music-1")
+      )
+    );
+  });
+
   it("registers packaged, directly served Harthmere music tracks", () => {
     for (const musicPath of [
       HARTHMERE_BATTLE_MUSIC_PATH,
       HARTHMERE_BOSS_BATTLE_MUSIC_PATH,
+      HARTHMERE_BUSINESS_MINIGAME_MUSIC_PATH,
       HARTHMERE_EXPLORATION_MUSIC_PATH,
       CH1_SAND_DUNGEON_MUSIC_PATH,
       CH1_WINTER_DUNGEON_MUSIC_PATH,
@@ -257,6 +300,10 @@ describe("combat background music", () => {
     const sand = ch1ElsewhenSlot("ch1_dungeon_desert")!.arrival;
 
     assert.equal(selectBackgroundMusicTrack(0, false), "music");
+    assert.equal(
+      selectBackgroundMusicTrack(0, false, [496, 71, -126]),
+      "grove_music"
+    );
     assert.equal(selectBackgroundMusicTrack(1, false), "muck_music");
     assert.equal(selectBackgroundMusicTrack(0, true), "battle_music");
     assert.equal(selectBackgroundMusicTrack(1, true), "battle_music");
@@ -264,10 +311,7 @@ describe("combat background music", () => {
       selectBackgroundMusicTrack(1, true, harthmere, true),
       "boss_battle_music"
     );
-    assert.equal(
-      selectBackgroundMusicTrack(0, false, harthmere),
-      "harthmere_music"
-    );
+    assert.equal(selectBackgroundMusicTrack(0, false, harthmere), "music");
     assert.equal(selectBackgroundMusicTrack(1, false, harthmere), "muck_music");
     assert.equal(selectBackgroundMusicTrack(0, true, sand), "battle_music");
     assert.equal(
@@ -364,7 +408,7 @@ describe("combat background music", () => {
     );
   });
 
-  it("selects the additive Harthmere woods and each Elsewhen dungeon cue", () => {
+  it("uses the world loop throughout additive Harthmere and each dungeon cue", () => {
     const sand = ch1ElsewhenSlot("ch1_dungeon_desert")!;
     const winter = ch1ElsewhenSlot("ch1_dungeon_winter")!;
 
@@ -374,7 +418,7 @@ describe("combat background music", () => {
         53,
         HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ,
       ]),
-      "harthmere_music"
+      "music"
     );
     assert.equal(
       selectBackgroundMusicTrack(0, false, [
@@ -382,7 +426,7 @@ describe("combat background music", () => {
         53,
         HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ - 1,
       ]),
-      "harthmere_music"
+      "music"
     );
     assert.equal(
       selectBackgroundMusicTrack(0, false, sand.arrival),
@@ -402,13 +446,44 @@ describe("combat background music", () => {
     );
   });
 
+  it("keeps the original Grove theme inside the complete Grove region", () => {
+    assert.equal(
+      selectBackgroundMusicTrack(0, false, [
+        GROVE_MUSIC_REGION_BOUNDS.minX,
+        71,
+        GROVE_MUSIC_REGION_BOUNDS.minZ,
+      ]),
+      "grove_music"
+    );
+    assert.equal(
+      selectBackgroundMusicTrack(0, false, [
+        GROVE_MUSIC_REGION_BOUNDS.maxX,
+        71,
+        GROVE_MUSIC_REGION_BOUNDS.maxZ,
+      ]),
+      "grove_music"
+    );
+    assert.equal(
+      selectBackgroundMusicTrack(0, false, [
+        GROVE_MUSIC_REGION_BOUNDS.maxX + 1,
+        71,
+        -126,
+      ]),
+      "music"
+    );
+    assert.equal(
+      selectBackgroundMusicTrack(1, false, [496, 71, -126]),
+      "muck_music"
+    );
+  });
+
   it("uses a responsive fade entering and leaving combat", () => {
     assert.equal(
       backgroundMusicCrossfadeSeconds("music", "muck_music"),
       DEFAULT_BACKGROUND_MUSIC_CROSSFADE_SECONDS
     );
     assert.equal(
-      backgroundMusicCrossfadeSeconds("music", "battle_music"),
+      backgroundMusicCrossfadeSeconds("harthmere_music", "battle_music"),
       COMBAT_MUSIC_CROSSFADE_SECONDS
     );
     assert.equal(
@@ -416,7 +491,7 @@ describe("combat background music", () => {
       COMBAT_MUSIC_CROSSFADE_SECONDS
     );
     assert.equal(
-      backgroundMusicCrossfadeSeconds("harthmere_music", "battle_music"),
+      backgroundMusicCrossfadeSeconds("music", "battle_music"),
       COMBAT_MUSIC_CROSSFADE_SECONDS
     );
     assert.equal(
@@ -431,6 +506,39 @@ describe("combat background music", () => {
       backgroundMusicCrossfadeSeconds("ch1_sand_music", "music"),
       DEFAULT_BACKGROUND_MUSIC_CROSSFADE_SECONDS
     );
+    assert.equal(
+      backgroundMusicCrossfadeSeconds("music", "grove_music"),
+      GROVE_MUSIC_TRANSITION_SECONDS
+    );
+    assert.equal(
+      backgroundMusicCrossfadeSeconds("grove_music", "music"),
+      GROVE_MUSIC_TRANSITION_SECONDS
+    );
+    assert.equal(
+      backgroundMusicCrossfadeSeconds("music", "business_minigame_music"),
+      BUSINESS_MINIGAME_MUSIC_TRANSITION_SECONDS
+    );
+    assert.equal(
+      backgroundMusicCrossfadeSeconds("business_minigame_music", "music"),
+      BUSINESS_MINIGAME_MUSIC_TRANSITION_SECONDS
+    );
+  });
+
+  it("uses a business minigame override until the owning session clears it", () => {
+    const harness = audioHarness();
+    harness.setPlayerPos([496, 71, -126]);
+
+    harness.script.tick(0);
+    harness.setBackgroundMusicOverride("business_minigame_music");
+    harness.script.tick(0);
+    harness.setBackgroundMusicOverride(undefined);
+    harness.script.tick(0);
+
+    assert.deepEqual(harness.tracks, [
+      "grove_music",
+      "business_minigame_music",
+      "grove_music",
+    ]);
   });
 
   it("recognizes only recent attack damage as a combat signal", () => {
@@ -605,7 +713,7 @@ describe("combat background music", () => {
     assert.equal(harness.tracks.at(-1), "boss_battle_music");
   });
 
-  it("restores Harthmere exploration music after combat ends", () => {
+  it("restores the world loop in Harthmere after combat ends", () => {
     const harness = audioHarness();
     harness.setPlayerPos([
       HARTHMERE_EXTENSION_WORLD_BOUNDS.minX + 200,
@@ -619,14 +727,10 @@ describe("combat background music", () => {
     harness.setNpcs([]);
     harness.script.tick(0);
 
-    assert.deepEqual(harness.tracks, [
-      "harthmere_music",
-      "battle_music",
-      "harthmere_music",
-    ]);
+    assert.deepEqual(harness.tracks, ["music", "battle_music", "music"]);
   });
 
-  it("lets Muck temporarily replace Harthmere exploration music", () => {
+  it("lets Muck retain its diagnostic slot inside Harthmere", () => {
     const harness = audioHarness();
     harness.setPlayerPos([
       HARTHMERE_EXTENSION_WORLD_BOUNDS.minX + 200,
@@ -640,11 +744,7 @@ describe("combat background music", () => {
     harness.setMuckyness(0);
     harness.script.tick(0);
 
-    assert.deepEqual(harness.tracks, [
-      "harthmere_music",
-      "muck_music",
-      "harthmere_music",
-    ]);
+    assert.deepEqual(harness.tracks, ["music", "muck_music", "music"]);
   });
 
   it("restores the correct dungeon cue after combat and normal music on exit", () => {

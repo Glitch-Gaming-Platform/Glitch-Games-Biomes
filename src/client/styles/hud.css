@@ -3072,7 +3072,9 @@ ul.bullet-points {
 
 .joysticks--mobile {
   position: fixed;
-  bottom: max(104px, calc(env(safe-area-inset-bottom) + 92px));
+  bottom: max(76px, calc(env(safe-area-inset-bottom) + 64px));
+  padding-left: max(24px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
 }
 
 .joysticks--mobile .mobile-movement-buttons {
@@ -3081,6 +3083,12 @@ ul.bullet-points {
   justify-content: center;
   gap: 8px;
   pointer-events: none;
+}
+
+.joysticks--mobile .mobile-movement-controls {
+  align-items: flex-start;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .joysticks .joystick {
@@ -3113,7 +3121,18 @@ ul.bullet-points {
 }
 
 .joysticks--mobile .mobile-movement-button {
+  width: 48px;
+  min-width: 48px;
   min-height: 48px;
+  padding: 5px;
+  gap: 0;
+}
+
+.joysticks--mobile .mobile-interact-button {
+  position: absolute;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: 56px;
+  z-index: 1096;
 }
 
 .joysticks .mobile-crouch-button--held,
@@ -3121,7 +3140,8 @@ ul.bullet-points {
 .joysticks--mobile .mobile-crouch-button--held,
 .joysticks--mobile .mobile-crouch-button:active,
 .joysticks--mobile .mobile-jump-button--held,
-.joysticks--mobile .mobile-jump-button:active {
+.joysticks--mobile .mobile-jump-button:active,
+.joysticks--mobile .mobile-interact-button:active {
   transform: translateY(2px);
   border-color: rgb(192, 208, 255);
   background: rgba(61, 89, 171, 0.96);
@@ -3143,4 +3163,8 @@ ul.bullet-points {
   letter-spacing: 0.04em;
   line-height: 1;
   text-transform: uppercase;
+}
+
+.joysticks--mobile .mobile-movement-button__label {
+  display: none;
 }

@@ -1488,6 +1488,8 @@ function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
   serverActorKilledEntityAtMs?: Record<string, number>,
   serverActorSkillXp?: Record<string, number>,
   serverActorSkillProgressionInitialized?: boolean,
+  serverActorInProgressQuestIds?: string[],
+  serverActorCompletedQuestIds?: string[],
   serverNativeThaedrynHealthPct?: number
 ): HarthmereLiveModeAuthorityEnvelope {
   const now = Date.now();
@@ -1519,6 +1521,8 @@ function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
     serverActorKilledEntityAtMs,
     serverActorSkillXp,
     serverActorSkillProgressionInitialized,
+    serverActorInProgressQuestIds,
+    serverActorCompletedQuestIds,
     serverTargetPosition,
     clientSentAtMs: body.clientSentAtMs,
     serverReceivedAtMs: now,
@@ -1585,6 +1589,9 @@ export async function readServerActorNativeContextForLiveMode(
     const skillProgressionInitialized = hasHarthmereNativeSkillProgression(
       entity?.triggerState?.()
     );
+    const challenges = entity?.challenges?.();
+    const inProgressQuestIds = [...(challenges?.in_progress ?? [])].map(String);
+    const completedQuestIds = [...(challenges?.complete ?? [])].map(String);
     let gold = 0;
     if (includeItemIds) {
       const inventory = entity?.inventory?.();
@@ -1744,6 +1751,8 @@ export async function readServerActorNativeContextForLiveMode(
       killedEntityAtMs: includeItemIds ? killedEntityAtMs : undefined,
       skillXp,
       skillProgressionInitialized,
+      inProgressQuestIds,
+      completedQuestIds,
     };
   } catch {
     return {
@@ -1764,6 +1773,8 @@ export async function readServerActorNativeContextForLiveMode(
       killedEntityAtMs: includeItemIds ? {} : undefined,
       skillXp: {},
       skillProgressionInitialized: false,
+      inProgressQuestIds: [],
+      completedQuestIds: [],
     };
   }
 }
@@ -2764,11 +2775,7 @@ export async function materializeHarthmereBusinessCustomersToEcs(input: {
     existingEntities: existing,
     nowSeconds: input.nowSeconds,
     actorPosition: input.actorPosition
-      ? [
-          input.actorPosition.x,
-          input.actorPosition.y,
-          input.actorPosition.z,
-        ]
+      ? [input.actorPosition.x, input.actorPosition.y, input.actorPosition.z]
       : undefined,
   });
   if (!changes.length) {
@@ -3759,8 +3766,7 @@ export async function persistHarthmereLiveModeResponse(
       }
 
       let sellerState:
-        | ReturnType<typeof parseHarthmereLiveModeBackendState>
-        | undefined;
+        ReturnType<typeof parseHarthmereLiveModeBackendState> | undefined;
       if (settlement && sellerStateKey) {
         stageStartedAt = Date.now();
         const rawSellerState = await txPrimary.get(sellerStateKey);
@@ -4329,6 +4335,8 @@ export default biomesApiHandler(
             killedEntityAtMs: undefined,
             skillXp: undefined,
             skillProgressionInitialized: undefined,
+            inProgressQuestIds: undefined,
+            completedQuestIds: undefined,
           }),
       readServerTargetPositionForQuestInvite(worldApi, body),
       readServerNativeThaedrynHealthPct(worldApi, body),
@@ -4370,6 +4378,8 @@ export default biomesApiHandler(
         serverActorContext.killedEntityAtMs,
         serverActorContext.skillXp,
         serverActorContext.skillProgressionInitialized,
+        serverActorContext.inProgressQuestIds,
+        serverActorContext.completedQuestIds,
         serverNativeThaedrynHealthPct
       );
     const validation = validateHarthmereLiveModeAuthorityEnvelope(envelope);

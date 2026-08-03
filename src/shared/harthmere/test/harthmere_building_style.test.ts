@@ -64,7 +64,7 @@ describe("Harthmere building style", () => {
         }
       }
     }
-    assert.ok(occupiedY.size >= 3, [...occupiedY]);
+    assert.ok(occupiedY.size >= 3, JSON.stringify([...occupiedY]));
     assert.ok(occupiedY.has(shellTop + 1));
     assert.ok(occupiedY.has(shellTop + harthmereBuildingRoofRise(inn)));
   });

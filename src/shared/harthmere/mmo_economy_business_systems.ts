@@ -1291,11 +1291,34 @@ function activeCustomerSessionForBusiness(systems: HarthmereEconomyBusinessSyste
   );
 }
 
+function closeBusinessCustomerSessionQueue(
+  session: HarthmereBusinessCustomerSession,
+  status: "expired" | "aborted",
+  nowMs: number,
+  note: string,
+) {
+  for (const ticket of session.queue) {
+    if (ticket.status !== "waiting") continue;
+    ticket.status = "left";
+    ticket.spatialPhase = "cancelled";
+    ticket.reaction = "neutral";
+  }
+  session.currentTicketId = undefined;
+  session.status = status;
+  session.endedAtMs = nowMs;
+  if (!session.notes.includes(note)) session.notes.push(note);
+}
+
 function expireCustomerSessionsForBusiness(systems: HarthmereEconomyBusinessSystemsState, businessId: string, nowMs: number) {
   const expired: HarthmereBusinessCustomerSession[] = [];
   for (const session of Object.values(systems.customerSessions)) {
     if (session.businessId === businessId && session.status === "active" && session.expiresAtMs <= nowMs) {
-      session.status = "expired";
+      closeBusinessCustomerSessionQueue(
+        session,
+        "expired",
+        nowMs,
+        "Shift expired safely; remaining customers are leaving through the real exit.",
+      );
       expired.push(session);
     }
   }
@@ -1682,7 +1705,12 @@ function serveBusinessCustomer(state: BusinessSystemsEconomyState, request: Hart
   if (!session || session.businessId !== b.businessId) return reject(warnings, touched, "economy_rejected:active_business_customer_session_not_found");
   if (session.status !== "active") return reject(warnings, touched, "economy_rejected:business_customer_session_not_active");
   if (session.expiresAtMs <= request.nowMs) {
-    session.status = "expired";
+    closeBusinessCustomerSessionQueue(
+      session,
+      "expired",
+      request.nowMs,
+      "Shift expired safely; remaining customers are leaving through the real exit.",
+    );
     touched.add("economy_business_customer_session");
     shared.add(systemsSharedKey("customer_session", session.sessionId));
     return reject(warnings, touched, "economy_rejected:business_customer_session_expired");
@@ -1873,12 +1901,21 @@ function tickBusinessCustomerSession(
     : activeCustomerSessionForBusiness(systems, b.businessId, request.nowMs);
   if (!session || session.businessId !== b.businessId) return;
   if (session.status === "active") {
-    expireImpatientCustomerTickets(
-      session,
-      b,
-      statsForCustomerBusiness(systems, b.businessId),
-      request.nowMs
-    );
+    if (session.expiresAtMs <= request.nowMs) {
+      closeBusinessCustomerSessionQueue(
+        session,
+        "expired",
+        request.nowMs,
+        "Shift expired safely; remaining customers are leaving through the real exit.",
+      );
+    } else {
+      expireImpatientCustomerTickets(
+        session,
+        b,
+        statsForCustomerBusiness(systems, b.businessId),
+        request.nowMs
+      );
+    }
   }
   touched.add("economy_business_customer_session");
   shared.add(businessSharedKey(b.businessId));
@@ -1907,16 +1944,12 @@ function endBusinessCustomerSession(
     );
   }
   if (session.status !== "active") return;
-  for (const ticket of session.queue) {
-    if (ticket.status !== "waiting") continue;
-    ticket.status = "left";
-    ticket.spatialPhase = "cancelled";
-    ticket.reaction = "neutral";
-  }
-  session.currentTicketId = undefined;
-  session.status = "aborted";
-  session.endedAtMs = request.nowMs;
-  session.notes.push("Shift ended safely; remaining customers are leaving through the real exit.");
+  closeBusinessCustomerSessionQueue(
+    session,
+    "aborted",
+    request.nowMs,
+    "Shift ended safely; remaining customers are leaving through the real exit.",
+  );
   b.flags.customer_service_shift_ended = true;
   touched.add("economy_business_customer_session");
   shared.add(businessSharedKey(b.businessId));

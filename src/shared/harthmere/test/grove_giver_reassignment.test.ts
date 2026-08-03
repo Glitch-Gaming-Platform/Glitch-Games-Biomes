@@ -39,6 +39,14 @@ import {
   NATIVE_MUCK_VS_MACHINE_QUEST_ID,
   NATIVE_ROAD_AHEAD_QUEST_ID,
 } from "../native_road_ahead_contract";
+import {
+  SNAPSHOT_GROVE_QUESTS,
+  snapshotGroveLandmarkById,
+} from "../snapshot_grove_content";
+import {
+  snapshotGroveObjectiveMarkerIdForProgress,
+  snapshotGroveObjectiveTargetMarkerIds,
+} from "../snapshot_grove_trigger_contract";
 
 const REASSIGNED = [
   "fountain_buttons_first",
@@ -207,6 +215,109 @@ describe("Jackie's original-snapshot chain is untouched", () => {
         `${quest.id} is titled "${quest.title}", which collides with a ` +
           `protected snapshot quest`
       );
+    }
+  });
+
+  it("keeps every runtime marker surface on Rosalyn, not Jackie", () => {
+    // THE CATALOG BEING RIGHT WAS NEVER ENOUGH.
+    //
+    // The sibling case above asserts the CATALOG no longer mentions Jackie, and
+    // it passed while the game was still broken: the runtime reads the giver
+    // from the catalog but resolved markers from the retired
+    // `SNAPSHOT_GROVE_QUESTS` array, which still ships `npc_jackie` on the
+    // opening and closing objective of all four reassigned lessons. Rosalyn
+    // offered the lesson and every marker sent the player to Jackie.
+    //
+    // So this asserts the property through the RESOLVER the runtime actually
+    // calls, starting from the retired row — the path the player experiences.
+    for (const questId of REASSIGNED) {
+      const shipped = SNAPSHOT_GROVE_QUESTS.find(
+        (quest) => quest.id === questId
+      );
+      assert(shipped, `${questId} is missing from the retired array`);
+      shipped.markerIds.forEach((_markerId, index) => {
+        for (const resolved of snapshotGroveObjectiveTargetMarkerIds(
+          shipped,
+          index
+        )) {
+          assert(
+            !/jackie/i.test(resolved),
+            `${questId}[${index}] still resolves to "${resolved}" — Rosalyn ` +
+              `offers this lesson but the map sends the player to Jackie`
+          );
+        }
+        assert.equal(
+          snapshotGroveObjectiveMarkerIdForProgress(shipped, index),
+          snapshotGroveObjectiveTargetMarkerIds(shipped, index)[0],
+          `${questId}[${index}]: the progress marker and the target list disagree`
+        );
+      });
+      // The opening and closing objectives are the two that named the giver.
+      const resolvedMarkers = shipped.markerIds.map(
+        (_markerId, index) =>
+          snapshotGroveObjectiveTargetMarkerIds(shipped, index)[0]
+      );
+      assert.equal(resolvedMarkers[0], `npc_${NEW_GIVER}`, questId);
+      assert.equal(
+        resolvedMarkers[resolvedMarkers.length - 1],
+        `npc_${NEW_GIVER}`,
+        questId
+      );
+    }
+  });
+
+  it("leaves every other quest's markers exactly as shipped", () => {
+    // The retarget is keyed on the caller's marker matching the shipped row, so
+    // it must be inert everywhere else. Without this, a broad delegation that
+    // silently re-pointed the other 47 quests would look identical to a fix.
+    for (const quest of SNAPSHOT_GROVE_QUESTS) {
+      if ((REASSIGNED as readonly string[]).includes(quest.id)) continue;
+      quest.markerIds.forEach((markerId, index) => {
+        const resolved = snapshotGroveObjectiveTargetMarkerIds(quest, index);
+        if (resolved.length !== 1) return; // authored multi-target objective
+        assert.equal(
+          resolved[0],
+          markerId,
+          `${quest.id}[${index}] drifted from its shipped marker`
+        );
+      });
+    }
+  });
+
+  it("honours caller-supplied markers instead of the catalog", () => {
+    // Map-adapter fixtures legitimately pass a quest whose markers differ from
+    // the shipped ones. An earlier version of this resolver delegated wholesale
+    // and returned catalog markers for a caller-supplied quest, moving the
+    // first objective's marker onto the second one's. The retarget must only
+    // fire when the caller is actually using shipped data.
+    const custom = {
+      id: "fountain_buttons_first",
+      markerIds: ["custom_a", "custom_b", "custom_c", "custom_d", "custom_e"],
+    };
+    assert.deepEqual(
+      custom.markerIds.map(
+        (_markerId, index) =>
+          snapshotGroveObjectiveTargetMarkerIds(custom, index)[0]
+      ),
+      custom.markerIds
+    );
+  });
+
+  it("keeps every resolved marker pointing at a real landmark", () => {
+    // A retarget that produced an unknown marker id would replace "wrong NPC"
+    // with "no destination at all", which is harder to notice.
+    for (const quest of SNAPSHOT_GROVE_QUESTS) {
+      quest.markerIds.forEach((_markerId, index) => {
+        for (const resolved of snapshotGroveObjectiveTargetMarkerIds(
+          quest,
+          index
+        )) {
+          assert(
+            snapshotGroveLandmarkById(resolved),
+            `${quest.id}[${index}] resolves to unknown marker "${resolved}"`
+          );
+        }
+      });
     }
   });
 

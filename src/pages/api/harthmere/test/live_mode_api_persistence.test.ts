@@ -1028,6 +1028,14 @@ describe("live_mode API Redis persistence", () => {
       items: new Map([[BikkieIds.hands, countOf(wornTool, 1n).item]]),
     });
     const triggerState = TriggerState.create({ by_root: new Map() });
+    const activeQuestId = harthmereNativeQuestId(
+      "grove",
+      "fountain_buttons_first"
+    )!;
+    const completedQuestId = harthmereNativeQuestId(
+      "grove",
+      "painted_path_language"
+    )!;
     recordHarthmereJobsBoardNativeKill(
       triggerState,
       8_810_000_000_019_512 as any,
@@ -1043,6 +1051,11 @@ describe("live_mode API Redis persistence", () => {
             inventory: () => inventory,
             wearing: () => wearing,
             triggerState: () => triggerState,
+            challenges: () =>
+              Challenges.create({
+                in_progress: new Set([activeQuestId]),
+                complete: new Set([completedQuestId]),
+              }),
           };
         },
       } as any,
@@ -1063,6 +1076,8 @@ describe("live_mode API Redis persistence", () => {
     assert.deepEqual(context.itemCounts, {
       rusty_pickaxe: 1,
     });
+    assert.deepEqual(context.inProgressQuestIds, [String(activeQuestId)]);
+    assert.deepEqual(context.completedQuestIds, [String(completedQuestId)]);
     assert.equal(context.gold, 114);
     assert.deepEqual(context.equipment, {
       main_hand: "rusty_pickaxe",
@@ -1251,6 +1266,20 @@ describe("live_mode API Redis persistence", () => {
     (globalThis as any).__harthmereLiveModeRedis = {
       primary: redisPrimary,
     };
+    const activeQuestState = defaultHarthmereLiveModeBackendState(
+      ACTOR,
+      NOW_MS
+    );
+    activeQuestState.quests.active.fountain_buttons_first = {
+      stepId: "fountain_buttons_first_obj_01",
+      progress: 1,
+      source: "snapshot_grove",
+      title: "Buttons Before the Road",
+    };
+    redisPrimary.store.set(
+      harthmereLiveModePlayerStateKey(ACTOR),
+      JSON.stringify(activeQuestState)
+    );
 
     const env: HarthmereLiveModeAuthorityEnvelope = {
       requestId: "live-api-persist-shared-req-1",
@@ -1269,7 +1298,7 @@ describe("live_mode API Redis persistence", () => {
       payload: {
         operation: "invite_to_quest",
         inviteeActorId: "player_live_api_persist_invitee",
-        questId: "grove_buttons",
+        questId: "fountain_buttons_first",
         questTitle: "Buttons Before the Road",
         questArea: "The Grove",
         objectiveText: "Talk to Jackie and find the jobs board.",
@@ -1325,7 +1354,147 @@ describe("live_mode API Redis persistence", () => {
       (sharedBlob.questInvites?.invites ?? {}) as Record<string, any>
     );
     assert.equal(invites.length, 1);
-    assert.equal(invites[0]?.questId, "grove_buttons");
+    assert.equal(invites[0]?.questId, "fountain_buttons_first");
+  });
+
+  it("shares cooperative quest progress across two stateless app replicas using one Redis world", async () => {
+    const previousNativeAuthority =
+      process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY;
+    process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY = "0";
+    try {
+      const redisPrimary = new FakeRedisPrimary();
+      (globalThis as any).__harthmereLiveModeRedis = {
+        primary: redisPrimary,
+      };
+      const inviter = "replica_quest_inviter";
+      const invitee = "replica_quest_invitee";
+      const questId = "fountain_buttons_first";
+      const inviterState = defaultHarthmereLiveModeBackendState(
+        inviter,
+        NOW_MS
+      );
+      inviterState.quests.active[questId] = {
+        stepId: "fountain_buttons_first_obj_01",
+        progress: 1,
+        source: "snapshot_grove",
+        title: "Buttons Before the Road",
+      };
+      redisPrimary.store.set(
+        harthmereLiveModePlayerStateKey(inviter),
+        JSON.stringify(inviterState)
+      );
+
+      const responseFor = (env: HarthmereLiveModeAuthorityEnvelope) => ({
+        ok: true,
+        version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const,
+        actorId: env.actorId,
+        duplicate: false,
+        replayed: false,
+        persisted: true,
+        validation: {
+          ok: true,
+          errors: [],
+          warnings: [],
+          rejectedClientClaims: [],
+        },
+        mutationPlan: buildHarthmereLiveModePersistenceMutationPlan(env),
+        events: [],
+        uiEvents: [],
+      });
+      const persistFromReplica = async (
+        env: HarthmereLiveModeAuthorityEnvelope
+      ) =>
+        persistHarthmereLiveModeResponse(env, responseFor(env), {
+          logicApi: { publish: async () => {} } as any,
+          userId: 1 as any,
+        });
+
+      const inviteEnvelope: HarthmereLiveModeAuthorityEnvelope = {
+        requestId: "replica-a-invite",
+        idempotencyKey: "replica-a-invite",
+        actorId: inviter,
+        targetId: invitee,
+        actionKind: "request_quest_state_update",
+        subsystem: "quest",
+        source: "client_request",
+        serverActorPosition: { x: 0, y: 64, z: 0 },
+        serverTargetPosition: { x: 4, y: 64, z: 0 },
+        serverReceivedAtMs: NOW_MS,
+        serverTick: 1,
+        actorEntityVersion: 1,
+        zoneId: "harthmere",
+        payload: {
+          operation: "invite_to_quest",
+          inviteeActorId: invitee,
+          questId,
+        },
+      };
+      await persistFromReplica(inviteEnvelope);
+
+      const inviteeBeforeAccept = readMergedPersistedState(
+        redisPrimary,
+        invitee
+      );
+      const inviteId = Object.keys(inviteeBeforeAccept.questInvites.invites)[0];
+      assert.ok(inviteId);
+      const acceptEnvelope: HarthmereLiveModeAuthorityEnvelope = {
+        ...inviteEnvelope,
+        requestId: "replica-b-accept",
+        idempotencyKey: "replica-b-accept",
+        actorId: invitee,
+        targetId: undefined,
+        serverActorPosition: { x: 4, y: 64, z: 0 },
+        serverTargetPosition: undefined,
+        serverTick: 2,
+        payload: {
+          operation: "respond_to_quest_invite",
+          inviteId,
+          response: "accept",
+        },
+      };
+      await persistFromReplica(acceptEnvelope);
+
+      const progressEnvelope: HarthmereLiveModeAuthorityEnvelope = {
+        ...acceptEnvelope,
+        requestId: "replica-b-progress",
+        idempotencyKey: "replica-b-progress",
+        serverTick: 3,
+        payload: {
+          operation: "shared_quest_progress",
+          questId,
+          source: "snapshot_grove",
+          objectiveIndex: 0,
+          progress: 2,
+          stepId: "fountain_buttons_first_obj_02",
+        },
+      };
+      await persistFromReplica(progressEnvelope);
+
+      const inviterReadFromReplicaA = readMergedPersistedState(
+        redisPrimary,
+        inviter
+      );
+      assert.equal(inviterReadFromReplicaA.quests.active[questId]?.progress, 2);
+      const sharedQuest = Object.values(
+        inviterReadFromReplicaA.questInvites.sharedQuests
+      )[0];
+      assert.equal(sharedQuest?.lastProgressActorId, invitee);
+      assert.equal(sharedQuest?.memberActorIds.includes(inviter), true);
+      assert.equal(sharedQuest?.memberActorIds.includes(invitee), true);
+      assert.ok(
+        redisPrimary.watched.filter((keys) =>
+          keys.includes(harthmereLiveModeSharedWorldStateKey())
+        ).length >= 3,
+        "each cross-replica shared mutation must transactionally watch the shared world"
+      );
+    } finally {
+      if (previousNativeAuthority === undefined) {
+        delete process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY;
+      } else {
+        process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY =
+          previousNativeAuthority;
+      }
+    }
   });
 
   it("returns helper read snapshots without rewriting actor or shared state", async () => {

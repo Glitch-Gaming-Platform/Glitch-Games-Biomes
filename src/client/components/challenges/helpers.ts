@@ -28,6 +28,7 @@ import {
 } from "@/shared/ecs/gen/events";
 import type { ItemBag } from "@/shared/game/types";
 import { harthmereLocationVoiceMetadataForPosition } from "@/shared/harthmere/location_voice_context";
+import { harthmereRequestBoardEntityIdsEquivalent } from "@/shared/harthmere/native_request_boards";
 import { snapshotGroveNpcEntityIdsEquivalent } from "@/shared/harthmere/snapshot_grove_ids";
 import type { BiomesId } from "@/shared/ids";
 import type { NpcType } from "@/shared/npc/bikkie";
@@ -175,6 +176,9 @@ export function claimRewardsStepMatchesEntity(
     return false;
   }
   if (snapshotGroveNpcEntityIdsEquivalent(expectedId, entityId)) {
+    return true;
+  }
+  if (harthmereRequestBoardEntityIdsEquivalent(expectedId, entityId)) {
     return true;
   }
   const npcTypeId = resources.get("/ecs/c/npc_metadata", entityId)?.type_id;

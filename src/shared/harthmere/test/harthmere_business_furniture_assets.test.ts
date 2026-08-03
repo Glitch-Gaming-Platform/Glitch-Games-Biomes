@@ -78,7 +78,7 @@ describe("Harthmere Blender business furniture catalogue", () => {
   });
 
   it("ships all reusable furniture as tiny compressed GLBs with exact icons", () => {
-    assert.equal(manifest.items.length, 16);
+    assert.equal(manifest.items.length, 32);
     assert.equal(
       manifest.items.length,
       Object.keys(HARTHMERE_BUSINESS_FURNITURE_ASSETS).length
@@ -161,6 +161,35 @@ describe("Harthmere Blender business furniture catalogue", () => {
       assert.deepEqual(biscuit.collidableSize, asset.collidableSize);
       assert.equal(biscuit.placementType, asset.placementType);
       assert.equal(biscuit.galoisIcon, asset.iconUrl);
+      if (itemId === "town_cookpot" || itemId === "town_oven_range") {
+        assert.equal(
+          biscuit.isCraftingStation,
+          true,
+          `${itemId} must create a native F-interactable crafting station when placed`
+        );
+      }
+    }
+  });
+
+  it("keeps the generated geometry manifest synchronous for import-time layouts", () => {
+    const generated = fs.readFileSync(
+      path.join(
+        REPO_ROOT,
+        "src/shared/harthmere/generated/harthmere_business_furniture_manifest.ts"
+      ),
+      "utf8"
+    );
+    const generator = fs.readFileSync(
+      path.join(
+        REPO_ROOT,
+        "scripts/harthmere/blender/generate_business_furniture_catalogue.py"
+      ),
+      "utf8"
+    );
+    for (const source of [generated, generator]) {
+      assert.doesNotMatch(source, /from ["']@\/shared\/ids["']/);
+      assert.doesNotMatch(source, /harthmere_native_item_ids/);
+      assert.match(source, /HARTHMERE_NATIVE_ITEM_ID_MANIFEST/);
     }
   });
 });

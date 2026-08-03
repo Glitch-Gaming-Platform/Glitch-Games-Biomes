@@ -301,7 +301,7 @@ const BASE_NODE_DEFINITIONS: ResourceNodeDefinition[] = [
     tier: 1,
     district: "Mudden Ward",
     area: "broken cart and alley junk pile",
-    position: [409, 53, -178],
+    position: [409, 39, -178],
     shareMode: "shared",
     ownership: "public",
     gatherSeconds: 3,

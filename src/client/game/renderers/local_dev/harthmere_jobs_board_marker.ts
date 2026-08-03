@@ -30,6 +30,7 @@ export const HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION =
 export const HARTHMERE_JOBS_BOARD_WANTED_NOTICE_GRAPHIC_VERSION =
   "harthmere-jobs-board-notice-layout-blender-v1" as const;
 export const HARTHMERE_JOBS_BOARD_FRONT_FLIP_YAW = Math.PI;
+export const HARTHMERE_BUSINESS_JOBS_BOARD_FRONT_YAW = 0;
 
 export interface HarthmereJobsBoardMarkerLocation {
   id: string;
@@ -39,6 +40,7 @@ export interface HarthmereJobsBoardMarkerLocation {
   z: number;
   accentColor: number;
   variant: HarthmereJobsBoardGraphicVariant;
+  yaw: number;
 }
 
 const BOARD_VARIANTS: readonly HarthmereJobsBoardGraphicVariant[] = [
@@ -59,6 +61,7 @@ export const HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS: readonly HarthmereJobsBoardM
       z: -132.00350672753194,
       accentColor: 0x4cc9ff,
       variant: "blue",
+      yaw: HARTHMERE_JOBS_BOARD_FRONT_FLIP_YAW,
     },
     {
       id: "harthmere_town_market_jobs_board",
@@ -68,6 +71,7 @@ export const HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS: readonly HarthmereJobsBoardM
       z: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[2],
       accentColor: 0xffb74d,
       variant: "amber",
+      yaw: HARTHMERE_JOBS_BOARD_FRONT_FLIP_YAW,
     },
     ...HARTHMERE_BUSINESS_OUTPOSTS.map((outpost, index) => {
       const position = harthmereBusinessOutpostJobsBoardPosition(outpost);
@@ -88,6 +92,10 @@ export const HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS: readonly HarthmereJobsBoardM
         z: position.z,
         accentColor: accentByVariant[variant],
         variant,
+        // Business boards were presenting the blank back toward their
+        // approach/interact point. Flip only these 19 instances; Grove and the
+        // Harthmere town board retain their established orientation above.
+        yaw: HARTHMERE_BUSINESS_JOBS_BOARD_FRONT_YAW,
       } satisfies HarthmereJobsBoardMarkerLocation;
     }),
   ];
@@ -123,7 +131,7 @@ export function createHarthmereJobsBoardKioskMesh(
   const group = new THREE.Group();
   group.name = `${location.label} jobs-board load-failure fallback`;
   group.position.set(location.x, location.y, location.z);
-  group.rotation.y = HARTHMERE_JOBS_BOARD_FRONT_FLIP_YAW;
+  group.rotation.y = location.yaw;
   const wood = fallbackMaterial(0x4a3020);
   const face = fallbackMaterial(0x8b6441);
   const accent = fallbackMaterial(location.accentColor);
@@ -218,7 +226,7 @@ export class HarthmereJobsBoardMarkerRenderer implements Renderer {
       const anchor = new THREE.Group();
       anchor.name = `${location.label} jobs-board anchor`;
       anchor.position.set(location.x, location.y, location.z);
-      anchor.rotation.y = HARTHMERE_JOBS_BOARD_FRONT_FLIP_YAW;
+      anchor.rotation.y = location.yaw;
       anchor.visible = false;
       anchor.userData.harthmereJobsBoardMarkerId = location.id;
       anchor.userData.harthmereJobsBoardVariant = location.variant;

@@ -6,7 +6,6 @@ import {
 } from "@/client/components/hooks/client_hooks";
 import { installBiomesUITheme } from "@/client/components/biomes_ui/theme/biomesUITheme";
 import {
-  questInviteOptionsFromTrackableQuests,
   submitHarthmereQuestInviteMutation,
   type HarthmereQuestInviteOption,
 } from "@/client/components/biomes_ui/adapters/questInviteAdapter";
@@ -45,6 +44,7 @@ import type { FeedPostBundle } from "@/shared/types";
 import { displayUsername } from "@/shared/util/helpers";
 import { imageUrlForSize } from "@/shared/util/urls";
 import { startCase } from "lodash";
+import { questInviteOptionsFromChallengeBundles } from "@/client/components/social/questInviteChallengeOptions";
 import React, {
   useCallback,
   useEffect,
@@ -101,59 +101,6 @@ function isWithinQuestInviteProfileDistance(
     QUEST_INVITE_PROFILE_MAX_DISTANCE_METERS *
       QUEST_INVITE_PROFILE_MAX_DISTANCE_METERS
   );
-}
-
-function questInviteOptionsFromChallengeBundles(
-  challenges: unknown[]
-): HarthmereQuestInviteOption[] {
-  return questInviteOptionsFromTrackableQuests(
-    challenges
-      .filter((challenge: any) =>
-        ["available", "in_progress"].includes(String(challenge?.state ?? ""))
-      )
-      .map((challenge: any) => {
-        const biscuit = challenge?.biscuit ?? {};
-        const title =
-          biscuit.displayName ?? biscuit.name ?? biscuit.label ?? biscuit.id;
-        return {
-          questId: String(biscuit.id ?? title ?? ""),
-          title: String(title ?? "Quest"),
-          area: String(biscuit.questCategory ?? biscuit.group ?? "Quest"),
-          objectiveText:
-            challenge?.progress?.progressString ??
-            challenge?.progress?.description ??
-            `Join ${String(title ?? "this quest")} together.`,
-          reward: Array.isArray(challenge?.progress?.rewards)
-            ? `${challenge.progress.rewards.length} rewards`
-            : undefined,
-          markerWorldPosition: questInviteMarkerWorldPositionFromProgress(
-            challenge?.progress
-          ),
-        };
-      })
-  );
-}
-
-function questInviteMarkerWorldPositionFromProgress(
-  progress: unknown
-): [number, number, number] | undefined {
-  const rawProgress = progress as any;
-  const navigationAid = rawProgress?.navigationAid;
-  const candidates = [
-    navigationAid?.target?.position,
-    navigationAid?.position,
-    navigationAid?.pos,
-    navigationAid?.target,
-    rawProgress?.payload?.location,
-    rawProgress?.payload?.position,
-    rawProgress?.location,
-    rawProgress?.position,
-  ];
-  for (const candidate of candidates) {
-    const position = vec3FromUnknown(candidate);
-    if (position) return position;
-  }
-  return undefined;
 }
 
 export const MiniPhoneProfile: React.FunctionComponent<{

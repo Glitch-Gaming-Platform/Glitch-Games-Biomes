@@ -6,6 +6,7 @@ import { rangedAttackTargetTick } from "@/shared/npc/behavior/chase_attack";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
 import { harthmereBossAttacksForLabel } from "@/shared/harthmere/boss_attack_catalog";
 import { HARTHMERE_BOSS_VISUAL_ASSETS } from "@/shared/harthmere/boss_visual_assets";
+import { HARTHMERE_MAGIC_RELEASE_WINDUP_SECS } from "@/shared/harthmere/magic_charge";
 import {
   deserializeNpcCustomState,
   serializeNpcCustomState,
@@ -121,7 +122,7 @@ describe("Harthmere Hex ranged attacks", () => {
     assert.ok(firstCast.chargeTimeSecs <= 10);
     assert.equal(
       firstCast.releaseTime,
-      firstCast.castTime + firstCast.chargeTimeSecs
+      firstCast.castTime + HARTHMERE_MAGIC_RELEASE_WINDUP_SECS
     );
     assert.equal(firstCast.impactTime, firstCast.releaseTime + 1);
     assert.deepEqual(
@@ -287,8 +288,8 @@ describe("Harthmere Hex ranged attacks", () => {
     }));
     const test = fixture();
     const selected: string[] = [];
+    let castTime = 500;
     for (let index = 0; index < attacks.length; index += 1) {
-      const castTime = 500 + index * 0.25;
       assert.equal(
         rangedAttackTargetTick(
           test.env,
@@ -300,15 +301,20 @@ describe("Harthmere Hex ranged attacks", () => {
         "fired"
       );
       selected.push(test.state.chaseAttack.rangedAttack.abilityId);
+      const active = test.state.chaseAttack.rangedAttack;
       assert.equal(
         rangedAttackTargetTick(
           test.env,
           test.npc,
           test.getTarget(),
           attacks,
-          castTime + 0.1
+          active.impactTime
         ).phase,
         "hit"
+      );
+      castTime = Math.max(
+        active.impactTime,
+        active.releaseTime + attacks[index].sharedCooldownSecs
       );
     }
     assert.deepEqual(

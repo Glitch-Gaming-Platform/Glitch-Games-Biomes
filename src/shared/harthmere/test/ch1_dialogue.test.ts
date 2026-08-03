@@ -165,9 +165,9 @@ describe("Chapter 1 authored dialogue", () => {
         }
       }
     }
-    assert.equal(humanPages, 102);
+    assert.equal(humanPages, 128);
     assert.equal(robotPages, 5);
-    assert.equal(narratedPages, 28);
+    assert.equal(narratedPages, 50);
   });
 
   it("preserves expressions on routed conversations and generated handoffs", () => {

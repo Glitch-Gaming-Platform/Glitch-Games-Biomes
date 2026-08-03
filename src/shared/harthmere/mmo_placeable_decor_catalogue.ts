@@ -119,9 +119,15 @@ const DECOR_STATION_RESOLUTION: Record<
 > = {
   handcraft: { stationId: STATION_ID_HANDCRAFT, skillId: "carpentry" },
   workbench: { stationId: STATION_ID_WORKBENCH, skillId: "carpentry" },
-  tailoringBooth: { stationId: STATION_ID_TAILORING_BOOTH, skillId: "tailoring" },
+  tailoringBooth: {
+    stationId: STATION_ID_TAILORING_BOOTH,
+    skillId: "tailoring",
+  },
   thermolite: { stationId: STATION_ID_THERMOLITE, skillId: "blacksmithing" },
-  thermoblaster: { stationId: STATION_ID_THERMOBLASTER, skillId: "exotic_refining" },
+  thermoblaster: {
+    stationId: STATION_ID_THERMOBLASTER,
+    skillId: "exotic_refining",
+  },
   anglersTable: { stationId: STATION_ID_ANGLERS_TABLE, skillId: "fishing" },
   alchemyBench: { stationId: STATION_ID_ALCHEMY_BENCH, skillId: "alchemy" },
 };
@@ -463,6 +469,286 @@ const NEW_DECOR_SPECS: HarthmerePlaceableDecorSpec[] = [
     vendorId: VENDOR_GENERAL_SUPPLY,
     allowedPropertyUses: HOME_USES,
     functionalEffects: { storageSlots: 6, customerAppeal: 2 },
+  },
+  // Harthmere-authored town accents. These are the optimized Blender
+  // replacements for the mixed legacy OBJ/third-party interior props. They use
+  // the same native inventory/crafting/vendor/placeable path as the common
+  // furniture above, so any resident or player property can reuse them.
+  {
+    itemId: "town_forge_anvil",
+    displayName: "Harthmere Forge Anvil",
+    category: "furniture",
+    decorationKind: "utility",
+    surface: "floor",
+    footprint: fp(2, 1, 1),
+    station: "thermolite",
+    inputs: [
+      { itemId: "iron_ingot", count: 5 },
+      { itemId: "coal", count: 2 },
+    ],
+    price: 180,
+    vendorId: VENDOR_SMITHY,
+    allowedPropertyUses: WORKSHOP_USES,
+    functionalEffects: { safety: 1 },
+  },
+  {
+    itemId: "town_workbench",
+    displayName: "Harthmere Workbench",
+    category: "furniture",
+    decorationKind: "utility",
+    surface: "floor",
+    footprint: fp(2, 1, 1),
+    station: "workbench",
+    inputs: [
+      { itemId: "wood_plank", count: 7 },
+      { itemId: "iron_ingot", count: 2 },
+    ],
+    price: 120,
+    vendorId: VENDOR_GENERAL_SUPPLY,
+    allowedPropertyUses: WORKSHOP_USES,
+    functionalEffects: { customerAppeal: 1 },
+  },
+  {
+    itemId: "town_tool_rack",
+    displayName: "Harthmere Tool Rack",
+    category: "storage",
+    decorationKind: "storage",
+    surface: "floor",
+    footprint: fp(2, 1, 2),
+    station: "workbench",
+    inputs: [
+      { itemId: "wood_plank", count: 5 },
+      { itemId: "iron_ingot", count: 2 },
+    ],
+    price: 105,
+    vendorId: VENDOR_GENERAL_SUPPLY,
+    allowedPropertyUses: WORKSHOP_USES,
+    functionalEffects: { storageSlots: 6 },
+  },
+  {
+    itemId: "town_rope_rack",
+    displayName: "Harthmere Rope Rack",
+    category: "storage",
+    decorationKind: "storage",
+    surface: "floor",
+    footprint: fp(2, 1, 2),
+    station: "workbench",
+    inputs: [
+      { itemId: "wood_plank", count: 4 },
+      { itemId: "rope", count: 4 },
+    ],
+    price: 90,
+    vendorId: VENDOR_GENERAL_SUPPLY,
+    allowedPropertyUses: WORKSHOP_USES,
+    functionalEffects: { storageSlots: 5 },
+  },
+  {
+    itemId: "town_produce_crate",
+    displayName: "Harthmere Produce Crate",
+    category: "storage",
+    decorationKind: "storage",
+    surface: "floor",
+    footprint: fp(2, 1, 1),
+    station: "workbench",
+    inputs: [
+      { itemId: "wood_plank", count: 4 },
+      { itemId: "rope", count: 1 },
+    ],
+    price: 65,
+    vendorId: VENDOR_GENERAL_SUPPLY,
+    allowedPropertyUses: HOME_USES,
+    functionalEffects: { storageSlots: 8 },
+  },
+  {
+    itemId: "town_wash_tub",
+    displayName: "Harthmere Wash Tub",
+    category: "furniture",
+    decorationKind: "utility",
+    surface: "floor",
+    footprint: fp(2, 1, 1),
+    station: "workbench",
+    inputs: [
+      { itemId: "wood_plank", count: 5 },
+      { itemId: "iron_ingot", count: 1 },
+    ],
+    price: 75,
+    vendorId: VENDOR_GENERAL_SUPPLY,
+    allowedPropertyUses: HOME_USES,
+    functionalEffects: { comfort: 1 },
+  },
+  {
+    itemId: "town_textile_drape",
+    displayName: "Harthmere Textile Drape",
+    category: "wall_decor",
+    decorationKind: "comfort",
+    surface: "wall",
+    footprint: fp(2, 1, 2),
+    station: "tailoringBooth",
+    inputs: [
+      { itemId: "linen_cloth", count: 3 },
+      { itemId: "beeswax", count: 1 },
+    ],
+    price: 75,
+    vendorId: VENDOR_GENERAL_SUPPLY,
+    allowedPropertyUses: HOME_USES,
+    functionalEffects: { comfort: 2, customerAppeal: 1 },
+  },
+  {
+    itemId: "town_record_stack",
+    displayName: "Harthmere Record Stack",
+    category: "storage",
+    decorationKind: "storage",
+    surface: "floor",
+    footprint: fp(1, 1, 1),
+    station: "workbench",
+    inputs: [
+      { itemId: "wood_plank", count: 3 },
+      { itemId: "cloth_scrap", count: 2 },
+    ],
+    price: 55,
+    vendorId: VENDOR_GENERAL_SUPPLY,
+    allowedPropertyUses: HOME_USES,
+    functionalEffects: { storageSlots: 3 },
+  },
+  {
+    itemId: "town_reagent_shelf",
+    displayName: "Harthmere Reagent Shelf",
+    category: "storage",
+    decorationKind: "storage",
+    surface: "floor",
+    footprint: fp(2, 1, 2),
+    station: "alchemyBench",
+    inputs: [
+      { itemId: "wood_plank", count: 5 },
+      { itemId: "simple_glass", count: 2 },
+    ],
+    price: 115,
+    vendorId: VENDOR_MAGIC,
+    allowedPropertyUses: WORKSHOP_USES,
+    functionalEffects: { storageSlots: 8, customerAppeal: 1 },
+  },
+  {
+    itemId: "town_ward_focus",
+    displayName: "Harthmere Ward Focus",
+    category: "wall_decor",
+    decorationKind: "utility",
+    surface: "floor",
+    footprint: fp(2, 2, 2),
+    station: "alchemyBench",
+    inputs: [
+      { itemId: "stone_polished", count: 3 },
+      { itemId: "crystal_shard", count: 1 },
+      { itemId: "beeswax", count: 1 },
+    ],
+    price: 140,
+    vendorId: VENDOR_MAGIC,
+    allowedPropertyUses: WORKSHOP_USES,
+    functionalEffects: { lighting: 1, safety: 2 },
+  },
+  {
+    itemId: "town_chapel_pew",
+    displayName: "Harthmere Chapel Pew",
+    category: "furniture",
+    decorationKind: "comfort",
+    surface: "floor",
+    footprint: fp(3, 1, 1),
+    station: "workbench",
+    inputs: [
+      { itemId: "wood_plank", count: 6 },
+      { itemId: "linen_cloth", count: 1 },
+    ],
+    price: 90,
+    vendorId: VENDOR_GENERAL_SUPPLY,
+    allowedPropertyUses: HOME_USES,
+    functionalEffects: { comfort: 3 },
+  },
+  {
+    itemId: "town_chapel_altar",
+    displayName: "Harthmere Chapel Altar",
+    category: "furniture",
+    decorationKind: "utility",
+    surface: "floor",
+    footprint: fp(2, 2, 2),
+    station: "workbench",
+    inputs: [
+      { itemId: "stone_polished", count: 4 },
+      { itemId: "linen_cloth", count: 2 },
+      { itemId: "beeswax", count: 1 },
+    ],
+    price: 150,
+    vendorId: VENDOR_GENERAL_SUPPLY,
+    allowedPropertyUses: HOME_USES,
+    functionalEffects: { comfort: 2, safety: 1 },
+  },
+  {
+    itemId: "town_grave_tool_rack",
+    displayName: "Harthmere Grave Tool Rack",
+    category: "storage",
+    decorationKind: "storage",
+    surface: "floor",
+    footprint: fp(2, 1, 2),
+    station: "workbench",
+    inputs: [
+      { itemId: "wood_plank", count: 4 },
+      { itemId: "iron_ingot", count: 2 },
+    ],
+    price: 100,
+    vendorId: VENDOR_GENERAL_SUPPLY,
+    allowedPropertyUses: WORKSHOP_USES,
+    functionalEffects: { storageSlots: 5 },
+  },
+  {
+    itemId: "town_firewood_stack",
+    displayName: "Harthmere Firewood Stack",
+    category: "storage",
+    decorationKind: "storage",
+    surface: "floor",
+    footprint: fp(2, 1, 1),
+    station: "handcraft",
+    inputs: [
+      { itemId: "softwood_log", count: 5 },
+      { itemId: "rope", count: 1 },
+    ],
+    price: 45,
+    vendorId: VENDOR_GENERAL_SUPPLY,
+    allowedPropertyUses: HOME_USES,
+    functionalEffects: { storageSlots: 4, comfort: 1 },
+  },
+  {
+    itemId: "town_cookpot",
+    displayName: "Harthmere Cookpot",
+    category: "furniture",
+    decorationKind: "utility",
+    surface: "floor",
+    footprint: fp(2, 2, 2),
+    station: "workbench",
+    inputs: [
+      { itemId: "iron_ingot", count: 4 },
+      { itemId: "wood_plank", count: 2 },
+      { itemId: "coal", count: 1 },
+    ],
+    price: 130,
+    vendorId: VENDOR_SMITHY,
+    allowedPropertyUses: HOME_USES,
+    functionalEffects: { comfort: 2 },
+  },
+  {
+    itemId: "town_oven_range",
+    displayName: "Harthmere Oven Range",
+    category: "furniture",
+    decorationKind: "utility",
+    surface: "floor",
+    footprint: fp(2, 2, 3),
+    station: "thermolite",
+    inputs: [
+      { itemId: "stone_brick", count: 6 },
+      { itemId: "iron_ingot", count: 3 },
+      { itemId: "coal", count: 2 },
+    ],
+    price: 210,
+    vendorId: VENDOR_SMITHY,
+    allowedPropertyUses: HOME_USES,
+    functionalEffects: { comfort: 3 },
   },
   // Storage
   {
@@ -810,8 +1096,10 @@ const NEW_DECOR_SPECS: HarthmerePlaceableDecorSpec[] = [
   },
 ];
 
-export const HARTHMERE_PLACEABLE_DECOR_SPECS: HarthmerePlaceableDecorSpec[] =
-  [...EXISTING_DECOR_SPECS, ...NEW_DECOR_SPECS];
+export const HARTHMERE_PLACEABLE_DECOR_SPECS: HarthmerePlaceableDecorSpec[] = [
+  ...EXISTING_DECOR_SPECS,
+  ...NEW_DECOR_SPECS,
+];
 
 /** Decor specs that should be exposed by the owned-property decoration system
  * (i.e. the NEW items; existing stations/decor are already registered there). */
@@ -840,11 +1128,7 @@ export function placeableDecorRecipeId(itemId: string): string {
   return `harthmere_decor_place_${itemId}`;
 }
 
-type DecorObjectKind =
-  | "station"
-  | "furniture"
-  | "garden"
-  | "fixture";
+type DecorObjectKind = "station" | "furniture" | "garden" | "fixture";
 type DecorPhysicalForm =
   | "crafting_station"
   | "furniture"
@@ -1053,9 +1337,7 @@ export interface HarthmerePlaceableWorldState {
 }
 
 export type HarthmerePlaceableWorldOperation =
-  | "place_object"
-  | "move_object"
-  | "remove_object";
+  "place_object" | "move_object" | "remove_object";
 
 export interface HarthmerePlaceableWorldMutationRequest {
   requestId: string;
@@ -1141,7 +1423,10 @@ function positionInBounds(
   if (!position) return false;
   for (const c of [position.x, position.y, position.z]) {
     const n = Number(c);
-    if (!Number.isFinite(n) || Math.abs(n) > HARTHMERE_PLACEABLE_WORLD_MAX_ABS_COORD) {
+    if (
+      !Number.isFinite(n) ||
+      Math.abs(n) > HARTHMERE_PLACEABLE_WORLD_MAX_ABS_COORD
+    ) {
       return false;
     }
   }
@@ -1153,7 +1438,11 @@ function rotatedDecorFootprint(
   rotation: HarthmerePlaceableWorldRotation
 ): DecorFootprint {
   return rotation === 90 || rotation === 270
-    ? { width: footprint.depth, depth: footprint.width, height: footprint.height }
+    ? {
+        width: footprint.depth,
+        depth: footprint.width,
+        height: footprint.height,
+      }
     : footprint;
 }
 
@@ -1176,11 +1465,18 @@ function cloneWorldState(
 ): HarthmerePlaceableWorldState {
   const placed: Record<string, HarthmerePlacedWorldObject> = {};
   for (const [id, record] of Object.entries(state.placed ?? {})) {
-    placed[id] = { ...record, position: { ...record.position }, footprint: { ...record.footprint } };
+    placed[id] = {
+      ...record,
+      position: { ...record.position },
+      footprint: { ...record.footprint },
+    };
   }
   return {
     placed,
-    nextObjectNumber: Math.max(1, Math.floor(Number(state.nextObjectNumber) || 1)),
+    nextObjectNumber: Math.max(
+      1,
+      Math.floor(Number(state.nextObjectNumber) || 1)
+    ),
     appliedRequestIds: { ...(state.appliedRequestIds ?? {}) },
   };
 }
@@ -1202,7 +1498,10 @@ function placedRecordAabb(record: HarthmerePlacedWorldObject) {
 
 function overlapsExisting(
   state: HarthmerePlaceableWorldState,
-  candidate: { position: HarthmerePlaceableWorldPosition; footprint: DecorFootprint },
+  candidate: {
+    position: HarthmerePlaceableWorldPosition;
+    footprint: DecorFootprint;
+  },
   ignoreObjectId?: string
 ): boolean {
   for (const [id, record] of Object.entries(state.placed)) {
@@ -1241,8 +1540,16 @@ export function reduceHarthmerePlaceableWorldMutation(
         return worldFail(state, "missing_placeable_item");
       }
       const rotationDegrees = clampRotation(request.rotationDegrees);
-      const rotatedFootprint = rotatedDecorFootprint(spec.footprint, rotationDegrees);
-      if (overlapsExisting(state, { position: request.position, footprint: rotatedFootprint })) {
+      const rotatedFootprint = rotatedDecorFootprint(
+        spec.footprint,
+        rotationDegrees
+      );
+      if (
+        overlapsExisting(state, {
+          position: request.position,
+          footprint: rotatedFootprint,
+        })
+      ) {
         return worldFail(state, "placement_overlaps_existing_object");
       }
       const objectId = `world_obj_${state.nextObjectNumber}`;
@@ -1283,7 +1590,10 @@ export function reduceHarthmerePlaceableWorldMutation(
           ? clampRotation(request.rotationDegrees)
           : record.rotationDegrees;
       // record.footprint is the BASE footprint; rotate it for the overlap test.
-      const rotatedFootprint = rotatedDecorFootprint(record.footprint, rotationDegrees);
+      const rotatedFootprint = rotatedDecorFootprint(
+        record.footprint,
+        rotationDegrees
+      );
       if (
         overlapsExisting(
           state,
@@ -1313,7 +1623,12 @@ export function reduceHarthmerePlaceableWorldMutation(
       delete state.placed[objectId];
       state.appliedRequestIds[request.requestId] = request.nowMs;
       // Returning the item to the placer's inventory.
-      return { ok: true, errors: [], state, itemDeltas: { [record.itemId]: 1 } };
+      return {
+        ok: true,
+        errors: [],
+        state,
+        itemDeltas: { [record.itemId]: 1 },
+      };
     }
 
     default:

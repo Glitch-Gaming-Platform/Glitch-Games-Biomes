@@ -4,6 +4,7 @@
 # while the repository's LFS budget is exhausted.
 animations/character-animations.blend -text -filter -merge -diff
 npcs/indisworm.blend -text -filter -merge -diff
+npcs/indisworm_palette.blend -text -filter -merge -diff
 npcs/*_animations.blend -text -filter -merge -diff
 projectiles/harthmere_boss_attack_shapes.blend -text -filter -merge -diff
 projectiles/harthmere_premium_projectiles.blend -text -filter -merge -diff

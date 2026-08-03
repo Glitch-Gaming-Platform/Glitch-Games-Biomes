@@ -23,7 +23,7 @@ for (const required of [
   "high_skill_rejection",
   "findLocalByComponent",
   "new PickUpEvent",
-  "harthmere-jobs-board-world-prompt",
+  "Read ${board.displayName}",
   "harthmere-jobs-board-panel",
   "page load plus F-open should issue exactly one jobs-board state request",
   "HARTHMERE_E2E_IMAGE_ID is required",

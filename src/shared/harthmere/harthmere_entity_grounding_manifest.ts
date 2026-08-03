@@ -104,7 +104,7 @@ export const HARTHMERE_GROUNDED_ENTITY_REGISTRY: readonly HarthmereGroundedEntit
       where:
         "scripts/harthmere/probe-production-terrain-grounding.cjs and src/client/game/resources/npcs.ts (requireOpenSky=false)",
       notes:
-        "Owners (9601+), customers (9701+), and seeded crafting stations use the nearest roofed floor. The deploy gate repairs NPCs and objects without moving player-authored placeables.",
+        "Owners (9601+) and session customers use the nearest roofed floor. Business crafting interaction anchors use exact generated-interior coordinates and are deliberately excluded from terrain grounding, which previously moved machines onto roofs.",
     },
     {
       kind: "gathering_nodes_and_item_source_markers",

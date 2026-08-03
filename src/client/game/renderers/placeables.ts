@@ -18,6 +18,9 @@ import { BikkieIds } from "@/shared/bikkie/ids";
 import type { PlaceableComponent } from "@/shared/ecs/gen/components";
 import { PlaceableSelector } from "@/shared/ecs/gen/selectors";
 import { anItem } from "@/shared/game/item";
+import { isHarthmereBusinessCraftingStationEntityId } from "@/shared/harthmere/business_crafting_station_seed";
+import { harthmereAdditiveTownCookingStationVisualAsset } from "@/shared/harthmere/additive_town_cooking_station_seed";
+import { isHarthmereRequestBoardEntityId } from "@/shared/harthmere/native_request_boards";
 import {
   HARTHMERE_CAMPFIRE_AMBIENCE_RADIUS_METERS,
   harthmereProximityAmbienceIsAudible,
@@ -121,6 +124,31 @@ export const makePlaceablesRenderer = (
 
       for (const entity of entities) {
         ++numPlaceablesCval.value;
+
+        // The business combined-interior GLB already contains this exact
+        // authored machine. The ECS placeable is retained solely so the normal
+        // nearby native crafting overlay can open the correct station. Do not
+        // load or draw a second mesh beside/on top of the combined interior.
+        if (isHarthmereBusinessCraftingStationEntityId(entity.id)) {
+          continue;
+        }
+
+        // Additive-town ovens and cookpots keep their native ECS placeable for
+        // F/crafting authority, but their optimized Harthmere-authored Blender
+        // mesh is rendered by the instanced interior renderer. Plain campfires
+        // have no replacement asset and continue through the native renderer.
+        if (harthmereAdditiveTownCookingStationVisualAsset(entity.id)) {
+          continue;
+        }
+
+        // Native request-board entities retain their authoritative position,
+        // quest_giver, distance validation and trigger identity, while the
+        // dedicated Blender renderer supplies the large category-specific
+        // visible board. Drawing the legacy placeable as well produced the
+        // squat pond pedestal seen under/inside the replacement graphic.
+        if (isHarthmereRequestBoardEntityId(entity.id)) {
+          continue;
+        }
 
         const audio = resources.cached("/scene/placeable/audio", entity.id);
         if (audio) {

@@ -39,7 +39,9 @@ export const SNAPSHOT_GROVE_BIBLE_CONTENT_VERSION =
   "snapshot-grove-bible-grounded";
 
 export const SNAPSHOT_GROVE_NPC_GROUNDING_VERSION =
-  "snapshot-grove-npc-grounding";
+  "snapshot-grove-npc-grounding-v2-measured-posts";
+
+export const SNAPSHOT_GROVE_RIN_FORAGER_NPC_FEET_Y = 73;
 
 // SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_IDS:
 // Graduation, NPC offer ordering, browser fixtures, and journal grouping must
@@ -165,10 +167,7 @@ export interface SnapshotGroveQuest {
 }
 
 export type SnapshotGroveQuestCategory =
-  | "fountain_lesson"
-  | "road_graduation"
-  | "road_neighbor"
-  | "road_story";
+  "fountain_lesson" | "road_graduation" | "road_neighbor" | "road_story";
 
 export type SnapshotGroveQuestPrerequisite =
   | {
@@ -204,6 +203,12 @@ export interface SnapshotGroveLandmark {
 }
 
 export function snapshotGroveGroundedPosition(position: Vec3): Vec3 {
+  // Rin's forager post is on a measured raised surface outside the otherwise
+  // flat y=70 Grove courtyard. Ground this canonical home explicitly so the
+  // ECS body, map target and interaction prompt stay above terrain.
+  if (position[0] === 510 && position[2] === -155) {
+    return [position[0], SNAPSHOT_GROVE_RIN_FORAGER_NPC_FEET_Y, position[2]];
+  }
   return [position[0], SNAPSHOT_GROVE_LIVE_NPC_FEET_Y, position[2]];
 }
 
@@ -896,17 +901,15 @@ export const SNAPSHOT_GROVE_LANDMARKS: SnapshotGroveLandmark[] = [
     area: "the_grove",
     visibleOnWorldMap: true,
   },
-  ...SNAPSHOT_GROVE_NPCS.map(
-    (npc): SnapshotGroveLandmark => ({
-      id: `npc_${npc.id}`,
-      label: npc.displayName,
-      position: snapshotGroveMarkerPosition(npc.authoredPosition),
-      kind: npc.id === "mucked_robot" ? "danger" : "npc",
-      area: npc.homeArea,
-      npcId: npc.id,
-      visibleOnWorldMap: npc.id !== "mucked_robot",
-    })
-  ),
+  ...SNAPSHOT_GROVE_NPCS.map((npc): SnapshotGroveLandmark => ({
+    id: `npc_${npc.id}`,
+    label: npc.displayName,
+    position: snapshotGroveMarkerPosition(npc.authoredPosition),
+    kind: npc.id === "mucked_robot" ? "danger" : "npc",
+    area: npc.homeArea,
+    npcId: npc.id,
+    visibleOnWorldMap: npc.id !== "mucked_robot",
+  })),
   {
     id: "grove_jackie_sealed_letter",
     label: "Jackie's Sealed Letter",

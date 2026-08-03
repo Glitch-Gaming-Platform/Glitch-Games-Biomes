@@ -118,6 +118,51 @@ function autoPostings(state: HarthmereJobsBoardState) {
   return Object.values(state.postings).filter((job) => job.autoPosted);
 }
 
+/**
+ * Seed a board repeatedly the way a LIVE board actually advances.
+ *
+ * HARTHMERE_JOBS_BOARD_SEED_DETERMINISM changed where variety comes from.
+ *
+ * These variety tests used to re-seed a FRESH `defaultHarthmereJobsBoardState`
+ * while advancing `nowMs`, because the draw was seeded from the wall clock. That
+ * clock dependency was a critical bug: `live_mode_jobs_board_state.ts` seeds on
+ * every GET without persisting, so a job id named a different job on every poll
+ * and accept-by-id bound the wrong posting.
+ *
+ * The draw is now a function of durable state — the board id and the
+ * `nextJobNumber` about to be issued — so advancing only the clock correctly
+ * produces the same board every time, and a test that varies only the clock is
+ * asserting the bug.
+ *
+ * Variety in production comes from the board MOVING: jobs are posted, then
+ * completed or expired, and the counter advances. This helper models that —
+ * seed, drain, repeat — which is both a truer simulation than the old loop and
+ * the reason the properties below still hold. Measured: all six Exotic Matter
+ * templates surface within 50 rounds, and `hunt_mucker_elite` rotates through
+ * seven distinct live coordinates in 60.
+ */
+function seedLiveBoardRounds(
+  boardId: string,
+  rounds: number,
+  visit: (state: HarthmereJobsBoardState) => void,
+  shouldStop?: () => boolean
+) {
+  let state = defaultHarthmereJobsBoardState(NOW);
+  for (let round = 0; round < rounds; round += 1) {
+    if (shouldStop?.()) return;
+    state = seedBoard(state, boardId, NOW + round * 17_000).jobsBoard;
+    visit(state);
+    // Drain the board as completion/expiry would, leaving `nextJobNumber`
+    // advanced. Without this the board sits at its open-job target and stops
+    // seeding entirely, which is correct behaviour but tests nothing.
+    state = JSON.parse(JSON.stringify(state)) as HarthmereJobsBoardState;
+    for (const jobId of Object.keys(state.postings)) {
+      delete state.postings[jobId];
+    }
+    state.issuerOpenJobIds = {};
+  }
+}
+
 describe("mmo_jobs_board_authority — economy auto-seed (current)", () => {
   it("produces up to MAX_PER_TICK new auto-posted jobs on the default board", () => {
     const result = seed(defaultHarthmereJobsBoardState(NOW));
@@ -447,17 +492,12 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
 
   it("randomizes Mucker and Hex hunt coordinates across generated postings", () => {
     const byTemplate = new Map<string, Set<string>>();
-    for (let i = 0; i < 300; i += 1) {
-      for (const boardId of [
-        HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
-        HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
-      ]) {
-        const result = seedBoard(
-          defaultHarthmereJobsBoardState(NOW),
-          boardId,
-          NOW + i * 17_321
-        );
-        for (const job of autoPostings(result.jobsBoard)) {
+    for (const boardId of [
+      HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+      HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
+    ]) {
+      seedLiveBoardRounds(boardId, 300, (state) => {
+        for (const job of autoPostings(state)) {
           if (job.monsterId !== "mucker" && job.monsterId !== "hex") continue;
           const target = harthmereJobsBoardMuckBountyTargetForId(
             job.mapMarkerId
@@ -472,7 +512,7 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
           set.add(target!.position.map((value) => value.toFixed(2)).join(","));
           byTemplate.set(job.templateId ?? "", set);
         }
-      }
+      });
     }
 
     for (const templateId of [
@@ -491,17 +531,12 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
     const pickupsByTemplate = new Map<string, Set<string>>();
     const dropoffsByTemplate = new Map<string, Set<string>>();
     const seen = new Set<string>();
-    for (let i = 0; i < 300; i += 1) {
-      for (const boardId of [
-        HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
-        HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
-      ]) {
-        const result = seedBoard(
-          defaultHarthmereJobsBoardState(NOW),
-          boardId,
-          NOW + i * 19_003
-        );
-        for (const job of autoPostings(result.jobsBoard)) {
+    for (const boardId of [
+      HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+      HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
+    ]) {
+      seedLiveBoardRounds(boardId, 300, (state) => {
+        for (const job of autoPostings(state)) {
           if (job.kind !== "delivery") continue;
           const req = job.requirements.find((requirement) =>
             Boolean(requirement.itemId)
@@ -538,7 +573,7 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
           dropoffs.add(req.mapMarkerId!);
           dropoffsByTemplate.set(job.templateId ?? "", dropoffs);
         }
-      }
+      });
     }
 
     for (const templateId of [
@@ -746,8 +781,21 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
 
   it("auto-posted jobs accept and complete through the existing pipeline (rewards reach the seeker)", () => {
     const seeded = seed(defaultHarthmereJobsBoardState(NOW), NOW);
-    const job = Object.values(seeded.jobsBoard.postings)[0];
-    assert.ok(job, "expected at least one seeded job");
+    // PICK BY WHAT THIS TEST EXERCISES, NOT BY DRAW ORDER.
+    //
+    // This used to take `Object.values(postings)[0]`, which silently depended
+    // on which template the RNG happened to place first. That made the test a
+    // hostage to the seed: HARTHMERE_JOBS_BOARD_SEED_DETERMINISM changed the
+    // draw order and slot 0 became a monster hunt, which cannot complete
+    // through this path at all — a hunt is closed by the native kill ledger
+    // (`jobs_board_native_bounty_authority.test.ts`), not by field completion.
+    //
+    // The pipeline under test here is accept -> field completion -> reward, so
+    // select a job that actually uses it.
+    const job = Object.values(seeded.jobsBoard.postings).find(
+      (candidate) => !candidate.monsterId
+    );
+    assert.ok(job, "expected at least one seeded non-hunt job");
 
     const accept = reduceHarthmereJobsBoardMutation(
       seeded.jobsBoard,
@@ -1005,18 +1053,18 @@ describe("mmo_jobs_board_authority — Exotic Matter mining jobs", () => {
       .sort();
     const seen = new Set<string>();
 
-    for (let i = 0; i < 500 && seen.size < expected.length; i += 1) {
-      const result = seedBoard(
-        defaultHarthmereJobsBoardState(NOW),
-        HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
-        NOW + i * 17_000
-      );
-      for (const job of autoPostings(result.jobsBoard)) {
-        if (isHarthmereExoticMatterMiningTemplateId(job.templateId)) {
-          seen.add(job.templateId!);
+    seedLiveBoardRounds(
+      HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
+      500,
+      (state) => {
+        for (const job of autoPostings(state)) {
+          if (isHarthmereExoticMatterMiningTemplateId(job.templateId)) {
+            seen.add(job.templateId!);
+          }
         }
-      }
-    }
+      },
+      () => seen.size >= expected.length
+    );
 
     assert.deepEqual([...seen].sort(), expected);
   });

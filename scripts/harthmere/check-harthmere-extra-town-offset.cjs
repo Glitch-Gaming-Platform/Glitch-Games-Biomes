@@ -195,7 +195,6 @@ for (const family of [
   "original_snapshot_hostiles",
   "original_business_owners",
   "original_business_customers",
-  "original_business_objects",
   "gathering_nodes",
 ]) {
   ok(

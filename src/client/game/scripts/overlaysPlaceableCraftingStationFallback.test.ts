@@ -29,6 +29,10 @@ describe("Harthmere placeable crafting-station F fallback", () => {
       /kind:\s*"placeable"[\s\S]*itemId:\s*entity\.placeable_component\.item_id/
     );
     assert.match(source, /label:\s*selected\.stationName/);
+    assert.match(
+      source,
+      /stationName:\s*entity\.label\?\.text\?\.trim\(\)\s*\|\|\s*item\.displayName/
+    );
   });
 
   it("checks placeable stations before falling back to NPC talk", () => {

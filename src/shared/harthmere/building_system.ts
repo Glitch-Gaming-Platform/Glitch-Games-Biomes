@@ -107,8 +107,7 @@ export const BUILDING_SYSTEM_CONSTRUCTION_STAGES = [
 export type BuildingSystemProjectStatus = "active" | "completed" | "cancelled";
 
 export type BuildingSystemBlueprintSource =
-  | "harthmere_catalog"
-  | "bikkie_blueprint";
+  "harthmere_catalog" | "bikkie_blueprint";
 
 export type BuildingSystemBlueprintMaterializationKind =
   | "solid_structure"
@@ -183,8 +182,7 @@ export interface BuildingSystemMaterialSourceDefinition {
   description: string;
 }
 
-export interface BuildingSystemMaterialRequirementLine
-  extends BuildingSystemMaterialDefinition {
+export interface BuildingSystemMaterialRequirementLine extends BuildingSystemMaterialDefinition {
   required: number;
   contributed: number;
   remaining: number;
@@ -280,7 +278,7 @@ const CINDERLANE_BUILDING_MATERIAL_SOURCE_NAME =
 const CINDERLANE_BUILDING_MATERIAL_SOURCE_POSITION = [1630, 43, -775] as [
   number,
   number,
-  number
+  number,
 ];
 
 function cinderlaneBuildingMaterialSource(
@@ -569,20 +567,11 @@ export interface BuildingSystemGuideConstructionMath {
 }
 
 export type BuildingSystemAccessMode =
-  | "private"
-  | "friends"
-  | "guild"
-  | "public";
+  "private" | "friends" | "guild" | "public";
 export type BuildingSystemPermissionSubject =
-  | "owner"
-  | "friends_guests"
-  | "guild_members"
-  | "public";
+  "owner" | "friends_guests" | "guild_members" | "public";
 export type BuildingSystemPermissionKey =
-  | "storage_access"
-  | "build_edit"
-  | "demolition"
-  | "transfer_sale";
+  "storage_access" | "build_edit" | "demolition" | "transfer_sale";
 
 export type BuildingSystemPermissionSet = Record<
   BuildingSystemPermissionKey,
@@ -604,11 +593,7 @@ export interface BuildingSystemPropertyRecord {
   origin?: { x: number; y: number; z: number };
   rotationDegrees?: 0 | 90 | 180 | 270;
   status:
-    | BuildingSystemPlotUse
-    | "owned"
-    | "abandoned"
-    | "demolished"
-    | "for_sale";
+    BuildingSystemPlotUse | "owned" | "abandoned" | "demolished" | "for_sale";
   use: BuildingSystemPlotUse;
   value: number;
   tier: number;
@@ -1605,16 +1590,16 @@ export function createBuildingSystemMuckAreaPlotDefinition(input: {
         z: Math.floor(input.origin.z),
       }
     : explicitArea
-    ? {
-        x: Math.floor(
-          explicitArea.authoredCenter[0] - input.blueprint.footprint.width / 2
-        ),
-        y: Math.floor(explicitArea.authoredCenter[1] + 1),
-        z: Math.floor(
-          explicitArea.authoredCenter[2] - input.blueprint.footprint.depth / 2
-        ),
-      }
-    : undefined;
+      ? {
+          x: Math.floor(
+            explicitArea.authoredCenter[0] - input.blueprint.footprint.width / 2
+          ),
+          y: Math.floor(explicitArea.authoredCenter[1] + 1),
+          z: Math.floor(
+            explicitArea.authoredCenter[2] - input.blueprint.footprint.depth / 2
+          ),
+        }
+      : undefined;
   if (!origin) {
     return { ok: false, errors: ["missing_origin_or_muck_area"] };
   }
@@ -2734,7 +2719,7 @@ export function buildingSystemDefaultOrigin(
 const BUILDING_GROUND_SHIFT_SCAN = 24;
 
 export function shiftBuildingSystemMaterializationPlanY<
-  T extends BuildingSystemAnyMaterializationPlan
+  T extends BuildingSystemAnyMaterializationPlan,
 >(plan: T, shiftY: number): T {
   if (!Number.isFinite(shiftY) || shiftY === 0) {
     return plan;
@@ -2773,7 +2758,7 @@ export function shiftBuildingSystemMaterializationPlanY<
 // probe can never fling a structure far, and an unresolved surface yields the
 // unchanged plan.
 export function groundedBuildingSystemMaterializationPlan<
-  T extends BuildingSystemAnyMaterializationPlan
+  T extends BuildingSystemAnyMaterializationPlan,
 >(plan: T, isSolid: HarthmereSolidSampler, options?: { maxScan?: number }): T {
   if (!plan.edits.length) {
     return plan;
@@ -3309,15 +3294,37 @@ function pushBuildingWalls(input: {
   }
 }
 
+/**
+ * Columns left open in the front wall at body height.
+ *
+ * A native NPC body is one metre — one voxel — wide, so a one-voxel opening is
+ * not traversable: the swept AABB is face-coincident with the jambs and any
+ * drift registers as a collision. Every walkable structure therefore gets at
+ * least a three-voxel opening wherever the footprint can afford it, which
+ * leaves a full voxel of margin either side of a body walking the centre line.
+ *
+ * The Harthmere business outposts additionally clear this span explicitly after
+ * their storefront dressing pass; see `HARTHMERE_BUSINESS_DOORWAY_WIDTH` in
+ * `business_route_clearance.ts`. Narrow blueprints that genuinely cannot spare
+ * three columns still degrade to two and then one, because a too-narrow door is
+ * better than a door outside the wall.
+ */
 function buildingSystemDoorOpeningColumns(x0: number, x1: number) {
   const width = Math.max(1, x1 - x0);
   const center = Math.floor((x0 + x1) / 2);
   if (width < 4) {
     return [center];
   }
-  const left = width >= 6 ? center - 1 : center;
-  const right = Math.min(x1 - 2, left + 1);
-  return [...new Set([left, right])];
+  if (width < 8) {
+    const left = width >= 6 ? center - 1 : center;
+    const right = Math.min(x1 - 2, left + 1);
+    return [...new Set([left, right])];
+  }
+  const columns: number[] = [];
+  for (let x = center - 1; x <= center + 1; x += 1) {
+    if (x > x0 && x < x1 - 1) columns.push(x);
+  }
+  return columns.length > 0 ? columns : [center];
 }
 
 function buildingSystemGeometryBounds(
@@ -3514,8 +3521,8 @@ function pushBuildingSystemUtilityBlueprintEdits(input: {
       kind === "farm_utility"
         ? BUILDING_BLOCKS.storageContainer
         : kind === "signal_tower"
-        ? BUILDING_BLOCKS.businessMarker
-        : BUILDING_BLOCKS.interior;
+          ? BUILDING_BLOCKS.businessMarker
+          : BUILDING_BLOCKS.interior;
     input.edits.push({
       kind: "editEvent",
       position: [cx, kind === "fixture" ? input.y0 : input.y0 + 1, cz],
@@ -3721,17 +3728,16 @@ function pushBuildingSystemPhysicalAccessEdits(input: {
     });
   }
   if (buildingSystemUsesSolidShell(input.blueprint)) {
+    const x0 = input.origin.x;
+    const x1 = input.origin.x + input.blueprint.footprint.width;
+    const doorway = buildingSystemDoorOpeningColumns(x0, x1);
+    const doorLockX = Math.min(x1 - 1, Math.max(...doorway) + 1);
     input.edits.push({
       kind: "editEvent",
-      position: [
-        input.origin.x +
-          Math.min(
-            input.blueprint.footprint.width - 1,
-            Math.floor(input.blueprint.footprint.width / 2) + 1
-          ),
-        y,
-        input.origin.z,
-      ],
+      // The marker remains centered on the public doorway, but its physical
+      // voxel lives on the first jamb outside the computed opening. Keeping
+      // the lock at center+1 blocked the right third of every widened door.
+      position: [doorLockX, y, input.origin.z],
       value: BUILDING_BLOCKS.doorLock,
       label: "door_lock",
     });
@@ -4237,8 +4243,8 @@ export function createBuildingSystemPropertyRecord(input: {
     input.blueprint.use === "business"
       ? "public"
       : input.blueprint.use === "guild"
-      ? "guild"
-      : "private";
+        ? "guild"
+        : "private";
   return {
     propertyId: input.propertyId,
     plotId: input.plot.plotId,
@@ -4316,8 +4322,8 @@ export function normalizeBuildingSystemPropertyRecord(input: {
           (blueprint.use === "business"
             ? "public"
             : blueprint.use === "guild"
-            ? "guild"
-            : "private"),
+              ? "guild"
+              : "private"),
         raw.permissions
       ),
       storageContainerId:
@@ -4332,8 +4338,8 @@ export function normalizeBuildingSystemPropertyRecord(input: {
         typeof raw.businessId === "string"
           ? raw.businessId
           : blueprint.use === "business"
-          ? `business_${input.propertyId}`
-          : undefined,
+            ? `business_${input.propertyId}`
+            : undefined,
       visualDamageApplied: Boolean(raw.visualDamageApplied),
       upgradedVoxelTier: Math.max(
         1,

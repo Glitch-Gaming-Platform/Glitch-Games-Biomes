@@ -7,14 +7,14 @@ import {
 import assert from "assert";
 
 describe("Harthmere business tab labels", () => {
-  it("labels the mini-game tab 'Day Job Mini-Game'", () => {
+  it("labels the customer-service tab as an in-world shift", () => {
     assert.strictEqual(
       HARTHMERE_BUSINESS_TAB_LABELS.customers,
-      "Day Job Mini-Game"
+      "In-World Shift"
     );
     assert.strictEqual(
       harthmereBusinessTabLabel("customers"),
-      "Day Job Mini-Game"
+      "In-World Shift"
     );
   });
 

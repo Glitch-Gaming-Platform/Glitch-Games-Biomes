@@ -2,11 +2,12 @@
 
 This pipeline renders the non-protected Harthmere inventory catalogue in
 Blender. It uses a shared orthographic hero camera, three-point lighting,
-material-specific shaders, exaggerated silhouettes, contact shadows, 512px
-source renders, and 256px RGBA downsampling.
+material-specific shaders, exaggerated silhouettes, 512px source renders, and
+256px RGBA downsampling.
 
-The final PNGs have transparent backgrounds. The soft grounding shadow is
-intentional; the square studio backdrop is not rendered.
+The final PNGs have transparent backgrounds and no added grounding/drop
+shadow, matching the original Biomes inventory-art presentation. The square
+studio backdrop is not rendered.
 
 ## Luis's Chapter 1 repair cart
 
@@ -37,6 +38,19 @@ the asset, not its final scale, grounding, interaction, or camera readability.
 blender --background \
   --python scripts/harthmere/blender/generate_inventory_icons.py \
   -- --force
+
+# Rebuild only the explicitly matched real-food props and food-specific
+# procedural compositions (steaks, fish, meals, drinks, produce, and tarts).
+blender --background \
+  --python scripts/harthmere/blender/generate_inventory_icons.py \
+  -- --force --food-assets-only
+
+# Replace only the legacy notebook-style seed packet icons with physical,
+# crop-specific seed compositions. Tree seeds and spores retain their current
+# artwork.
+blender --background \
+  --python scripts/harthmere/blender/generate_inventory_icons.py \
+  -- --force --seed-assets-only
 
 node scripts/harthmere/blender/generate_inventory_icon_manifest.cjs
 node scripts/harthmere/validate-inventory-icons.cjs
@@ -90,11 +104,13 @@ final review must use the exact-current-source game renderer and the generated
 following `docs/harthmere/TESTING_FASTER.md` so a stale app image is never
 mistaken for the current implementation.
 
-## Gathering-node and jobs-board world graphics
+## Gathering-node, jobs-board, and request-board world graphics
 
 `generate_world_interaction_graphics.py` builds the presentation assets for all
-29 authoritative gathering nodes and the five color variants shared by the 21
-physical jobs boards. It does not own interaction, tool/skill validation,
+29 authoritative gathering nodes, the five color variants shared by the 21
+physical jobs boards, and four category-specific native request boards
+(Fishing, Farming, Industrial, Research). It does not own interaction,
+native quest progression, tool/skill validation,
 inventory rewards, depletion/respawn, or jobs-board proximity. Those remain in
 the native/server systems.
 
@@ -118,10 +134,19 @@ Outputs:
 
 - `public/assets/harthmere/glb/gathering_nodes/`
 - `public/assets/harthmere/glb/jobs_boards/`
+- `public/assets/harthmere/glb/request_boards/`
 - `public/assets/harthmere/manifest/world-interaction-graphics.json`
 - `output/harthmere-world-interaction-graphics/previews/`
 
 Use `--only <node-id>` or `--only jobs_board_<variant>` for a smoke rebuild.
+Use `--gathering-only` to rebuild all 29 gathering-node LODs without touching
+the five jobs-board GLBs. Gathering landmarks intentionally omit artificial
+rectangular ground pads and are normalized back to a bottom-center Z=0 pivot,
+so the real grass, road, mud, rock, or water terrain remains visible around
+their silhouette.
+Use `--only request_board_<category>` for the mandatory one-board emblem smoke
+preview, then `--request-boards-only` to rebuild all four request-board LOD
+pairs without regenerating the gathering or jobs-board sets.
 Selected builds merge into the complete manifest and must still pass the full
 asset validator. Blender previews are authoring evidence only; final acceptance
 requires exact-current-source E2E and live-browser screenshots proving scale,
@@ -158,7 +183,7 @@ harvest drop materialization. Their existing Galois flora assets select
 Blender art can be shared at the design level: a mature flax, berry, mushroom,
 or flower crop may reuse the same silhouette, palette, and supported-detail
 language as its authored gathering landmark. Do not render the complete static
-landmark (ground pad, baskets, tools, carcass kit, or multiple-row footprint)
+landmark (baskets, tools, carcass kit, or multiple-row footprint)
 on a planted crop. Any planted-crop art upgrade must export stage-specific
 Galois/flora assets and let the synchronized Gaia growth value select the
 stage; it must not add a second client timer or duplicate plant authority.

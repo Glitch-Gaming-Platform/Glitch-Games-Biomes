@@ -158,7 +158,7 @@ function guideTileTextureForMaterial(token: string, color: number) {
 }
 
 function styleMaterialColor(material: string | undefined, fallback: number) {
-  return material ? GUIDE_MATERIAL_COLORS[material] ?? fallback : fallback;
+  return material ? (GUIDE_MATERIAL_COLORS[material] ?? fallback) : fallback;
 }
 
 function guideMaterial(token: string, fallback = 0x8f8f8f) {
@@ -949,23 +949,30 @@ export class HarthmereBusinessOutpostBuildingsRenderer implements Renderer {
   public readonly name = HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION;
   private readonly root = new THREE.Group();
 
-  constructor() {
+  constructor(private readonly mobileDevice = false) {
     this.root.name = `harthmere-business-outpost-buildings root ${HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION}`;
-    const offset = harthmereBusinessOutpostRuntimeOffsetForTest();
-    for (const record of Object.values(
-      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS
-    )) {
-      const mesh = createHarthmereBusinessOutpostBuildingMesh(record);
-      mesh.position.set(offset.x, 0, offset.z);
-      mesh.userData.harthmereBusinessOutpostRuntimeOffset = offset;
-      // The guide mesh is a data/audit proxy only. Real buildings are GLTF
-      // assets placed by createHarthmereBlockBuiltServiceBuilding in
-      // harthmere_assets.ts via createHarthmereBusinessOutpostPlacements.
-      // Making the guide group invisible prevents white proxy boxes from
-      // overlapping the GLTF shells while keeping the mesh hierarchy intact
-      // for test traversal and the window debug inspector.
-      mesh.visible = false;
-      this.root.add(mesh);
+    // These meshes are invisible audit proxies; the actual outpost buildings
+    // come from harthmere_assets.ts. Keeping more than a thousand hidden mesh
+    // objects alive on iOS wastes WebContent memory without drawing a pixel.
+    // Preserve the full hierarchy on desktop for the debug inspector/tests,
+    // but omit it entirely on mobile.
+    if (!mobileDevice) {
+      const offset = harthmereBusinessOutpostRuntimeOffsetForTest();
+      for (const record of Object.values(
+        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS
+      )) {
+        const mesh = createHarthmereBusinessOutpostBuildingMesh(record);
+        mesh.position.set(offset.x, 0, offset.z);
+        mesh.userData.harthmereBusinessOutpostRuntimeOffset = offset;
+        // The guide mesh is a data/audit proxy only. Real buildings are GLTF
+        // assets placed by createHarthmereBlockBuiltServiceBuilding in
+        // harthmere_assets.ts via createHarthmereBusinessOutpostPlacements.
+        // Making the guide group invisible prevents white proxy boxes from
+        // overlapping the GLTF shells while keeping the mesh hierarchy intact
+        // for test traversal and the window debug inspector.
+        mesh.visible = false;
+        this.root.add(mesh);
+      }
     }
     this.publishDebugBridge();
   }
@@ -980,6 +987,10 @@ export class HarthmereBusinessOutpostBuildingsRenderer implements Renderer {
     if (typeof window !== "undefined") {
       (window as any).__harthmereBusinessOutpostBuildings = {
         version: HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION,
+        mobileDevice: this.mobileDevice,
+        expectedCount: Object.keys(
+          HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS
+        ).length,
         count: this.root.children.length,
         buildings: () =>
           this.root.children.map((child) => {
@@ -1009,6 +1020,8 @@ export class HarthmereBusinessOutpostBuildingsRenderer implements Renderer {
   }
 }
 
-export function makeHarthmereBusinessOutpostBuildingsRenderer() {
-  return new HarthmereBusinessOutpostBuildingsRenderer();
+export function makeHarthmereBusinessOutpostBuildingsRenderer(
+  mobileDevice = false
+) {
+  return new HarthmereBusinessOutpostBuildingsRenderer(mobileDevice);
 }

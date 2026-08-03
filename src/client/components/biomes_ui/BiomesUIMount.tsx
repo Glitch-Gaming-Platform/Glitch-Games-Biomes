@@ -14,6 +14,7 @@ import { TutorialDirector } from "./tutorial/TutorialDirector";
 import { BiomesUIVitalsPanel } from "./BiomesUIVitalsPanel";
 import { HarthmereLevelUpCelebration } from "./HarthmereLevelUpCelebration";
 import { HarthmereJobsBoardWorldInteraction } from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteraction";
+import { HarthmereRequestBoardWorldInteraction } from "@/client/components/harthmere_request_board/HarthmereRequestBoardWorldInteraction";
 import { HarthmereWantedBoardWorldInteraction } from "@/client/components/harthmere_wanted_board/HarthmereWantedBoardWorldInteraction";
 import { HarthmereBusinessWorldInteraction } from "@/client/components/harthmere_business/HarthmereBusinessWorldInteraction";
 import { HarthmerePropertyForSaleWorldInteraction } from "@/client/components/harthmere_building/HarthmerePropertyForSaleWorldInteraction";
@@ -25,6 +26,7 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { BIOMES_UI_LOCATE_ON_MAP_EVENT } from "./adapters/mapPinnedDestination";
 import { useBiomesHUDVisibilitySnapshot } from "./hudVisibilitySettings";
 import type { TabKey } from "./BiomesUITypes";
+import { useBiomesUINonGameplayScreenVisible } from "./BiomesUIOpenPrompt";
 
 function truthy(value: string | undefined | null): boolean {
   return ["1", "true", "yes", "on"].includes(String(value ?? "").toLowerCase());
@@ -66,8 +68,9 @@ function isEnabled(): boolean {
 export const BiomesUIMount: React.FunctionComponent<{
   forceEnabled?: boolean;
 }> = ({ forceEnabled = false }) => {
-  const { reactResources } = useClientContext();
+  const { clientConfig, reactResources } = useClientContext();
   const replaceLegacy = useBiomesUIReplaceLegacyFlag();
+  const nonGameplayScreenVisible = useBiomesUINonGameplayScreenVisible();
   const replacementMode = forceEnabled || replaceLegacy;
   const [enabled, setEnabled] = useState<boolean>(() => false);
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
@@ -132,6 +135,9 @@ export const BiomesUIMount: React.FunctionComponent<{
   const projectileVisualAudit = <HarthmereProjectileVisualAuditPanel />;
 
   if (!forceEnabled && !enabled) return projectileVisualAudit;
+  if (clientConfig.mobileDevice && nonGameplayScreenVisible) {
+    return projectileVisualAudit;
+  }
 
   return (
     <>
@@ -146,6 +152,9 @@ export const BiomesUIMount: React.FunctionComponent<{
         shortcutOverrides={live.shortcuts}
       />
       <HarthmereJobsBoardWorldInteraction suppressPrompt={activeTab !== null} />
+      <HarthmereRequestBoardWorldInteraction
+        suppressPrompt={activeTab !== null}
+      />
       <HarthmereWantedBoardWorldInteraction
         suppressPrompt={activeTab !== null}
       />

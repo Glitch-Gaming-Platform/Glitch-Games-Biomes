@@ -197,16 +197,27 @@ export const HARTHMERE_BUILDINGS: HarthmereBuilding[] = [
     trim: "yellowWool",
     doorSide: "east",
     doorCenter: -265,
-    floors: 1,
+    // VERTICAL-PLAN FIX (harthmere-building-shell-polish-v1): the interior lore
+    // audit records Old Jory's home as a "stable-yard loft", but the shell
+    // declared one floor, so the loft had nowhere to exist. Second floor plus a
+    // real stair run, placed clear of the animal aisle and the east door lane.
+    floors: 2,
+    stairs: harthmereStairsFor(443, -272, "east"),
   },
   {
     name: "guard_yard_office",
     district: "Guard District",
     profile: "service",
+    // SHELL FIX (harthmere-building-shell-polish-v1): was z -278..-258, which
+    // interpenetrated `north_gate_east_gatehouse` (498..512, -288..-270) by
+    // 13x9 voxels AND sealed that gatehouse's south door — all four approach
+    // voxels in front of it were inside this office. Moved 12 south so the
+    // gate tower keeps its own doorstep and the two shells no longer share
+    // volume. The office still faces the same yard as the barracks next door.
     x0: 500,
     x1: 524,
-    z0: -278,
-    z1: -258,
+    z0: -266,
+    z1: -246,
     wall: "stoneBrick",
     roof: "redWool",
     floor: "stonePolished",
@@ -214,7 +225,7 @@ export const HARTHMERE_BUILDINGS: HarthmereBuilding[] = [
     doorSide: "south",
     doorCenter: 512,
     floors: 1,
-    chimney: [522, -275],
+    chimney: [522, -263],
   },
   {
     name: "guard_barracks_bunkhouse",
@@ -239,28 +250,34 @@ export const HARTHMERE_BUILDINGS: HarthmereBuilding[] = [
     name: "traveler_hearth_player_house",
     district: "Residential District",
     profile: "house",
+    // SHELL FIX (harthmere-building-shell-polish-v1): was z -266..-246, which
+    // overlapped `harthmere_stables` (440..458, -276..-254) by 11x13 voxels and
+    // blocked the stable's east door outright. Moved 14 south. The stables keep
+    // their yard, their trough (455..459, -245..-241) and their hayrack; the
+    // player house lands in the Residential District it is filed under instead
+    // of straddling the gate approach. Stairs, balcony and chimney move with it.
     x0: 448,
     x1: 466,
-    z0: -266,
-    z1: -246,
+    z0: -252,
+    z1: -232,
     wall: "stoneBrick",
     roof: "blueWool",
     floor: "stonePolished",
     trim: "whiteWool",
     doorSide: "east",
-    doorCenter: -256,
+    doorCenter: -242,
     floors: 2,
     upper: true,
-    stairs: harthmereStairsFor(452, -260, "east"),
+    stairs: harthmereStairsFor(452, -246, "east"),
     balcony: {
       side: "east",
-      start: -262,
-      end: -252,
+      start: -248,
+      end: -238,
       depth: 3,
       floor: 2,
       material: "stonePolished",
     },
-    chimney: [450, -263],
+    chimney: [450, -249],
   },
   {
     name: "mara_thistle_two_story_house",
@@ -357,7 +374,12 @@ export const HARTHMERE_BUILDINGS: HarthmereBuilding[] = [
     trim: "hay",
     doorSide: "east",
     doorCenter: -194,
-    floors: 1,
+    // VERTICAL-PLAN FIX (harthmere-building-shell-polish-v1): Dawn's residence
+    // is written as a room above the bakery, but the shell declared one floor.
+    // Second floor plus a stair run behind the oven line, clear of the east
+    // door lane and of the chimney at (421, -201).
+    floors: 2,
+    stairs: harthmereStairsFor(432, -200, "east"),
     chimney: [421, -201],
   },
   {
@@ -380,24 +402,33 @@ export const HARTHMERE_BUILDINGS: HarthmereBuilding[] = [
     name: "market_auction_office",
     district: "Player Services Plaza",
     profile: "service",
-    x0: 500,
-    x1: 518,
-    z0: -226,
-    z1: -208,
+    // SHELL FIX (harthmere-building-shell-polish-v1): was x 500..518, which
+    // interpenetrated `crafters_workshop` (494..514, -238..-220) by 15x7 and
+    // stood directly in front of that workshop's south door. Moved 3 west and
+    // 10 south so both shells clear each other and Craftsman Row keeps its
+    // doorstep. The office stays on the Player Services Plaza frontage.
+    x0: 497,
+    x1: 515,
+    z0: -216,
+    z1: -198,
     wall: "stonePolished",
     roof: "greenWool",
     floor: "stoneBrick",
     trim: "yellowWool",
     doorSide: "west",
-    doorCenter: -217,
+    doorCenter: -207,
     floors: 1,
   },
   {
     name: "brass_scale_bank",
     district: "Player Services Plaza",
     profile: "service",
-    x0: 546,
-    x1: 568,
+    // SHELL FIX (harthmere-building-shell-polish-v1): was x 546..568. Its west
+    // teller door opened onto a one-voxel slot against the Black Anvil Smithy's
+    // east wall — three of the four approach voxels were inside the smithy.
+    // Moved 3 east so the bank has a real doorstep on the plaza.
+    x0: 549,
+    x1: 571,
     z0: -236,
     z1: -214,
     wall: "stonePolished",
@@ -407,7 +438,7 @@ export const HARTHMERE_BUILDINGS: HarthmereBuilding[] = [
     doorSide: "west",
     doorCenter: -225,
     floors: 1,
-    chimney: [565, -233],
+    chimney: [568, -233],
   },
   {
     name: "black_anvil_smithy",
@@ -423,7 +454,12 @@ export const HARTHMERE_BUILDINGS: HarthmereBuilding[] = [
     trim: "coal",
     doorSide: "south",
     doorCenter: 532,
-    floors: 1,
+    // VERTICAL-PLAN FIX (harthmere-building-shell-polish-v1): the residence
+    // lore puts Osric and Luth in an apartment above the forge, but the shell
+    // declared one floor. Second floor plus a stair run on the east side, away
+    // from the forge triangle at the chimney end and clear of the south door.
+    floors: 2,
+    stairs: harthmereStairsFor(536, -238, "east"),
     chimney: [523, -238],
   },
   {
@@ -519,14 +555,24 @@ export const HARTHMERE_BUILDINGS: HarthmereBuilding[] = [
     trim: "whiteWool",
     doorSide: "south",
     doorCenter: 480,
-    floors: 1,
+    // VERTICAL-PLAN FIX (harthmere-building-shell-polish-v1): the chapel is the
+    // only 57-table building whose story requires an archive, an infirmary,
+    // clergy rooms AND bell-tower access, and the renderer shell already builds
+    // it two storeys tall. The authored table said one floor, so the two
+    // disagreed. Second floor plus a stair run in the north-west corner, behind
+    // the altar line and well clear of the nave's procession aisle.
+    floors: 2,
+    stairs: harthmereStairsFor(470, -146, "east"),
   },
   {
     name: "brother_vance_chapel_cottage",
     district: "Temple Green",
     profile: "house",
-    x0: 438,
-    x1: 458,
+    // SHELL FIX (harthmere-building-shell-polish-v1): was x 438..458, whose
+    // east column shared five voxels with `dripline_stack`. One voxel east is
+    // the whole correction; the cottage keeps its position on chapel grounds.
+    x0: 439,
+    x1: 459,
     z0: -148,
     z1: -130,
     wall: "stoneBrick",
@@ -536,7 +582,7 @@ export const HARTHMERE_BUILDINGS: HarthmereBuilding[] = [
     doorSide: "east",
     doorCenter: -139,
     floors: 1,
-    chimney: [441, -145],
+    chimney: [442, -145],
   },
   {
     name: "river_dock_supply",
@@ -558,16 +604,21 @@ export const HARTHMERE_BUILDINGS: HarthmereBuilding[] = [
     name: "dock_warehouse",
     district: "River Docks",
     profile: "service",
-    x0: 574,
-    x1: 600,
-    z0: -170,
-    z1: -150,
+    // SHELL FIX (harthmere-building-shell-polish-v1): was x 574..600, z
+    // -170..-150. Its west cargo door and `dockside_family_house`'s east door
+    // faced each other across a single voxel, and that house's balcony
+    // (573..575) hung through this wall. Moved 2 east and 1 south so the cargo
+    // lane between the two is walkable and the balcony overhangs open ground.
+    x0: 576,
+    x1: 602,
+    z0: -169,
+    z1: -149,
     wall: "stoneBrick",
     roof: "blackWool",
     floor: "stonePolished",
     trim: "blueWool",
     doorSide: "west",
-    doorCenter: -160,
+    doorCenter: -159,
     floors: 1,
   },
   {
@@ -731,8 +782,12 @@ export const HARTHMERE_BUILDINGS: HarthmereBuilding[] = [
     name: "lavender_lane_house",
     district: "Residential District",
     profile: "apartment",
-    x0: 452,
-    x1: 472,
+    // SHELL FIX (harthmere-building-shell-polish-v1): was x 452..472, whose
+    // east end interpenetrated `last_watch_post_bunkhouse` (470..490) by 3x7.
+    // Moved 3 west; the row of ten apartment houses keeps its 28-voxel rhythm
+    // to the west and now clears the watch post to the east.
+    x0: 449,
+    x1: 469,
     z0: -326,
     z1: -310,
     wall: "stoneBrick",
@@ -740,13 +795,13 @@ export const HARTHMERE_BUILDINGS: HarthmereBuilding[] = [
     floor: "stonePolished",
     trim: "whiteWool",
     doorSide: "south",
-    doorCenter: 462,
+    doorCenter: 459,
     floors: 2,
-    stairs: harthmereStairsFor(456, -322, "east"),
+    stairs: harthmereStairsFor(453, -322, "east"),
     balcony: {
       side: "south",
-      start: 456,
-      end: 468,
+      start: 453,
+      end: 465,
       depth: 3,
       floor: 2,
       material: "stonePolished",
@@ -933,22 +988,30 @@ export const HARTHMERE_BUILDINGS: HarthmereBuilding[] = [
     name: "dripline_stack",
     district: "Mudden Ward",
     profile: "slum",
+    // SHELL FIX (harthmere-building-shell-polish-v1): was z -134..-118, which
+    // put the stack's south half inside `harthmere_watermill` (418..440,
+    // -122..-104) — 17x5 voxels of shared volume — and hung its third-floor
+    // balcony through the mill wall. It also clipped
+    // `brother_vance_chapel_cottage` on the west. Moved 5 north, and the door
+    // moved from west to north: the west face is where the balcony hangs and
+    // where the cottage stands, while the north face opens onto the Mudden
+    // lane the four stacks share.
     x0: 422,
     x1: 438,
-    z0: -134,
-    z1: -118,
+    z0: -139,
+    z1: -123,
     wall: "stoneBrick",
     roof: "blackWool",
     floor: "stonePolished",
     trim: "coal",
-    doorSide: "west",
-    doorCenter: -126,
+    doorSide: "north",
+    doorCenter: 430,
     floors: 4,
-    stairs: harthmereStairsFor(425, -130, "east"),
+    stairs: harthmereStairsFor(425, -135, "east"),
     balcony: {
       side: "west",
-      start: -131,
-      end: -122,
+      start: -136,
+      end: -127,
       depth: 3,
       floor: 3,
       material: "stonePolished",
@@ -994,8 +1057,14 @@ export const HARTHMERE_BUILDINGS: HarthmereBuilding[] = [
     roof: "blackWool",
     floor: "stonePolished",
     trim: "coal",
-    doorSide: "east",
-    doorCenter: -235,
+    // SHELL FIX (harthmere-building-shell-polish-v1): the entry house's east
+    // door and the drain house's west door faced each other across a single
+    // voxel of alley, so neither had a usable doorstep. The two doors now face
+    // apart — north for the well head, east for the drain house — which also
+    // suits the lore: the Old Well entry is a disguised maintenance front on
+    // the lane, and the drain house looks away from it.
+    doorSide: "north",
+    doorCenter: 401,
     floors: 1,
   },
   {
@@ -1010,7 +1079,7 @@ export const HARTHMERE_BUILDINGS: HarthmereBuilding[] = [
     roof: "blackWool",
     floor: "stonePolished",
     trim: "coal",
-    doorSide: "west",
+    doorSide: "east",
     doorCenter: -237,
     floors: 1,
   },
@@ -1209,25 +1278,34 @@ export const HARTHMERE_ADDITIONAL_SERVER_STRUCTURES: HarthmereBuilding[] = [
     name: "mail_post_house",
     district: "Player Services Plaza",
     profile: "service",
-    x0: 520,
-    x1: 534,
-    z0: -224,
-    z1: -210,
+    // SHELL FIX (harthmere-building-shell-polish-v1): was x 520..534, z
+    // -224..-210, whose north strip sat inside `black_anvil_smithy` (520..544,
+    // -242..-220) and sealed the smithy's south door. Moved 4 west and 5 south
+    // onto the plaza frontage proper. Courier Anwen's bunk on the upper floor
+    // keeps its stair run, shifted with the shell.
+    x0: 516,
+    x1: 530,
+    z0: -219,
+    z1: -205,
     wall: "stoneBrick",
     roof: "blueWool",
     floor: "stonePolished",
     trim: "whiteWool",
     doorSide: "south",
-    doorCenter: 527,
+    doorCenter: 523,
     floors: 2,
-    stairs: harthmereStairsFor(523, -220, "east"),
+    stairs: harthmereStairsFor(519, -215, "east"),
   },
   {
     name: "tailor_loft_house",
     district: "Market District",
     profile: "service",
-    x0: 468,
-    x1: 486,
+    // SHELL FIX (harthmere-building-shell-polish-v1): was x 468..486. The
+    // apothecary's east door opened into a one-voxel slot against this wall.
+    // Moved 2 east so Green Mortar has a doorstep and the two shopfronts read
+    // as neighbours rather than as one merged block.
+    x0: 470,
+    x1: 488,
     z0: -184,
     z1: -168,
     wall: "stoneBrick",
@@ -1235,9 +1313,9 @@ export const HARTHMERE_ADDITIONAL_SERVER_STRUCTURES: HarthmereBuilding[] = [
     floor: "stonePolished",
     trim: "whiteWool",
     doorSide: "south",
-    doorCenter: 477,
+    doorCenter: 479,
     floors: 2,
-    stairs: harthmereStairsFor(472, -180, "east"),
+    stairs: harthmereStairsFor(474, -180, "east"),
   },
   {
     name: "tannery_court_house",

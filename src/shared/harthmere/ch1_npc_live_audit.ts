@@ -28,6 +28,7 @@ import { CH1_TESTIMONY_NPC_SEEDS } from "@/shared/harthmere/ch1_testimony_npcs";
 import {
   SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
   SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_POSITION,
+  SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS,
 } from "@/shared/harthmere/snapshot_grove_ids";
 import {
   SNAPSHOT_GROVE_NPCS,
@@ -36,7 +37,10 @@ import {
 } from "@/shared/harthmere/snapshot_grove_content";
 import type { BiomesId } from "@/shared/ids";
 
-export const CH1_NPC_LIVE_AUDIT_VERSION = "chapter1-npc-live-audit-v1" as const;
+export const CH1_NPC_LIVE_AUDIT_VERSION = "chapter1-npc-live-audit-v5" as const;
+
+export const CH1_RETIRED_NPC_LIVE_AUDIT_ENTITY_IDS: readonly BiomesId[] =
+  Object.freeze(Object.values(SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS));
 
 export interface Ch1NpcLiveAuditScenario {
   id: string;
@@ -118,7 +122,7 @@ export const CH1_NPC_LIVE_AUDIT_SCENARIOS: readonly Ch1NpcLiveAuditScenario[] =
         flags: [CH1_FLAGS.started],
         activeStepId: "the_examination",
       },
-      focus: CH1_ANCHORS.greenlamp_clinic,
+      focus: CH1_ANCHORS.greenlamp_lou_post,
       expectedPresentKeys: ["lou_ardan"],
       talkKey: "lou_ardan",
     },
@@ -137,7 +141,7 @@ export const CH1_NPC_LIVE_AUDIT_SCENARIOS: readonly Ch1NpcLiveAuditScenario[] =
         flags: [CH1_FLAGS.started, CH1_FLAGS.gatePersistentOpen],
         activeStepId: "the_footprints",
       },
-      focus: CH1_ANCHORS.gate_desert,
+      focus: CH1_ANCHORS.gate_desert_rook_post,
       expectedPresentKeys: ["halden_rook"],
       talkKey: "halden_rook",
     },
@@ -148,7 +152,7 @@ export const CH1_NPC_LIVE_AUDIT_SCENARIOS: readonly Ch1NpcLiveAuditScenario[] =
         flags: [CH1_FLAGS.started, CH1_FLAGS.gatePersistentOpen],
         activeStepId: "the_flinch",
       },
-      focus: CH1_ANCHORS.gate_desert,
+      focus: CH1_ANCHORS.gate_desert_jackie_post,
       expectedPresentKeys: ["jackie", "halden_rook"],
       talkKey: "jackie",
     },
@@ -158,7 +162,7 @@ export const CH1_NPC_LIVE_AUDIT_SCENARIOS: readonly Ch1NpcLiveAuditScenario[] =
       input: {
         flags: [CH1_FLAGS.started, CH1_FLAGS.gatePersistentOpen],
       },
-      focus: CH1_ANCHORS.returnstone_pad_office,
+      focus: CH1_ANCHORS.returnstone_cressa_post,
       expectedPresentKeys: ["cressa_vane"],
       talkKey: "cressa_vane",
     },
@@ -180,7 +184,7 @@ export const CH1_NPC_LIVE_AUDIT_SCENARIOS: readonly Ch1NpcLiveAuditScenario[] =
           CH1_FLAGS.marrowSaved,
         ],
       },
-      focus: CH1_ANCHORS.lovely_locks_mirror,
+      focus: CH1_ANCHORS.lovely_locks_iris_post,
       expectedPresentKeys: ["iris_fen", "marrow"],
       talkKey: "iris_fen",
     },
@@ -208,7 +212,7 @@ export const CH1_NPC_LIVE_AUDIT_SCENARIOS: readonly Ch1NpcLiveAuditScenario[] =
         activeQuestId: "ch1_a4_q07_ask_me_in_a_month",
         activeStepId: "report_or_not",
       },
-      focus: CH1_ANCHORS.grove_watch_house,
+      focus: CH1_ANCHORS.grove_watch_house_holt_post,
       expectedPresentKeys: ["jackie", "teak_morrow", "sergeant_bram_holt"],
       talkKey: "sergeant_bram_holt",
     },
@@ -231,16 +235,28 @@ export const CH1_NPC_LIVE_AUDIT_SCENARIOS: readonly Ch1NpcLiveAuditScenario[] =
     {
       id: "act6-greenlamp",
       label: "Nadia Sorrel at Greenlamp clinic",
-      input: { flags: [CH1_FLAGS.started, CH1_FLAGS.act5Complete] },
-      focus: CH1_ANCHORS.greenlamp_clinic,
+      input: {
+        flags: [
+          CH1_FLAGS.started,
+          CH1_FLAGS.gatePersistentOpen,
+          CH1_FLAGS.act5Complete,
+        ],
+      },
+      focus: CH1_ANCHORS.greenlamp_nadia_post,
       expectedPresentKeys: ["nadia_sorrel"],
       talkKey: "nadia_sorrel",
     },
     {
       id: "act6-returnstone",
       label: "Dr. Ardan and Arbiter Vane at Returnstone",
-      input: { flags: [CH1_FLAGS.started, CH1_FLAGS.act5Complete] },
-      focus: CH1_ANCHORS.returnstone_pad_office,
+      input: {
+        flags: [
+          CH1_FLAGS.started,
+          CH1_FLAGS.gatePersistentOpen,
+          CH1_FLAGS.act5Complete,
+        ],
+      },
+      focus: CH1_ANCHORS.returnstone_lou_post,
       expectedPresentKeys: ["lou_ardan", "cressa_vane"],
       talkKey: "lou_ardan",
     },
@@ -256,7 +272,7 @@ export const CH1_NPC_LIVE_AUDIT_SCENARIOS: readonly Ch1NpcLiveAuditScenario[] =
         ],
         activeStepId: "the_whole_plan",
       },
-      focus: CH1_ANCHORS.grove_watch_house,
+      focus: CH1_ANCHORS.grove_watch_house_jackie_post,
       expectedPresentKeys: ["jackie", "teak_morrow"],
       talkKey: "jackie",
     },
@@ -301,7 +317,7 @@ export const CH1_NPC_LIVE_AUDIT_SCENARIOS: readonly Ch1NpcLiveAuditScenario[] =
           CH1_FLAGS.ledgerSurrendered,
         ],
       },
-      focus: CH1_ANCHORS.returnstone_pad_office,
+      focus: CH1_ANCHORS.returnstone_cressa_post,
       expectedPresentKeys: ["cressa_vane"],
       expectedAbsentKeys: ["lou_ardan", "nadia_sorrel"],
       talkKey: "cressa_vane",
@@ -419,6 +435,7 @@ export function ch1NpcLiveAuditCatalog() {
       })),
     })),
     sharedNpcs: CH1_SHARED_NPC_LIVE_AUDIT_ENTRIES,
+    retiredNpcEntityIds: CH1_RETIRED_NPC_LIVE_AUDIT_ENTITY_IDS,
     returningNpc: CH1_SERGEANT_HOLT,
   };
 }

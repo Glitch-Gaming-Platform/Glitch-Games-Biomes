@@ -1,5 +1,6 @@
 import {
   HARTHMERE_PLAYER_VOICE_CHANNEL_KEY,
+  HARTHMERE_PLAYER_VOICE_AUDIBLE_RADIUS,
   makeHarthmereVoiceRoomCreateBody,
   normalizeHarthmereVoiceTokenResponse,
   parseHarthmereVoiceIceServers,
@@ -24,9 +25,22 @@ describe("Harthmere Glitch player voice", () => {
     assert.equal(body.recording_allowed, false);
     assert.equal(body.moderation_enabled, true);
     assert.equal(body.metadata.channel_key, HARTHMERE_PLAYER_VOICE_CHANNEL_KEY);
+    assert.equal(
+      body.metadata.proximity_radius,
+      HARTHMERE_PLAYER_VOICE_AUDIBLE_RADIUS
+    );
     assert.deepEqual(body.connection_config.iceServers, [
       { urls: "stun:example.test:3478" },
     ]);
+  });
+
+  it("lets Glitch inject platform TURN servers when no title override exists", () => {
+    const body = makeHarthmereVoiceRoomCreateBody({
+      playerId: "1234",
+      displayName: "Cinder",
+    });
+
+    assert.deepEqual(body.connection_config, {});
   });
 
   it("selects only active non-full Biomes proximity rooms", () => {

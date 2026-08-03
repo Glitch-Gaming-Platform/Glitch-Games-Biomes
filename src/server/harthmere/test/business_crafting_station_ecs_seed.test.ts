@@ -43,7 +43,11 @@ describe("business crafting station ECS seed builder", () => {
       );
       assert.deepEqual(entity.position?.v, seed!.position);
       assert.equal(entity.label?.text, seed!.stationName);
-      assert.ok(entity.collideable, "station should collide");
+      assert.equal(
+        entity.collideable,
+        undefined,
+        "combined interior collision proxy should own physics"
+      );
       assert.ok(entity.locked_in_place, "station should be immovable");
 
       // placed_by is REQUIRED for the client rich-placeable overlay branch to
@@ -78,6 +82,11 @@ describe("business crafting station ECS seed builder", () => {
     );
     assert.ok(first);
     assert.equal(first!.kind, "update");
+    assert.equal(
+      first!.kind === "update" ? first!.entity.collideable : undefined,
+      null,
+      "warm reconciliation must clear the former duplicate collision"
+    );
   });
 
   it("exposes the same ids as the shared seed and proposes matching changes", () => {

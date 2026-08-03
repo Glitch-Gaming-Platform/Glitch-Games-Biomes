@@ -1,6 +1,10 @@
 import assert from "assert";
 
 import {
+  harthmereExoticMatterCaveById,
+  harthmereExoticMatterDepositAtBlock,
+} from "@/shared/harthmere/exotic_matter_caves";
+import {
   HARTHMERE_INDISWORM_CAVE_IDS,
   HARTHMERE_INDISWORM_PACKS_PER_CAVERN,
   HARTHMERE_INDISWORM_PRODUCTION_COUNT,
@@ -18,6 +22,25 @@ import {
   harthmereCreatureGroupForSeed,
   harthmereCreatureGroupMembers,
 } from "@/shared/harthmere/creature_groups";
+
+function indiswormBodyColumns(position: readonly number[]) {
+  const halfFootprint = 1.05 * 0.45;
+  const points = [
+    [position[0], position[2]],
+    [position[0] - halfFootprint, position[2] - halfFootprint],
+    [position[0] - halfFootprint, position[2] + halfFootprint],
+    [position[0] + halfFootprint, position[2] - halfFootprint],
+    [position[0] + halfFootprint, position[2] + halfFootprint],
+  ];
+  return [
+    ...new Map(
+      points.map(([x, z]) => {
+        const column = [Math.floor(x), Math.floor(z)] as const;
+        return [`${column[0]}:${column[1]}`, column] as const;
+      })
+    ).values(),
+  ];
+}
 
 describe("Indisworm massive-cavern packs", () => {
   it("authors three groups of five in every massive cavern", () => {
@@ -86,6 +109,31 @@ describe("Indisworm massive-cavern packs", () => {
       ),
       [4, 5, 6, 7]
     );
+  });
+
+  it("places every worm body on the cavern floor without intersecting a deposit", () => {
+    for (const spawn of HARTHMERE_INDISWORM_SPAWNS) {
+      const cave = harthmereExoticMatterCaveById(spawn.caveId);
+      assert.ok(cave, spawn.caveId);
+      assert.equal(
+        spawn.position[1],
+        cave!.bounds.y0,
+        `${spawn.seedId} is not on the cavern floor`
+      );
+      assert.ok(
+        spawn.position[1] + 1 <= cave!.bounds.y1,
+        `${spawn.seedId} has no body clearance`
+      );
+      for (const [x, z] of indiswormBodyColumns(spawn.position)) {
+        for (let y = spawn.position[1]; y < spawn.position[1] + 2; y += 1) {
+          assert.equal(
+            harthmereExoticMatterDepositAtBlock({ x, y, z }),
+            undefined,
+            `${spawn.seedId} intersects a cavern deposit at ${x},${y},${z}`
+          );
+        }
+      }
+    }
   });
 
   it("keeps underground positions exact and gives every pack native group membership", () => {

@@ -1,6 +1,6 @@
 {
-  "version": "harthmere-business-furniture-blender-v1",
-  "generatorVersion": 1,
+  "version": "harthmere-business-furniture-blender-v2-town-accents",
+  "generatorVersion": 2,
   "generatedWith": "5.2.0 LTS",
   "coordinateConvention": {
     "units": "meters",
@@ -648,6 +648,646 @@
         "lod1": "/assets/harthmere/glb/business_furniture/wall_lantern/wall_lantern.lod1.glb"
       },
       "iconUrl": "/assets/harthmere/inventory_icons/business_furniture/wall_lantern.png",
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28
+      },
+      "ecs": {
+        "component": "placeable_component",
+        "inventoryIdentity": "native Bikkie id from harthmere_native_id_manifest",
+        "terrainAuthority": "native occupancy via checkAndOccupyTerrainForPlaceable",
+        "gaiaSimulation": "not required for static furniture"
+      }
+    },
+    {
+      "itemId": "town_forge_anvil",
+      "displayName": "Harthmere Forge Anvil",
+      "category": "fixture",
+      "surface": "floor",
+      "placementType": "floorCenter",
+      "boxSize": [
+        2,
+        1,
+        1
+      ],
+      "collidableSize": [
+        1.14,
+        0.88,
+        0.74
+      ],
+      "modelBoundsMeters": {
+        "widthX": 1.16,
+        "heightY": 0.88,
+        "depthZ": 0.76
+      },
+      "pivot": "bottom-center",
+      "frontAxis": "+Z",
+      "yawCorrectionRadians": 0,
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_furniture/town_forge_anvil/town_forge_anvil.glb",
+        "lod1": "/assets/harthmere/glb/business_furniture/town_forge_anvil/town_forge_anvil.lod1.glb"
+      },
+      "iconUrl": "/assets/harthmere/inventory_icons/business_furniture/town_forge_anvil.png",
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28
+      },
+      "ecs": {
+        "component": "placeable_component",
+        "inventoryIdentity": "native Bikkie id from harthmere_native_id_manifest",
+        "terrainAuthority": "native occupancy via checkAndOccupyTerrainForPlaceable",
+        "gaiaSimulation": "not required for static furniture"
+      }
+    },
+    {
+      "itemId": "town_workbench",
+      "displayName": "Harthmere Workbench",
+      "category": "fixture",
+      "surface": "floor",
+      "placementType": "floorCenter",
+      "boxSize": [
+        2,
+        1,
+        1
+      ],
+      "collidableSize": [
+        1.78,
+        0.98,
+        0.82
+      ],
+      "modelBoundsMeters": {
+        "widthX": 1.82,
+        "heightY": 0.98,
+        "depthZ": 0.86
+      },
+      "pivot": "bottom-center",
+      "frontAxis": "+Z",
+      "yawCorrectionRadians": 0,
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_furniture/town_workbench/town_workbench.glb",
+        "lod1": "/assets/harthmere/glb/business_furniture/town_workbench/town_workbench.lod1.glb"
+      },
+      "iconUrl": "/assets/harthmere/inventory_icons/business_furniture/town_workbench.png",
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28
+      },
+      "ecs": {
+        "component": "placeable_component",
+        "inventoryIdentity": "native Bikkie id from harthmere_native_id_manifest",
+        "terrainAuthority": "native occupancy via checkAndOccupyTerrainForPlaceable",
+        "gaiaSimulation": "not required for static furniture"
+      }
+    },
+    {
+      "itemId": "town_tool_rack",
+      "displayName": "Harthmere Tool Rack",
+      "category": "fixture",
+      "surface": "floor",
+      "placementType": "floorCenter",
+      "boxSize": [
+        2,
+        2,
+        1
+      ],
+      "collidableSize": [
+        1.42,
+        1.8,
+        0.5
+      ],
+      "modelBoundsMeters": {
+        "widthX": 1.46,
+        "heightY": 1.82,
+        "depthZ": 0.52
+      },
+      "pivot": "bottom-center",
+      "frontAxis": "+Z",
+      "yawCorrectionRadians": 0,
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_furniture/town_tool_rack/town_tool_rack.glb",
+        "lod1": "/assets/harthmere/glb/business_furniture/town_tool_rack/town_tool_rack.lod1.glb"
+      },
+      "iconUrl": "/assets/harthmere/inventory_icons/business_furniture/town_tool_rack.png",
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28
+      },
+      "ecs": {
+        "component": "placeable_component",
+        "inventoryIdentity": "native Bikkie id from harthmere_native_id_manifest",
+        "terrainAuthority": "native occupancy via checkAndOccupyTerrainForPlaceable",
+        "gaiaSimulation": "not required for static furniture"
+      }
+    },
+    {
+      "itemId": "town_rope_rack",
+      "displayName": "Harthmere Rope Rack",
+      "category": "fixture",
+      "surface": "floor",
+      "placementType": "floorCenter",
+      "boxSize": [
+        2,
+        2,
+        1
+      ],
+      "collidableSize": [
+        1.34,
+        1.66,
+        0.5
+      ],
+      "modelBoundsMeters": {
+        "widthX": 1.38,
+        "heightY": 1.68,
+        "depthZ": 0.52
+      },
+      "pivot": "bottom-center",
+      "frontAxis": "+Z",
+      "yawCorrectionRadians": 0,
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_furniture/town_rope_rack/town_rope_rack.glb",
+        "lod1": "/assets/harthmere/glb/business_furniture/town_rope_rack/town_rope_rack.lod1.glb"
+      },
+      "iconUrl": "/assets/harthmere/inventory_icons/business_furniture/town_rope_rack.png",
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28
+      },
+      "ecs": {
+        "component": "placeable_component",
+        "inventoryIdentity": "native Bikkie id from harthmere_native_id_manifest",
+        "terrainAuthority": "native occupancy via checkAndOccupyTerrainForPlaceable",
+        "gaiaSimulation": "not required for static furniture"
+      }
+    },
+    {
+      "itemId": "town_produce_crate",
+      "displayName": "Harthmere Produce Crate",
+      "category": "storage",
+      "surface": "floor",
+      "placementType": "floorCenter",
+      "boxSize": [
+        2,
+        1,
+        1
+      ],
+      "collidableSize": [
+        1.18,
+        0.84,
+        0.88
+      ],
+      "modelBoundsMeters": {
+        "widthX": 1.22,
+        "heightY": 0.86,
+        "depthZ": 0.92
+      },
+      "pivot": "bottom-center",
+      "frontAxis": "+Z",
+      "yawCorrectionRadians": 0,
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_furniture/town_produce_crate/town_produce_crate.glb",
+        "lod1": "/assets/harthmere/glb/business_furniture/town_produce_crate/town_produce_crate.lod1.glb"
+      },
+      "iconUrl": "/assets/harthmere/inventory_icons/business_furniture/town_produce_crate.png",
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28
+      },
+      "ecs": {
+        "component": "placeable_component",
+        "inventoryIdentity": "native Bikkie id from harthmere_native_id_manifest",
+        "terrainAuthority": "native occupancy via checkAndOccupyTerrainForPlaceable",
+        "gaiaSimulation": "not required for static furniture"
+      }
+    },
+    {
+      "itemId": "town_wash_tub",
+      "displayName": "Harthmere Wash Tub",
+      "category": "fixture",
+      "surface": "floor",
+      "placementType": "floorCenter",
+      "boxSize": [
+        2,
+        1,
+        1
+      ],
+      "collidableSize": [
+        1.38,
+        0.8,
+        0.88
+      ],
+      "modelBoundsMeters": {
+        "widthX": 1.42,
+        "heightY": 0.82,
+        "depthZ": 0.92
+      },
+      "pivot": "bottom-center",
+      "frontAxis": "+Z",
+      "yawCorrectionRadians": 0,
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_furniture/town_wash_tub/town_wash_tub.glb",
+        "lod1": "/assets/harthmere/glb/business_furniture/town_wash_tub/town_wash_tub.lod1.glb"
+      },
+      "iconUrl": "/assets/harthmere/inventory_icons/business_furniture/town_wash_tub.png",
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28
+      },
+      "ecs": {
+        "component": "placeable_component",
+        "inventoryIdentity": "native Bikkie id from harthmere_native_id_manifest",
+        "terrainAuthority": "native occupancy via checkAndOccupyTerrainForPlaceable",
+        "gaiaSimulation": "not required for static furniture"
+      }
+    },
+    {
+      "itemId": "town_textile_drape",
+      "displayName": "Harthmere Textile Drape",
+      "category": "wall_decor",
+      "surface": "wall",
+      "placementType": "wallCenter",
+      "boxSize": [
+        2,
+        2,
+        1
+      ],
+      "collidableSize": [
+        1.28,
+        1.48,
+        0.16
+      ],
+      "modelBoundsMeters": {
+        "widthX": 1.32,
+        "heightY": 1.5,
+        "depthZ": 0.18
+      },
+      "pivot": "bottom-center",
+      "frontAxis": "+Z",
+      "yawCorrectionRadians": 0,
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_furniture/town_textile_drape/town_textile_drape.glb",
+        "lod1": "/assets/harthmere/glb/business_furniture/town_textile_drape/town_textile_drape.lod1.glb"
+      },
+      "iconUrl": "/assets/harthmere/inventory_icons/business_furniture/town_textile_drape.png",
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28
+      },
+      "ecs": {
+        "component": "placeable_component",
+        "inventoryIdentity": "native Bikkie id from harthmere_native_id_manifest",
+        "terrainAuthority": "native occupancy via checkAndOccupyTerrainForPlaceable",
+        "gaiaSimulation": "not required for static furniture"
+      }
+    },
+    {
+      "itemId": "town_record_stack",
+      "displayName": "Harthmere Record Stack",
+      "category": "storage",
+      "surface": "floor",
+      "placementType": "floorCenter",
+      "boxSize": [
+        1,
+        1,
+        1
+      ],
+      "collidableSize": [
+        0.82,
+        0.86,
+        0.54
+      ],
+      "modelBoundsMeters": {
+        "widthX": 0.86,
+        "heightY": 0.88,
+        "depthZ": 0.56
+      },
+      "pivot": "bottom-center",
+      "frontAxis": "+Z",
+      "yawCorrectionRadians": 0,
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_furniture/town_record_stack/town_record_stack.glb",
+        "lod1": "/assets/harthmere/glb/business_furniture/town_record_stack/town_record_stack.lod1.glb"
+      },
+      "iconUrl": "/assets/harthmere/inventory_icons/business_furniture/town_record_stack.png",
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28
+      },
+      "ecs": {
+        "component": "placeable_component",
+        "inventoryIdentity": "native Bikkie id from harthmere_native_id_manifest",
+        "terrainAuthority": "native occupancy via checkAndOccupyTerrainForPlaceable",
+        "gaiaSimulation": "not required for static furniture"
+      }
+    },
+    {
+      "itemId": "town_reagent_shelf",
+      "displayName": "Harthmere Reagent Shelf",
+      "category": "storage",
+      "surface": "floor",
+      "placementType": "floorCenter",
+      "boxSize": [
+        2,
+        2,
+        1
+      ],
+      "collidableSize": [
+        1.18,
+        1.66,
+        0.46
+      ],
+      "modelBoundsMeters": {
+        "widthX": 1.22,
+        "heightY": 1.68,
+        "depthZ": 0.48
+      },
+      "pivot": "bottom-center",
+      "frontAxis": "+Z",
+      "yawCorrectionRadians": 0,
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_furniture/town_reagent_shelf/town_reagent_shelf.glb",
+        "lod1": "/assets/harthmere/glb/business_furniture/town_reagent_shelf/town_reagent_shelf.lod1.glb"
+      },
+      "iconUrl": "/assets/harthmere/inventory_icons/business_furniture/town_reagent_shelf.png",
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28
+      },
+      "ecs": {
+        "component": "placeable_component",
+        "inventoryIdentity": "native Bikkie id from harthmere_native_id_manifest",
+        "terrainAuthority": "native occupancy via checkAndOccupyTerrainForPlaceable",
+        "gaiaSimulation": "not required for static furniture"
+      }
+    },
+    {
+      "itemId": "town_ward_focus",
+      "displayName": "Harthmere Ward Focus",
+      "category": "fixture",
+      "surface": "floor",
+      "placementType": "floorCenter",
+      "boxSize": [
+        2,
+        2,
+        2
+      ],
+      "collidableSize": [
+        0.98,
+        1.16,
+        0.98
+      ],
+      "modelBoundsMeters": {
+        "widthX": 1.02,
+        "heightY": 1.18,
+        "depthZ": 1.02
+      },
+      "pivot": "bottom-center",
+      "frontAxis": "+Z",
+      "yawCorrectionRadians": 0,
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_furniture/town_ward_focus/town_ward_focus.glb",
+        "lod1": "/assets/harthmere/glb/business_furniture/town_ward_focus/town_ward_focus.lod1.glb"
+      },
+      "iconUrl": "/assets/harthmere/inventory_icons/business_furniture/town_ward_focus.png",
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28
+      },
+      "ecs": {
+        "component": "placeable_component",
+        "inventoryIdentity": "native Bikkie id from harthmere_native_id_manifest",
+        "terrainAuthority": "native occupancy via checkAndOccupyTerrainForPlaceable",
+        "gaiaSimulation": "not required for static furniture"
+      }
+    },
+    {
+      "itemId": "town_chapel_pew",
+      "displayName": "Harthmere Chapel Pew",
+      "category": "furniture",
+      "surface": "floor",
+      "placementType": "floorCenter",
+      "boxSize": [
+        3,
+        1,
+        1
+      ],
+      "collidableSize": [
+        2.38,
+        0.98,
+        0.78
+      ],
+      "modelBoundsMeters": {
+        "widthX": 2.42,
+        "heightY": 1.0,
+        "depthZ": 0.82
+      },
+      "pivot": "bottom-center",
+      "frontAxis": "+Z",
+      "yawCorrectionRadians": 0,
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_furniture/town_chapel_pew/town_chapel_pew.glb",
+        "lod1": "/assets/harthmere/glb/business_furniture/town_chapel_pew/town_chapel_pew.lod1.glb"
+      },
+      "iconUrl": "/assets/harthmere/inventory_icons/business_furniture/town_chapel_pew.png",
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28
+      },
+      "ecs": {
+        "component": "placeable_component",
+        "inventoryIdentity": "native Bikkie id from harthmere_native_id_manifest",
+        "terrainAuthority": "native occupancy via checkAndOccupyTerrainForPlaceable",
+        "gaiaSimulation": "not required for static furniture"
+      }
+    },
+    {
+      "itemId": "town_chapel_altar",
+      "displayName": "Harthmere Chapel Altar",
+      "category": "fixture",
+      "surface": "floor",
+      "placementType": "floorCenter",
+      "boxSize": [
+        2,
+        2,
+        2
+      ],
+      "collidableSize": [
+        1.3,
+        1.44,
+        0.98
+      ],
+      "modelBoundsMeters": {
+        "widthX": 1.34,
+        "heightY": 1.46,
+        "depthZ": 1.02
+      },
+      "pivot": "bottom-center",
+      "frontAxis": "+Z",
+      "yawCorrectionRadians": 0,
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_furniture/town_chapel_altar/town_chapel_altar.glb",
+        "lod1": "/assets/harthmere/glb/business_furniture/town_chapel_altar/town_chapel_altar.lod1.glb"
+      },
+      "iconUrl": "/assets/harthmere/inventory_icons/business_furniture/town_chapel_altar.png",
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28
+      },
+      "ecs": {
+        "component": "placeable_component",
+        "inventoryIdentity": "native Bikkie id from harthmere_native_id_manifest",
+        "terrainAuthority": "native occupancy via checkAndOccupyTerrainForPlaceable",
+        "gaiaSimulation": "not required for static furniture"
+      }
+    },
+    {
+      "itemId": "town_grave_tool_rack",
+      "displayName": "Harthmere Grave Tool Rack",
+      "category": "fixture",
+      "surface": "floor",
+      "placementType": "floorCenter",
+      "boxSize": [
+        2,
+        2,
+        1
+      ],
+      "collidableSize": [
+        1.3,
+        1.7,
+        0.46
+      ],
+      "modelBoundsMeters": {
+        "widthX": 1.34,
+        "heightY": 1.72,
+        "depthZ": 0.48
+      },
+      "pivot": "bottom-center",
+      "frontAxis": "+Z",
+      "yawCorrectionRadians": 0,
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_furniture/town_grave_tool_rack/town_grave_tool_rack.glb",
+        "lod1": "/assets/harthmere/glb/business_furniture/town_grave_tool_rack/town_grave_tool_rack.lod1.glb"
+      },
+      "iconUrl": "/assets/harthmere/inventory_icons/business_furniture/town_grave_tool_rack.png",
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28
+      },
+      "ecs": {
+        "component": "placeable_component",
+        "inventoryIdentity": "native Bikkie id from harthmere_native_id_manifest",
+        "terrainAuthority": "native occupancy via checkAndOccupyTerrainForPlaceable",
+        "gaiaSimulation": "not required for static furniture"
+      }
+    },
+    {
+      "itemId": "town_firewood_stack",
+      "displayName": "Harthmere Firewood Stack",
+      "category": "storage",
+      "surface": "floor",
+      "placementType": "floorCenter",
+      "boxSize": [
+        2,
+        1,
+        1
+      ],
+      "collidableSize": [
+        1.38,
+        0.8,
+        0.78
+      ],
+      "modelBoundsMeters": {
+        "widthX": 1.42,
+        "heightY": 0.82,
+        "depthZ": 0.82
+      },
+      "pivot": "bottom-center",
+      "frontAxis": "+Z",
+      "yawCorrectionRadians": 0,
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_furniture/town_firewood_stack/town_firewood_stack.glb",
+        "lod1": "/assets/harthmere/glb/business_furniture/town_firewood_stack/town_firewood_stack.lod1.glb"
+      },
+      "iconUrl": "/assets/harthmere/inventory_icons/business_furniture/town_firewood_stack.png",
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28
+      },
+      "ecs": {
+        "component": "placeable_component",
+        "inventoryIdentity": "native Bikkie id from harthmere_native_id_manifest",
+        "terrainAuthority": "native occupancy via checkAndOccupyTerrainForPlaceable",
+        "gaiaSimulation": "not required for static furniture"
+      }
+    },
+    {
+      "itemId": "town_cookpot",
+      "displayName": "Harthmere Cookpot",
+      "category": "fixture",
+      "surface": "floor",
+      "placementType": "floorCenter",
+      "boxSize": [
+        2,
+        2,
+        2
+      ],
+      "collidableSize": [
+        1.2,
+        1.1,
+        1.2
+      ],
+      "modelBoundsMeters": {
+        "widthX": 1.24,
+        "heightY": 1.12,
+        "depthZ": 1.24
+      },
+      "pivot": "bottom-center",
+      "frontAxis": "+Z",
+      "yawCorrectionRadians": 0,
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_furniture/town_cookpot/town_cookpot.glb",
+        "lod1": "/assets/harthmere/glb/business_furniture/town_cookpot/town_cookpot.lod1.glb"
+      },
+      "iconUrl": "/assets/harthmere/inventory_icons/business_furniture/town_cookpot.png",
+      "lodPolicy": {
+        "lod0MaxDistanceMeters": 16,
+        "lod1MaxDistanceMeters": 28
+      },
+      "ecs": {
+        "component": "placeable_component",
+        "inventoryIdentity": "native Bikkie id from harthmere_native_id_manifest",
+        "terrainAuthority": "native occupancy via checkAndOccupyTerrainForPlaceable",
+        "gaiaSimulation": "not required for static furniture"
+      }
+    },
+    {
+      "itemId": "town_oven_range",
+      "displayName": "Harthmere Oven Range",
+      "category": "fixture",
+      "surface": "floor",
+      "placementType": "floorCenter",
+      "boxSize": [
+        2,
+        3,
+        2
+      ],
+      "collidableSize": [
+        1.44,
+        2.38,
+        1.38
+      ],
+      "modelBoundsMeters": {
+        "widthX": 1.48,
+        "heightY": 2.42,
+        "depthZ": 1.42
+      },
+      "pivot": "bottom-center",
+      "frontAxis": "+Z",
+      "yawCorrectionRadians": 0,
+      "assets": {
+        "lod0": "/assets/harthmere/glb/business_furniture/town_oven_range/town_oven_range.glb",
+        "lod1": "/assets/harthmere/glb/business_furniture/town_oven_range/town_oven_range.lod1.glb"
+      },
+      "iconUrl": "/assets/harthmere/inventory_icons/business_furniture/town_oven_range.png",
       "lodPolicy": {
         "lod0MaxDistanceMeters": 16,
         "lod1MaxDistanceMeters": 28

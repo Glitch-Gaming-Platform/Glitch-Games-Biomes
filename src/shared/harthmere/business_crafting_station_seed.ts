@@ -1,8 +1,9 @@
 import { BikkieIds } from "@/shared/bikkie/ids";
+import { HARTHMERE_BUSINESS_OUTPOSTS } from "@/shared/harthmere/business_customer_simulator";
 import {
-  HARTHMERE_BUSINESS_OUTPOSTS,
-  HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES,
-} from "@/shared/harthmere/business_customer_simulator";
+  harthmereBusinessInteriorForOutpost,
+  harthmereBusinessInteriorLocalToWorld,
+} from "@/shared/harthmere/business_interior_runtime";
 import type { HarthmereEconomyBusinessTypeId } from "@/shared/harthmere/mmo_economy_authority";
 import { SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE } from "@/shared/harthmere/snapshot_grove_content";
 import type { BiomesId } from "@/shared/ids";
@@ -24,7 +25,7 @@ import type { Vec2, Vec3 } from "@/shared/math/types";
 // (placeable + item.isCraftingStation); see harthmere_crafting_table_proximity.
 
 export const HARTHMERE_BUSINESS_CRAFTING_STATION_SEED_VERSION =
-  "harthmere-business-crafting-station-seed" as const;
+  "harthmere-business-crafting-station-interaction-anchor-v2" as const;
 
 // Offset band reserved for the 19 business crafting stations. Grove NPCs use
 // 9301+, robots 9401+, muck monsters 9451–9550, wildlife 9551–9574, business
@@ -102,35 +103,32 @@ function entityIdFromOffset(idOffset: number): BiomesId {
   return (Number(SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE) + idOffset) as BiomesId;
 }
 
-// Anchor the station in a back interior corner of the building footprint, inset
-// from the walls, so it sits clearly inside the shop and never on top of the
-// owner (who stands at the footprint center). Grounded at the building floor Y,
-// the same height the owner uses.
-function stationPositionForSafeSite(site: {
-  groundY: number;
-  footprint: { xMin: number; xMax: number; zMin: number; zMax: number };
-}): Vec3 {
-  const halfWidth = (site.footprint.xMax - site.footprint.xMin) / 2;
-  const halfDepth = (site.footprint.zMax - site.footprint.zMin) / 2;
-  const insetX = Math.max(1, Math.min(2.5, halfWidth - 1));
-  const insetZ = Math.max(1, Math.min(2.5, halfDepth - 1));
+// The combined interior GLB already renders the authored machine. Keep this
+// ECS placeable only as the native crafting interaction anchor, exactly at the
+// manifest's primary-station proxy. The placeable renderer suppresses this
+// reserved family and the manifest collision family owns physics, preventing
+// both the duplicate machine and the old terrain-grounding jump to the roof.
+function stationPositionForInterior(outpostId: string): Vec3 {
+  const interior = harthmereBusinessInteriorForOutpost(outpostId);
+  const station = interior?.collisionBoxes.find(
+    (box) => box.role === "primary_station"
+  );
+  if (!interior || !station) {
+    throw new Error(`Missing primary station collision for ${outpostId}`);
+  }
+  const worldCenter = harthmereBusinessInteriorLocalToWorld(
+    interior,
+    station.center as [number, number, number]
+  );
   return [
-    site.footprint.xMin + insetX,
-    site.groundY,
-    site.footprint.zMin + insetZ,
+    worldCenter[0],
+    worldCenter[1] - Number(station.size[2]) / 2,
+    worldCenter[2],
   ];
 }
 
 export const HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS: readonly HarthmereBusinessCraftingStationSeed[] =
   HARTHMERE_BUSINESS_OUTPOSTS.map((outpost, index) => {
-    const site = HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES.find(
-      (candidate) => candidate.outpostId === outpost.outpostId
-    );
-    if (!site) {
-      throw new Error(
-        `Missing business outpost safe site for ${outpost.outpostId}`
-      );
-    }
     const stationKind = HARTHMERE_BUSINESS_TYPE_STATION[outpost.businessType];
     if (!stationKind) {
       throw new Error(
@@ -150,8 +148,8 @@ export const HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS: readonly HarthmereBusine
       stationName: kind.displayName,
       idOffset,
       entityId: entityIdFromOffset(idOffset),
-      position: stationPositionForSafeSite(site),
-      orientation: [0, Number(outpost.position.rot) || 0] as Vec2,
+      position: stationPositionForInterior(outpost.outpostId),
+      orientation: [0, 0] as Vec2,
     } satisfies HarthmereBusinessCraftingStationSeed;
   });
 

@@ -105,14 +105,14 @@ describe("movement actions", () => {
     );
   });
 
-  it("selects directional clips and gives every avatar a neutral-ended root pose", () => {
+  it("swaps dodge/evade clips without changing their gameplay action names", () => {
     assert.equal(
       playerMovementActionAnimationName({
         action: "dodge",
         direction: [1, 0, 0],
         facingYaw: 0,
       }),
-      "dodgeRight"
+      "evade"
     );
     assert.equal(
       playerMovementActionAnimationName({
@@ -120,7 +120,7 @@ describe("movement actions", () => {
         direction: [-1, 0, 0],
         facingYaw: 0,
       }),
-      "dodgeLeft"
+      "evade"
     );
     assert.equal(
       playerMovementActionAnimationName({
@@ -128,7 +128,7 @@ describe("movement actions", () => {
         direction: [0, 0, -1],
         facingYaw: 0,
       }),
-      "dodgeForward"
+      "evade"
     );
     assert.equal(
       playerMovementActionAnimationName({
@@ -136,7 +136,7 @@ describe("movement actions", () => {
         direction: [0, 0, 1],
         facingYaw: 0,
       }),
-      "dodgeBack"
+      "evade"
     );
     assert.equal(
       playerMovementActionAnimationName({
@@ -144,7 +144,15 @@ describe("movement actions", () => {
         direction: [1, 0, 0],
         facingYaw: 0,
       }),
-      "evade"
+      "dodgeRight"
+    );
+    assert.equal(
+      playerMovementActionAnimationName({
+        action: "evade",
+        direction: [-1, 0, 0],
+        facingYaw: 0,
+      }),
+      "dodgeLeft"
     );
     assert.equal(
       playerMovementActionAnimationName({
@@ -154,6 +162,9 @@ describe("movement actions", () => {
       }),
       "doubleJump"
     );
+
+    // The animation inventory itself is unchanged; every clip must still have
+    // a neutral root pose for generated voxel-avatar fallbacks.
 
     for (const animation of [
       "dodgeLeft",
@@ -473,8 +484,13 @@ describe("movement actions", () => {
     });
     assert.equal(
       movementActionIsInvulnerable(npcStyleCustomDuration, 200),
+      false,
+      "custom-duration NPC evades retain the same commitment window"
+    );
+    assert.equal(
+      movementActionIsInvulnerable(npcStyleCustomDuration, 200.113),
       true,
-      "custom-duration NPC evades retain immediate protection"
+      "custom-duration NPC evades become protected after 20% of the action"
     );
   });
 

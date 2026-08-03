@@ -18,7 +18,7 @@ import {
 import type { GiveMailboxItemEvent } from "@/shared/ecs/gen/events";
 import { resetGiveGiftDate } from "@/shared/game/gifts";
 import { anItem } from "@/shared/game/item";
-import { countOf, createBag } from "@/shared/game/items";
+import { countOf, createBag, isDroppableItem } from "@/shared/game/items";
 import { itemBagToString } from "@/shared/game/items_serde";
 import { findIndex } from "lodash";
 
@@ -144,17 +144,38 @@ export const giveMailboxItemEventHandler =
   makeInventoryEventHandler<GiveMailboxItemEvent>(
     "giveMailboxItemEvent",
     ({ src, dst }, event, context) => {
+      if (
+        event.player_id !== event.src_id ||
+        src.id !== event.player_id ||
+        event.dst_id === undefined ||
+        dst.id !== event.dst_id
+      ) {
+        throw new RollbackError("Invalid mailbox transfer endpoints");
+      }
+      const destinationPlaceable = dst.delta().placeableComponent();
+      if (
+        !destinationPlaceable ||
+        !anItem(destinationPlaceable.item_id).isMailbox
+      ) {
+        throw new RollbackError("Mailbox gifts require a mailbox destination");
+      }
+      if (event.count <= 0n) {
+        throw new RollbackError("Mailbox gift count must be positive");
+      }
       if (dst.inventory.get(event.dst)) {
-        throw new Error("Tried to give to non-empty cell... ignoring event");
+        throw new RollbackError("Tried to give to a non-empty mailbox cell");
       }
       const giftItem = src.inventory.get(event.src);
       if (!giftItem) {
-        throw new Error("Tried to give non-existent item... ignoring event");
+        throw new RollbackError("Tried to give a non-existent item");
+      }
+      if (!isDroppableItem(giftItem.item)) {
+        throw new RollbackError("Bound items cannot be mailed");
       }
 
       const targetCount = giftItem.count - event.count;
       if (targetCount < 0) {
-        throw new Error("Tried to give more than we have... ignoring event");
+        throw new RollbackError("Tried to give more than the owned quantity");
       }
       src.inventory.set(
         event.src,
@@ -166,7 +187,9 @@ export const giveMailboxItemEventHandler =
           : undefined
       );
       // Wrap item in a parcel
-      const bagString = itemBagToString(createBag(giftItem));
+      const bagString = itemBagToString(
+        createBag({ ...giftItem, count: event.count })
+      );
       const wrappedItem = countOf(BikkieIds.parcel, {
         [attribs.wrappedItemBag.id]: bagString,
         [attribs.createdBy.id]: src.id,

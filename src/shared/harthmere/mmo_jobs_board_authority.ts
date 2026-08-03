@@ -2946,14 +2946,12 @@ function autoSeedRng(seed: number) {
   };
 }
 
-function autoSeedRotationBucket(nowMs: number) {
-  const value = Number(nowMs);
-  if (!Number.isFinite(value)) return 0;
-  return Math.max(
-    0,
-    Math.floor(value / HARTHMERE_JOBS_BOARD_AUTO_SEED_DEADLINE_MS)
-  );
-}
+// `autoSeedRotationBucket(nowMs)` was removed with
+// HARTHMERE_JOBS_BOARD_SEED_DETERMINISM. It bucketed the wall clock to rotate
+// auto-seed draws, which is precisely the input that made an unpersisted read
+// projection disagree with the durable write for the same job id. Rotation is
+// now driven by the durable `nextJobNumber`. Do not reintroduce a clock-derived
+// bucket into any auto-seed selection path.
 
 function autoSeedStringSeed(value: string) {
   let seed = 0;
@@ -2963,19 +2961,27 @@ function autoSeedStringSeed(value: string) {
   return seed >>> 0;
 }
 
+/**
+ * Rotate a template pool so the same entry is not always drawn first.
+ *
+ * TAKES A DURABLE `rotation`, NOT `nowMs`. This used to bucket the wall clock
+ * per second, which made the rotation — and therefore the job drawn into a given
+ * slot — differ between an unpersisted read projection and the write that later
+ * persists it. See HARTHMERE_JOBS_BOARD_SEED_DETERMINISM in `economyAutoSeedJobs`.
+ * The caller passes the same durable slot basis it uses for the slot RNG.
+ */
 function rotateAutoSeedEntries<T>(
   entries: readonly T[],
   input: {
     boardId: string;
-    nowMs: number;
+    rotation: number;
     salt: string;
   }
 ) {
   if (entries.length <= 1) return [...entries];
-  const nowSeed = Math.floor(Math.max(0, Number(input.nowMs) || 0) / 1000);
+  const rotation = Math.max(0, Math.trunc(Number(input.rotation) || 0));
   const offset =
-    (autoSeedRotationBucket(input.nowMs) +
-      autoSeedStringSeed(`${input.boardId}:${input.salt}:${nowSeed}`)) %
+    (rotation + autoSeedStringSeed(`${input.boardId}:${input.salt}`)) %
     entries.length;
   return entries
     .map((entry, index) => ({
@@ -3418,11 +3424,19 @@ function economyAutoSeedProductionBusinessJobs(
     businessOrderSeed =
       (businessOrderSeed * 31 + businessOrderSeedKey.charCodeAt(i)) | 0;
   }
+  // HARTHMERE_JOBS_BOARD_SEED_DETERMINISM applies here too. This path allocates
+  // ids from the same durable `nextJobNumber` counter and also runs on the
+  // unpersisted GET projection, so a clock-derived rotation reissues an id with a
+  // different business's job across a bucket boundary. The rotation basis is the
+  // job number about to be issued; `businessCandidates` is already sorted by
+  // `businessId`, so the whole ordering is now a function of durable state.
   const businessOrderRng = autoSeedRng(
-    (request.nowMs ^ businessOrderSeed) >>> 0
+    autoSeedStringSeed(
+      `${businessOrderSeed}:${result.next.nextJobNumber}`
+    )
   );
   const businessRotationIndex = businessCandidates.length
-    ? (autoSeedRotationBucket(request.nowMs) + (businessOrderSeed >>> 0)) %
+    ? (result.next.nextJobNumber + (businessOrderSeed >>> 0)) %
       businessCandidates.length
     : 0;
   const businesses = businessCandidates
@@ -3582,14 +3596,36 @@ function economyAutoSeedJobs(
     return;
   }
   // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN:
-  // Mix `request.nowMs` with the board id so the same tick on different
-  // boards still produces different template draws — otherwise both boards
-  // would surface the same Mucker hunt slot when ticked at the same time.
-  let boardSeed = 0;
-  for (let i = 0; i < boardId.length; i += 1) {
-    boardSeed = (boardSeed * 31 + boardId.charCodeAt(i)) | 0;
-  }
-  const rng = autoSeedRng((request.nowMs ^ boardSeed) >>> 0);
+  // Mix the board id into the seed so the same tick on different boards still
+  // produces different template draws — otherwise both boards would surface the
+  // same Mucker hunt slot when ticked together.
+  //
+  // HARTHMERE_JOBS_BOARD_SEED_DETERMINISM — DO NOT PUT THE CLOCK BACK IN HERE.
+  //
+  // This used to be `autoSeedRng((request.nowMs ^ boardSeed) >>> 0)`, and that
+  // one `nowMs` was a critical correctness bug rather than a cosmetic one.
+  //
+  // `live_mode_jobs_board_state.ts` runs this reducer on every GET and returns
+  // the result WITHOUT persisting it — correct, because the ECS source-of-truth
+  // rule forbids a GET from writing. But job ids come from the durable
+  // `nextJobNumber` counter while the template draw came from the wall clock,
+  // so two reads a poll apart reissued the SAME ids with DIFFERENT jobs:
+  //
+  //   read at T      harthmere_auto_1 = Bounty: Elite Mucker, 1959g
+  //   read at T+3.5s harthmere_auto_1 = Run the Coop Food Parcel, 51g
+  //
+  // `acceptJobPosting` binds by job id alone, and the accept-time repair in
+  // `live_mode_backend.ts` re-seeds the board with the WRITER's clock when the
+  // requested id is not durable yet. So the player clicked one job and was
+  // reliably bound to a different one — a disappointment in one direction and a
+  // gold exploit in the other.
+  //
+  // The seed is therefore derived only from durable state: the board id and the
+  // job number about to be issued. Any number of unpersisted reads now agree
+  // with each other and with the write that finally persists them. Variety is
+  // unaffected: the counter advances as jobs are actually created, so the next
+  // seeding round draws differently.
+  const boardSeed = autoSeedStringSeed(boardId);
   const templates = HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES.filter(
     (tpl) =>
       board.acceptedKinds.includes(tpl.kind) &&
@@ -3640,6 +3676,18 @@ function economyAutoSeedJobs(
   let attempts = 0;
   while (produced < slotsToFill && attempts < slotsToFill * 6) {
     attempts += 1;
+    // One RNG stream per SLOT, keyed by the job number this iteration would
+    // issue. `nextJobNumber` only advances when a posting is actually created,
+    // so an unpersisted read and the later durable write derive the same stream
+    // for the same job id. `attempts` is mixed in so a rejected draw (issuer cap,
+    // duplicate template) tries something different instead of spinning on the
+    // same choice — it is itself a deterministic function of the same state, so
+    // reproducibility is preserved.
+    const slotRng = autoSeedRng(
+      autoSeedStringSeed(
+        `${boardSeed}:${result.next.nextJobNumber}:${attempts}`
+      )
+    );
     const missingRepeatablePlacementPool = repeatablePlacementTemplates.filter(
       (template) =>
         !usedTemplateIds.has(template.templateId) &&
@@ -3656,7 +3704,7 @@ function economyAutoSeedJobs(
       : shouldPrimeRepeatablePlacement
       ? rotateAutoSeedEntries(missingRepeatablePlacementPool, {
           boardId,
-          nowMs: request.nowMs,
+          rotation: result.next.nextJobNumber,
           salt: "repeatable-placement",
         })
       : templates;
@@ -3681,7 +3729,7 @@ function economyAutoSeedJobs(
       : baseTemplatePool;
     const template = shouldPrimeRepeatablePlacement
       ? templatePool[0]
-      : templatePool[Math.floor(rng() * templatePool.length)];
+      : templatePool[Math.floor(slotRng() * templatePool.length)];
     if (!template) break;
     if (
       usedTemplateIds.has(template.templateId) &&
@@ -3700,7 +3748,9 @@ function economyAutoSeedJobs(
       HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD,
       Math.min(
         HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD,
-        Math.round(template.rewardGold.min + rng() * Math.max(0, rewardSpan))
+        Math.round(
+          template.rewardGold.min + slotRng() * Math.max(0, rewardSpan)
+        )
       )
     );
     // HARTHMERE_JOBS_BOARD_AUTO_POSTING:
@@ -3728,7 +3778,7 @@ function economyAutoSeedJobs(
     const randomized = randomizedAutoSeedRequirements({
       template,
       boardId,
-      rng,
+      rng: slotRng,
     });
     const flags: string[] = [];
     if (hasSuspiciousText(`${template.title} ${template.description}`)) {

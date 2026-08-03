@@ -70,6 +70,41 @@ export function harthmereBusinessInteriorForType(
   return BUSINESS_INTERIOR_BY_TYPE.get(businessType);
 }
 
+export interface HarthmereBusinessInteriorWorldPosition {
+  x: number;
+  y?: number;
+  z: number;
+}
+
+export function harthmereBusinessInteriorContainsPosition(
+  record: HarthmereBusinessInteriorManifestRecord,
+  position: HarthmereBusinessInteriorWorldPosition
+) {
+  const minX = record.assetWorldAnchor[0];
+  const minY = record.assetWorldAnchor[1] - 1;
+  const minZ = record.assetWorldAnchor[2];
+  const maxX = minX + record.footprint.width;
+  const maxY = record.assetWorldAnchor[1] + record.footprint.floors * 4 + 1;
+  const maxZ = minZ + record.footprint.depth;
+  return (
+    position.x >= minX &&
+    position.x < maxX &&
+    position.z >= minZ &&
+    position.z < maxZ &&
+    (position.y === undefined || (position.y >= minY && position.y < maxY))
+  );
+}
+
+export function harthmereBusinessInteriorContainingPosition(
+  position: HarthmereBusinessInteriorWorldPosition | undefined
+) {
+  return position
+    ? HARTHMERE_BUSINESS_INTERIORS.find((record) =>
+        harthmereBusinessInteriorContainsPosition(record, position)
+      )
+    : undefined;
+}
+
 /**
  * Manifest local coordinates are Blender X/depth-Y/height-Z. Runtime Biomes
  * uses X/height-Y/depth-Z. The manifest's assetWorldAnchor is already the
@@ -134,10 +169,7 @@ export function harthmereBusinessCustomerQueueTarget(
 
   // Overflow remains in a spaced line outside the real door instead of
   // compressing the protected aisle or clipping through the counter.
-  return pointAlongDepth(
-    entrance,
-    -spacing * (queueIndex - insideSlots + 1)
-  );
+  return pointAlongDepth(entrance, -spacing * (queueIndex - insideSlots + 1));
 }
 
 export function harthmereBusinessCustomerSpawnPoint(
@@ -183,10 +215,8 @@ export function harthmereBusinessCustomerSessionEntityId(input: {
   const high = hash32(key, 2166136261) & 0x1fffff;
   const low = hash32(key, 2246822519);
   const combined = high * 0x1_0000_0000 + low;
-  return (
-    SESSION_CUSTOMER_ENTITY_BASE +
-    (combined % SESSION_CUSTOMER_ENTITY_RANGE)
-  ) as BiomesId;
+  return (SESSION_CUSTOMER_ENTITY_BASE +
+    (combined % SESSION_CUSTOMER_ENTITY_RANGE)) as BiomesId;
 }
 
 export function createHarthmereBusinessCustomerSpatialIntent(input: {
@@ -234,8 +264,7 @@ export function createHarthmereBusinessCustomerSpatialIntent(input: {
     ticketId: input.ticketId,
     entityId: input.entityId,
     outpostId: input.record.outpostId,
-    businessType:
-      input.record.businessType as HarthmereEconomyBusinessTypeId,
+    businessType: input.record.businessType as HarthmereEconomyBusinessTypeId,
     actorEntityId: input.actorEntityId,
     phase: input.phase,
     reaction: input.reaction ?? "neutral",

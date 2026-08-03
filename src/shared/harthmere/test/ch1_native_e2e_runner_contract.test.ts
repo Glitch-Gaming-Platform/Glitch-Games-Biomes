@@ -229,7 +229,7 @@ describe("Chapter 1 native browser-runner contracts", () => {
     assert.match(runner, /FOCUSED_E2E_SAFE_START/);
     assert.match(
       runner,
-      /if \(chapter1Only \|\| chapter1CaptureOnly \|\| robotStoryOnly\) \{\s*\/\/ A freshly allocated visual-test id can collide with a live snapshot NPC/
+      /if \(\s*chapter1Only \|\|\s*chapter1CaptureOnly \|\|\s*chapter1NpcAuditOnly \|\|\s*robotStoryOnly\s*\) \{\s*\/\/ A freshly allocated visual-test id can collide with a live snapshot NPC/
     );
     assert.match(
       runner,

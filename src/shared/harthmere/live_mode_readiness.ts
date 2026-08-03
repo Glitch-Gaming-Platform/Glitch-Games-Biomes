@@ -54,8 +54,7 @@ export type HarthmereLiveModeProductionSubsystem =
   | "medical";
 
 export type HarthmereLiveModeAnySubsystem =
-  | HarthmereLiveModeSubsystem
-  | HarthmereLiveModeProductionSubsystem;
+  HarthmereLiveModeSubsystem | HarthmereLiveModeProductionSubsystem;
 
 export type HarthmereLiveModeActionKind =
   | "request_attack"
@@ -161,10 +160,7 @@ export interface HarthmereLiveModeAuthorityEnvelope {
   actionKind: HarthmereLiveModeActionKind;
   subsystem: HarthmereLiveModeAnySubsystem;
   source:
-    | "client_request"
-    | "server_scheduled_tick"
-    | "server_replay"
-    | "admin_tool";
+    "client_request" | "server_scheduled_tick" | "server_replay" | "admin_tool";
   serverActorPosition?: { x: number; y: number; z: number };
   /** Exact server-read native inventory/wearing ids used for tool gates. */
   serverActorItemIds?: BiomesId[];
@@ -203,6 +199,10 @@ export interface HarthmereLiveModeAuthorityEnvelope {
   serverActorSkillXp?: Record<string, number>;
   /** Distinguishes a migrated zero-XP ledger from a legacy player with no ledger. */
   serverActorSkillProgressionInitialized?: boolean;
+  /** Native challenge ids currently owned by the authenticated actor. */
+  serverActorInProgressQuestIds?: string[];
+  /** Native challenge ids already completed by the authenticated actor. */
+  serverActorCompletedQuestIds?: string[];
   serverTargetPosition?: { x: number; y: number; z: number };
   clientSentAtMs?: number;
   serverReceivedAtMs: number;
@@ -1973,7 +1973,7 @@ export function validateHarthmereLiveModeIdempotencyReplay(input: {
     duplicate,
     replayPreviousResult: duplicate,
     previousResultHash: duplicate
-      ? input.previousResultHash ?? "previous_result_required"
+      ? (input.previousResultHash ?? "previous_result_required")
       : undefined,
   };
 }

@@ -38,10 +38,14 @@ const SEARCH_RADIUS = 16;
 // values are derived from the canonical materialization-plan origins.
 const INTERIOR_Y: Readonly<Record<string, number>> = {
   greenlamp_clinic: 65,
+  greenlamp_lou_post: 65,
+  greenlamp_nadia_post: 65,
   ashline_containment_works: 67,
   ashline_refinery_intake: 67,
   ashline_foreman_post: 67,
   returnstone_pad_office: 41,
+  returnstone_cressa_post: 41,
+  returnstone_lou_post: 41,
   lanternrest_road_inn: 48,
   roadhouse_door: 70,
   roadhouse_table: 70,
@@ -55,6 +59,9 @@ const INTERIOR_Y: Readonly<Record<string, number>> = {
   testimony_allix: 70,
   grove_watch_house_door: 70,
   grove_watch_house: 70,
+  grove_watch_house_holt_post: 70,
+  grove_watch_house_teak_post: 70,
+  grove_watch_house_jackie_post: 70,
 };
 
 const INTERIOR_POSITION_KEYS = new Set(
@@ -76,8 +83,7 @@ const MEASURED: Measured[] = (() => {
     Record<string, unknown>
   >) {
     const world = (placement.recommendedPosition ?? placement.worldPosition) as
-      | readonly number[]
-      | undefined;
+      readonly number[] | undefined;
     const feetY = placement.surfaceFeetY;
     if (!world || typeof feetY !== "number") continue;
     out.push({

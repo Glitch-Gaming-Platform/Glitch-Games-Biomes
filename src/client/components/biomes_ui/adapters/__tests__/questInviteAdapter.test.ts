@@ -103,6 +103,25 @@ describe("BiomesUI quest invite adapter", () => {
     );
   });
 
+  it("retires completed shared quest markers while keeping completed journal history", () => {
+    const state = questState();
+    state.sharedQuests[0] = {
+      ...state.sharedQuests[0],
+      status: "completed",
+      completedAtMs: NOW_MS,
+    } as any;
+    assert.deepEqual(sharedQuestAcceptedLandmarksForBiomesUI(state), []);
+    assert.equal(
+      sharedQuestTrackableQuestsForBiomesUI(state)[0]?.status,
+      "completed"
+    );
+    assert.equal(
+      activeSharedQuestMissionStepsForBiomesUI(state)[0]?.done,
+      true
+    );
+    assert.equal(firstActiveSharedQuestTitleForBiomesUI(state), undefined);
+  });
+
   it("builds invite options from only usable trackable quests and deduplicates them", () => {
     const options = questInviteOptionsFromTrackableQuests([
       {

@@ -31,7 +31,9 @@ import {
 import {
   snapshotGroveObjectiveCompletionFixture,
   snapshotGroveObjectiveMarkerIdForProgress,
+  snapshotGroveObjectiveTargetMarkerIds,
 } from "@/shared/harthmere/snapshot_grove_trigger_contract";
+import { groveQuest } from "@/shared/harthmere/grove/grove_quest_catalog";
 
 function questById(id: string) {
   const quest = SNAPSHOT_GROVE_QUESTS.find((entry) => entry.id === id);
@@ -61,8 +63,22 @@ function questStepCompletionEvent(quest: any, objectiveIndex: number) {
   if (fixture.kind !== "talk_npc") {
     return fixture;
   }
-  const marker = snapshotGroveLandmarkById(quest.markerIds[objectiveIndex]);
-  const npcId = marker?.npcId ?? quest.giverNpcId;
+  // RESOLVE THE MARKER, do not read the shipped row.
+  //
+  // The fixture models what the player actually does, so it has to talk to the
+  // NPC the objective now points at. Reading `quest.markerIds` raw built a
+  // "talk to Jackie" event for the four fountain lessons that moved to Rosalyn,
+  // because the retired array still names `npc_jackie` on their opening and
+  // closing objectives while the catalog — and therefore the runtime — names
+  // Rosalyn. That made this audit assert the OLD behaviour: it would have gone
+  // green precisely when the player was sent to the wrong NPC.
+  const marker = snapshotGroveLandmarkById(
+    snapshotGroveObjectiveTargetMarkerIds(quest, objectiveIndex)[0] ??
+      quest.markerIds[objectiveIndex]
+  );
+  // Same reason for the fallback: the catalog giver, not the retired row's.
+  const npcId =
+    marker?.npcId ?? groveQuest(quest.id)?.start.giverNpcId ?? quest.giverNpcId;
   return {
     ...fixture,
     npcId: talkEventNpcId(npcId),

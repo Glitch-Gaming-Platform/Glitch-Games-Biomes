@@ -47,11 +47,11 @@ describe("Harthmere town surface style", () => {
         }
       }
     }
-    assert.ok(openGround / (openGround + surfaced) > 0.25, {
-      openGround,
-      surfaced,
-    });
-    assert.ok(materials.size >= 5, [...materials]);
+    assert.ok(
+      openGround / (openGround + surfaced) > 0.25,
+      JSON.stringify({ openGround, surfaced })
+    );
+    assert.ok(materials.size >= 5, JSON.stringify([...materials]));
   });
 
   it("grades maintained roads from cobbles into gravel shoulders", () => {

@@ -43,6 +43,28 @@ export const MOUNTAIN_WIND_AUDIO_PATH = sample(
   getAudioAssetPaths("mountain_wind")
 ) as AudioPath | undefined;
 
+// The Grove is part of the imported original world and retains its original
+// Kyle Flynn theme. Keep this X/Z region separate from the Harthmere overworld
+// bed so both songs cannot own the background mix at the same time.
+export const GROVE_MUSIC_REGION_BOUNDS = {
+  minX: 300,
+  maxX: 650,
+  minZ: -360,
+  maxZ: -40,
+} as const;
+
+export function isGroveMusicPosition(position: {
+  readonly [0]: number;
+  readonly [2]: number;
+}) {
+  return (
+    position[0] >= GROVE_MUSIC_REGION_BOUNDS.minX &&
+    position[0] <= GROVE_MUSIC_REGION_BOUNDS.maxX &&
+    position[2] >= GROVE_MUSIC_REGION_BOUNDS.minZ &&
+    position[2] <= GROVE_MUSIC_REGION_BOUNDS.maxZ
+  );
+}
+
 type CombatHealth = Pick<
   ReadonlyHealth,
   "hp" | "lastDamageAmount" | "lastDamageSource" | "lastDamageTime"
@@ -113,6 +135,10 @@ export function selectBackgroundMusicTrack(
     return "music";
   }
 
+  if (isGroveMusicPosition(position)) {
+    return "grove_music";
+  }
+
   const x = position[0];
   const z = position[2];
   if (
@@ -121,7 +147,7 @@ export function selectBackgroundMusicTrack(
     z >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ &&
     z < HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ
   ) {
-    return "harthmere_music";
+    return "music";
   }
 
   return "music";
@@ -318,18 +344,21 @@ export class AudioScript implements Script {
     const activeMinigame = this.activeMinigame();
     const environment = this.environmentAudioState([...playerPos], nowSeconds);
     const currentMuckyness = muckyness.get();
-    this.audioManager.setBackgroundMusicTrack(
+    const backgroundMusicOverride =
+      this.audioManager.getBackgroundMusicOverride();
+    const selectedBackgroundMusic =
       cutscene.active && cutscene.musicOverride
         ? (cutscene.musicOverride as AudioTrackType)
-        : selectBackgroundMusicTrack(
+        : (backgroundMusicOverride ??
+          selectBackgroundMusicTrack(
             currentMuckyness,
             combatMusicState.activeCombat,
             playerPos,
             combatMusicState.activeBossCombat,
             environment.inCave,
             activeMinigame
-          )
-    );
+          ));
+    this.audioManager.setBackgroundMusicTrack(selectedBackgroundMusic);
 
     this.audioManager.setEnvironmentLoop(
       MOUNTAIN_WIND_ENVIRONMENT_LOOP_KEY,

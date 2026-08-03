@@ -76,6 +76,7 @@ import {
 import { harthmereTownFlattenAuthoredBounds } from "@/shared/harthmere/town_flatten_terraform";
 import { HARTHMERE_EXOTIC_MATTER_CAVES } from "@/shared/harthmere/exotic_matter_caves";
 import { isHarthmereBuildingVegetationExclusion } from "@/shared/harthmere/harthmere_building_exclusion";
+import { isHarthmereAuthoredWaterColumn } from "@/shared/harthmere/harthmere_authored_water";
 
 export const HARTHMERE_EXTENSION_SURFACE_REPAIR_VERSION =
   "harthmere-extension-surface-repair-v1" as const;
@@ -204,6 +205,12 @@ export function isHarthmereSurfaceRepairProtectedColumn(
   worldZ: number
 ): boolean {
   if (isHarthmereSurfaceRepairIntentionalOpening(worldX, worldZ)) {
+    return true;
+  }
+  // HARTHMERE_AUTHORED_WATER: the Brell's channel, the mill race and the two
+  // basins are authored voids, not sunken pits. Filling them to grade is
+  // exactly how the river kept turning back into dirt on every deploy.
+  if (isHarthmereAuthoredWaterColumn(worldX, worldZ)) {
     return true;
   }
   const authoredX = harthmereSurfaceRepairAuthoredX(worldX);

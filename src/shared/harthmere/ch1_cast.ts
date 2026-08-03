@@ -225,10 +225,15 @@ export const CH1_NEW_CAST: readonly Ch1CastMember[] = Object.freeze([
     role: "A Muck-displaced dog that follows Iris back",
     faction: "grove",
     introducedAct: 3,
+    // NON-SPEAKING BY DESIGN, NOT A MISSING CASTING RECORD. Marrow is a dog.
+    // The em-dash is the deliberate marker: `ch1VoiceActorForSpeaker("Marrow")`
+    // returns undefined and should keep returning undefined. Voice-coverage
+    // audits have flagged this as a gap more than once, so
+    // ch1_choice_completion_dialogue.test.ts now pins it as intentional.
     voice: "—",
     sampleLine: "—",
     writerNote:
-      "Purely for warmth. MUST BE UNKILLABLE. Non-negotiable; flag it in review.",
+      "Purely for warmth. MUST BE UNKILLABLE. Non-negotiable; flag it in review. Never speaks — no voice actor, no dialogue pages.",
     combatant: false,
   },
   {

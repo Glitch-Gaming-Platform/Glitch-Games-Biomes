@@ -101,13 +101,14 @@ ok(
   "Grove controller syncs the selected marker on activeQuestId/objective change"
 );
 
-// 8. The Map HUD's Pin button uses the active step's nav-aid id, not the
-//    legacy single id, so player taps refresh the right pin slot.
+// 8. The Map HUD's Pin button passes the landmark through the shared grounded
+//    position resolver and uses the active step's nav-aid id, not the legacy
+//    single id, so player taps refresh the right pin slot.
 ok(
-  /onClick=\{\(\)\s*=>\s*\n?\s*pinSnapshotGroveLandmark\(\s*mapManager,\s*marker\.position,\s*snapshotGroveStepNavAidId\(objectiveIndex\)/.test(
+  /onClick=\{\(\)\s*=>\s*\n?\s*pinSnapshotGroveLandmark\(\s*mapManager,\s*marker,\s*snapshotGroveStepNavAidId\(objectiveIndex\)/.test(
     runtime
   ),
-  "Map HUD Pin button uses the active step's per-step nav-aid id"
+  "Map HUD Pin button grounds the landmark and uses the active step's per-step nav-aid id"
 );
 
 // 9. Every fountain tutorial declares one marker per objective (regression
