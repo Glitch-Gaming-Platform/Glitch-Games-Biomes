@@ -2,12 +2,16 @@ import { getAsset, matchingAssets } from "@/galois/assets";
 import type { ExportOutput, Exporter } from "@/galois/assets/scripts/export";
 import { isSignal } from "@/galois/interface/types/data";
 import {
+  AssetContentPathGuard,
+  assetContentHashIsLegacySafe,
+  publishedAssetContentHash,
+} from "@/galois/publish/content_hash";
+import {
   getPublicAssetBaseUrl,
   publish,
 } from "@/server/web/published_asset_data";
 import { ok } from "assert";
 import { readFileSync, writeFileSync } from "fs";
-import { hash } from "spark-md5";
 import { z } from "zod";
 
 const zAssetIndex = z.object({
@@ -51,8 +55,12 @@ class AssetIndexBuilder {
   }
 }
 
-function toPublicAssetPath(path: string, result: ExportOutput) {
-  const version = hash(result.data.toString());
+// HARTHMERE_ASSET_CONTENT_HASH: the hash is now taken over the exported bytes
+// rather than over a lossy UTF-8 decode of them. See publish/content_hash.ts for
+// the full reasoning and the one-time binary re-upload this implies. String
+// payloads (JSON, GLTF) are bit-identical to the old scheme and do not churn.
+export function toPublicAssetPath(path: string, result: ExportOutput) {
+  const version = publishedAssetContentHash(result.data);
   const filepath = `${path}.${version}.${result.extension}`;
   return `asset_data/${filepath}`;
 }
@@ -64,6 +72,9 @@ async function publishAssets(
   filter: RegExp | undefined,
   dryRun: boolean
 ) {
+  // One guard per run: no two payloads may claim the same immutable path.
+  const pathGuard = new AssetContentPathGuard();
+  let renamedByHashMigration = 0;
   const assetsUnfiltered = [
     ...new Set(
       assetPaths.flatMap((pathPattern) => {
@@ -86,6 +97,14 @@ async function publishAssets(
       try {
         const result = await exporter.export({ ...asset, name: path });
         const publicRelativePath = toPublicAssetPath(path, result);
+        pathGuard.claim(publicRelativePath, path, result.data);
+        if (!assetContentHashIsLegacySafe(result.data)) {
+          // Binary payload whose previous name came from a lossy decode. It is
+          // expected to be renamed exactly once by this migration; counting them
+          // makes the size of that one-time re-upload visible in the log rather
+          // than a surprise in the bucket bill.
+          renamedByHashMigration += 1;
+        }
 
         // Update the asset versions index to include the new data.
         index.add(path, publicRelativePath);
