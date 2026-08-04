@@ -9,20 +9,21 @@ import {
 } from "@/server/harthmere/business_interior_collision_ecs_seed";
 import { getAabbForEntity } from "@/shared/game/entity_sizes";
 import {
+  HARTHMERE_BUSINESS_INTERIOR_FLOOR_THICKNESS_METERS,
   HARTHMERE_BUSINESS_INTERIOR_COLLISION_SEEDS,
   validateHarthmereBusinessInteriorCollisionSeeds,
 } from "@/shared/harthmere/business_interior_collision_seed";
 import { HARTHMERE_BUSINESS_INTERIORS } from "@/shared/harthmere/business_interior_runtime";
 
 describe("business interior collision ECS seed", () => {
-  it("materializes all 178 manifest proxies as invisible native collision", () => {
+  it("materializes all 178 manifest proxies and 19 floors as invisible native collision", () => {
     assert.deepEqual(validateHarthmereBusinessInteriorCollisionSeeds(), []);
     assert.equal(HARTHMERE_BUSINESS_INTERIORS.length, 19);
-    assert.equal(HARTHMERE_BUSINESS_INTERIOR_COLLISION_SEEDS.length, 178);
+    assert.equal(HARTHMERE_BUSINESS_INTERIOR_COLLISION_SEEDS.length, 197);
     const changes = buildHarthmereBusinessInteriorCollisionSeedChanges({
       tick: 7,
     });
-    assert.equal(changes.length, 178);
+    assert.equal(changes.length, 197);
 
     for (const change of changes) {
       assert.equal(change.kind, "create");
@@ -45,11 +46,13 @@ describe("business interior collision ECS seed", () => {
   });
 
   it("preserves exact manifest center/size axis conversion for every proxy", () => {
-    for (const seed of HARTHMERE_BUSINESS_INTERIOR_COLLISION_SEEDS) {
+    for (const seed of HARTHMERE_BUSINESS_INTERIOR_COLLISION_SEEDS.filter(
+      (candidate) => candidate.role !== "floor"
+    )) {
       const record = HARTHMERE_BUSINESS_INTERIORS.find(
         (candidate) => candidate.outpostId === seed.outpostId
       )!;
-      const box = record.collisionBoxes[seed.sourceCollisionIndex];
+      const box = record.collisionBoxes[seed.sourceCollisionIndex!];
       assert.ok(box, seed.collisionSeedId);
       assert.deepEqual(seed.size, [box.size[0], box.size[2], box.size[1]]);
       assert.deepEqual(seed.position, [
@@ -60,22 +63,49 @@ describe("business interior collision ECS seed", () => {
     }
   });
 
+  it("places one full-footprint floor at each authored standing height", () => {
+    const floors = HARTHMERE_BUSINESS_INTERIOR_COLLISION_SEEDS.filter(
+      (seed) => seed.role === "floor"
+    );
+    assert.equal(floors.length, 19);
+    for (const record of HARTHMERE_BUSINESS_INTERIORS) {
+      const floor = floors.find((seed) => seed.outpostId === record.outpostId);
+      assert.ok(floor, `${record.outpostId} floor missing`);
+      assert.equal(floor!.sourceCollisionIndex, undefined);
+      assert.deepEqual(floor!.size, [
+        record.footprint.width,
+        HARTHMERE_BUSINESS_INTERIOR_FLOOR_THICKNESS_METERS,
+        record.footprint.depth,
+      ]);
+      assert.deepEqual(floor!.position, [
+        record.assetWorldAnchor[0] + record.footprint.width / 2,
+        record.assetWorldAnchor[1] -
+          HARTHMERE_BUSINESS_INTERIOR_FLOOR_THICKNESS_METERS,
+        record.assetWorldAnchor[2] + record.footprint.depth / 2,
+      ]);
+      assert.equal(
+        floor!.position[1] + floor!.size[1],
+        record.assetWorldAnchor[1]
+      );
+    }
+  });
+
   it("uses stable unique ids and updates already-present proxies", () => {
     const ids = harthmereBusinessInteriorCollisionSeedEntityIds();
-    assert.equal(new Set(ids.map(Number)).size, 178);
-    const existingIds = new Set([ids[0], ids[177]]);
+    assert.equal(new Set(ids.map(Number)).size, 197);
+    const existingIds = new Set([ids[0], ids[196]]);
     const changes = buildHarthmereBusinessInteriorCollisionSeedChanges({
       tick: 8,
       existingIds,
     });
     assert.equal(changes[0].kind, "update");
-    assert.equal(changes[177].kind, "update");
+    assert.equal(changes[196].kind, "update");
     assert.equal(changes[1].kind, "create");
     assert.equal(
       buildHarthmereBusinessInteriorCollisionSeedProposedChanges({
         existingIds,
       }).length,
-      178
+      197
     );
   });
 
@@ -90,7 +120,9 @@ describe("business interior collision ECS seed", () => {
       resolve(root, "src/client/game/renderers/placeables.ts"),
       "utf8"
     );
-    assert.ok(shim.includes("buildHarthmereBusinessInteriorCollisionSeedChanges"));
+    assert.ok(
+      shim.includes("buildHarthmereBusinessInteriorCollisionSeedChanges")
+    );
     assert.ok(
       reconcile.includes(
         "buildHarthmereBusinessInteriorCollisionSeedProposedChanges"

@@ -1,0 +1,23 @@
+// HARTHMERE_MOBILE_AUDIT_TYPECHECK (2026-08-04 mobile audit)
+//
+// Fast scoped check for the standalone mobile modules and their tests. These
+// deliberately avoid importing the client resource graph, so this config runs
+// in seconds. It does NOT cover the wiring in JoystickInput/loop/renderers --
+// use tsconfig.ch1renderer.json for those.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "src/client/game/util/mobile_device_profile.ts",
+    "src/client/game/util/mobile_device_profile.test.ts",
+    "src/client/game/util/mobile_frame_pacing.ts",
+    "src/client/game/util/mobile_frame_pacing.test.ts",
+    "src/client/game/util/mobile_action_controls.ts",
+    "src/client/game/util/mobile_action_controls.test.ts",
+    "src/client/game/util/mobile_atlas_decode.ts",
+    "src/client/game/util/mobile_atlas_decode.test.ts",
+    "modules.d.ts"
+  ]
+}

@@ -46,13 +46,13 @@ type VoiceParticipant = {
 
 type VoiceRoom = {
   id: string;
+  state?: "active" | "closed";
   connection_config?: Record<string, unknown>;
   participants?: VoiceParticipant[];
 };
 
 type VoicePacket = {
   player_id: string;
-  recipient_player_id?: string;
   packet_type: VoicePacketType;
   payload: string;
   sequence: number;
@@ -316,6 +316,14 @@ function writePlayerVoiceResumeState(
   }
 }
 
+function clearPlayerVoiceResumeState(playerId: string) {
+  try {
+    window.sessionStorage.removeItem(playerVoiceResumeStorageKey(playerId));
+  } catch {
+    // Reconnect still works within the current client instance without storage.
+  }
+}
+
 export class GlitchPlayerVoiceClient {
   private stopped = true;
   private speaking = false;
@@ -479,6 +487,7 @@ export class GlitchPlayerVoiceClient {
       response.available === false ||
       !response.ok ||
       !response.voice_room ||
+      response.voice_room.state !== "active" ||
       !response.voice_token
     ) {
       throw new PlayerVoiceRequestError(
@@ -642,6 +651,8 @@ export class GlitchPlayerVoiceClient {
     }
     this.emitStatus("reconnecting");
     this.voiceToken = undefined;
+    this.voiceRoom = undefined;
+    clearPlayerVoiceResumeState(this.localPlayerId);
     this.closeAllPeers();
     const delay = Math.min(30_000, 1_000 * 2 ** this.reconnectAttempts++);
     this.reconnectTimer = window.setTimeout(() => {
@@ -669,11 +680,7 @@ export class GlitchPlayerVoiceClient {
     );
   }
 
-  private sendPacket(
-    packetType: VoicePacketType,
-    payload: string,
-    recipientPlayerId?: string
-  ) {
+  private sendPacket(packetType: VoicePacketType, payload: string) {
     const token = this.voiceToken;
     if (!token || this.stopped) {
       return Promise.resolve();
@@ -682,7 +689,6 @@ export class GlitchPlayerVoiceClient {
       voice_token: token,
       packet_type: packetType,
       payload,
-      ...(recipientPlayerId ? { recipient_player_id: recipientPlayerId } : {}),
     })
       .then(() => undefined)
       .catch((error) => {
@@ -793,8 +799,7 @@ export class GlitchPlayerVoiceClient {
           from: this.localPlayerId,
           to: remotePlayerId,
           candidate: event.candidate.toJSON(),
-        } satisfies PlayerVoiceSignalPayload),
-        remotePlayerId
+        } satisfies PlayerVoiceSignalPayload)
       );
     };
     connection.ontrack = (event) => {
@@ -860,8 +865,7 @@ export class GlitchPlayerVoiceClient {
         from: this.localPlayerId,
         to: remotePlayerId,
         description: { type: description.type, sdp: description.sdp },
-      } satisfies PlayerVoiceSignalPayload),
-      remotePlayerId
+      } satisfies PlayerVoiceSignalPayload)
     );
   }
 

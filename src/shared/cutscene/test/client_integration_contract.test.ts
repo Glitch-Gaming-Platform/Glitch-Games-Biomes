@@ -43,7 +43,8 @@ describe("cutscene client integration contract", () => {
   it("audio script honors the cutscene music override", () => {
     const source = read("src/client/game/scripts/audio.ts");
     assert.match(source, /cutscene\.active && cutscene\.musicOverride/);
-    assert.match(source, /setBackgroundMusicTrack\(\s*cutscene\.active/);
+    assert.match(source, /selectedBackgroundMusic\s*=\s*cutscene\.active/);
+    assert.match(source, /setBackgroundMusicTrack\(selectedBackgroundMusic\)/);
   });
 
   it("live-creature bridge merges puppet overrides and fast-publishes during scenes", () => {

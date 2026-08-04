@@ -2,7 +2,7 @@
 // surface (Jobs Board, Home Console, Business Interface, Crafting Station)
 // is currently mounted. Surfaces signal this via the shared
 // `pointerLockModalPolicy` depth counter. The EscGameMenu consumes this hook
-// to suppress its "Return to Game" / "Give Feedback" overlay while those
+// to suppress its escape-menu overlay while those
 // panels are open — the panels intentionally release pointer lock to let the
 // player use the mouse, and the escape menu must not pop on top of them.
 

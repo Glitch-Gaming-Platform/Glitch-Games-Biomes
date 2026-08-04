@@ -529,6 +529,13 @@ describe("Harthmere universal jobs board live adapter", () => {
       getHarthmereAvailableJobsPanel(snapshot, snapshot.defaultBoardId, NOW),
       []
     );
+    assert.equal(
+      getHarthmereJobsBoardTabs(snapshot, snapshot.defaultBoardId, NOW).find(
+        (tab) => tab.id === "available"
+      )?.count,
+      0,
+      "the badge must match the cards hidden by the acceptance cooldown"
+    );
 
     snapshot.cooldown.lastAcceptAtMs = undefined;
     snapshot.safety.maxActiveAcceptedPerSeeker = 1;
@@ -659,6 +666,25 @@ describe("Harthmere universal jobs board live adapter", () => {
     assert.deepEqual(
       getHarthmereJobsBoardTabs(snapshot).map((tab) => tab.id),
       ["available", "accepted", "posted", "post", "safety"]
+    );
+    const otherBoardId = "outpost_clinic_greenlamp_jobs_board";
+    snapshot.boards[otherBoardId] = {
+      ...snapshot.boards[snapshot.defaultBoardId],
+      boardId: otherBoardId,
+      displayName: "Greenlamp Walk-In Clinic Jobs Board",
+    };
+    snapshot.openJobs.push({
+      ...snapshot.openJobs[0],
+      jobId: "greenlamp_job",
+      boardId: otherBoardId,
+      kind: "medical",
+    });
+    assert.equal(
+      getHarthmereJobsBoardTabs(snapshot, otherBoardId).find(
+        (tab) => tab.id === "available"
+      )?.count,
+      1,
+      "the tab badge must count only cards visible on the selected board"
     );
     const safety = getHarthmereJobsBoardSafetyPanel(snapshot);
     assert.equal(safety.requiresBoard, true);

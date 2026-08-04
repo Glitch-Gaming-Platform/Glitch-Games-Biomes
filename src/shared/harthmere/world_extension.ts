@@ -44,11 +44,27 @@ export const HARTHMERE_EXTENSION_TERRAIN_ID_GRID = {
 export const HARTHMERE_EXTENSION_WORLD_BOUNDS = {
   minX: HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
   maxX: HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
-  // West Muck Breach reaches Z=-560. Keep the additive terrain band one full
-  // shard beyond it so sentinels, Muckers, livestock, and their wander leash
-  // never step onto an unseeded edge.
-  minZ: -576,
-  maxZ: 192,
+  // WIDENED from -576..192 (harthmere-extension-authored-content-band-v1).
+  //
+  // The old band was sized for the West Muck Breach at Z=-560 plus one shard of
+  // support. That was the right rule for creatures and the wrong rule for
+  // authored content: it also decided which shards get seeded at all, and three
+  // authored structures, the Gravewood cemetery fence, a bandit seed and two
+  // NPC bedrooms sat outside it. Nothing was generated beneath them, so in the
+  // shifted production frame they did not exist. They render correctly in an
+  // unshifted authored world, which is why it went unnoticed.
+  //
+  // These bounds now cover every authored structure and every authored terrain
+  // feature in the shim, shard-aligned with a margin:
+  //
+  //   deep_old_wood_glade_lodge   z -692  -> shardZ -22
+  //   charcoal_burners_camp       z -650  -> shardZ -21
+  //   Gravewood cemetery fence    z  262  -> shardZ   8
+  //
+  // Both ends stay well inside the reserved id grid (shardZ -31..15), so no
+  // terrain entity is remapped and no existing shard changes identity.
+  minZ: -704,
+  maxZ: 288,
 } as const;
 
 /**
@@ -249,10 +265,10 @@ export function harthmereBellbinderDescentFloorBlocks(): Vec3[] {
       stairZ === -137
         ? [stairX, stairZ - 1]
         : stairX === 503
-        ? [stairX - 1, stairZ]
-        : stairZ === -167
-        ? [stairX, stairZ + 1]
-        : [stairX + 1, stairZ];
+          ? [stairX - 1, stairZ]
+          : stairZ === -167
+            ? [stairX, stairZ + 1]
+            : [stairX + 1, stairZ];
     set(innerX, floorY, innerZ);
     for (
       let x = Math.min(innerX, targetX);

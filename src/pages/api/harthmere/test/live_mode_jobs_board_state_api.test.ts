@@ -11,6 +11,7 @@ import {
   HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
   HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION,
 } from "@/shared/harthmere/mmo_jobs_board_authority";
+import { HARTHMERE_BUSINESS_OUTPOSTS } from "@/shared/harthmere/business_customer_simulator";
 
 const ACTOR = "player_api_jobs_001";
 const NOW_MS = 1_700_300_000_000;
@@ -216,6 +217,13 @@ describe("live_mode_jobs_board_state API route integration", () => {
       ),
       "fresh local players should see Harthmere town jobs too"
     );
+    for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS) {
+      const boardId = `${outpost.outpostId}_jobs_board`;
+      assert.ok(
+        snapshot.openJobs.some((job) => job.boardId === boardId),
+        `${outpost.displayName} should expose its starter job on read`
+      );
+    }
     assert.ok(
       snapshot.openJobs.every((job) => job.source === "economy_auto_seed")
     );

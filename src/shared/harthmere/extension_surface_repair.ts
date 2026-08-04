@@ -64,6 +64,7 @@ import {
   HARTHMERE_EXTENSION_SHARD_SIZE,
   HARTHMERE_EXTENSION_ROAD,
   HARTHMERE_EXTENSION_WORLD_BOUNDS,
+  harthmereExtensionFoundationShardSpecs,
   harthmereExtensionTerrainEntityIdForShard,
 } from "@/shared/harthmere/world_extension";
 import { HARTHMERE_TOWN_BACK_BOUNDARY_X } from "@/shared/harthmere/harthmere_town_horizon";
@@ -108,10 +109,7 @@ export const HARTHMERE_SURFACE_REPAIR_MIN_FILL_Y = 32;
 export const HARTHMERE_SURFACE_REPAIR_MAX_DROP = 24;
 
 export type HarthmereSurfaceRepairMaterial =
-  | "grass"
-  | "dirt"
-  | "stone"
-  | HarthmereForestMaterial;
+  "grass" | "dirt" | "stone" | HarthmereForestMaterial;
 
 export type HarthmereSurfaceRepairLabel = "fill" | "cap" | "cover" | "forest";
 
@@ -135,12 +133,7 @@ export interface HarthmereSurfaceRepairProbe {
 }
 
 export type HarthmereSurfaceRepairStatus =
-  | "flat"
-  | "repaired"
-  | "protected"
-  | "outside"
-  | "unknown"
-  | "tooDeep";
+  "flat" | "repaired" | "protected" | "outside" | "unknown" | "tooDeep";
 
 export interface HarthmereSurfaceRepairColumnResult {
   status: HarthmereSurfaceRepairStatus;
@@ -433,8 +426,9 @@ export interface HarthmereSurfaceShardSpec {
 }
 
 /**
- * The 576 surface shards — the layer that owns Y=52. This is the exact set the
- * production audit counts, so a mismatch between the two is itself a bug.
+ * The surface shards — the layer that owns Y=52. This is the exact set the
+ * production audit counts from the canonical extension bounds, so a mismatch
+ * between the two is itself a bug.
  */
 export function harthmereSurfaceRepairShardSpecs(): HarthmereSurfaceShardSpec[] {
   const size = HARTHMERE_EXTENSION_SHARD_SIZE;
@@ -530,18 +524,34 @@ export function validateHarthmereSurfaceRepairContract(): {
 } {
   const failures: string[] = [];
   const specs = harthmereSurfaceRepairShardSpecs();
-  if (specs.length !== 576) {
+  const shardY = Math.floor(
+    HARTHMERE_SURFACE_REPAIR_TARGET_Y / HARTHMERE_EXTENSION_SHARD_SIZE
+  );
+  const auditedSurfaceSpecs = harthmereExtensionFoundationShardSpecs().filter(
+    (spec) => spec.shardY === shardY
+  );
+  if (specs.length !== auditedSurfaceSpecs.length) {
     failures.push(
-      `expected 576 surface shards, got ${specs.length} — the repair set no ` +
-        `longer matches audit-production-extension-terrain.cjs`
+      `expected ${auditedSurfaceSpecs.length} surface shards, got ` +
+        `${specs.length} — the repair set no longer matches ` +
+        `audit-production-extension-terrain.cjs`
+    );
+  }
+  const repairKeys = new Set(
+    specs.map((spec) => `${spec.shardX}:${spec.shardY}:${spec.shardZ}`)
+  );
+  if (
+    auditedSurfaceSpecs.some(
+      (spec) => !repairKeys.has(`${spec.shardX}:${spec.shardY}:${spec.shardZ}`)
+    )
+  ) {
+    failures.push(
+      "surface repair shard coordinates differ from the terrain audit"
     );
   }
   if (new Set(specs.map((spec) => spec.id)).size !== specs.length) {
     failures.push("surface shard ids are not unique");
   }
-  const shardY = Math.floor(
-    HARTHMERE_SURFACE_REPAIR_TARGET_Y / HARTHMERE_EXTENSION_SHARD_SIZE
-  );
   if (specs.some((spec) => spec.shardY !== shardY)) {
     failures.push("surface shard specs span more than one Y layer");
   }

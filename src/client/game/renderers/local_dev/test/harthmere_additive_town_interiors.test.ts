@@ -8,9 +8,13 @@ import {
   HARTHMERE_ADDITIVE_TOWN_INTERIOR_LOD0_METERS,
   HARTHMERE_ADDITIVE_TOWN_INTERIOR_LOD1_METERS,
   HARTHMERE_ADDITIVE_TOWN_INTERIOR_VISUAL_FIXTURES,
+  HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_MAX_LOADED_ASSETS,
+  HarthmereAdditiveTownInteriorsRenderer,
+  harthmereMobileAdditiveTownInteriorAssets,
   validateHarthmereAdditiveTownInteriorVisualAssets,
 } from "../harthmere_additive_town_interiors";
 import { HARTHMERE_ADDITIVE_TOWN_INTERIOR_FIXTURES } from "@/shared/harthmere/harthmere_additive_town_interiors";
+import * as THREE from "three";
 
 describe("Harthmere additive-town optimized interior renderer", () => {
   it("has a catalogue visual for every fixture except native plain campfires", () => {
@@ -55,7 +59,7 @@ describe("Harthmere additive-town optimized interior renderer", () => {
     );
     assert.match(
       registry,
-      /makeHarthmereAdditiveTownInteriorsRenderer\(resources\)/
+      /makeHarthmereAdditiveTownInteriorsRenderer\([\s\S]{0,100}resources,[\s\S]{0,100}clientConfig\.mobileDevice/
     );
     assert.match(renderer, /new THREE\.InstancedMesh/);
     assert.match(
@@ -63,5 +67,49 @@ describe("Harthmere additive-town optimized interior renderer", () => {
       /mesh\.instanceMatrix\.setUsage\(THREE\.DynamicDrawUsage\)/
     );
     assert.match(renderer, /mesh\.frustumCulled = false/);
+  });
+
+  it("selects no additive-town assets at the native phone-test spawn", () => {
+    assert.deepEqual(
+      harthmereMobileAdditiveTownInteriorAssets(
+        new THREE.Vector3(484.25, 53, -207.5)
+      ),
+      []
+    );
+  });
+
+  it("bounds the nearby mobile catalogue and includes the closest fixture", () => {
+    const fixture = HARTHMERE_ADDITIVE_TOWN_INTERIOR_VISUAL_FIXTURES[0];
+    const selected = harthmereMobileAdditiveTownInteriorAssets(
+      new THREE.Vector3(...fixture.worldPosition)
+    );
+    assert.ok(selected.includes(fixture.visualAsset));
+    assert.ok(
+      selected.length <=
+        HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_MAX_LOADED_ASSETS
+    );
+  });
+
+  it("does not request the distant furniture catalogue during mobile boot", async () => {
+    const camera = new THREE.PerspectiveCamera();
+    camera.position.set(484.25, 53, -207.5);
+    const resources = {
+      get(resourcePath: string) {
+        assert.equal(resourcePath, "/scene/camera");
+        return { three: camera };
+      },
+    } as any;
+    const requested: string[] = [];
+    const renderer = new HarthmereAdditiveTownInteriorsRenderer(
+      resources,
+      async (url) => {
+        requested.push(url);
+        return { scene: new THREE.Group(), animations: [] } as any;
+      },
+      true
+    );
+    renderer.draw({ three: new THREE.Scene() } as any, 0.3);
+    await Promise.resolve();
+    assert.deepEqual(requested, []);
   });
 });

@@ -8,6 +8,7 @@ import {
   harthmereDialogueLiveModeHeaders,
   harthmereDialogueLiveModeUrl,
 } from "@/client/components/challenges/dialogueLiveModeReputation";
+import { harthmereGatheringToolLabel } from "@/shared/harthmere/gathering_node_authority";
 
 export const HARTHMERE_GATHERING_NODE_VISUAL_RESPAWN_EVENT =
   "biomes:harthmere-gathering-node-visual-respawn" as const;
@@ -107,6 +108,12 @@ export function harthmereGatheringErrorMessage(
     return `${nodeName} is depleted and will respawn.`;
   }
   if (message.includes("required_tool_missing")) {
+    const requiredTool = message.match(/required_tool_missing:([^:]+)/)?.[1];
+    if (requiredTool) {
+      const label = harthmereGatheringToolLabel(requiredTool);
+      const article = /^[aeiou]/i.test(label) ? "an" : "a";
+      return `Equip ${article} ${label} before harvesting ${nodeName}.`;
+    }
     return `Equip the required tool before harvesting ${nodeName}.`;
   }
   if (message.includes("node_out_of_range")) {

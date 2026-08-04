@@ -21,6 +21,14 @@ export interface RendererOptions {
   canvas?: HTMLCanvasElement;
   allowSoftwareWebGL?: boolean;
   onCanvasResized?: (width: number, height: number) => void;
+  // HARTHMERE_MOBILE_CONTEXT_RESTORE (2026-08-04 mobile audit, item 5).
+  //
+  // Set only by the mobile path in `RendererController`, which listens for
+  // `webglcontextrestored` and rebuilds. When the owner can genuinely recover,
+  // losing the context is an expected event on a memory-constrained phone
+  // rather than a fatal one, so it should not be reported at `log.fatal`
+  // severity. Desktop leaves this false and keeps the original fatal report.
+  recoverableContextLoss?: boolean;
 }
 
 const DEFAULT_OPTIONS = {
@@ -306,10 +314,16 @@ export class PassRenderer {
   private onContextLost = (event: Event) => {
     event.preventDefault();
     const maybeWebGlError = this.threeRenderer.getContext().getError();
-    log.fatal(
-      `Unexpectedly lost main WebGL context. ${
-        maybeWebGlError ? `WebGL getError(): ${maybeWebGlError}` : ""
-      }`
-    );
+    const detail = `Lost main WebGL context. ${
+      maybeWebGlError ? `WebGL getError(): ${maybeWebGlError}` : ""
+    }`;
+    // HARTHMERE_MOBILE_CONTEXT_RESTORE: the mobile owner listens for
+    // `webglcontextrestored` and rebuilds, so this is recoverable there and
+    // must not be reported as fatal. Desktop is unchanged.
+    if (this.options.recoverableContextLoss) {
+      log.warn(`${detail} Waiting for the browser to restore it.`);
+      return;
+    }
+    log.fatal(`Unexpectedly ${detail}`);
   };
 }

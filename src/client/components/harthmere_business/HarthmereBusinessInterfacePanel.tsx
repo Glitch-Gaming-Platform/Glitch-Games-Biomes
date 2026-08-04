@@ -787,8 +787,10 @@ function usePendingBusinessAdapter(
 ): {
   adapter: HarthmereBusinessInterfaceAdapter;
   pending: boolean;
+  error?: string;
 } {
   const [pendingCount, setPendingCount] = React.useState(0);
+  const [error, setError] = React.useState<string>();
   const pendingRef = React.useRef(false);
   const wrapped = React.useMemo(
     () =>
@@ -804,10 +806,18 @@ function usePendingBusinessAdapter(
               return Promise.resolve(BUSINESS_BACKEND_REQUEST_SKIPPED);
             }
             pendingRef.current = true;
+            setError(undefined);
             setPendingCount((count) => count + 1);
             const release = () => {
               pendingRef.current = false;
               setPendingCount((count) => Math.max(0, count - 1));
+            };
+            const normalizeError = (cause: unknown) => {
+              const message = formatHarthmereBusinessPlayerWarning(
+                cause instanceof Error ? cause.message : String(cause ?? "")
+              );
+              setError(message);
+              return new Error(message);
             };
             try {
               const result = value.apply(target, args);
@@ -815,17 +825,28 @@ function usePendingBusinessAdapter(
                 release();
                 return result;
               }
-              return result.finally(release);
-            } catch (error) {
+              const request = Promise.resolve(result)
+                .catch((cause) => {
+                  throw normalizeError(cause);
+                })
+                .finally(release);
+              // Buttons may intentionally fire a mutation without awaiting it.
+              // Mark that promise as handled while returning the original
+              // rejection to callers that do await/catch it.
+              void request.catch(() => undefined);
+              return request;
+            } catch (cause) {
               release();
-              throw error;
+              const request = Promise.reject(normalizeError(cause));
+              void request.catch(() => undefined);
+              return request;
             }
           };
         },
       }) as HarthmereBusinessInterfaceAdapter,
     [adapter]
   );
-  return { adapter: wrapped, pending: pendingCount > 0 };
+  return { adapter: wrapped, pending: pendingCount > 0, error };
 }
 
 const BikkieProceduralArt: React.FunctionComponent<{
@@ -1236,8 +1257,11 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
   const pointerLockManager = usePointerLockManager();
   const shouldReturnPointerLock =
     React.useRef<PointerLockUnlockWhileOpenReturnRef>({ current: false });
-  const { adapter: businessAdapter, pending: backendPending } =
-    usePendingBusinessAdapter(adapter);
+  const {
+    adapter: businessAdapter,
+    pending: backendPending,
+    error: backendError,
+  } = usePendingBusinessAdapter(adapter);
   const activeBusinessId =
     nearbyBusinessId ?? context?.nearbyBusinessId ?? null;
   const available =
@@ -1529,6 +1553,17 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
             {activePane}
           </React.Profiler>
         </div>
+        {backendError ? (
+          <div
+            role="alert"
+            aria-live="assertive"
+            data-business-backend-error="true"
+            style={businessBackendErrorStyle}
+          >
+            <strong>That action could not be completed.</strong>
+            <span>{backendError}</span>
+          </div>
+        ) : null}
         {backendPending ? (
           <div
             style={businessPendingOverlayStyle}
@@ -1661,7 +1696,7 @@ const OwnerDashboardPane: React.FunctionComponent<{
             backendPending
           )}
         >
-          Start Shift
+          Start customer shift
         </button>
       </section>
       {checkInDisplay && (
@@ -5077,6 +5112,24 @@ const businessPendingOverlayStyle: React.CSSProperties = {
   fontWeight: 700,
   letterSpacing: 0,
   boxShadow: "0 10px 24px rgba(0, 0, 0, 0.35)",
+};
+const businessBackendErrorStyle: React.CSSProperties = {
+  position: "sticky",
+  bottom: 8,
+  zIndex: 3,
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  gap: 8,
+  marginTop: 12,
+  padding: "10px 12px",
+  border: "1px solid rgba(255, 125, 125, 0.72)",
+  borderRadius: 10,
+  background: "rgba(54, 11, 20, 0.96)",
+  color: "#fff1f1",
+  fontSize: 12,
+  lineHeight: 1.4,
+  boxShadow: "0 10px 24px rgba(0, 0, 0, 0.4)",
 };
 const businessPendingSpinnerStyle: React.CSSProperties = {
   width: 14,

@@ -7,6 +7,7 @@ export const HARTHMERE_BUSINESS_CUSTOMER_BEHAVIOR_VERSION =
   "harthmere-business-customer-behavior-v1" as const;
 
 export const zBusinessCustomerPhase = z.enum([
+  "patron_wandering",
   "spawning",
   "entering",
   "queued",
@@ -47,12 +48,10 @@ export const zBusinessCustomerState = z.object({
   lastPhaseChangedAtSeconds: z.number().finite(),
   reactionStartedAtSeconds: z.number().finite().optional(),
   audioCue: z.string().optional(),
-  // Stall detection. Anima re-runs A* on a wedged body and keeps producing a
-  // valid path, so a moving path search proves ownership but not locomotion.
-  // These two fields record the last position at which the body demonstrably
-  // made progress, which is the only reliable signal that it is actually
-  // walking. Both are optional so state written by an older build deserializes
-  // unchanged and simply re-establishes progress on its next tick.
+  // Retained only for backward-compatible deserialization of customer state
+  // written by the former terrain-A* implementation. The current authoritative
+  // route follows the audited interior waypoints directly and does not consult
+  // these values.
   progressPosition: zVec3f.optional(),
   progressAtSeconds: z.number().finite().optional(),
 });

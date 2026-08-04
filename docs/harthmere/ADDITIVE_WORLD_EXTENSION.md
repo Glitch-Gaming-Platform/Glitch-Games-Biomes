@@ -14,7 +14,7 @@ The canonical layout is:
 | Expanded east map edge           | `X=2560`                |
 | Authored-to-world town transform | `X + 1600`, unchanged Z |
 | Extension terrain band           | `1792 <= X < 2560`      |
-| Extension Z band                 | `-576 <= Z < 192`       |
+| Extension Z band                 | `-704 <= Z < 288`       |
 | Flat terrain surface             | `Y=52`                  |
 | Player/NPC/outdoor quest feet    | `Y=53`                  |
 | Road start/map-boundary marker   | `(1792, 54, -209)`      |
@@ -46,7 +46,7 @@ Emergency/legacy switches remain explicit:
 ## Terrain completeness
 
 The extension seeds every X/Z shard in `1792 <= X < 2560` and
-`-576 <= Z < 192` from world Y=-64 through the surface shard ending at Y=63.
+`-704 <= Z < 288` from world Y=-64 through the surface shard ending at Y=63.
 This full foundation prevents black void, floating slabs, and giant internal
 cliffs anywhere inside the expanded map. It then adds only upper or deeper
 shards that intersect authored structures and dungeons. This includes:
@@ -168,7 +168,7 @@ Normal three-replica web revisions keep `BIOMES_CREATE_LOCAL_DEV_TERRAIN=0`.
 Before traffic promotion, the guarded deploy creates a temporary one-replica,
 zero-traffic maintenance revision with terrain seeding forced on. Promotion is
 blocked until `scripts/harthmere/audit-production-extension-terrain.cjs`
-confirms all 2,304 foundation shards, all 576 surface shards, solid Y=52 in
+confirms all 2,976 foundation shards, all 744 surface shards, solid Y=52 in
 every extension column, non-empty lower foundation tensors, correct shard
 boxes, zero forbidden Muck terrain blocks, zero atmospheric Muck cells, and
 zero retired terrain records.
@@ -247,7 +247,7 @@ healthy:
 - `/api/world_map/landmarks` returns the boundary, West Gate, North Gate, every
   district, and every bible building in the shifted east-side coordinates;
 - terrain entities in the new ID band occupy only X=1792..2528 shard origins;
-- the extension terrain audit reports `2304` foundation shards, `576` surface
+- the extension terrain audit reports `2976` foundation shards, `744` surface
   shards, and zero missing, invalid, empty-foundation, surface-hole, or
   forbidden-Muck/retired-terrain records;
 - the Town Jobs Board resolves to `(2134, 53, -202)`, not the retired

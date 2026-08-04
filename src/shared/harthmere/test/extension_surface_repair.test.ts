@@ -25,6 +25,7 @@ import {
   HARTHMERE_BELLBINDER_DESCENT,
   HARTHMERE_EXTENSION_FEET_Y,
   HARTHMERE_EXTENSION_WORLD_BOUNDS,
+  harthmereExtensionFoundationShardSpecs,
 } from "@/shared/harthmere/world_extension";
 
 // A wilds column: east of the connector road, well clear of the town envelope
@@ -42,10 +43,25 @@ describe("harthmere extension surface repair", () => {
     assert.ok(contract.ok);
   });
 
-  it("covers exactly the 576 surface shards the production audit counts", () => {
+  it("covers exactly the surface shards the production audit counts", () => {
     const specs = harthmereSurfaceRepairShardSpecs();
-    assert.strictEqual(specs.length, 576);
-    assert.strictEqual(new Set(specs.map((spec) => spec.id)).size, 576);
+    const auditedSurfaceSpecs = harthmereExtensionFoundationShardSpecs().filter(
+      (spec) => spec.shardY === 1
+    );
+    assert.strictEqual(specs.length, auditedSurfaceSpecs.length);
+    assert.strictEqual(specs.length, 744);
+    assert.strictEqual(
+      new Set(specs.map((spec) => spec.id)).size,
+      specs.length
+    );
+    assert.deepStrictEqual(
+      specs
+        .map((spec) => `${spec.shardX}:${spec.shardY}:${spec.shardZ}`)
+        .sort(),
+      auditedSurfaceSpecs
+        .map((spec) => `${spec.shardX}:${spec.shardY}:${spec.shardZ}`)
+        .sort()
+    );
     for (const spec of specs) {
       assert.strictEqual(spec.shardY, 1);
       assert.ok(

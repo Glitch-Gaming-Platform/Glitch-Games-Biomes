@@ -239,9 +239,25 @@ describe("Harthmere business board procedural markers current", () => {
       hudSource.includes("nearestHarthmereBusinessBoardPhysicalPrompt"),
       "business boards must use a Jobs Board-style physical prompt helper"
     );
+    const businessPromptSource = hudSource.slice(
+      hudSource.indexOf("function HarthmereBusinessBoardWorldPrompt"),
+      hudSource.indexOf("function HarthmereJobsBoardWorldPrompt")
+    );
     assert.ok(
-      hudSource.includes('data-harthmere-business-board-world-prompt="bottom"'),
-      "business boards must render the same always-visible bottom F prompt pattern as the Jobs Board"
+      businessPromptSource.includes('projectedPrompt ? "projected" : "bottom"'),
+      "the same business-board control must move between world projection and its always-visible bottom fallback"
+    );
+    assert.equal(
+      (businessPromptSource.match(/data-harthmere-business-prompt=/g) ?? [])
+        .length,
+      1,
+      "projection changes must not replace the clickable business-board control"
+    );
+    assert.ok(
+      businessPromptSource.includes(
+        "priority: WORLD_INTERACTION_PRIORITY.jobsBoard - prompt.distance"
+      ),
+      "nearby NPCs must not steal the business board's F interaction"
     );
     assert.ok(
       hudSource.includes("worldContext={businessWorldContext}"),

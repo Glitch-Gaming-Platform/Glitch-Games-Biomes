@@ -38,6 +38,10 @@ export function GameModalController() {
   const context = useClientContext();
   const gameModal = context.reactResources.use("/game_modal");
   const gameModalVersion = context.reactResources.version("/game_modal");
+  const playerHealth = context.reactResources.use(
+    "/ecs/c/health",
+    context.userId
+  );
   const lastVisibilityTime = useRef(0);
   const lastRelevantKeydownTime = useRef(0);
   const { dragItem, setDragItem } = useInventoryDraggerContext();
@@ -137,15 +141,18 @@ export function GameModalController() {
           inactiveTimeout = undefined;
         }
       } else if (!inactiveTimeout) {
-        inactiveTimeout = setTimeout(() => {
-          inactiveTimeout = undefined;
-          if (isActive()) {
-            return;
-          }
-          context.reactResources.set("/game_modal", {
-            kind: "staleSession",
-          });
-        }, 1 * 60 * 60 * 1000); // 1 hour.
+        inactiveTimeout = setTimeout(
+          () => {
+            inactiveTimeout = undefined;
+            if (isActive()) {
+              return;
+            }
+            context.reactResources.set("/game_modal", {
+              kind: "staleSession",
+            });
+          },
+          1 * 60 * 60 * 1000
+        ); // 1 hour.
       }
     };
 
@@ -345,7 +352,12 @@ export function GameModalController() {
       // different modal kind being rendered between rounds. Remount the modal
       // for each resource version so React never reuses a stale hook/effect
       // chain from the previous death lifecycle.
-      child = <DeathModal onClose={() => {}} key={gameModalVersion} />;
+      child = (
+        <DeathModal
+          onClose={() => {}}
+          key={`death:${gameModalVersion}:${playerHealth?.lastDamageTime ?? 0}`}
+        />
+      );
       allowClickToDismiss = false;
       break;
     case "staleSession":

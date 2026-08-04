@@ -987,6 +987,9 @@ export function formatHarthmereBusinessPlayerWarning(
   if (warning.includes("business_tool_single_purchase_only")) {
     return "Tools are sold one at a time.";
   }
+  if (warning.includes("business_permission_required")) {
+    return "You do not have permission to manage that part of the business.";
+  }
   if (warning.includes("item_not_in_storefront")) {
     return "That item is no longer sold by this shop.";
   }
@@ -999,25 +1002,45 @@ export function formatHarthmereBusinessPlayerWarning(
   if (warning.includes("recipe_book_single_purchase_only")) {
     return "Recipe books are purchased one at a time.";
   }
-  if (
-    warning.includes("business_economy_mutation_http_") ||
-    warning.includes("native_ecs_materialization") ||
-    warning.includes("native_ecs_authority_required")
-  ) {
-    return "The purchase was not completed. Your gold and the listing were left unchanged; try again.";
-  }
+  if (warning.includes("business_economy_mutation_http_"))
+    return "The business service could not be reached. Try again in a moment.";
+  if (warning.includes("native_ecs_materialization"))
+    return "The world is still synchronizing this business. Wait a moment and try again.";
   if (warning.includes("business_item_required:")) {
     const item = warning.split(":").pop() ?? "stock";
     return `Stock is missing ${titleCaseBusinessText(item)}.`;
   }
   if (warning.includes("business_customer_session_already_active"))
-    return "A customer shift is already running.";
+    return "A customer shift is already running at this business. Wait for it to finish before starting yours.";
   if (warning.includes("business_customer_session_expired"))
-    return "That customer shift has expired.";
+    return "That customer shift has ended. Start a new shift from the business board.";
+  if (warning.includes("business_customer_session_not_active"))
+    return "That customer shift has ended. Start a new shift from the business board.";
+  if (warning.includes("business_customer_session_not_owned"))
+    return "That customer shift belongs to another player. Start your own shift from the business board.";
+  if (warning.includes("business_staff_side_required"))
+    return "Stand behind the service counter before helping the next customer.";
+  if (
+    warning.includes("business_proximity_required") ||
+    warning.includes("business_proximity_unverified")
+  )
+    return "Move closer to this business's service area and try again.";
+  if (warning.includes("business_interaction_marker_missing"))
+    return "This business counter is not ready right now. Try again in a moment.";
   if (warning.includes("business_customer_left_waiting"))
     return "A customer left after waiting too long.";
   if (warning.includes("business_customer_not_at_counter"))
     return "The customer is still walking to the counter.";
+  if (warning.includes("business_customer_ticket_not_current"))
+    return "That customer is no longer at the front of the line.";
+  if (warning.includes("business_customer_offer_not_found"))
+    return "That service choice is no longer available. Talk to the customer again.";
+  if (warning.includes("business_customer_minigame_action_invalid"))
+    return "That choice does not fit what this customer asked for. Read their request and try another service.";
+  if (warning.includes("business_customer_minigame_missing"))
+    return "This customer interaction is not ready. Close the conversation and try again.";
+  if (warning.includes("business_customer_item_not_in_catalog"))
+    return "This service item is not available at the counter right now.";
   if (warning.includes("business_branch_requires_tier_3"))
     return "Serve more customers before opening a branch.";
   if (warning.includes("business_branch_funds_insufficient"))
@@ -1030,6 +1053,20 @@ export function formatHarthmereBusinessPlayerWarning(
     return "A worker needs rest before service quality drops.";
   if (warning.includes("employee_resigned"))
     return "A worker resigned after morale stayed too low.";
+  if (
+    warning.includes("business_economy_state_http_") ||
+    warning.includes("business_economy_mutation_not_confirmed")
+  )
+    return "The business service could not be reached. Try again in a moment.";
+  if (warning.includes("native_ecs_authority_required"))
+    return "The world is still synchronizing this business. Wait a moment and try again.";
+  const alreadyReadable =
+    /\s/.test(warning) &&
+    !/[_:]/.test(warning) &&
+    !/[a-z][A-Z]/.test(warning);
+  if (alreadyReadable) {
+    return /[.!?]$/.test(warning) ? warning : `${warning}.`;
+  }
   const cleaned =
     warning
       .replace(/^economy_(rejected|warning):/g, "")
@@ -1037,7 +1074,8 @@ export function formatHarthmereBusinessPlayerWarning(
       .split(":")
       .filter(Boolean)
       .pop() ?? warning;
-  return titleCaseBusinessText(cleaned);
+  const readable = titleCaseBusinessText(cleaned);
+  return readable.endsWith(".") ? readable : `${readable}.`;
 }
 
 function normalizeSystems(raw: unknown): HarthmereBusinessSystemsSnapshot {
@@ -1143,8 +1181,13 @@ export async function fetchHarthmereBusinessEconomyState(
       headers: { Accept: "application/json" },
     }
   );
-  if (!response.ok)
-    throw new Error(`business_economy_state_http_${response.status}`);
+  if (!response.ok) {
+    throw new Error(
+      formatHarthmereBusinessPlayerWarning(
+        `business_economy_state_http_${response.status}`
+      )
+    );
+  }
   const body = await response.json();
   return normalizeHarthmereBusinessEconomySnapshot(body.economyState ?? body);
 }
@@ -1190,26 +1233,39 @@ export async function submitHarthmereBusinessEconomyMutation(
       timeoutMs: 30_000,
     }
   );
-  if (!response.ok)
-    throw new Error(`business_economy_mutation_http_${response.status}`);
+  if (!response.ok) {
+    throw new Error(
+      formatHarthmereBusinessPlayerWarning(
+        `business_economy_mutation_http_${response.status}`
+      )
+    );
+  }
   const body = await response.json();
   const warnings: string[] =
     body.backendMutation?.warnings ?? body.warnings ?? [];
   const rejection = warnings.find((warning) =>
     String(warning).includes("economy_rejected:")
   );
-  if (rejection) throw new Error(rejection);
+  if (rejection) {
+    throw new Error(formatHarthmereBusinessPlayerWarning(rejection));
+  }
   const validationError = body.validation?.errors?.[0];
   if (body.ok === false || validationError) {
     throw new Error(
-      String(validationError ?? "business_economy_mutation_not_confirmed")
+      formatHarthmereBusinessPlayerWarning(
+        String(validationError ?? "business_economy_mutation_not_confirmed")
+      )
     );
   }
   const nativeMaterializationFailure = warnings.find((warning) =>
     String(warning).includes("native_ecs_materialization_deferred:")
   );
   if (nativeMaterializationFailure) {
-    throw new Error(String(nativeMaterializationFailure));
+    throw new Error(
+      formatHarthmereBusinessPlayerWarning(
+        String(nativeMaterializationFailure)
+      )
+    );
   }
   return body;
 }
@@ -1931,6 +1987,7 @@ export function activeHarthmereBusinessClientCustomerSession(
   ).find(
     (session) =>
       session.businessId === businessId &&
+      session.actorId === state.actorId &&
       session.status === "active" &&
       session.expiresAtMs > nowMs
   );

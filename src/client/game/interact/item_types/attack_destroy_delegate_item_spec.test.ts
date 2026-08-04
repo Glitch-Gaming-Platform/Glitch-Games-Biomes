@@ -2,6 +2,8 @@ import type { PermissionsManager } from "@/client/game/context_managers/permissi
 import {
   AttackDestroyDelegateItemSpec,
   harthmereAttackImpactDelayMs,
+  harthmereAttackImpactCandidates,
+  harthmereMeleeImpactTargetInReach,
   harthmereMagicWeaponCharge,
 } from "@/client/game/interact/item_types/attack_destroy_delegate_item_spec";
 import type {
@@ -33,6 +35,79 @@ import sinon from "sinon";
 import type { StubbedInstance } from "ts-sinon";
 
 describe("Attack and Destroy Spec", () => {
+  const target = (id: number) =>
+    ({
+      id: id as BiomesId,
+      position: { v: [1.5, 0, 0] },
+      size: { v: [1, 2, 1] },
+      health: { hp: 100, maxHp: 100 },
+      npc_metadata: {
+        type_id: LOCAL_DEV_HUMAN_NPC_TYPE_ID,
+        created_time: 0,
+        spawn_position: [1.5, 0, 0],
+        spawn_orientation: [0, 0],
+      },
+    }) as any;
+
+  it("locks melee target identity without re-reading a drifting cursor", () => {
+    const original = target(41);
+    const refreshedOriginal = {
+      ...original,
+      position: { v: [2.25, 0, 0] },
+    } as any;
+    const bystander = target(42);
+    assert.deepEqual(
+      harthmereAttackImpactCandidates("basic", [original], [refreshedOriginal]),
+      [refreshedOriginal],
+      "contact refreshes the original entity even after the camera moves"
+    );
+    assert.deepEqual(
+      harthmereAttackImpactCandidates("basic", [original], []),
+      [],
+      "a target deleted before contact must miss"
+    );
+    assert.deepEqual(
+      harthmereAttackImpactCandidates("heavy", [original], [bystander]),
+      [],
+      "turning onto a bystander during wind-up must not transfer the hit"
+    );
+    assert.deepEqual(
+      harthmereAttackImpactCandidates("basic", [], [bystander]),
+      [],
+      "a dummy swing must not acquire a target after button-down"
+    );
+  });
+
+  it("keeps ranged and magic launch identities stable while refreshing ECS", () => {
+    const original = target(51);
+    const refreshedOriginal = {
+      ...original,
+      position: { v: [2.5, 0, 0] },
+    } as any;
+    const bystander = target(52);
+    assert.deepEqual(
+      harthmereAttackImpactCandidates("ranged", [original], [
+        refreshedOriginal,
+        bystander,
+      ]),
+      [refreshedOriginal]
+    );
+    assert.deepEqual(
+      harthmereAttackImpactCandidates("magic", [original], [refreshedOriginal]),
+      [refreshedOriginal]
+    );
+  });
+
+  it("checks locked melee contact against ECS reach instead of camera aim", () => {
+    const inReach = target(61);
+    const fled = {
+      ...target(61),
+      position: { v: [7, 0, 2] },
+    } as any;
+    assert.equal(harthmereMeleeImpactTargetInReach([0, 0, 0], inReach, 3.5), true);
+    assert.equal(harthmereMeleeImpactTargetInReach([0, 0, 0], fled, 3.5), false);
+  });
+
   it("charges native magic weapons while leaving physical weapons immediate", () => {
     const staffId = harthmereNativeBiomesIdForItemId("arcane_staff");
     const swordId = harthmereNativeBiomesIdForItemId("iron_longsword");
@@ -98,33 +173,52 @@ describe("Attack and Destroy Spec", () => {
   it("starts the melee animation immediately but publishes damage only at impact", async () => {
     const fakeTime = sinon.useFakeTimers();
     try {
-      const target = {
-        id: 44 as BiomesId,
-        position: { v: [1.5, 0, 0] },
-        size: { v: [1, 2, 1] },
-        health: { hp: 100, maxHp: 100 },
-        npc_metadata: {
-          type_id: LOCAL_DEV_HUMAN_NPC_TYPE_ID,
-          created_time: 0,
-          spawn_position: [1.5, 0, 0],
-          spawn_orientation: [0, 0],
-        },
-      } as any;
+      const attackTarget = target(44);
       const cursor = resources.get("/scene/cursor") as Cursor;
       stubClientResourceValue(resources, "/scene/cursor", {
         ...cursor,
-        attackableEntities: [target],
+        attackableEntities: [attackTarget],
       });
       const publish = deps.events.publish as unknown as sinon.SinonStub;
 
-      itemSpec.onAttackStart([target], hotbarItemInfo());
+      itemSpec.onAttackStart([attackTarget], hotbarItemInfo());
       assert.equal(localPlayer.startAttack.callCount, 1);
       assert.equal(publish.callCount, 0);
+
+      stubClientResourceValue(resources, "/scene/cursor", {
+        ...cursor,
+        attackableEntities: [],
+      });
 
       await fakeTime.tickAsync(399);
       assert.equal(publish.callCount, 0);
       await fakeTime.tickAsync(1);
-      assert.equal(publish.callCount, 1);
+      assert.equal(
+        publish.callCount,
+        1,
+        "camera motion after button-down must not erase the locked target"
+      );
+    } finally {
+      fakeTime.restore();
+    }
+  });
+
+  it("cancels pending contact when the weapon is unselected", async () => {
+    const fakeTime = sinon.useFakeTimers();
+    try {
+      const attackTarget = target(45);
+      const cursor = resources.get("/scene/cursor") as Cursor;
+      stubClientResourceValue(resources, "/scene/cursor", {
+        ...cursor,
+        attackableEntities: [attackTarget],
+      });
+      const publish = deps.events.publish as unknown as sinon.SinonStub;
+
+      itemSpec.onAttackStart([attackTarget], hotbarItemInfo());
+      itemSpec.onUnselected(hotbarItemInfo());
+      await fakeTime.tickAsync(2_000);
+
+      assert.equal(publish.callCount, 0);
     } finally {
       fakeTime.restore();
     }

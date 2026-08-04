@@ -149,8 +149,9 @@ Permanent rules:
 
 ### Gaia recontaminated correctly maintained terrain
 
-Forced terrain maintenance passed with 2,304 expected foundation shards, 576
-surface shards, and zero Muck. After the dedicated simulation restarted, the
+At the then-current `Z=-576..192` footprint, forced terrain maintenance passed
+with 2,304 expected foundation shards, 576 surface shards, and zero Muck. After
+the dedicated simulation restarted, the
 same audit found atmospheric Muck across Harthmere. This proved the maintenance
 writer and tensor persistence were working; the changing result came from the
 active Gaia Muck simulation.
@@ -186,7 +187,8 @@ The wrapper now owns this sequence:
 6. Pause the simulation app and remember its previously active revisions.
 7. Run forced terrain maintenance and require
    `HARTHMERE_TERRAIN_MAINTENANCE_READY`.
-8. Require 2,304 foundations, 576 surface shards, and zero missing, invalid,
+8. Require the canonical current counts (2,976 foundations and 744 surface
+   shards), and zero missing, invalid,
    empty, holed, Muck, atmospheric Muck, and retired records.
 9. Require 3/3 candidate replicas and zero restarts.
 10. Validate revision HTML, APIs, sync reachability, assets, and zero restarts.

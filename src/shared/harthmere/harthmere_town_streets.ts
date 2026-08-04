@@ -84,6 +84,41 @@ export interface HarthmereStreetRect {
 export const HARTHMERE_STREET_SURFACE: HarthmereMat = "cobblestone";
 export const HARTHMERE_STREET_SHOULDER: HarthmereMat = "gravel";
 
+/**
+ * Where the authored wilds roads meet the town, in authored coordinates.
+ *
+ * Mirrors `isHarthmereWideWildsRoad()` in the shim, which paints five gravel
+ * roads across the Wilds. Four of them end at the town: the connected-map road
+ * from the old-map seam at X=192 to the West Gate, the north road out to
+ * Greenmere, the south road to the orchards, and the east river road over the
+ * bridge to Briarfen.
+ *
+ * Without these the street network is an ISLAND. Every front door reached it,
+ * but the network itself started 16 to 42 voxels inside the gates, so a player
+ * walking the gravel road in from the seam stepped onto open grass, crossed it,
+ * and picked up paving somewhere in the middle of town. Treating each road head
+ * as another landing makes the network continuous from the old map's edge to
+ * the last apartment door.
+ *
+ * The south road head is listed at z=-104 rather than the shim's authored
+ * z=-112, because the authored point is INSIDE `tannery_court_house`
+ * (472..490, -124..-106). The south road is drawn straight through that
+ * building, and since the town block pass wins the column, the road simply
+ * stops at the tannery's north wall and resumes on the far side. Connecting the
+ * paving at the tannery's south face is the honest reading of where that road
+ * actually becomes walkable; the road/building conflict itself is recorded in
+ * the shell audit as an open item for whoever owns the wilds road table.
+ */
+export const HARTHMERE_TOWN_ROAD_HEADS: ReadonlyArray<{
+  name: string;
+  at: readonly [number, number];
+}> = [
+  { name: "west_gate_road", at: [392, -209] },
+  { name: "north_gate_road", at: [486, -286] },
+  { name: "south_gate_road", at: [486, -104] },
+  { name: "east_river_road", at: [590, -205] },
+];
+
 /** How far out from a door we will look for ground wide enough to be a street. */
 const LANDING_SEARCH = 20;
 /** Half-width of the block that has to fit before a cell can carry a street. */
@@ -184,9 +219,10 @@ function fitsStreet(g: Grid, x: number, z: number): boolean {
 }
 
 /** The voxel directly outside a building's door, and the way out from it. */
-export function harthmereDoorStep(
-  building: HarthmereBuilding
-): { at: readonly [number, number]; out: readonly [number, number] } {
+export function harthmereDoorStep(building: HarthmereBuilding): {
+  at: readonly [number, number];
+  out: readonly [number, number];
+} {
   switch (building.doorSide) {
     case "north":
       return { at: [building.doorCenter, building.z0 - 1], out: [0, -1] };
@@ -228,6 +264,31 @@ function landingsFor(g: Grid): Landing[] {
       }
     }
     out.push({ name: b.name, walk, landing });
+  }
+  // The road heads join the same way a door does, except that a road has no
+  // wall to walk out of, so the search spirals outward from the authored point
+  // instead of running in one direction.
+  for (const head of HARTHMERE_TOWN_ROAD_HEADS) {
+    let landing: readonly [number, number] | undefined;
+    let walk: Array<readonly [number, number]> = [];
+    search: for (let radius = 0; radius <= LANDING_SEARCH; radius += 1) {
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        for (let dz = -radius; dz <= radius; dz += 1) {
+          if (Math.max(Math.abs(dx), Math.abs(dz)) !== radius) {
+            continue;
+          }
+          const x = head.at[0] + dx;
+          const z = head.at[1] + dz;
+          if (!fitsStreet(g, x, z)) {
+            continue;
+          }
+          landing = [x, z];
+          walk = [[x, z]];
+          break search;
+        }
+      }
+    }
+    out.push({ name: `road:${head.name}`, walk, landing });
   }
   return out;
 }
@@ -282,7 +343,9 @@ function growNetwork(g: Grid, landings: Landing[]): Set<string> {
 
   const nextRoute = (
     targets: Landing[]
-  ): { target: Landing; route: Array<readonly [number, number]> } | undefined => {
+  ):
+    | { target: Landing; route: Array<readonly [number, number]> }
+    | undefined => {
     stamp += 1;
     let tail = 0;
     for (const i of spine) {
@@ -498,6 +561,29 @@ export function harthmereTownStreetSurfaceAt(
 }
 
 /**
+ * How far a wilds road head is from the paved network. `undefined` means the
+ * town's streets never reach that gate at all.
+ */
+export function harthmereRoadHeadToStreetDistance(
+  at: readonly [number, number]
+): number | undefined {
+  const net = network();
+  for (let radius = 0; radius <= LANDING_SEARCH; radius += 1) {
+    for (let dx = -radius; dx <= radius; dx += 1) {
+      for (let dz = -radius; dz <= radius; dz += 1) {
+        if (Math.max(Math.abs(dx), Math.abs(dz)) !== radius) {
+          continue;
+        }
+        if (net.cells.has(keyOf(at[0] + dx, at[1] + dz))) {
+          return radius;
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
  * Every town-core building, and how many voxels it walks before its doorstep
  * meets the street network. `undefined` means it never does.
  */
@@ -529,7 +615,21 @@ export function harthmereValidateTownStreets(): string[] {
     problems.push("street network is empty");
   }
   for (const name of net.unreachable) {
-    problems.push(`${name}: no open ground wide enough for a street outside its door`);
+    problems.push(
+      `${name}: no open ground wide enough for a street outside its door`
+    );
+  }
+  for (const head of HARTHMERE_TOWN_ROAD_HEADS) {
+    const walk = harthmereRoadHeadToStreetDistance(head.at);
+    if (walk === undefined) {
+      problems.push(
+        `${head.name}: the wilds road reaches the town and the paving never meets it`
+      );
+    } else if (walk > 4) {
+      problems.push(
+        `${head.name}: ${walk} voxels of bare ground before the paving`
+      );
+    }
   }
   for (const b of HARTHMERE_BUILDINGS) {
     for (let x = b.x0; x <= b.x1; x += 1) {

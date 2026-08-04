@@ -19,7 +19,8 @@
  * This script protects every one of those and refuses to touch them.
  *
  * WHAT IT DOES, IN ORDER
- *   1. scan     read all 576 surface shards; classify missing / invalid / ok
+ *   1. scan     read every canonical surface shard (currently 744); classify
+ *               missing / invalid / ok
  *   2. plan     probe every extension column and compute MINIMAL, ADD-ONLY
  *               edits with the unit-tested shared helper
  *               (src/shared/harthmere/extension_surface_repair.ts)
@@ -69,7 +70,10 @@ const { loadTerrain } = require("../../src/shared/game/terrain");
 const {
   terrainCollides,
 } = require("../../src/shared/asset_defs/quirk_helpers");
-const { safeGetTerrainId, getTerrainID } = require("../../src/shared/asset_defs/terrain");
+const {
+  safeGetTerrainId,
+  getTerrainID,
+} = require("../../src/shared/asset_defs/terrain");
 const { blockPos } = require("../../src/shared/game/shard");
 const {
   loadBlockWrapper,
@@ -151,7 +155,11 @@ function repairMaterials() {
 
 function expectedBox(spec) {
   return {
-    v0: [spec.shardX * SHARD_DIM, spec.shardY * SHARD_DIM, spec.shardZ * SHARD_DIM],
+    v0: [
+      spec.shardX * SHARD_DIM,
+      spec.shardY * SHARD_DIM,
+      spec.shardZ * SHARD_DIM,
+    ],
     v1: [
       (spec.shardX + 1) * SHARD_DIM,
       (spec.shardY + 1) * SHARD_DIM,
@@ -280,9 +288,14 @@ function planRepair(shards, materials) {
         const dressAsForest = NO_FOREST
           ? false
           : isHarthmereSurfaceRepairForestColumn(worldX, worldZ);
-        const result = harthmereSurfaceRepairColumnEdits(worldX, worldZ, probe, {
-          dressAsForest,
-        });
+        const result = harthmereSurfaceRepairColumnEdits(
+          worldX,
+          worldZ,
+          probe,
+          {
+            dressAsForest,
+          }
+        );
         if (result.status === "flat") {
           stats.flat += 1;
           continue;
@@ -330,11 +343,7 @@ async function applyTerrain(voxeloo, world, shards, editsByShardId) {
   const entries = [...editsByShardId.entries()].sort(([a], [b]) => a - b);
   let appliedEdits = 0;
   let createdShards = 0;
-  for (
-    let start = 0;
-    start < entries.length;
-    start += APPLY_SHARD_BATCH_SIZE
-  ) {
+  for (let start = 0; start < entries.length; start += APPLY_SHARD_BATCH_SIZE) {
     const batch = entries.slice(start, start + APPLY_SHARD_BATCH_SIZE);
     const editor = world.edit();
     const ids = batch.map(([id]) => id);
@@ -431,7 +440,13 @@ async function scanSunkenActors(redis) {
   let cursor = "0";
   let scanned = 0;
   do {
-    const [next, keys] = await redis.scan(cursor, "MATCH", "b:*", "COUNT", SCAN_COUNT);
+    const [next, keys] = await redis.scan(
+      cursor,
+      "MATCH",
+      "b:*",
+      "COUNT",
+      SCAN_COUNT
+    );
     cursor = next;
     if (!keys.length) continue;
     scanned += keys.length;
@@ -520,10 +535,14 @@ async function readBackCreatures(redis, sunken) {
   const unresolved = [];
   for (let start = 0; start < sunken.length; start += READ_BATCH_SIZE) {
     const batch = sunken.slice(start, start + READ_BATCH_SIZE);
-    const values = await redis.mgetBuffer(batch.map((actor) => `b:${actor.id}`));
+    const values = await redis.mgetBuffer(
+      batch.map((actor) => `b:${actor.id}`)
+    );
     for (let index = 0; index < batch.length; index += 1) {
       const entity = decodeEntity(batch[index].id, values[index]);
-      const position = entity?.hasPosition?.() ? entity.position()?.v : undefined;
+      const position = entity?.hasPosition?.()
+        ? entity.position()?.v
+        : undefined;
       if (!position || position[1] < HARTHMERE_EXTENSION_FEET_Y) {
         unresolved.push({ id: batch[index].id, position });
       }
@@ -537,14 +556,20 @@ async function readBackCreatures(redis, sunken) {
 async function main() {
   const contract = validateHarthmereSurfaceRepairContract();
   if (!contract.ok) {
-    throw new Error(`surface repair contract failed: ${contract.failures.join("; ")}`);
+    throw new Error(
+      `surface repair contract failed: ${contract.failures.join("; ")}`
+    );
   }
 
   const voxeloo = await loadVoxeloo();
   const materials = repairMaterials();
   const specs = harthmereSurfaceRepairShardSpecs();
 
-  const redis = new Redis({ host: REDIS_HOST, port: REDIS_PORT, lazyConnect: true });
+  const redis = new Redis({
+    host: REDIS_HOST,
+    port: REDIS_PORT,
+    lazyConnect: true,
+  });
   await redis.connect();
 
   let shards;
@@ -618,7 +643,11 @@ async function main() {
   }
 
   console.log(
-    JSON.stringify({ done: true, ...terrainResult, regrounded, unresolved }, null, 2)
+    JSON.stringify(
+      { done: true, ...terrainResult, regrounded, unresolved },
+      null,
+      2
+    )
   );
   if (unresolved.length) {
     throw new Error(

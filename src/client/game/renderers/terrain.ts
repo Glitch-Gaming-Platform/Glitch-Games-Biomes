@@ -48,7 +48,6 @@ import { Cval } from "@/shared/util/cvals";
 import type { Optional } from "@/shared/util/type_helpers";
 import type { VoxelooModule } from "@/shared/wasm/types";
 import { HARTHMERE_PERF_AND_PLACEMENT_PREWARM } from "@/shared/harthmere/town_production_polish";
-import { shouldRenderHarthmereRuntimeAssets } from "@/client/game/renderers/local_dev/harthmere_runtime_mode";
 import type {
   FrustumSharder,
   VisibilitySharder,
@@ -457,7 +456,25 @@ export class TerrainRenderer implements Renderer {
   }
 
   private updateHarthmereTerrainPrewarm(position: ReadonlyVec3) {
-    if (!shouldRenderHarthmereRuntimeAssets()) return;
+    // HARTHMERE_TERRAIN_PREWARM_IS_NOT_A_LOCAL_DEV_FEATURE (2026-08-03).
+    //
+    // This used to early-return on `!shouldRenderHarthmereRuntimeAssets()`,
+    // which is true only on localhost or with the `biomes.harthmereAssets`
+    // localStorage key set. So the shard pre-warm ring — whose entire job is to
+    // hide the whitespace-pop and hitch after spawn and after a long fast-travel
+    // move — ran on developer machines and never for a single real player. That
+    // also made it invisible in every local test of the thing it exists to fix.
+    //
+    // Nothing in here touches Harthmere runtime assets. It reads `/ecs/terrain`
+    // and warms `/terrain/occluder` + `/terrain/combined_mesh`: all native
+    // terrain resources that exist in every build. It borrowed that flag only
+    // because the tuning constants happen to live in a Harthmere module.
+    //
+    // It is safe to run everywhere because it is bounded on all four axes:
+    // at most 144 probes per plan, replanned at most once per second and only
+    // after the player moves 64 m, never more than 2 fetches in flight, and it
+    // skips shards already cached. `docs/harthmere/PERFORMANCE_AND_PLACEMENT.md`
+    // already documents it as a shipped guardrail; the code simply disagreed.
     const config = HARTHMERE_PERF_AND_PLACEMENT_PREWARM;
     const now = performance.now();
     const previous = this.harthmerePrewarmOrigin;

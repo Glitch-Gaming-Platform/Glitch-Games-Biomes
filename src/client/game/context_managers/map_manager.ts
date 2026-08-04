@@ -206,8 +206,7 @@ export class MapManager {
     private resources: ClientResources,
     private table: ClientTable,
     private events: Events,
-    private gardenHose: GardenHose,
-    private mobileDevice: boolean
+    private gardenHose: GardenHose
   ) {
     this.emitter.setMaxListeners(100);
     this.tick();
@@ -392,20 +391,15 @@ export class MapManager {
           .oobFetchSingle(entityId)
           .then((entity) => {
             if (!entity) {
-              if (this.mobileDevice) {
-                // Phone quest/objective state can briefly outlive an entity
-                // during shard reconciliation. Remove its provisional origin
-                // beam without changing the existing desktop diagnostics.
-                log.warn("Removing mobile navigation aid for missing entity", {
-                  entityId,
-                });
-                if (this.localNavigationAids.has(id!)) {
-                  this.removeNavigationAid(id!);
-                }
-              } else {
-                log.prodError("No entity found for navigation aid", {
-                  entityId,
-                });
+              // Objective state can briefly outlive an entity during shard
+              // reconciliation on every device. Remove the stale marker
+              // instead of turning a recoverable missing target into a player
+              // console error that survives for the rest of the session.
+              log.warn("Removing navigation aid for missing entity", {
+                entityId,
+              });
+              if (this.localNavigationAids.has(id!)) {
+                this.removeNavigationAid(id!);
               }
               return;
             }
@@ -623,23 +617,15 @@ export function shouldPublishMapBeamRemoval(
 }
 
 export async function loadMapManager(loader: RegistryLoader<ClientContext>) {
-  const [
-    userId,
-    clientCache,
-    resources,
-    table,
-    events,
-    gardenHose,
-    clientConfig,
-  ] = await Promise.all([
-    loader.get("userId"),
-    loader.get("clientCache"),
-    loader.get("resources"),
-    loader.get("table"),
-    loader.get("events"),
-    loader.get("gardenHose"),
-    loader.get("clientConfig"),
-  ]);
+  const [userId, clientCache, resources, table, events, gardenHose] =
+    await Promise.all([
+      loader.get("userId"),
+      loader.get("clientCache"),
+      loader.get("resources"),
+      loader.get("table"),
+      loader.get("events"),
+      loader.get("gardenHose"),
+    ]);
 
   return new MapManager(
     userId,
@@ -647,7 +633,6 @@ export async function loadMapManager(loader: RegistryLoader<ClientContext>) {
     resources,
     table,
     events,
-    gardenHose,
-    clientConfig.mobileDevice
+    gardenHose
   );
 }

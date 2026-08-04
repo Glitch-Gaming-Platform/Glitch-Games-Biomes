@@ -551,6 +551,7 @@ export function npcTickLogic(
   const activeEvade = movementActionIsActive(npc.movementState, nowSeconds);
 
   let forwardSpeed = 0;
+  let businessCustomerKinematic = false;
   const homePoint: ReadonlyVec3 = npc.metadata.spawn_position;
 
   let force = nullForce;
@@ -629,7 +630,8 @@ export function npcTickLogic(
       ));
       break;
     case "businessCustomer":
-      ({ forwardSpeed } = businessCustomerTick(env, npc));
+      ({ forwardSpeed, kinematic: businessCustomerKinematic } =
+        businessCustomerTick(env, npc, nowSeconds, dtSecs));
       break;
     case "escort":
       ({ forwardSpeed } = escortTick(env, npc));
@@ -660,6 +662,9 @@ export function npcTickLogic(
       break;
     case "idle":
       break;
+  }
+  if (businessCustomerKinematic) {
+    return;
   }
   // The night speed increase is combat-only. Idle patrols, schedules,
   // socializing, fleeing, and ordinary meandering retain their authored

@@ -12,7 +12,8 @@ scripts/harthmere/t.sh quests     # focused quest/container contracts
 scripts/harthmere/t.sh ui         #   9 tests, 1.1 s
 scripts/harthmere/t.sh icons      # inventory assets, native aliases, UI, types
 scripts/harthmere/t.sh gate       # quest + UI + client config + contract + types
-scripts/harthmere/t.sh perf       # FPS frame path + polling/save/telemetry contracts
+scripts/harthmere/t.sh perf       # 38 tests, 0.03 s — FPS frame path + polling/save/telemetry
+scripts/harthmere/t.sh combat     # 90 tests, 0.14 s — melee acquisition, VFX, monster speed
 scripts/harthmere/t.sh watch ch1  # re-runs on save
 scripts/harthmere/t.sh types      # scoped typecheck, ~3 s
 scripts/harthmere/t.sh types:stack # Ask/Logic focused-stack wiring
@@ -153,6 +154,73 @@ If a suite passes under `full` but fails under fast, it needs the bootstrap —
 it imports Bikkie item data, the ECS gen layer, a server handler, or the
 trigger engine. That failure _is_ the signal. Run it with `full` and add a note
 to the header comment in `t.sh` so the next person doesn't rediscover it.
+
+Worked example, reconfirmed 2026-08-04:
+`src/client/game/interact/item_types/attack_destroy_delegate_item_spec.test.ts`
+reports **12 passing / 5 failing** through `t.sh file` / `.mocharc.fast.json` and
+**17 passing** with `.mocharc.json`. It builds real items and resolves block
+destruction hardness, so it needs Bikkie. It is therefore excluded from the
+`combat` preset with a note in `t.sh` rather than being "fixed" by weakening its
+assertions.
+
+### 3.1 The two lanes added by the 2026-08-03 captured-session pass
+
+`t.sh combat` exists because of a specific, embarrassing gap. A 374-second
+production capture proved that melee had been broken in the shipped build the
+whole time, and **every existing suite was green**. The proof was in the client's
+own `/api/cval_logging` payload:
+
+```text
+"events": { "moveEvent": 6369, "emoteEvent": 21, "updatePlayerHealthEvent": 2 }
+```
+
+21 swing emotes. Zero `updateNpcHealthEvent`. The player attacked repeatedly for
+six minutes and the cursor never once produced a target.
+
+Nothing caught it because the broken seams were all _configuration-shaped_, not
+logic-shaped, and each looked correct in isolation:
+
+- melee acquisition depended on `nativeBiomesEcsAuthorityEnabled()`, which is on
+  by default in production and off in most test setups;
+- the projectile/magic-charge VFX layer was gated on
+  `shouldRenderHarthmereRuntimeAssets()`, which is **true on localhost and false
+  in production** — so it worked perfectly on every developer machine;
+- a native item with an unresolvable combat profile failed _closed_, silently
+  disarming the player.
+
+The lesson for new tests: **assert the production configuration explicitly.** A
+test that only ever runs the localhost branch of an environment gate is proving
+the branch you are not shipping. Where a full behavioural test would need a
+renderer, a spatial index and a camera, a source contract that pins the _shape_
+of the gate is still worth having — that is what
+`overlaysFrameBudget.test.ts`, `cursorNativeMeleeAimAssist.test.ts` and
+`harthmere_combat_vfx_always_on.test.ts` are.
+
+A follow-up sweep of every environment gate in `src/client` and `src/shared`
+found two more subsystems shipping dead for the same reason: the local player's
+third-person weapon rig (animated every frame by its own rAF loop, into a group
+that never reached a scene) and the terrain shard pre-warm ring (documented as a
+shipped guardrail, gated on localhost since the day it was written). Full sweep
+and verdicts: `HARTHMERE_RENDER_PERF_AUDIT_2026-08-03.md` § A.1.
+
+The shape to grep for, when you suspect more of these:
+
+```sh
+grep -rn 'hostname === "localhost"' src/client src/shared
+grep -rn 'getItem(.*) === "1"'      src/client src/shared
+grep -rn 'NODE_ENV.*production'     src/client src/shared
+```
+
+Then ask of each hit: _is the thing behind this gate actually a dev tool?_ A
+diagnostic overlay is. A projectile, a held weapon and a terrain streaming
+optimisation are not.
+
+Both lanes are pure-data and stay in the fast preset:
+
+```sh
+scripts/harthmere/t.sh perf     # 38 tests, 0.03 s
+scripts/harthmere/t.sh combat   # 90 tests, 0.14 s
+```
 
 ---
 
@@ -3985,6 +4053,57 @@ larger Docker host. Any run in which Redis or the app is OOM-killed is invalid
 environment evidence even if screenshots or partial ECS assertions were
 produced before the kill.
 
+### 4.32 Read a production capture from the cvals, not from the FPS overlay
+
+Recorded 2026-08-03, from a 374-second `www.glitch.fun` HAR + console capture.
+
+A HAR is 63 MB of mostly base64 and the console is mostly third-party noise. The
+three signals that were actually worth extracting, in order of value:
+
+**1. `POST /api/cval_logging` is the whole client state in one request.** Its
+body carries the table sizes, the event tally, the GPU classification and the
+memory counters. It answered more questions than the rest of the capture
+combined:
+
+```text
+"events": { "moveEvent": 6369, "emoteEvent": 21, "updatePlayerHealthEvent": 2 }
+"indexes": { "position_selector": 2932, "collideable_selector": 1217,
+             "label_selector": 834, "placeable_selector": 548,
+             "npc_metadata_selector": 159 }
+"capabilities": { "gpu": { "fps": 556, "gpu": "apple m1 max", "tier": 3 } }
+```
+
+An **absent** event name is evidence. `updateNpcHealthEvent` never appearing next
+to 21 `emoteEvent`s is a complete proof that melee never acquired a target — far
+stronger than any number of screenshots of a creature not taking damage.
+
+**2. Request cadence tells you what is polling you to death.** Group by URL and
+take the median inter-arrival gap rather than the count:
+
+```text
+chapter1_gate      n=126  medgap 0.78 s   medtime  92 ms
+chapter1_progress  n=105  medgap 1.03 s   medtime  98 ms
+chapter1_story     n=66   medgap 2.00 s   medtime  98 ms
+voicePoll          n=159  medgap 1.93 s   medtime 1528 ms  ← near-continuous in flight
+```
+
+**3. The console violation _pattern_, not its text.** Chrome elides the duration
+(`took <N>ms`), so an individual line says nothing. A continuous unbroken run of
+`'requestAnimationFrame' handler took <N>ms` means the frame loop never
+recovered; a burst of `'message' handler took <N>ms` means worker traffic
+(terrain meshing) is landing on the main thread.
+
+Two traps this capture set:
+
+- **The HAR was truncated mid-entry.** `json.load` fails on the whole file. Scan
+  top-level `entries[]` objects with a brace/string-state counter and parse them
+  individually, keeping the ones that succeed — 974 usable entries out of a file
+  that would not load at all otherwise.
+- **A tier-3 GPU classification is not an all-clear.** This session was correctly
+  detected as an M1 Max at tier 3 and still ran at 2–14 FPS. Confirming the GPU
+  tier only rules the tier out; it does not make the problem GPU-shaped. Prefer
+  `renderIntervalMs` vs `cpuTimeMs` for that question.
+
 ---
 
 ## 5. Suggested loop
@@ -4021,6 +4140,8 @@ cost a full stack boot plus a manual walk to discover.
 | `tsconfig.ch1renderer.json`                            | Client-graph typecheck (slow, incremental)           |
 | `NATIVE_ECS_BROWSER_E2E_RUNBOOK.md`                    | The release gate (unchanged)                         |
 | `CHAPTER_1_E2E_RUNBOOK.md`                             | Chapter 1 browser checklist                          |
+| `HARTHMERE_RENDER_PERF_AUDIT_2026-08-03.md`            | Ranked render/runtime findings + remediation log     |
+| `docs/harthmere/PERFORMANCE_AND_PLACEMENT.md`          | Production FPS baselines and frame-loop guardrails   |
 
 ### Deleted snapshot NPCs and native quest markers
 
@@ -4495,6 +4616,91 @@ combat failure or rebuild the lane blindly; authenticate through the E2E API,
 preserve the browser cookie/storage session, and navigate directly to
 `/at/<username>` before repeating the acceptance action.
 
+The August 4, 2026 rendered-input batch exposed two more failure modes that a
+green health-handler test cannot catch:
+
+- **Do not reuse the generic cursor predicate for the native-NPC metadata
+  pass.** The generic pass intentionally excludes `npc_metadata` entities so
+  their latency-smoothed rendered body is tested once by the metadata pass. If
+  that same predicate is passed into `traceNpcMetadataCursorHits`, every native
+  NPC is rejected by both paths and the crosshair can never enter attack state.
+  Keep a unit contract proving one native NPC is excluded from the generic pass
+  and accepted by the metadata pass, then require the rendered crosshair and an
+  authoritative HP decrease in the browser.
+- **Prove the canvas owns the click before calling it combat input.** In a
+  desktop browser that advertises Pointer Lock but cannot retain it, the
+  centered escape menu can leave `Give Feedback` over the game. A coordinate
+  click then opens the report textarea while the test misleadingly records a
+  mouse event. For the supported pointerless-desktop lane, remove
+  `document.exitPointerLock` in an init script before React mounts so
+  `BiomesView` attaches focused canvas input and `EscGameMenu` stays absent.
+  Immediately before every attack, require `/game_modal.kind === "empty"`, no
+  visible `.esc-game-controls` or report dialog, and
+  `document.elementFromPoint(canvasCenter)` to be the gameplay canvas. Keep the
+  feedback modal closed for the entire batch; fail the row instead of forcing a
+  click through UI.
+
+The focused runner that enforces those rules is:
+
+```sh
+HARTHMERE_E2E_CONTROL_TOKEN=<redacted-token> \
+HARTHMERE_E2E_BASE_URL=http://127.0.0.1:3017 \
+HARTHMERE_E2E_SYNC_BASE_URL=http://127.0.0.1:4907 \
+HARTHMERE_E2E_HEADLESS=0 \
+  node scripts/harthmere/test-harthmere-native-player-attack-live-browser.cjs
+```
+
+It runs every player-attack edge serially without stopping on the first failure,
+uses admin ECS only for fixture setup/readback, saves a screenshot for every
+row, drives all attacks through real rendered mouse/keyboard input, runs the
+full projectile/charge panel, and records the authoritative HP result. Reports
+are written under `artifacts/harthmere-native-player-attack/`.
+
+Test the 30%-slower monster requirement as a separate Anima movement row. The
+player-input runner above proves targeting and damage; it does not run the NPC
+simulator. Reuse the already-authoritative same-world Anima container, require
+`/ready` to return `OK`, `HFC Bootstrap complete`, restart count 0, and
+`OOMKilled=false`, then run only the ordinary chase slice:
+
+```sh
+HARTHMERE_E2E_CHASE_ONLY=1 \
+HARTHMERE_E2E_BASE_URL=http://127.0.0.1:3017 \
+HARTHMERE_E2E_SYNC_BASE_URL=http://127.0.0.1:4907 \
+HARTHMERE_E2E_URL=http://127.0.0.1:3017/at \
+  node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+```
+
+That row measures authoritative displacement over elapsed wall time, requires
+the creature to climb the uneven-step fixture, synchronizes the final pose to
+the rendered actor, and rejects movement above
+`HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND` (currently `7.6 * 0.7 =
+5.32 m/s`, plus only the fixture's bounded sampling tolerance). Its direct
+one-point NPC provocation is valid only for entering the Anima chase state; it
+must never be cited as player-attack acceptance. Stop and release the shared
+Anima container immediately after this bounded row instead of running the full
+memory-heavy combat matrix.
+
+On the production-sized retained world, AMD64-emulated Anima may revisit one
+new fixture only every several seconds. The chase row therefore allows a
+bounded 60-second observation and accepts a routed path around the step instead
+of requiring a straight-X crossing. It still requires real displacement,
+approach, vertical climb, authoritative/local/rendered agreement, and the hard
+5.32 m/s ceiling. Treat its wall-clock `effectiveChaseSpeed` as an observed
+loaded-stack value; the exact `0.7` command multiplier and scaled speed floor
+remain unit-contract assertions, because scheduler idle time is not movement
+speed.
+
+Focused browser actors must be alive and standing on loaded terrain before an
+input or chase timer begins. Seed chase-only users at the known-safe start before
+navigation, use the bounded low-memory render profile, and keep
+`permitVoidMovement=false`: the production controller deliberately freezes
+physics while nearby shards load. Setting it true can drop the visual actor to
+the world floor, apply fall death, and turn every later attack or speed timeout
+into a harness failure. For player-attack runs, clear `death_info`, restore full
+native health and zero rigid-body velocity, wait for that revived row to reach
+the synchronized client, and only then place the rendered actor at the combat
+fixture.
+
 When attaching a standalone exact-current Anima bundle to a retained focused
 web/Redis lane, point both `SHIM_SERVICE_HOST`/`SHIM_SERVICE_PORT` and
 `LOGIC_SERVICE_HOST`/`LOGIC_SERVICE_PORT` at that web container. Redis and HFC
@@ -4579,12 +4785,16 @@ subscription finishes bootstrapping. Wait for both service readiness and the
 explicit `HFC Bootstrap complete` lifecycle line before starting a customer
 session. Starting in the gap can produce misleading partial-state evidence.
 
-Business customer routes author pace in metres per second, while
-`forwardWalkingForce` consumes an acceleration coefficient. Passing the raw
-2-4 m/s pace into ordinary ground physics lets friction cancel the movement and
-produces a correctly routed but stationary customer. Convert only the
-`businessCustomer` locomotion pace through `horizontalForceForTargetSpeed`, then
-prove the conversion in the focused Anima logic contract before browser work.
+Business customer routes cross a combined interior whose visible floor and
+furniture collision are native ECS proxies, not terrain graph voxels. The
+August 4 full 19-row batch proved that terrain A* could author a plausible route
+while ordinary ground physics left customers motionless at curbs, graph-height
+seams, or the exterior spawn. The shipped customer locomotion is therefore a
+bounded authoritative Anima interpolation along the audited doorway, queue,
+counter, and departure waypoints. It remains speed-capped and visible on every
+tick; it is not a one-frame teleport to the counter. Prove all 19 entrance and
+departure routes through the focused logic matrix before browser work, and keep
+ordinary NPC locomotion on the normal physics path.
 
 Business-customer phase transitions are HFC authority. Do not write a mixed
 `npc_state` plus `expires` update only through regular ECS: the stale HFC
@@ -4604,10 +4814,11 @@ at the final per-NPC tick boundary, not only when the batch starts. A late
 entity must never run physics with `dtSecs=0`.
 
 For audited customer routes, author the create orientation toward the first
-waypoint and set spawn jitter to zero. When a previous shift is still walking
-away from the same exterior source, defer only the overlapping new customer
-create until that source clears. Do not solve the overlap by teleporting,
-disabling collision, or moving the audited building anchors.
+waypoint and set spawn jitter to zero. Materialize only the lead ticket at the
+audited doorway; later tickets remain economy queue records until promotion.
+When a previous shift is still walking away from the same route, defer the new
+customer create until that route clears. Do not move the audited building
+anchors or create several colliding bodies outside the door.
 
 Do not let an expired business session retain `waiting` tickets with queued or
 approaching spatial phases. Expiry, passive tick expiry, and manual end must all
@@ -4619,11 +4830,12 @@ batch while any customer from another session for that same outpost remains on
 the route. Checking only the spawn point misses collisions farther along the
 shared entrance aisle.
 
-Native collision escape uses an exact upward velocity of `10` in the focused
-stack. If a routed customer has a valid A* path but settles near the entrance
-with `[0, 10, 0]`, inventory all retained session entities before editing
-pathfinding or terrain. Batch the session/economy evidence across the affected
-businesses, make one lifecycle fix, then rerun only failed business IDs.
+If a routed customer remains in `entering`, inventory the actor-owned session,
+authoritative `npc_state`, waypoint index, and Anima lifecycle before changing
+terrain. A route whose index never advances is an authority/materialization
+failure; a route whose position advances but UI never reaches `serving` is a
+projection failure. Batch the evidence across the affected businesses, make
+one lifecycle fix, then rerun only failed business IDs.
 
 The current server Webpack TypeScript loader requires Node 22.6 or newer. If a
 host Node 20 build fails before source compilation, run it once with the
@@ -4773,14 +4985,17 @@ Chat` / `Ask about this place` actions do not appear.
 
 Business customer economy/session ticks and Anima operate at different
 cadences. The session materializer owns assignment, phase, reaction and route
-intent; Anima owns per-tick pathfinding and movement progress. Rewriting the
-whole custom `npc_state` every time the economy is polled can appear harmless
-in unit tests while resetting a live customer at the same doorway forever.
+intent; Anima owns the per-tick waypoint index and movement progress. Rewriting
+the whole custom `npc_state` every time the economy is polled can appear
+harmless in unit tests while resetting a live customer at the same doorway
+forever.
 
 - Treat unchanged materialization as a literal no-op, not an identical HFC
   update.
-- Preserve `waypointIndex`, `pathfinding`, `progressPosition` and
-  `progressAtSeconds` when the authoritative route phase is unchanged.
+- Preserve `waypointIndex`, `progressPosition` and `progressAtSeconds` when the
+  authoritative route phase is unchanged. Preserve legacy `pathfinding` data
+  only for rolling-version compatibility; current customer locomotion does not
+  consult the terrain path graph.
 - Reset movement progress only on a real route/phase transition.
 - Edge-trigger reaction emotes and expiry timers; repeated polling must not
   restart either one.
@@ -4880,6 +5095,29 @@ setup mistakes after the source batch was already green.
   `PONG`, realistic `DBSIZE`, app child-service readiness, Anima `/ready=OK`,
   and `HFC Bootstrap complete`. Do not count a browser row begun before all of
   them pass.
+- **Lifecycle health does not prove the game page can server-render.** On
+  August 4, 2026, build `warm-20260804131740` passed HTTP `/`, Sync, Redis, all
+  lifecycle services, matching host/container Shim hashes, restart/OOM checks,
+  and Anima readiness. The first authenticated `/at` request still returned
+  HTTP 500 because its lazy page import evaluated the additive-town interior
+  catalogue and threw `mail_post_house:mail_outgoing has no safe interior
+slot`. No business row ran. Before releasing any browser window, authenticate
+  the intended E2E actor and require the exact production game URL (`/at` plus
+  its real query parameters) to return a successful page and install its
+  expected browser bridge. A root-page `200`, importing only the server Shim,
+  or requiring the Next page wrapper without executing SSR is insufficient.
+  Preserve this as a setup-only failure, close Chromium, and repair the import
+  contract once; do not spend another three-minute bridge timeout retrying the
+  unchanged artifact.
+- **Environment-sensitive generated catalogues need a production-import test.**
+  The Mail Post layout had ordinary unit coverage under the test environment,
+  including a fixture-count assertion, yet the compiled production SSR import
+  selected a different safe-slot result and threw. Any module that constructs
+  and validates a complete catalogue at import time must have one focused test
+  under the production environment used by Next/server webpack. The test must
+  import the exact shared module and require every generated fixture to place;
+  a source-only test under Mocha's default environment does not cover this
+  startup boundary.
 - If the user ends the pass before the browser matrix runs, state that plainly.
   Green source contracts and a valid image are not live acceptance.
 
@@ -4933,3 +5171,76 @@ must avoid:
   green. Close only the stale browser contexts, retain the warm stack, and
   retry with one low-memory game tab; do not diagnose the board renderer from a
   browser-control timeout.
+
+### 4.42 Tool-gated gathering, voice 409s, and focused Sync startup
+
+The August 4, 2026 Orchard Softwood incident combined three independent
+failures that looked like one broken F-key interaction. Preserve these checks
+as separate lanes:
+
+- Native equipment identity is not the same thing as a gameplay requirement.
+  Keep the lossless selected item as `b:<BiomesId>`, then have the server
+  project trusted Bikkie capabilities such as `isAxe`, `isPickaxe`, or
+  `action: fish` into the requirement keys used by gathering authority. Do not
+  require an ordinary Wooden Axe to have the exact semantic ID
+  `woodcutters_axe`. Test the captured numeric native item, every node gated by
+  that tool class, and the no-tool rejection. Prompts should name the compatible
+  class (for example, "an axe"), not an internal specialist-item key.
+- Group HAR failures by operation before changing a successful gameplay API.
+  In this incident the gather request returned HTTP 200; all thirty HTTP 409s
+  belonged to voice packet, poll, and heartbeat operations. A voice join can
+  itself return HTTP 200 with a room whose state is `closed`. Treat only
+  `state: active` as usable, discard the stale cached room/token, and discover
+  or create another active room before starting timers. Keep create, list,
+  join, and packet fields exact to the Glitch voice contract; undocumented
+  compatibility fields make it harder to distinguish a stale room from a bad
+  request.
+- A focused native-ECS URL must activate the trusted runtime Sync resolver even
+  when the production bundle was not built with Glitch-local environment
+  flags. Before gameplay assertions, require
+  `HARTHMERE_SYNC_URL_RESOLVED` to name `trusted_runtime_e2e_override` and the
+  intended local Sync port. Repeated `wss://api*.biomes.gg` attempts or close
+  code 1006 mean the browser never reached the local world; fail the shared
+  browser context once instead of recording every node as a gameplay failure.
+- Keep rendering acceptance separate from interaction-authority acceptance. A
+  retained world can expose the real F prompt and production interaction bridge
+  while its software-rendered client remains behind the terrain loading layer.
+  For a failed-only authority row, the harness may hide only that browser DOM
+  overlay and press the real F key, but it must still require server feedback,
+  a native drop, authoritative pickup, and depletion. Record the marker's
+  `groundStatus`/visibility as not accepted and do not call that run visual or
+  terrain proof. The August 4 Orchard rerun used this bounded distinction after
+  both headless and headed clients remained `not-loaded`; its action E2E still
+  proved the captured Wooden Axe harvested and picked up the authored drop.
+- An atomic rebuild can leave the first replacement app attached to an
+  incompatible artifact-directory inode even when host/container `BUILD_ID`
+  text and `dist/shim.js` bytes match. First prove the reported startup
+  invariant passes from source and the finished bundle. After the owning
+  refresh exits or rolls back, run exactly one
+  `refresh-warm-local-stack.cjs --build none` to recreate only the app mounts;
+  do not compile again. Require matching host/container `BUILD_ID` and Shim
+  SHA-256, HTTP and Sync readiness, Redis `PONG` and realistic `DBSIZE`, all
+  lifecycle services, and zero restart/OOM state before releasing the shared
+  browser window.
+
+### Failed-only native player-attack reruns
+
+After the full non-fail-fast player-attack matrix has collected every failure,
+rerun only the failed scenario names by separating exact names with `|` in
+`HARTHMERE_E2E_ATTACK_SCENARIOS`. Set
+`HARTHMERE_E2E_ATTACK_SKIP_PROJECTILE_CATALOG=1` and
+`HARTHMERE_E2E_ATTACK_SKIP_PERFORMANCE=1` when those lanes already passed.
+The runner recenters the pointer and restores the authoritative/local player
+pose before each selected row; do not add a mouse move between target acquisition
+and mouse-down because the supported pointerless browser path treats it as camera
+input. The feedback modal and Escape overlay checks still run before every click.
+Scenario cleanup is part of the row boundary: wait until every deleted fixture is
+absent from authoritative ECS, local ECS, `cursor.attackableEntities`, and the
+current cursor hit before constructing the next row. An acknowledged delete API
+call alone is not enough; a stale rendered NPC can otherwise steal the next
+ranged or magic crosshair and create a false product failure.
+If an older interrupted run already leaked fixture IDs into the retained world,
+pass those numeric IDs through
+`HARTHMERE_E2E_ATTACK_PREFLIGHT_CLEANUP_IDS=id1,id2`. The runner applies the
+same authoritative/local/cursor absence gate before creating any new scenario;
+do not hide a real world NPC behind this option.

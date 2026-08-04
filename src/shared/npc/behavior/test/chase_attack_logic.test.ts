@@ -16,6 +16,7 @@ import {
   isHarthmereCivilianNpcName,
   isHarthmereFightSpeedBoostEligible,
   isHarthmereFightSpeedBoostName,
+  isHarthmereMonsterSpeedName,
   isHarthmereSightBoundChaserName,
   isMuckerOrHexerNameForNightAggro,
   isNightForNpcAggro,
@@ -27,6 +28,7 @@ import {
   HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
   HARTHMERE_NPC_CHASE_SPEED_STEP_UP_20,
   HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30,
+  HARTHMERE_NPC_SPEED_STEP_DOWN_30,
   HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER,
   shouldDropHarthmereChaseTargetForLineOfSight,
   shouldDropNpcTargetAtSafeZoneBoundary,
@@ -393,18 +395,26 @@ describe("chase attack: Harthmere sight and speed limits", () => {
     assert.equal(isHarthmereSightBoundChaserName("Town Guard"), false);
   });
 
-  it("compounds another 30% onto the already-increased pursuit speed", () => {
+  it("compounds the pursuit tuning history, ending 30% slower", () => {
     assert.equal(HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER, 1.35);
     assert.equal(HARTHMERE_NPC_CHASE_SPEED_STEP_UP_20, 1.2);
     assert.equal(HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30, 1.3);
-    // Cumulative, not a replacement: 1.35 -> 1.62 -> 2.106.
+    assert.equal(HARTHMERE_NPC_SPEED_STEP_DOWN_30, 0.7);
+    // Cumulative, not a replacement: 1.35 -> 1.62 -> 2.106 -> 1.4742.
     assert.equal(
       HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
-      HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER * 1.2 * 1.3
+      HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER * 1.2 * 1.3 * 0.7
+    );
+    // The 2026-08-03 pass: exactly 30% off the previously shipped pursuit speed.
+    assert.ok(
+      Math.abs(
+        HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER -
+          HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER * 1.2 * 1.3 * 0.7
+      ) < 1e-9
     );
     assert.ok(
-      HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER >
-        HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER * 1.2
+      HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER <
+        HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER * 1.2 * 1.3
     );
     assert.equal(
       boundedHarthmereChaseSpeedForName("Muckmeadow Cow", 2),
@@ -414,11 +424,13 @@ describe("chase attack: Harthmere sight and speed limits", () => {
       boundedHarthmereChaseSpeedForName("Pale Hexer", 8.64),
       HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND
     );
-    // The cap must stay strictly below the 8 m/s player sprint transition.
+    // The cap must stay strictly below the 8 m/s player sprint transition, and
+    // it scales with the step-down so the ceiling cannot absorb the reduction.
     assert.ok(HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND < 8);
+    assert.equal(HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND, 7.6 * 0.7);
     assert.equal(
       boundedHarthmereChaseSpeedForName("Road Bandit Scout", 5.1),
-      5.1
+      5.1 * HARTHMERE_NPC_SPEED_STEP_DOWN_30
     );
     assert.equal(
       boundedHarthmereChaseSpeedForName("Unrelated NPC", 8.64),
@@ -471,6 +483,37 @@ describe("chase attack: Harthmere sight and speed limits", () => {
     assert.equal(isHarthmereCivilianNpcName("Old Wood Mucker"), false);
     assert.equal(isHarthmereCivilianNpcName("Muckmeadow Cow"), false);
     assert.equal(isHarthmereFightSpeedBoostName("Old Wood Mucker"), true);
+  });
+
+  it("slows every hostile monster class while preserving civilians and owned creatures", () => {
+    for (const name of [
+      "Road Bandit Scout",
+      "Grave Undead",
+      "Root-Crowned Monster",
+      "Thaedryn Boss",
+      "Wild Wolf",
+    ]) {
+      assert.equal(isHarthmereMonsterSpeedName(name), true, name);
+      assert.equal(
+        boundedHarthmereChaseSpeedForName(name, 4),
+        isHarthmereFightSpeedBoostName(name)
+          ? Math.min(
+              4 * HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
+              HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND
+            )
+          : 4 * HARTHMERE_NPC_SPEED_STEP_DOWN_30,
+        name
+      );
+    }
+    for (const name of [
+      "Town Guard",
+      "Harthmere Vendor",
+      "Tamed Wolf Companion",
+      "Archive Robot Sentinel",
+    ]) {
+      assert.equal(isHarthmereMonsterSpeedName(name), false, name);
+      assert.equal(boundedHarthmereChaseSpeedForName(name, 4), 4, name);
+    }
   });
 
   it("limits fight-speed boosts to Muckers, Hexes, and unowned animals", () => {

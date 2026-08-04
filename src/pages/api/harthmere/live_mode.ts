@@ -67,6 +67,7 @@ import {
 import { HARTHMERE_JOBS_BOARD_LOCATIONS } from "@/shared/harthmere/mmo_jobs_board_authority";
 import { readHarthmereJobsBoardNativeKillLedger } from "@/shared/harthmere/jobs_board_native_kill_ledger";
 import { EditEvent, PlaceGroupEvent } from "@/shared/ecs/gen/events";
+import type { Item } from "@/shared/game/item";
 import { getSlotByRef } from "@/shared/game/inventory";
 import { bagCount } from "@/shared/game/items";
 import { BikkieIds } from "@/shared/bikkie/ids";
@@ -76,6 +77,9 @@ import {
 } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import { ensureHarthmereNativeItemCatalogue } from "@/shared/harthmere/harthmere_native_bikkie_items";
 import { harthmereNativeRecipeIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
+import {
+  harthmereGatheringRequirementKeysForEquippedTool,
+} from "@/shared/harthmere/gathering_node_authority";
 import { blockPos, SHARD_SHAPE, voxelShard } from "@/shared/game/shard";
 import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
 import { safeParseBiomesId, type BiomesId } from "@/shared/ids";
@@ -1596,6 +1600,7 @@ export async function readServerActorNativeContextForLiveMode(
     if (includeItemIds) {
       const inventory = entity?.inventory?.();
       const wearing = entity?.wearing?.();
+      const equippedItems: Item[] = [];
       gold = Math.min(
         Number.MAX_SAFE_INTEGER,
         Number(bagCount(inventory?.currencies, { id: BikkieIds.bling }))
@@ -1605,10 +1610,14 @@ export async function readServerActorNativeContextForLiveMode(
           { inventory, wearing },
           inventory.selected
         );
-        if (selected) ids.add(selected.item.id);
+        if (selected) {
+          ids.add(selected.item.id);
+          equippedItems.push(selected.item);
+        }
       }
       for (const item of wearing?.items.values() ?? []) {
         ids.add(item.id);
+        equippedItems.push(item);
       }
       const semanticIds = new Map<BiomesId, string>();
       for (const definition of ensureHarthmereNativeItemCatalogue()) {
@@ -1617,10 +1626,22 @@ export async function readServerActorNativeContextForLiveMode(
           semanticIds.set(nativeId, definition.itemId);
         }
       }
-      equippedItemKeys = [...ids].flatMap((id) => {
-        const semanticId = semanticIds.get(id) ?? biomesIdToHarthmereItemId(id);
-        return semanticId ? [semanticId] : [];
-      });
+      equippedItemKeys = [
+        ...new Set(
+          equippedItems.flatMap((item) => {
+            const semanticItemId =
+              semanticIds.get(item.id) ??
+              biomesIdToHarthmereItemId(item.id);
+            return harthmereGatheringRequirementKeysForEquippedTool({
+              id: item.id,
+              semanticItemId,
+              isAxe: item.isAxe,
+              isPickaxe: item.isPickaxe,
+              action: item.action,
+            });
+          })
+        ),
+      ];
       const selected = inventory
         ? getSlotByRef({ inventory, wearing }, inventory.selected)
         : undefined;
@@ -2740,6 +2761,7 @@ export async function materializeHarthmereBusinessCustomersToEcs(input: {
   worldApi: WorldApi;
   state: HarthmereLiveModeBackendState;
   nowSeconds: number;
+  actorId: string;
   actorPosition?: { x: number; y: number; z: number };
 }) {
   const sessions = Object.values(
@@ -2774,6 +2796,7 @@ export async function materializeHarthmereBusinessCustomersToEcs(input: {
     economy: input.state.economy.production,
     existingEntities: existing,
     nowSeconds: input.nowSeconds,
+    actorId: input.actorId,
     actorPosition: input.actorPosition
       ? [input.actorPosition.x, input.actorPosition.y, input.actorPosition.z]
       : undefined,
@@ -3072,6 +3095,7 @@ async function hydrateAndRepairHarthmereLiveModeIdempotencyReplay(input: {
         worldApi: input.worldApi,
         state: replayState,
         nowSeconds: Math.floor(now / 1000),
+        actorId: input.response.actorId,
         actorPosition: input.envelope.serverActorPosition,
       });
       hydrated.backendMutation.warnings.push(
@@ -4019,6 +4043,7 @@ export async function persistHarthmereLiveModeResponse(
             worldApi: deps.worldApi,
             state: reduced.state,
             nowSeconds: Math.floor(now / 1000),
+            actorId: envelope.actorId,
             actorPosition: envelope.serverActorPosition,
           });
           persistedResponse.backendMutation?.warnings.push(

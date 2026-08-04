@@ -3168,3 +3168,67 @@ ul.bullet-points {
 .joysticks--mobile .mobile-movement-button__label {
   display: none;
 }
+
+/*
+ * HARTHMERE_MOBILE_ACTION_CONTROLS (2026-08-04 mobile audit, items 1 and 14).
+ *
+ * The right-thumb action cluster: mine/attack/use, place, and the Harthmere
+ * combat verbs that used to be keyboard-only. Every selector below is scoped
+ * under `.joysticks--mobile`, which is only applied when
+ * `clientConfig.mobileDevice` is true -- so a touch-capable desktop, which
+ * still mounts `.joysticks`, picks up none of this.
+ *
+ * Geometry notes:
+ *  - Anchored bottom-right, mirroring the movement cluster bottom-left, so the
+ *    two thumbs never contend for the same region.
+ *  - Right inset honours `env(safe-area-inset-right)`, which now actually
+ *    resolves thanks to the `viewport-fit=cover` fix (mobile audit item 2).
+ *  - `bottom` clears the interact (F) button, which sits at 56px.
+ *  - 48px minimum targets, matching the existing crouch/jump controls and the
+ *    44px floor the 2026-08-03 pass established.
+ *  - Wraps upward when the weapon is drawn and six controls are present, so a
+ *    short landscape viewport never pushes a control off-screen.
+ */
+.joysticks--mobile .mobile-action-buttons {
+  position: absolute;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: 112px;
+  z-index: 1096;
+  display: flex;
+  width: 112px;
+  flex-wrap: wrap-reverse;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 8px;
+  pointer-events: none;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+.joysticks--mobile .mobile-action-button {
+  pointer-events: auto;
+}
+
+/* Primary is the most-used control, so it reads as the emphasised one. */
+.joysticks--mobile .mobile-action-button--primary {
+  border-color: rgba(255, 225, 138, 0.9);
+}
+
+.joysticks--mobile .mobile-action-button--held,
+.joysticks--mobile .mobile-action-button:active {
+  transform: translateY(2px);
+  border-color: rgb(192, 208, 255);
+  background: rgba(61, 89, 171, 0.96);
+  box-shadow: 0 1px 0 rgba(0, 0, 20, 0.8),
+    inset 0 0 12px rgba(219, 228, 255, 0.35);
+}
+
+/*
+ * A blocked combat action stays visible but obviously inert, so the reason in
+ * `title` (taken verbatim from the shared combat rules) is still discoverable
+ * rather than the control silently vanishing mid-fight.
+ */
+.joysticks--mobile .mobile-action-button:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}

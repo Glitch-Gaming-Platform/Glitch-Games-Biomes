@@ -13,6 +13,7 @@ import {
   harthmereBoardRequestState,
   harthmereBoardRequestsForEntity,
   harthmereRequestBoardByEntityId,
+  harthmereRequestBoardPhysicalPosition,
   type HarthmereBoardCategory,
   type HarthmereBoardRequest,
   type HarthmereBoardRequestProgress,
@@ -247,14 +248,15 @@ export function nativeRequestBoardRecord(
         ]);
         return { x: world[0], y: world[1], z: world[2] };
       })()
-    : {
-        x: board.snapshotPosition[0],
-        y: board.snapshotPosition[1],
-        z: board.snapshotPosition[2],
-      };
+    : (() => {
+        const physical = harthmereRequestBoardPhysicalPosition(board);
+        return { x: physical[0], y: physical[1], z: physical[2] };
+      })();
 
   return {
-    boardId: nativeRequestBoardPanelId(isQuay ? HARTHMERE_DOCK_FISHING_BOARD.id : board.id),
+    boardId: nativeRequestBoardPanelId(
+      isQuay ? HARTHMERE_DOCK_FISHING_BOARD.id : board.id
+    ),
     displayName: board.label,
     townId: "harthmere",
     regionId: board.id,

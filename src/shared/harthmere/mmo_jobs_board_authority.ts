@@ -87,11 +87,7 @@ export const HARTHMERE_JOBS_BOARD_MAX_LOGS = 300;
 export const HARTHMERE_JOBS_BOARD_BUSINESS_AUTO_SEED_MAX_PER_TICK = 4;
 
 export type HarthmereJobsBoardIssuerKind =
-  | "player"
-  | "business"
-  | "guild"
-  | "town"
-  | "npc";
+  "player" | "business" | "guild" | "town" | "npc";
 export type HarthmereJobsBoardJobKind =
   | "gather"
   | "delivery"
@@ -106,18 +102,10 @@ export type HarthmereJobsBoardJobKind =
   | "security"
   | "service";
 export type HarthmereJobsBoardPostingStatus =
-  | "open"
-  | "active"
-  | "completed"
-  | "failed"
-  | "cancelled"
-  | "expired";
+  "open" | "active" | "completed" | "failed" | "cancelled" | "expired";
 
 export type HarthmereEscortCompanionStatus =
-  | "following"
-  | "arrived"
-  | "completed"
-  | "failed";
+  "following" | "arrived" | "completed" | "failed";
 
 export interface HarthmereEscortCompanion {
   companionId: string;
@@ -451,8 +439,7 @@ export interface HarthmereJobsBoardMutationContext {
   // bulky building/material rewards into material storage. The jobs reducer
   // still validates item turn-ins here, so it needs both sources.
   actorMaterialStorageItems?:
-    | Record<string, number>
-    | { items?: Record<string, number> };
+    Record<string, number> | { items?: Record<string, number> };
   actorCollectibles?: Record<string, number>;
   actorGuildId?: string;
   actorTownIds?: string[];
@@ -659,6 +646,30 @@ export const HARTHMERE_JOBS_BOARD_LOCATIONS: Record<
   // board can never show industrial work.
   ...harthmereRequestBoardJobsBoardLocations(),
 };
+
+/**
+ * Canonical order for read-projected auto seeding.
+ *
+ * The GET path and accept-time materialization must walk the same prefix or an
+ * unpersisted job id can name a different posting when the player clicks it.
+ * Request boards are excluded because their listings come from native quests,
+ * not the MMO jobs authority.
+ */
+export function harthmereJobsBoardAutoSeedBoardIds(
+  state: Pick<HarthmereJobsBoardState, "boards">
+) {
+  const priority = new Map<string, number>([
+    [HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID, 0],
+    [HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID, 1],
+  ]);
+  return Object.values(state.boards)
+    .filter((board) => !board.readOnlyRequestBoard)
+    .map((board) => board.boardId)
+    .sort(
+      (a, b) =>
+        (priority.get(a) ?? 2) - (priority.get(b) ?? 2) || a.localeCompare(b)
+    );
+}
 
 export function defaultHarthmereJobsBoardState(
   nowMs = 0
@@ -1753,7 +1764,9 @@ function completeJobQuest(
       );
       const baseline = Math.max(
         0,
-        Math.floor(Number(todo.serviceProgressBaseline?.[repeatedTargetId] ?? 0))
+        Math.floor(
+          Number(todo.serviceProgressBaseline?.[repeatedTargetId] ?? 0)
+        )
       );
       if (current - baseline < required) {
         return reject(
@@ -2335,9 +2348,9 @@ export function isHarthmereExoticMatterMiningTemplateId(
 ) {
   return Boolean(
     templateId &&
-      HARTHMERE_EXOTIC_MATTER_MINING_TEMPLATE_ID_PREFIXES.some((prefix) =>
-        templateId.startsWith(prefix)
-      )
+    HARTHMERE_EXOTIC_MATTER_MINING_TEMPLATE_ID_PREFIXES.some((prefix) =>
+      templateId.startsWith(prefix)
+    )
   );
 }
 
@@ -3431,9 +3444,7 @@ function economyAutoSeedProductionBusinessJobs(
   // job number about to be issued; `businessCandidates` is already sorted by
   // `businessId`, so the whole ordering is now a function of durable state.
   const businessOrderRng = autoSeedRng(
-    autoSeedStringSeed(
-      `${businessOrderSeed}:${result.next.nextJobNumber}`
-    )
+    autoSeedStringSeed(`${businessOrderSeed}:${result.next.nextJobNumber}`)
   );
   const businessRotationIndex = businessCandidates.length
     ? (result.next.nextJobNumber + (businessOrderSeed >>> 0)) %
@@ -3702,12 +3713,12 @@ function economyAutoSeedJobs(
     const baseTemplatePool = shouldPrimeExotic
       ? exoticMatterTemplates
       : shouldPrimeRepeatablePlacement
-      ? rotateAutoSeedEntries(missingRepeatablePlacementPool, {
-          boardId,
-          rotation: result.next.nextJobNumber,
-          salt: "repeatable-placement",
-        })
-      : templates;
+        ? rotateAutoSeedEntries(missingRepeatablePlacementPool, {
+            boardId,
+            rotation: result.next.nextJobNumber,
+            salt: "repeatable-placement",
+          })
+        : templates;
     const distinctTemplatePool = baseTemplatePool.filter(
       (template) =>
         !usedTemplateIds.has(template.templateId) &&
@@ -3723,10 +3734,10 @@ function economyAutoSeedJobs(
         ? distinctTemplatePool
         : baseTemplatePool
       : diverseKindPool.length > 0
-      ? diverseKindPool
-      : distinctTemplatePool.length > 0
-      ? distinctTemplatePool
-      : baseTemplatePool;
+        ? diverseKindPool
+        : distinctTemplatePool.length > 0
+          ? distinctTemplatePool
+          : baseTemplatePool;
     const template = shouldPrimeRepeatablePlacement
       ? templatePool[0]
       : templatePool[Math.floor(slotRng() * templatePool.length)];

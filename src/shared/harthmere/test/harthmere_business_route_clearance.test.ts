@@ -48,8 +48,9 @@ describe("harthmere business customer route clearance", () => {
       ),
       doorX: building.entrance.x,
       surfaceY: building.origin.y,
-      // The authored spawn point sits ~9.5 m outside the door; measure a little
-      // past it so the whole walked approach is covered, not just the apron.
+      // The lead customer now materializes at the audited door. Keep measuring
+      // the cleared exterior apron too, because the same lane is used for the
+      // visible departure and safe despawn route.
       approachZ: Math.floor(points.entrance[2] - 10),
       counterZ: Math.floor(points.customer[2]),
     });
@@ -102,9 +103,7 @@ describe("harthmere business customer route clearance", () => {
       it("keeps the door opening centred on the authored door axis", () => {
         const report = clearanceFor(record.outpostId);
         const building = buildings[record.outpostId];
-        const doorRow = report.rows.find(
-          (row) => row.z === building.origin.z
-        );
+        const doorRow = report.rows.find((row) => row.z === building.origin.z);
         assert.ok(doorRow, "door row is inside the measured route");
         assert.ok(
           doorRow!.freeRange,
@@ -118,10 +117,9 @@ describe("harthmere business customer route clearance", () => {
       });
 
       it("grades a standable pad under every spawn and departure anchor", () => {
-        // The apron is sized to contain the whole authored spawn fan and both
-        // departure points. If a future route change fans customers wider than
-        // the graded pad, they spawn on raw hilly terrain at an authored Y and
-        // the old "customer never moves" class of failure comes straight back.
+        // The apron is sized to contain the audited doorway and both departure
+        // points. If a future route fans customers wider than that graded pad,
+        // the visible exit can end on raw hilly terrain again.
         const interior = HARTHMERE_BUSINESS_INTERIORS.find(
           (candidate) => candidate.outpostId === record.outpostId
         )!;
@@ -131,7 +129,10 @@ describe("harthmere business customer route clearance", () => {
         );
         for (let queueIndex = 0; queueIndex < 4; queueIndex += 1) {
           for (const [label, point] of [
-            ["spawn", harthmereBusinessCustomerSpawnPoint(interior, queueIndex)],
+            [
+              "spawn",
+              harthmereBusinessCustomerSpawnPoint(interior, queueIndex),
+            ],
             [
               "departure",
               harthmereBusinessCustomerDeparturePoint(interior, queueIndex),

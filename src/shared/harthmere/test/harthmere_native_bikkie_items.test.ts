@@ -442,10 +442,16 @@ describe("Harthmere exact native Bikkie overlay", function () {
     const augmented = withHarthmereNativeBikkieItems(tray());
 
     for (const [id, biscuit] of augmented.contents) {
-      assert.doesNotThrow(() => {
-        const decoded = zrpcWebDeserialize(zrpcWebSerialize(biscuit), zBiscuit);
-        assert.equal(decoded.id, id);
-      }, `${biscuit.name ?? id} must match the frontend Bikkie wire schema`);
+      assert.doesNotThrow(
+        () => {
+          const decoded = zrpcWebDeserialize(
+            zrpcWebSerialize(biscuit),
+            zBiscuit
+          );
+          assert.equal(decoded.id, id);
+        },
+        `${biscuit.name ?? id} must match the frontend Bikkie wire schema`
+      );
     }
   });
 
@@ -578,6 +584,25 @@ describe("Harthmere exact native Bikkie overlay", function () {
     assert.equal(wateringCan?.isTool, true);
     assert.equal(wateringCan?.action, "waterPlant");
     assert.ok((wateringCan?.waterAmount ?? 0) >= 1);
+  });
+
+  it("publishes native gathering tool classes for compatible variants", () => {
+    const augmented = withHarthmereNativeBikkieItems(tray());
+    const loggingTool = augmented.contents.get(
+      harthmereNativeBiomesIdForItemId("woodcutters_axe")!
+    );
+    const miningTool = augmented.contents.get(
+      harthmereNativeBiomesIdForItemId("rusty_pickaxe")!
+    );
+    const weaponAxe = augmented.contents.get(
+      harthmereNativeBiomesIdForItemId("woodsman_axe")!
+    );
+
+    assert.equal(loggingTool?.isTool, true);
+    assert.equal(loggingTool?.isAxe, true);
+    assert.equal(miningTool?.isTool, true);
+    assert.equal(miningTool?.isPickaxe, true);
+    assert.equal(weaponAxe?.isAxe, true);
   });
 
   // HARTHMERE_NATIVE_STORABLE_IDENTITY: `maxInventoryStack` is

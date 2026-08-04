@@ -1,7 +1,10 @@
 /// <reference types="mocha" />
 
 import assert from "assert";
-import { harthmereGatheringNodeRespawnAtMsFromResponse } from "@/client/components/challenges/harthmereGatheringLiveAuthority";
+import {
+  harthmereGatheringErrorMessage,
+  harthmereGatheringNodeRespawnAtMsFromResponse,
+} from "@/client/components/challenges/harthmereGatheringLiveAuthority";
 
 describe("Harthmere gathering-node visual respawn contract", () => {
   it("uses the authoritative native drop expiry for the matching gathering node", () => {
@@ -58,5 +61,22 @@ describe("Harthmere gathering-node visual respawn contract", () => {
         undefined
       );
     }
+  });
+
+  it("names the compatible tool class in authoritative rejection feedback", () => {
+    assert.equal(
+      harthmereGatheringErrorMessage(
+        new Error("gathering_rejected:required_tool_missing:woodcutters_axe"),
+        "Orchard Softwood Branches"
+      ),
+      "Equip an axe before harvesting Orchard Softwood Branches."
+    );
+    assert.equal(
+      harthmereGatheringErrorMessage(
+        new Error("gathering_rejected:required_tool_missing:rusty_pickaxe"),
+        "North Road Iron Vein"
+      ),
+      "Equip a pickaxe before harvesting North Road Iron Vein."
+    );
   });
 });

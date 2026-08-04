@@ -23,6 +23,7 @@ import {
   type HarthmereBusinessCustomerWorldPhase,
 } from "@/shared/harthmere/business_interior_runtime";
 import {
+  activeHarthmereBusinessCustomerTicket,
   findHarthmereBusinessCustomerNpc,
   type HarthmereBusinessCustomerSession,
   type HarthmereBusinessCustomerTicket,
@@ -333,12 +334,20 @@ export function buildHarthmereBusinessCustomerSessionNpcChanges(input: {
   economy: HarthmereProductionEconomyState;
   existingEntities?: ReadonlyMap<BiomesId, ExistingBusinessCustomerEntity>;
   nowSeconds: number;
+  actorId?: string;
   actorPosition?: readonly [number, number, number];
 }): ProposedChange[] {
   const existingEntities = input.existingEntities ?? new Map();
   const changes: ProposedChange[] = [];
 
   for (const session of customerSessions(input.economy)) {
+    if (
+      input.actorId !== undefined &&
+      session.actorId !== input.actorId &&
+      session.status === "active"
+    ) {
+      continue;
+    }
     const record = harthmereBusinessInteriorForType(session.typeId);
     if (!record) continue;
     const priorSessionStillOnRoute = [...existingEntities.values()].some(
@@ -349,11 +358,14 @@ export function buildHarthmereBusinessCustomerSessionNpcChanges(input: {
         return (
           customer?.outpostId === record.outpostId &&
           customer.sessionId !== session.sessionId &&
+          customer.phase !== "patron_wandering" &&
           customer.phase !== "despawn_ready" &&
           customer.phase !== "despawned"
         );
       }
     );
+    const activeTicketId =
+      activeHarthmereBusinessCustomerTicket(session)?.ticketId;
     for (const [ticketIndex, ticket] of session.queue.entries()) {
       const existing = existingEntities.get(ticket.entityId);
       const decoded = existing?.npc_state?.data
@@ -381,24 +393,10 @@ export function buildHarthmereBusinessCustomerSessionNpcChanges(input: {
         continue;
       }
 
-      const previousTicket = session.queue[ticketIndex - 1];
-      const previousExisting = previousTicket
-        ? existingEntities.get(previousTicket.entityId)
-        : undefined;
-      const previousCustomer = previousExisting?.npc_state?.data
-        ? deserializeNpcCustomState(previousExisting.npc_state.data)
-            .businessCustomer
-        : undefined;
-      const previousCustomerSettled =
-        !previousTicket ||
-        previousTicket.status !== "waiting" ||
-        (previousCustomer?.sessionId === session.sessionId &&
-          (previousCustomer.phase === "queued" ||
-            previousCustomer.phase === "serving"));
       const shouldCreate =
         session.status === "active" &&
         ticket.status === "waiting" &&
-        previousCustomerSettled;
+        ticket.ticketId === activeTicketId;
       if (!existing && !shouldCreate) continue;
       if (!existing && priorSessionStillOnRoute) continue;
 

@@ -122,7 +122,8 @@ describe("harthmere business aisle keep-out", () => {
         for (const proxy of HARTHMERE_BUSINESS_INTERIOR_COLLISION_SEEDS.filter(
           (candidate) =>
             candidate.outpostId === record.outpostId &&
-            candidate.role !== "service_counter"
+            candidate.role !== "service_counter" &&
+            candidate.role !== "floor"
         )) {
           const standing: Vec3 = [
             proxy.position[0],

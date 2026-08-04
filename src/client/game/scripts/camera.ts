@@ -486,15 +486,23 @@ export class CameraScript implements Script {
         "/ecs/c/position",
         localPlayer.talkingToNpc
       )?.v;
-      ok(npcPos);
-
       const entity = this.resources.get(
         "/ecs/entity",
         localPlayer.talkingToNpc
       );
-      ok(entity);
-      const size = getSizeForEntity(entity);
-      ok(size);
+      const size = entity ? getSizeForEntity(entity) : undefined;
+
+      // Dialogue state and ECS subscription are updated independently. A
+      // board can intentionally have no trackable body, and an ordinary NPC
+      // can leave the subscription between opening dialogue and this frame.
+      // Keep the modal open but fall back to the player camera instead of
+      // making a transient/missing target fatal to the whole game loop.
+      if (!npcPos || !entity || !size) {
+        return {
+          kind: "player",
+          camTweaks: playerCamTweaks,
+        };
+      }
 
       const playerSize = sizeAABB(playerAABB([0, 0, 0]));
 

@@ -3,10 +3,9 @@ import type { IncomingMessage, ServerResponse } from "http";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
+  classifyHarthmereVoiceTokenResponse,
   harthmereVoiceRoomsFromResponse,
   makeHarthmereVoiceRoomCreateBody,
-  normalizeHarthmereVoiceTokenResponse,
-  parseHarthmereVoiceIceServers,
   selectHarthmereVoiceRoomCandidates,
 } from "@/server/glitch/harthmere_voice";
 import { compactHarthmereStoreSaveResponse } from "@/server/glitch/harthmere_store_save_response";
@@ -2354,7 +2353,6 @@ export default async function handler(
     if (op === "voiceJoin") {
       const { playerId, displayName } =
         await authenticatedPlayerVoiceIdentity(req);
-      const resumeVoiceToken = firstString(body.voice_token);
       const attemptedRoomIds = new Set<string>();
       const joinRoom = async (roomId: string) => {
         attemptedRoomIds.add(roomId);
@@ -2368,9 +2366,7 @@ export default async function handler(
             body: {
               player_id: playerId,
               display_name: displayName,
-              metadata: { transport: "webrtc" },
               ttl_minutes: 5,
-              ...(resumeVoiceToken ? { voice_token: resumeVoiceToken } : {}),
             },
           }
         );
@@ -2385,20 +2381,25 @@ export default async function handler(
       for (const roomId of directRoomIds) {
         const joinResponse = await joinRoom(roomId);
         if (joinResponse.ok) {
-          const joined = normalizeHarthmereVoiceTokenResponse(
-            joinResponse.json
-          );
-          if (!joined) {
+          const joined = classifyHarthmereVoiceTokenResponse(joinResponse.json);
+          if (joined.kind === "inactive") {
+            if (voiceRoomByTitle.get(titleId) === roomId) {
+              voiceRoomByTitle.delete(titleId);
+            }
+            continue;
+          }
+          if (joined.kind === "invalid") {
             return res
               .status(502)
               .json({ ok: false, error: "INVALID_VOICE_JOIN_RESPONSE" });
           }
           voiceRoomByTitle.set(titleId, roomId);
-          return res.status(200).json({ ok: true, ...joined });
+          return res.status(200).json({ ok: true, ...joined.response });
         }
-        if (![404, 409, 410, 422].includes(joinResponse.status)) {
+        const joinStatus = joinResponse.status ?? 500;
+        if (![404, 409, 410, 422].includes(joinStatus)) {
           return res
-            .status(joinResponse.status || 500)
+            .status(joinStatus)
             .json(joinResponse.json ?? joinResponse);
         }
         if (voiceRoomByTitle.get(titleId) === roomId) {
@@ -2406,9 +2407,7 @@ export default async function handler(
         }
       }
       const query = new URLSearchParams({
-        provider: "glitch_relay",
         topology: "proximity",
-        state: "active",
         limit: "100",
       });
       const listResponse = await callGlitchApi(
@@ -2444,14 +2443,17 @@ export default async function handler(
             .status(joinResponse.status || 500)
             .json(joinResponse.json ?? joinResponse);
         }
-        const joined = normalizeHarthmereVoiceTokenResponse(joinResponse.json);
-        if (!joined) {
+        const joined = classifyHarthmereVoiceTokenResponse(joinResponse.json);
+        if (joined.kind === "inactive") {
+          continue;
+        }
+        if (joined.kind === "invalid") {
           return res
             .status(502)
             .json({ ok: false, error: "INVALID_VOICE_JOIN_RESPONSE" });
         }
         voiceRoomByTitle.set(titleId, room.id);
-        return res.status(200).json({ ok: true, ...joined });
+        return res.status(200).json({ ok: true, ...joined.response });
       }
 
       const createResponse = await callGlitchApi(
@@ -2459,17 +2461,7 @@ export default async function handler(
         {
           label: "createVoiceRoom",
           method: "POST",
-          body: makeHarthmereVoiceRoomCreateBody({
-            playerId,
-            displayName,
-            ...(envString("GLITCH_VOICE_ICE_SERVERS_JSON")
-              ? {
-                  iceServers: parseHarthmereVoiceIceServers(
-                    envString("GLITCH_VOICE_ICE_SERVERS_JSON")
-                  ),
-                }
-              : {}),
-          }),
+          body: makeHarthmereVoiceRoomCreateBody({ playerId }),
         }
       );
       if (!createResponse.ok) {
@@ -2477,14 +2469,14 @@ export default async function handler(
           .status(createResponse.status || 500)
           .json(createResponse.json ?? createResponse);
       }
-      const created = normalizeHarthmereVoiceTokenResponse(createResponse.json);
-      if (!created) {
+      const created = classifyHarthmereVoiceTokenResponse(createResponse.json);
+      if (created.kind !== "active") {
         return res
           .status(502)
           .json({ ok: false, error: "INVALID_VOICE_CREATE_RESPONSE" });
       }
-      voiceRoomByTitle.set(titleId, created.voice_room.id);
-      return res.status(200).json({ ok: true, ...created });
+      voiceRoomByTitle.set(titleId, created.response.voice_room.id);
+      return res.status(200).json({ ok: true, ...created.response });
     }
 
     if (op === "voiceHeartbeat") {
@@ -2513,15 +2505,13 @@ export default async function handler(
       await authenticatedPlayerVoiceIdentity(req);
       const packetType = firstString(body.packet_type) ?? "control";
       const payload = typeof body.payload === "string" ? body.payload : "";
-      const recipientPlayerId = firstString(body.recipient_player_id);
       const payloadLimit = ["audio", "offer", "answer"].includes(packetType)
         ? 16 * 1024
         : 4 * 1024;
       if (
         !GLITCH_VOICE_PACKET_TYPES.has(packetType) ||
         payload.length === 0 ||
-        Buffer.byteLength(payload, "utf8") > payloadLimit ||
-        (["offer", "answer", "ice"].includes(packetType) && !recipientPlayerId)
+        Buffer.byteLength(payload, "utf8") > payloadLimit
       ) {
         throw new Error("INVALID_VOICE_PACKET");
       }
@@ -2533,9 +2523,6 @@ export default async function handler(
           voice_token: voiceTokenFromBody(body),
           packet_type: packetType,
           payload,
-          ...(recipientPlayerId
-            ? { recipient_player_id: recipientPlayerId }
-            : {}),
           ...(Number.isFinite(Number(body.duration_ms))
             ? { duration_ms: Math.max(0, Math.floor(Number(body.duration_ms))) }
             : {}),

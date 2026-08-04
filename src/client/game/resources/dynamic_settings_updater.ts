@@ -1,11 +1,13 @@
 import type { ReadonlyPerformanceProfiler } from "@/client/game/renderers/performance_profiler";
 import type { ComputedGraphicsSettings } from "@/client/game/resources/graphics_settings";
+import type { MobileGraphicsClamps } from "@/client/game/util/mobile_device_profile";
+import { clampToRange } from "@/client/game/util/mobile_device_profile";
 import type { ClientResources } from "@/client/game/resources/types";
 import { createCounter } from "@/shared/metrics/metrics";
 import { fail, ok } from "assert";
 import { compact, isEqual, mapValues } from "lodash";
 
-interface PerformanceTargets {
+export interface PerformanceTargets {
   cpuBudgetMs: number;
   gpuBudgetMs: number;
   renderScale: number;
@@ -116,7 +118,7 @@ const reductionsCounter = createCounter({
   labelNames: ["type"],
 });
 
-interface PerformanceStats {
+export interface PerformanceStats {
   renderIntervalMs: number;
   cpuTimeMs: number;
   gpuTimeMs: number | undefined;
@@ -172,7 +174,18 @@ export class DynamicSettingsUpdater {
   private lastDynamicPerformanceUpdate: number = 0;
   private nextPerformanceCheckAtMs: number = 0;
 
-  constructor(private readonly profiler: ReadonlyPerformanceProfiler) {}
+  constructor(
+    private readonly profiler: ReadonlyPerformanceProfiler,
+    // HARTHMERE_MOBILE_DYNAMIC_LADDER (2026-08-04 mobile audit, item 3).
+    //
+    // Undefined on desktop. When present, every value this updater proposes is
+    // clamped into the phone's profile range *here*, not only where the
+    // resource is finally read. If the clamp lived only at the read site the
+    // ladder would keep proposing values that were silently discarded, the
+    // increase/reduction counters would log churn that never took effect, and
+    // `minChangeIntervalMs` pacing would be spent on no-ops.
+    private readonly mobileClamps?: MobileGraphicsClamps
+  ) {}
 
   updateDynamicSettings(
     resources: ClientResources,
@@ -342,7 +355,17 @@ export class DynamicSettingsUpdater {
       return undefined;
     })();
 
-    if (change !== undefined && !isEqual(current, change.newValue)) {
+    if (change === undefined) {
+      return;
+    }
+
+    // HARTHMERE_MOBILE_DYNAMIC_LADDER: fold the phone profile range into the
+    // proposal before comparing against the current value, so a proposal that
+    // clamps straight back onto `current` is dropped as a no-op instead of
+    // burning a pacing interval.
+    const proposedValue = this.clampProposedValue(name, change.newValue);
+
+    if (!isEqual(current, proposedValue)) {
       return {
         name,
         qualityChange: change.qualityChange,
@@ -353,11 +376,40 @@ export class DynamicSettingsUpdater {
           ).inc({
             type: name,
           });
-          check.updateValue(resources, change.newValue);
+          check.updateValue(resources, proposedValue);
         },
         minChangeIntervalMs: check.minChangeIntervalMs,
       };
     }
+  }
+
+  /**
+   * Apply the mobile profile range to a proposed setting value.
+   *
+   * Returns the value untouched on desktop (no clamps) and for any setting
+   * without a mobile range. Kept `private` but exercised through
+   * `updateDynamicSettings` in `dynamic_settings_updater.test.ts`.
+   */
+  private clampProposedValue<T>(name: string, value: T): T {
+    const clamps = this.mobileClamps;
+    if (!clamps || typeof value !== "number") {
+      return value;
+    }
+    if (name === "renderScale") {
+      return clampToRange(
+        value,
+        clamps.minRenderScale,
+        clamps.maxRenderScale
+      ) as unknown as T;
+    }
+    if (name === "drawDistance") {
+      return clampToRange(
+        value,
+        clamps.minDrawDistance,
+        clamps.maxDrawDistance
+      ) as unknown as T;
+    }
+    return value;
   }
 
   private chooseQualityIncrease(
@@ -416,10 +468,35 @@ function gpuBudgetPct(
     : undefined;
 }
 
-function bottleneck(stats: PerformanceStats, perfTargets: PerformanceTargets) {
+// HARTHMERE_DYNAMIC_RENDER_SCALE_WITHOUT_GPU_TIMER (2026-08-03 render perf
+// audit, finding 13).
+//
+// Share of the frame that must be unaccounted for by our own CPU work before we
+// are willing to call an unmeasurable frame GPU-bound. If we spend 6 ms of CPU
+// on a 70 ms frame, the other 64 ms went to the GPU, to compositing, or to
+// presentation -- none of which get cheaper by drawing fewer entities, and all
+// of which get cheaper by rendering fewer pixels.
+const UNMEASURED_GPU_BOUND_CPU_SHARE = 0.5;
+
+export function bottleneck(
+  stats: PerformanceStats,
+  perfTargets: PerformanceTargets
+) {
   const gpuPct = gpuBudgetPct(stats, perfTargets);
   if (gpuPct === undefined) {
-    return "cpu";
+    // No EXT_disjoint_timer_query_webgl2. Rather than declaring every such
+    // client CPU-bound -- which permanently disabled render-scale reduction and
+    // left struggling clients with no way to recover -- infer from the two
+    // signals that are always available: how long the frame actually took, and
+    // how much of that we can attribute to our own CPU work.
+    const frameOverBudget = stats.renderIntervalMs > perfTargets.cpuBudgetMs;
+    const cpuShareOfFrame =
+      stats.renderIntervalMs > 0
+        ? stats.cpuTimeMs / stats.renderIntervalMs
+        : 1;
+    return frameOverBudget && cpuShareOfFrame < UNMEASURED_GPU_BOUND_CPU_SHARE
+      ? "gpu"
+      : "cpu";
   }
   const cpuPct = cpuBudgetPct(stats, perfTargets);
 

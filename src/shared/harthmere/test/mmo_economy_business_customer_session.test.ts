@@ -905,6 +905,115 @@ describe("mmo economy business customer sessions", function () {
     assert.equal(sessions(openOtherActor.economy)[0].actorId, "not_owner");
   });
 
+  it("keeps an occupied physical counter single-shift and rejects cross-player session control", () => {
+    const setup = createOpenBusiness("repair_maintenance_person");
+    const first = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 1,
+      sessionId: "actor_a_shift",
+    });
+    assert.deepEqual(first.warnings, []);
+    const second = reduceHarthmereEconomyMutation(
+      first.economy,
+      {
+        requestId: "actor_b_start",
+        actorId: "actor_b",
+        nowMs: NOW_MS,
+        operation: "start_business_customer_session",
+        businessId: setup.businessId,
+        count: 1,
+        sessionId: "actor_b_shift",
+      } as HarthmereEconomyMutationRequest,
+      ctx()
+    );
+    assert.ok(
+      second.warnings.includes(
+        "economy_rejected:business_customer_session_already_active"
+      )
+    );
+    assert.equal(
+      sessions(second.economy).filter((session) => session.status === "active")
+        .length,
+      1
+    );
+
+    const actorASession = sessions(second.economy).find(
+      (session) => session.sessionId === "actor_a_shift"
+    )!;
+    for (const operation of [
+      "serve_business_customer",
+      "tick_business_customer_session",
+      "end_business_customer_session",
+    ]) {
+      const rejected = reduceHarthmereEconomyMutation(
+        second.economy,
+        {
+          requestId: `actor_b_cross_control_${operation}`,
+          actorId: "actor_b",
+          nowMs: NOW_MS,
+          operation,
+          businessId: setup.businessId,
+          sessionId: actorASession.sessionId,
+          ticketId: actorASession.currentTicketId,
+        } as HarthmereEconomyMutationRequest,
+        ctx()
+      );
+      assert.ok(
+        rejected.warnings.includes(
+          "economy_rejected:business_customer_session_not_owned"
+        ),
+        `${operation} accepted another player's session`
+      );
+      assert.equal(
+        sessions(rejected.economy).find(
+          (session) => session.sessionId === actorASession.sessionId
+        )?.status,
+        "active"
+      );
+    }
+  });
+
+  it("expires a stale foreign shift before another player starts", () => {
+    const setup = createOpenBusiness("repair_maintenance_person");
+    const first = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 1,
+      sessionId: "stale_foreign_shift",
+    });
+    assert.deepEqual(first.warnings, []);
+    const stale = sessions(first.economy).find(
+      (session) => session.sessionId === "stale_foreign_shift"
+    )!;
+    stale.expiresAtMs = NOW_MS + 1;
+
+    const second = reduceHarthmereEconomyMutation(
+      first.economy,
+      {
+        requestId: "new_actor_after_foreign_expiry",
+        actorId: "actor_b",
+        nowMs: NOW_MS + 2,
+        operation: "start_business_customer_session",
+        businessId: setup.businessId,
+        count: 1,
+        sessionId: "actor_b_replacement_shift",
+      } as HarthmereEconomyMutationRequest,
+      ctx()
+    );
+    assert.deepEqual(second.warnings, []);
+    assert.equal(
+      sessions(second.economy).find(
+        (session) => session.sessionId === "stale_foreign_shift"
+      )?.status,
+      "expired"
+    );
+    assert.equal(
+      sessions(second.economy).find(
+        (session) => session.sessionId === "actor_b_replacement_shift"
+      )?.status,
+      "active"
+    );
+  });
+
   // HARTHMERE_BUSINESS_CLIENT_SESSION_EXPIRY_GUARD regression:
   // A customer session that has passed its expiresAtMs must not keep serving.
   // The first serve after expiry flips it to "expired" and rejects, and

@@ -58,10 +58,7 @@ export const HARTHMERE_REQUEST_BOARDS_VERSION =
 // ---------------------------------------------------------------------------
 
 export type HarthmereBoardCategory =
-  | "fishing"
-  | "farming"
-  | "industrial"
-  | "research";
+  "fishing" | "farming" | "industrial" | "research";
 
 /** What a board pays in. */
 export const HARTHMERE_BOARD_CURRENCY_IDS = Object.freeze({
@@ -76,6 +73,12 @@ export interface HarthmereRequestBoard {
   readonly category: HarthmereBoardCategory;
   /** Where the snapshot placed it. All four are currently `iced`. */
   readonly snapshotPosition: readonly [number, number, number];
+  /**
+   * Player-facing physical anchor when a restored snapshot location is no
+   * longer suitable. The native ECS identity and quest authority stay the
+   * same; renderer, prompt, map record, and reconciliation all use this point.
+   */
+  readonly physicalPosition?: readonly [number, number, number];
   /** The "Find the ... Board" quest that unlocks its requests. */
   readonly introQuestId: BiomesId;
   readonly payoutItemId: BiomesId;
@@ -87,6 +90,14 @@ export const HARTHMERE_COLLECTIVE_RESEARCH_BOARD_ID =
   185367347539230 as BiomesId;
 export const HARTHMERE_FARMING_BOUNTIES_BOARD_ID = 771100601807407 as BiomesId;
 export const HARTHMERE_INDUSTRIAL_JOB_BOARD_ID = 4532886290096508 as BiomesId;
+
+// The restored Collective board stood across the Grove's main pedestrian
+// arch, towering over the fountain approach. Move it to the west/rear edge of
+// the courtyard so it reads as a destination without blocking the central
+// route or clustering with the tutorial cast.
+export const HARTHMERE_COLLECTIVE_RESEARCH_BOARD_PHYSICAL_POSITION = [
+  478, 70, -148,
+] as const;
 
 export const HARTHMERE_REQUEST_BOARDS: readonly HarthmereRequestBoard[] = [
   {
@@ -105,6 +116,7 @@ export const HARTHMERE_REQUEST_BOARDS: readonly HarthmereRequestBoard[] = [
     label: "Collective Research Board",
     category: "research",
     snapshotPosition: [508.769, 72, -124.44],
+    physicalPosition: HARTHMERE_COLLECTIVE_RESEARCH_BOARD_PHYSICAL_POSITION,
     introQuestId: 1433323728101822 as BiomesId, // Spring Research
     payoutItemId: HARTHMERE_BOARD_CURRENCY_IDS.COLLECTIVE_TOKEN,
     blurb:
@@ -131,6 +143,12 @@ export const HARTHMERE_REQUEST_BOARDS: readonly HarthmereRequestBoard[] = [
     blurb: "Builders and smiths post here for stone, brick and bar.",
   },
 ] as const;
+
+export function harthmereRequestBoardPhysicalPosition(
+  board: HarthmereRequestBoard
+) {
+  return board.physicalPosition ?? board.snapshotPosition;
+}
 
 /**
  * Every board is `iced` in the restored world. Restoring them is what makes
@@ -789,9 +807,7 @@ export const HARTHMERE_BOARD_STANDING_PER_BOUNTY = 1;
 export function harthmereBoardStanding(
   completedQuestIds: Iterable<unknown>
 ): number {
-  const completed = new Set(
-    [...completedQuestIds].map((id) => Number(id))
-  );
+  const completed = new Set([...completedQuestIds].map((id) => Number(id)));
   let standing = 0;
   for (const request of HARTHMERE_BOARD_REQUESTS) {
     if (!completed.has(Number(request.questId))) continue;

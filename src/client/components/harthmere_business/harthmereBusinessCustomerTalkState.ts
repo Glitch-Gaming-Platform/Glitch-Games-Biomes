@@ -43,7 +43,13 @@ export interface HarthmereBusinessCustomerTalkTarget {
  * line and queue position. So the registry holds one entry per live ticket and
  * the dialog decides what to show based on the customer's own phase.
  */
-const targets = new Map<BiomesId, HarthmereBusinessCustomerTalkTarget>();
+// More than one business surface can be mounted by the production HUD. Keep
+// registrations scoped to the component that published them so an inactive or
+// closing surface cannot clear the active shift's customer dialogue.
+const targetsByOwner = new Map<
+  string,
+  Map<BiomesId, HarthmereBusinessCustomerTalkTarget>
+>();
 let revision = 0;
 const listeners = new Set<() => void>();
 
@@ -53,9 +59,12 @@ function notify() {
 }
 
 export function publishHarthmereBusinessCustomerTalkTarget(
+  ownerId: string,
   target: HarthmereBusinessCustomerTalkTarget
 ) {
-  targets.set(target.entityId, target);
+  const ownedTargets = targetsByOwner.get(ownerId) ?? new Map();
+  ownedTargets.set(target.entityId, target);
+  targetsByOwner.set(ownerId, ownedTargets);
   notify();
 }
 
@@ -68,33 +77,70 @@ export function publishHarthmereBusinessCustomerTalkTarget(
  * out. Setting the full queue at once makes removal automatic.
  */
 export function publishHarthmereBusinessCustomerTalkTargets(
+  ownerId: string,
   nextTargets: readonly HarthmereBusinessCustomerTalkTarget[]
 ) {
-  targets.clear();
-  for (const target of nextTargets) targets.set(target.entityId, target);
+  const previousTargets = targetsByOwner.get(ownerId);
+  const ownedTargets = new Map<
+    BiomesId,
+    HarthmereBusinessCustomerTalkTarget
+  >();
+  for (const target of nextTargets) {
+    const previous = previousTargets?.get(target.entityId);
+    const preserveNativeServingState =
+      previous?.sessionId === target.sessionId &&
+      previous.ticketId === target.ticketId &&
+      previous.ready &&
+      previous.phase === "serving";
+    ownedTargets.set(
+      target.entityId,
+      preserveNativeServingState
+        ? { ...target, phase: previous.phase, ready: true }
+        : target
+    );
+  }
+  if (ownedTargets.size > 0) {
+    targetsByOwner.set(ownerId, ownedTargets);
+  } else {
+    targetsByOwner.delete(ownerId);
+  }
   notify();
 }
 
-export function clearHarthmereBusinessCustomerTalkTarget(entityId?: BiomesId) {
+export function clearHarthmereBusinessCustomerTalkTarget(
+  ownerId: string,
+  entityId?: BiomesId
+) {
+  const ownedTargets = targetsByOwner.get(ownerId);
+  if (!ownedTargets) return;
   if (entityId === undefined) {
-    if (targets.size === 0) return;
-    targets.clear();
+    targetsByOwner.delete(ownerId);
     notify();
     return;
   }
-  if (!targets.delete(entityId)) return;
+  if (!ownedTargets.delete(entityId)) return;
+  if (ownedTargets.size === 0) targetsByOwner.delete(ownerId);
   notify();
 }
 
 export function harthmereBusinessCustomerTalkTargetForEntity(
   entityId: BiomesId
 ) {
-  return targets.get(entityId);
+  const owners = [...targetsByOwner.values()];
+  for (let index = owners.length - 1; index >= 0; index -= 1) {
+    const target = owners[index].get(entityId);
+    if (target) return target;
+  }
+  return undefined;
 }
 
 /** Diagnostics for the live-browser runner; never used for authority. */
 export function harthmereBusinessCustomerTalkTargetCount() {
-  return targets.size;
+  return new Set(
+    [...targetsByOwner.values()].flatMap((ownedTargets) => [
+      ...ownedTargets.keys(),
+    ])
+  ).size;
 }
 
 function subscribe(listener: () => void) {
@@ -112,7 +158,7 @@ export function useHarthmereBusinessCustomerTalkTarget(entityId: BiomesId) {
 }
 
 export function resetHarthmereBusinessCustomerTalkStateForTest() {
-  targets.clear();
+  targetsByOwner.clear();
   revision = 0;
   listeners.clear();
 }

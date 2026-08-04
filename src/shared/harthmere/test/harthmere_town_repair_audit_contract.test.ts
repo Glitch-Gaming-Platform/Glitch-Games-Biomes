@@ -23,7 +23,7 @@ describe("Harthmere town repair persisted-world audit", () => {
       "auditTownSurface",
       "auditBuildingRoofs",
       "HARTHMERE_RETIRED_GENERIC_TOWNSPERSON_IDS",
-      "HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS",
+      "persistentBusinessCustomersAreAllowed",
       "riverWaterLevel",
       "HARTHMERE_TOWN_REPAIR_READY",
     ]) {
@@ -43,21 +43,23 @@ describe("Harthmere town repair persisted-world audit", () => {
 
   it("can isolate the town gate from the separately-owned water gate", () => {
     assert.ok(source.includes("HARTHMERE_TOWN_REPAIR_SKIP_WATER"));
-    assert.ok(source.includes('riverWaterLevel = SKIP_WATER'));
+    assert.ok(source.includes("riverWaterLevel = SKIP_WATER"));
   });
 
   it("ships a versioned, overlay-preserving persisted-world writer", () => {
     for (const contract of [
-      "harthmere-town-production-repair-v1",
+      "harthmere-town-production-repair-v2",
       "loadCanonicalTerrainBuilder",
       "entity.setShardSeed",
       "HARTHMERE_RETIRED_GENERIC_TOWNSPERSON_IDS",
-      "HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS",
       "HARTHMERE_TOWN_TARGETED_REPAIR_READY",
+      "harthmereTownStreetRects",
+      "addCanonicalShardTarget",
     ]) {
       assert.ok(repairSource.includes(contract), `missing ${contract}`);
     }
     assert.ok(!repairSource.includes("setShardWater"));
     assert.ok(!repairSource.includes("mutableShardWater"));
+    assert.ok(!repairSource.includes("HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS"));
   });
 });

@@ -3,6 +3,7 @@ import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDi
 import { createHarthmereBusinessMiniGameDecisionForOffer } from "@/shared/harthmere/business_customer_simulator";
 import type { BiomesId } from "@/shared/ids";
 import * as React from "react";
+import { formatHarthmereBusinessPlayerWarning } from "./businessInterfaceLiveAdapter";
 import { useHarthmereBusinessCustomerTalkTarget } from "./harthmereBusinessCustomerTalkState";
 
 export function HarthmereBusinessCustomerTalkDialog({
@@ -34,7 +35,11 @@ export function HarthmereBusinessCustomerTalkDialog({
         );
         onClose();
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : String(cause));
+        setError(
+          formatHarthmereBusinessPlayerWarning(
+            cause instanceof Error ? cause.message : String(cause)
+          )
+        );
       } finally {
         setPendingOfferId(undefined);
       }
@@ -65,7 +70,7 @@ export function HarthmereBusinessCustomerTalkDialog({
     ? `${target.askLine}{break}${status}${
         error ? `{break}<text>${error}</text>` : ""
       }`
-    : `${status}{break}Stay behind the counter and let them reach the service point.`;
+    : `${target.askLine}{break}${status}{break}Stay behind the counter and let them reach the service point.`;
 
   return (
     <div

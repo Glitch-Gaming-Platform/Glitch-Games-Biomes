@@ -167,6 +167,56 @@ runtime clips like `talkGesture`/`workLoop` — validated at author time),
 (spatial with `atRole`), `music`, `shake`, `fov`, `fade`, `timeOfDay`, `custom`
 (named hook + optional payload), and `capture`.
 
+### How to fire a projectile in a cutscene
+
+Use the registered cinematic projectile hook. Do not create a second Three.js
+projectile, call the renderer directly, or publish a damage event. The hook
+dispatches the normal Harthmere projectile presentation event, so cutscenes use
+the same authored GLB, trail, flight timing, fallback reporting, impact effect,
+and low-FPS lifetime rules as gameplay.
+
+```ts
+import {
+  HARTHMERE_CUTSCENE_PROJECTILE_HOOK,
+  type HarthmereCutsceneProjectilePayload,
+} from "@/shared/cutscene/hex_fireball_dodge_showcase";
+
+const fireball = {
+  kind: "custom" as const,
+  at: 1.2,
+  hook: HARTHMERE_CUTSCENE_PROJECTILE_HOOK,
+  payload: {
+    projectileId: "fireball",
+    origin: [497.65, 55.45, -140],
+    target: [503, 53, -140],
+    result: "dodge",
+    windupSecs: 0.48,
+    visualScale: 2.25,
+  } satisfies HarthmereCutsceneProjectilePayload,
+};
+```
+
+Add that action to the shot's `actions` array. `origin` and `target` are world
+positions; calculate them from the staged cast/anchors when possible instead of
+copying coordinates from an unrelated scene. `projectileId` must exist in
+`src/shared/harthmere/projectile_visual_manifest.ts`. `visualScale` is only for
+cinematic readability and should stay bounded; it does not change collision or
+damage. `result` controls impact presentation, not gameplay authority.
+
+The canonical working example is
+`src/shared/cutscene/hex_fireball_dodge_showcase.ts`; the hook is registered in
+`src/client/game/cutscene/harthmere_library.ts`. Preview it through the actual
+game renderer:
+
+```text
+?cutscenePreview=harthmere-hex-fireball-dodge-showcase&previewRun=1
+?cutsceneVideo=harthmere-hex-fireball-dodge-showcase&videoFps=30&videoRun=1
+```
+
+Acceptance requires the projectile prototype to be loaded, `Failed 0`, no
+fallback, one new spawn, `Active: fireball` during travel, and one matching
+impact. A custom action firing successfully is not by itself visual proof.
+
 ### First-class expressions and multi-actor emotion
 
 Harthmere's body-language library is part of the normal `emote` action, not a

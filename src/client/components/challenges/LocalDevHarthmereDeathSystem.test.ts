@@ -163,6 +163,16 @@ describe("Harthmere live death sync", () => {
     assert.equal(
       harthmereLocalDeathFallbackAllowedForTest({
         serverAuthoritative: false,
+        nativeAuthoritative: true,
+        nowMs: 20_000,
+        graceUntilMs: 10_000,
+      }),
+      false,
+      "native ECS authority must never fall back to the local death clock"
+    );
+    assert.equal(
+      harthmereLocalDeathFallbackAllowedForTest({
+        serverAuthoritative: false,
         nowMs: 10_000,
         graceUntilMs: 10_000,
       }),

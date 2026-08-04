@@ -8,6 +8,7 @@ import {
   triggerPlayerShardsMesh,
 } from "@/client/game/helpers/player_shards";
 import { initializeClient } from "@/client/game/init";
+import { hasLocalDevStarterTerrain } from "@/client/game/local_dev_starter_terrain";
 import { progressSummary } from "@/client/game/load_progress_summary";
 import { terrainReadyForStartup } from "@/client/game/mobile_startup_terrain";
 import { BackgroundTaskController } from "@/shared/abort";
@@ -30,29 +31,6 @@ export type LoadProgress = {
   terrainMeshLoaded: boolean;
   sceneRendered: number;
 };
-
-const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
-const LOCAL_DEV_TERRAIN_SHARD_COUNT = 98;
-
-function hasLocalDevStarterTerrain(context: ClientContext) {
-  if (process.env.NODE_ENV === "production") {
-    return false;
-  }
-
-  // The local snapshot-recovery patches seed the starter town with a fixed
-  // synthetic ID range. Once those entities are present, do not keep the
-  // loading screen blocked on the normal production terrain-meshing readiness
-  // check. The original game expects a full production terrain snapshot; this
-  // local-dev retrofit uses a tiny generated town, and the normal
-  // allPlayerShardsMeshed() check can remain false even after the world has
-  // enough terrain entities to render and play.
-  for (let i = 0; i < LOCAL_DEV_TERRAIN_SHARD_COUNT; i += 1) {
-    if (context.table.has((LOCAL_DEV_TERRAIN_ID_BASE + i) as BiomesId)) {
-      return true;
-    }
-  }
-  return false;
-}
 
 function isSparseGlitchRuntimeSnapshot(context: ClientContext) {
   return (
@@ -213,7 +191,10 @@ export function extractLoadProgress(
           context.table.recordSize <= 50;
         const sparseGlitchRuntimeSnapshot =
           isSparseGlitchRuntimeSnapshot(context);
-        const localDevStarterTerrainLoaded = hasLocalDevStarterTerrain(context);
+        const localDevStarterTerrainLoaded = hasLocalDevStarterTerrain({
+          table: context.table,
+          playerPosition: localPlayer.player.position,
+        });
         const shardMeshScope = playerShardMeshLoadScope(
           context.clientConfig.lowMemory
         );

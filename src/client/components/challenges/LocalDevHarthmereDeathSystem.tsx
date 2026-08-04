@@ -41,7 +41,7 @@ import { harthmereLiveServerAuthoritative } from "@/client/components/challenges
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { fireAndForget } from "@/shared/util/async";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
-import { readHarthmereNativeVitals } from "@/shared/harthmere/harthmere_native_vitals";
+import { useHarthmereNativeVitalsProjection } from "@/client/components/challenges/useHarthmereNativeVitalsProjection";
 import React, { useEffect, useMemo, useState } from "react";
 
 export {
@@ -393,10 +393,15 @@ export function harthmereActiveRespawnProtectionSuppressesDeathSyncForTest(input
 
 export function harthmereLocalDeathFallbackAllowedForTest(input: {
   serverAuthoritative: boolean;
+  nativeAuthoritative?: boolean;
   nowMs: number;
   graceUntilMs: number;
 }) {
-  return !input.serverAuthoritative && input.nowMs >= input.graceUntilMs;
+  return (
+    input.nativeAuthoritative !== true &&
+    !input.serverAuthoritative &&
+    input.nowMs >= input.graceUntilMs
+  );
 }
 
 export function harthmereDeathScreenShouldRenderForTest(input: {
@@ -912,7 +917,12 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
       "/ecs/c/trigger_state",
       userId
     );
-    const nativeVitals = readHarthmereNativeVitals(nativeTriggerState);
+    const nativeProjection = useHarthmereNativeVitalsProjection(
+      nativeTriggerState,
+      nativeHealth
+    );
+    const projectedNativeHealth = nativeProjection.health;
+    const nativeVitals = nativeProjection.vitals;
     const death = useHarthmereDeathState();
     const combat = useHarthmereCombatState();
     const liveStatus = useBiomesUIPlayerStatusState();
@@ -922,7 +932,6 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
       (status: BiomesUIPlayerStatusSnapshot | undefined) => {
         // Once native ECS authority is active, delayed Redis/player-status
         // snapshots must not resurrect or kill the player after Health changed.
-        if (nativeBiomesEcsAuthorityEnabled()) return;
         const latest = readHarthmereDeathState();
         const action = harthmereLivePlayerDeathSyncActionForTest({
           status,
@@ -961,12 +970,17 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
     );
 
     useEffect(() => {
-      if (!nativeBiomesEcsAuthorityEnabled() || !nativeHealth) return;
+      if (
+        !nativeBiomesEcsAuthorityEnabled() ||
+        !nativeProjection.hasAuthoritativeHealth ||
+        !projectedNativeHealth
+      )
+        return;
       const latest = readHarthmereDeathState();
       const action = harthmereNativeDeathSyncActionForTest({
-        hp: nativeHealth.hp,
-        maxHp: nativeHealth.maxHp,
-        damageSourceKind: nativeHealth.lastDamageSource?.kind,
+        hp: projectedNativeHealth.hp,
+        maxHp: projectedNativeHealth.maxHp,
+        damageSourceKind: nativeHealth?.lastDamageSource?.kind,
         stamina: nativeVitals.stamina,
         currentDeathState: latest.state,
         currentProtectionUntil: latest.protectionUntil,
@@ -992,9 +1006,10 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
         dispatchHarthmerePlayerDeathPose(true, action.state);
       }
     }, [
-      nativeHealth?.hp,
+      nativeProjection.hasAuthoritativeHealth,
+      projectedNativeHealth?.hp,
+      projectedNativeHealth?.maxHp,
       nativeHealth?.lastDamageSource?.kind,
-      nativeHealth?.maxHp,
       nativeVitals.stamina,
     ]);
 
@@ -1030,6 +1045,11 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
 
     useEffect(() => {
       const tick = () => {
+        // Native ECS remains the death authority even during a temporary world
+        // sync gap. Falling back to the legacy local HP/death clock here caused
+        // the live audit's repeated die/revive loop while the authenticated
+        // native heartbeat still reported a healthy player.
+        if (nativeBiomesEcsAuthorityEnabled()) return;
         const latest = readHarthmereDeathState();
         const now = Date.now();
         const combatDead =
@@ -1045,6 +1065,7 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
           combatDead &&
           harthmereLocalDeathFallbackAllowedForTest({
             serverAuthoritative: harthmereLiveServerAuthoritative(now),
+            nativeAuthoritative: nativeBiomesEcsAuthorityEnabled(),
             nowMs: now,
             graceUntilMs: localDeathFallbackGraceUntil.current,
           }) &&

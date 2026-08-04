@@ -65,11 +65,21 @@ for (const required of [
   "__harthmereBusinessBoardDebug",
   "/api/harthmere/live_mode_economy_state",
   "activeSessionForBusiness",
+  "snapshot must never expose another player's customer shift",
+  "No stale or foreign customer card may remain",
   "__harthmereLivePlayerDebug",
   "Enter Game safety modal must close before business input",
+  "waitForActorReady",
+  "do not wait for browser bridges after an SSR failure",
+  "player placement did not remain alive and stable",
   "In-World Shift",
   "Detached customer card arena must remain retired",
-  "Start shift at counter",
+  "Start customer shift",
+  "player_closed_board",
+  "Business interface must expose one player-readable close control",
+  "assertPlayerReadableBusinessUi",
+  "exposed a backend code to the player",
+  'data-harthmere-business-prompt="true"',
   "shift-started-behind-counter",
   "data-harthmere-business-customer-talk",
   "Active customer must not show ordinary Chit Chat",
@@ -82,7 +92,12 @@ for (const required of [
   "Customer must be safely outside the building before despawn",
   "queue advance",
   "End shift",
+  "endedByLeavingBusiness",
+  "stationaryPatronCount",
+  "ran across the shop before the shift started",
+  "authoritative shift end after leaving the business",
   "cleanupActorBusinessSessions",
+  "browserRecovered",
   "String(session.actorId) === String(actorId)",
   "economy_rejected:",
   "Cannot clean unknown business session",
@@ -94,7 +109,7 @@ for (const required of [
 for (const forbidden of [
   "docker build",
   "next build",
-  "localStorage.setItem(\"harthmere.business",
+  'localStorage.setItem("harthmere.business',
   "spawning a customer at the counter",
 ]) {
   assert(!runner.includes(forbidden), `browser runner contains ${forbidden}`);
@@ -103,10 +118,14 @@ for (const forbidden of [
 assert(sessionEcs.includes("npcEntity("));
 assert(sessionEcs.includes("npc_state"));
 assert(sessionEcs.includes("buildHarthmereBusinessCustomerSessionNpcChanges"));
-assert(animaBehavior.includes("AStarPathfinder"));
-assert(animaBehavior.includes("GraphImpl"));
+assert(animaBehavior.includes("Drive that authored route directly in"));
+assert(animaBehavior.includes("kinematic: true"));
+assert(animaBehavior.includes("npc.setPosition(nextPosition)"));
+assert(!animaBehavior.includes("AStarPathfinder"));
+assert(!animaBehavior.includes("GraphImpl"));
 assert(animaBehavior.includes('return "despawn_ready"'));
 assert(logic.includes('return "businessCustomer"'));
+assert(logic.includes("businessCustomerKinematic"));
 
 console.log(
   "PASS business live-browser contract (19 rows, native ECS + Anima movement, one warm serial browser)"

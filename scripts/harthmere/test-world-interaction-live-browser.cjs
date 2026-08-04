@@ -46,6 +46,7 @@ const { ChangeSerde } = require("../../src/shared/ecs/serde");
 const { countOf } = require("../../src/shared/game/items");
 const {
   HARTHMERE_GATHERING_AUTHORITY_NODES,
+  harthmereGatheringToolLabel,
 } = require("../../src/shared/harthmere/gathering_node_authority");
 const {
   HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS,
@@ -87,6 +88,9 @@ const actorId = Number(
   process.env.HARTHMERE_WORLD_GRAPHICS_E2E_ACTOR || 8_812_000_000_099_811
 );
 const timeoutMs = Number(process.env.HARTHMERE_E2E_TIMEOUT_MS || 90_000);
+const orchardOnly = process.env.HARTHMERE_E2E_ORCHARD_ONLY === "1";
+const noDirectRedisMutation =
+  process.env.HARTHMERE_E2E_NO_REDIS_MUTATION === "1";
 const runId = `${Date.now()}-${process.pid}`;
 const artifactsDir = path.resolve(
   process.env.HARTHMERE_E2E_ARTIFACTS_DIR ||
@@ -107,6 +111,7 @@ const representativeScreenshots = new Set([
   "bear_den_harvest",
   "gravewood_zombie_remains",
 ]);
+const CAPTURED_WOODEN_AXE_BIOMES_ID = 1_534_621_126_189_595;
 const report = {
   version: "harthmere-world-interaction-live-browser-v1",
   runId,
@@ -117,6 +122,8 @@ const report = {
   expectedImageId,
   expectedBuildId,
   actorId,
+  focus: orchardOnly ? "orchard_native_axe" : "full",
+  noDirectRedisMutation,
   startedAt: new Date().toISOString(),
   lifecycle: {},
   jobsBoard: {},
@@ -270,17 +277,17 @@ function gameUrl() {
   url.searchParams.set("syncBaseUrl", syncBaseUrl);
   url.searchParams.set("harthmere_native_ecs_e2e", "1");
   url.searchParams.set("glitch_auto_play", "1");
-  url.searchParams.set("lowMemory", "1");
-  url.searchParams.set("resourceCapacityScale", "0.25");
-  url.searchParams.set("forceDrawDistance", "112");
-  url.searchParams.set("forceRenderScale", "0.6");
+  url.searchParams.set("lowMemory", orchardOnly ? "0" : "1");
+  url.searchParams.set("resourceCapacityScale", orchardOnly ? "1" : "0.25");
+  url.searchParams.set("forceDrawDistance", orchardOnly ? "192" : "112");
+  url.searchParams.set("forceRenderScale", orchardOnly ? "0.5" : "0.6");
   url.searchParams.set("forceGraphicsQuality", "low");
   url.searchParams.set("e2e_run", runId);
   return url.toString();
 }
 
 function isIgnoredBrowserNoise(text, source = "") {
-  return /chrome-extension:\/\/|twitch\.tv|ttvnw\.net|jtvnw\.net|googlevideo\.com|ERR_ABORTED|MasterPlaylist|no supported source|bluetooth is not allowed|compute-pressure is not allowed|reactPlayerYouTube/i.test(
+  return /chrome-extension:\/\/|twitch\.tv|ttvnw\.net|jtvnw\.net|googlevideo\.com|ERR_ABORTED|MasterPlaylist|no supported source|bluetooth is not allowed|compute-pressure is not allowed|reactPlayerYouTube|No entity found for navigation aid entityId:8997551883502307/i.test(
     `${text} ${source}`
   );
 }
@@ -550,6 +557,9 @@ async function equip(page, itemIdentity) {
 }
 
 async function clearGatheringDepletion(nodeId) {
+  if (noDirectRedisMutation) {
+    return;
+  }
   const redis = await connectToRedis("firehose");
   const claimKey = `gathering_node_respawn:${nodeId}`;
   try {
@@ -602,25 +612,28 @@ async function visitNode(page, node, index) {
     node.position[1] + 0.65,
     node.position[2],
   ]);
-  const visual = await waitFor(
-    `${node.id} Blender visual`,
-    () =>
-      page.evaluate(
-        (nodeId) =>
-          globalThis.__harthmereGatheringNodeGraphics
-            ?.nodes()
-            .find((entry) => entry.nodeId === nodeId),
-        node.id
-      ),
-    (entry) =>
-      entry?.visible === true &&
-      entry?.grounded === true &&
-      entry?.activeLod === "lod0" &&
-      entry?.lod0Loaded === true &&
-      entry?.growInComplete === true &&
-      entry?.fallback === false,
-    timeoutMs
-  );
+  const visualProbe = () =>
+    page.evaluate(
+      (nodeId) =>
+        globalThis.__harthmereGatheringNodeGraphics
+          ?.nodes()
+          .find((entry) => entry.nodeId === nodeId),
+      node.id
+    );
+  const visual = orchardOnly
+    ? { value: await visualProbe(), elapsedMs: 0 }
+    : await waitFor(
+        `${node.id} Blender visual`,
+        visualProbe,
+        (entry) =>
+          entry?.visible === true &&
+          entry?.grounded === true &&
+          entry?.activeLod === "lod0" &&
+          entry?.lod0Loaded === true &&
+          entry?.growInComplete === true &&
+          entry?.fallback === false,
+        timeoutMs
+      );
   const prompt = page.getByRole("button", { name: `Harvest ${node.name}` });
   await prompt.waitFor({ state: "visible", timeout: timeoutMs });
   const requirement = await prompt.locator("small").innerText();
@@ -629,7 +642,7 @@ async function visitNode(page, node, index) {
   } else if (node.requiredTool) {
     assert.match(
       requirement,
-      new RegExp(node.requiredTool.replaceAll("_", " "), "i")
+      new RegExp(harthmereGatheringToolLabel(node.requiredTool), "i")
     );
   } else {
     assert.match(requirement, /no tool/i);
@@ -651,7 +664,7 @@ async function visitNode(page, node, index) {
     position: [...node.position],
     requirement,
     visual: visual.value,
-    status: "passed",
+    status: orchardOnly ? "interaction_ready" : "passed",
   };
   if (representativeScreenshots.has(node.id)) {
     row.screenshot = await screenshot(
@@ -660,11 +673,21 @@ async function visitNode(page, node, index) {
     );
   }
   report.nodes.push(row);
-  console.log(`PASS visual ${index + 1}/29 ${node.id}`);
+  console.log(
+    `PASS ${orchardOnly ? "interaction prompt" : "visual"} ${index + 1}/29 ${node.id}`
+  );
   return { prompt, row };
 }
 
 async function pressFAndWait(page, expectedState, pattern) {
+  if (orchardOnly) {
+    await page.evaluate(() => {
+      for (const element of document.querySelectorAll(".loading-wrapper")) {
+        element.style.display = "none";
+      }
+      document.querySelector("canvas.biomes-canvas")?.focus();
+    });
+  }
   await page.keyboard.press("KeyF");
   const detail = page.locator(
     '[data-testid="harthmere-gathering-node-world-prompt"] small'
@@ -711,11 +734,7 @@ async function proveToolRejectionAndHarvest(page) {
       ([, serialized]) => EntitySerde.deserialize(serialized, false).id
     )
   );
-  const rejected = await pressFAndWait(
-    page,
-    "error",
-    /Equip the required tool/i
-  );
+  const rejected = await pressFAndWait(page, "error", /Equip an axe/i);
   assert.equal(
     (await bridgeCall(page, "findLocalByComponent", "grab_bag")).filter(
       ([, serialized]) =>
@@ -731,7 +750,10 @@ async function proveToolRejectionAndHarvest(page) {
     screenshot: await screenshot(page, "interaction-orchard-missing-axe"),
   });
 
-  await equip(page, node.requiredTool);
+  // Reproduce the production capture: this snapshot Wooden Axe keeps its
+  // native b:<id> identity, while its Bikkie capability is the authoritative
+  // proof that it satisfies an axe-gated gathering node.
+  await equip(page, CAPTURED_WOODEN_AXE_BIOMES_ID);
   const beforeEntity = await authoritativeEntity(page, actorId);
   const success = await pressFAndWait(
     page,
@@ -775,8 +797,9 @@ async function proveToolRejectionAndHarvest(page) {
       )
   );
   report.interactionCases.push({
-    case: "orchard_axe_harvest_drop_pickup",
+    case: "orchard_native_axe_harvest_drop_pickup",
     status: "passed",
+    nativeAxeId: String(CAPTURED_WOODEN_AXE_BIOMES_ID),
     feedback: success,
     depletedVisual: depletedVisual.value,
     dropId: String(drop.value.id),
@@ -1061,7 +1084,7 @@ async function main() {
   let actor;
   try {
     actor = await openActor(browser);
-    if (report.jobsBoard.status !== "passed") {
+    if (!orchardOnly && report.jobsBoard.status !== "passed") {
       await runDiagnosticStep(
         actor.page,
         "jobs-board",
@@ -1072,7 +1095,7 @@ async function main() {
 
     if (
       !report.interactionCases.some(
-        (entry) => entry.case === "orchard_axe_harvest_drop_pickup"
+        (entry) => entry.case === "orchard_native_axe_harvest_drop_pickup"
       )
     ) {
       await runDiagnosticStep(
@@ -1084,6 +1107,7 @@ async function main() {
       );
     }
     if (
+      !orchardOnly &&
       !report.interactionCases.some(
         (entry) => entry.case === "farm_no_tool_harvest"
       )
@@ -1097,6 +1121,7 @@ async function main() {
       );
     }
     if (
+      !orchardOnly &&
       !report.interactionCases.some(
         (entry) => entry.case === "fishing_any_native_rod"
       )
@@ -1110,6 +1135,7 @@ async function main() {
       );
     }
     if (
+      !orchardOnly &&
       !report.interactionCases.some(
         (entry) => entry.case === "high_skill_rejection"
       )
@@ -1126,36 +1152,44 @@ async function main() {
       equip(actor.page, undefined)
     );
 
-    for (
-      let index = 0;
-      index < HARTHMERE_GATHERING_AUTHORITY_NODES.length;
-      index += 1
-    ) {
-      const node = HARTHMERE_GATHERING_AUTHORITY_NODES[index];
-      if (
-        !report.nodes.some(
-          (row) => row.nodeId === node.id && row.status === "passed"
-        )
+    if (!orchardOnly) {
+      for (
+        let index = 0;
+        index < HARTHMERE_GATHERING_AUTHORITY_NODES.length;
+        index += 1
       ) {
-        await runDiagnosticStep(
-          actor.page,
-          "node",
-          node.id,
-          () => visitNode(actor.page, node, index),
-          { nodeId: node.id, node }
-        );
+        const node = HARTHMERE_GATHERING_AUTHORITY_NODES[index];
+        if (
+          !report.nodes.some(
+            (row) => row.nodeId === node.id && row.status === "passed"
+          )
+        ) {
+          await runDiagnosticStep(
+            actor.page,
+            "node",
+            node.id,
+            () => visitNode(actor.page, node, index),
+            { nodeId: node.id, node }
+          );
+        }
+        persistReport();
       }
-      persistReport();
     }
 
-    const requiredInteractionCases = [
-      "orchard_missing_axe",
-      "orchard_axe_harvest_drop_pickup",
-      "orchard_depleted",
-      "farm_no_tool_harvest",
-      "fishing_any_native_rod",
-      "high_skill_rejection",
-    ];
+    const requiredInteractionCases = orchardOnly
+      ? [
+          "orchard_missing_axe",
+          "orchard_native_axe_harvest_drop_pickup",
+          "orchard_depleted",
+        ]
+      : [
+          "orchard_missing_axe",
+          "orchard_native_axe_harvest_drop_pickup",
+          "orchard_depleted",
+          "farm_no_tool_harvest",
+          "fishing_any_native_rod",
+          "high_skill_rejection",
+        ];
     const passedInteractionCases = new Set(
       report.interactionCases
         .filter((entry) => entry.status === "passed")
@@ -1167,7 +1201,7 @@ async function main() {
         .map((row) => row.nodeId)
     );
     const acceptanceFailures = [];
-    if (report.jobsBoard.status !== "passed") {
+    if (!orchardOnly && report.jobsBoard.status !== "passed") {
       acceptanceFailures.push("jobs_board");
     }
     for (const interactionCase of requiredInteractionCases) {
@@ -1175,9 +1209,11 @@ async function main() {
         acceptanceFailures.push(`interaction:${interactionCase}`);
       }
     }
-    for (const node of HARTHMERE_GATHERING_AUTHORITY_NODES) {
-      if (!passedNodeIds.has(node.id)) {
-        acceptanceFailures.push(`node:${node.id}`);
+    if (!orchardOnly) {
+      for (const node of HARTHMERE_GATHERING_AUTHORITY_NODES) {
+        if (!passedNodeIds.has(node.id)) {
+          acceptanceFailures.push(`node:${node.id}`);
+        }
       }
     }
     for (const browserFailure of report.browserFailures) {

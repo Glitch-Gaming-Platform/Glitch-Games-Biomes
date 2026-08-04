@@ -2,6 +2,7 @@ import { useHarthmereCombatState } from "@/client/components/challenges/LocalDev
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { useHarthmereMultiplayerCombatState } from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
 import { useHarthmereFoodStaminaState } from "@/client/components/challenges/LocalDevHarthmereFoodStaminaSystem";
+import { useHarthmereNativeVitalsProjection } from "@/client/components/challenges/useHarthmereNativeVitalsProjection";
 import {
   getHarthmereCombinedPublicTitle,
   useHarthmereReputationState,
@@ -17,7 +18,6 @@ import {
   harthmereNativeXpForNextLevel,
   readHarthmereNativeCombatProgression,
 } from "@/shared/harthmere/harthmere_native_combat";
-import { readHarthmereNativeVitals } from "@/shared/harthmere/harthmere_native_vitals";
 import { HARTHMERE_GOLD_ECS_CURRENCY_ID } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import React from "react";
 import {
@@ -267,6 +267,10 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
   const { clientConfig, reactResources, userId } = useClientContext();
   const nativeHealth = reactResources.use("/ecs/c/health", userId);
   const nativeTriggerState = reactResources.use("/ecs/c/trigger_state", userId);
+  const nativeProjection = useHarthmereNativeVitalsProjection(
+    nativeTriggerState,
+    nativeHealth
+  );
   const nativeInventory = reactResources.use("/ecs/c/inventory", userId);
   const combat = useHarthmereCombatState();
   const multiplayer = useHarthmereMultiplayerCombatState();
@@ -283,45 +287,6 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
       method: "POST",
       credentials: "same-origin",
     }).catch(() => undefined);
-  }, []);
-
-  React.useEffect(() => {
-    if (!nativeBiomesEcsAuthorityEnabled()) return;
-    let stopped = false;
-    let inFlight = false;
-    let activeController: AbortController | undefined;
-    const heartbeat = async () => {
-      if (stopped || inFlight) return;
-      inFlight = true;
-      activeController = new AbortController();
-      try {
-        await defaultHarthmereLiveFetch("/api/harthmere/native_vitals", {
-          method: "POST",
-          credentials: "same-origin",
-          signal: activeController.signal,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "heartbeat",
-          }),
-        });
-      } catch {
-        // ECS remains authoritative. The bounded next heartbeat safely resumes
-        // without stacking concurrent writes or applying a large catch-up tick.
-      } finally {
-        inFlight = false;
-        activeController = undefined;
-      }
-    };
-    void heartbeat();
-    // The server scheduler is the periodic ECS authority. This heartbeat only
-    // provides a bounded fallback/read response and must not contend with the
-    // scheduler on every single world tick.
-    const interval = window.setInterval(() => void heartbeat(), 15_000);
-    return () => {
-      stopped = true;
-      activeController?.abort();
-      window.clearInterval(interval);
-    };
   }, []);
 
   const player = combat.player;
@@ -345,22 +310,31 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
   // multi-second REST/Redis polling delay and restores the May 16 snapshot's
   // single health/death authority.
   const useNativeHealth =
-    nativeBiomesEcsAuthorityEnabled() && nativeHealth !== undefined;
-  const nativeVitals = readHarthmereNativeVitals(nativeTriggerState);
+    nativeBiomesEcsAuthorityEnabled() &&
+    nativeProjection.hasAuthoritativeHealth;
+  const projectedNativeHealth = nativeProjection.health;
+  const nativeVitals = nativeProjection.vitals;
   const useNativeVitals =
-    nativeBiomesEcsAuthorityEnabled() && nativeTriggerState !== undefined;
+    nativeBiomesEcsAuthorityEnabled() &&
+    nativeProjection.hasAuthoritativeVitals;
   const healthHp = Math.max(
     0,
-    Math.round(useNativeHealth ? nativeHealth.hp : display.hp)
+    Math.round(
+      useNativeHealth ? projectedNativeHealth?.hp ?? display.hp : display.hp
+    )
   );
   const healthMaxHp = Math.max(
     1,
-    Math.round(useNativeHealth ? nativeHealth.maxHp : display.maxHp)
+    Math.round(
+      useNativeHealth
+        ? projectedNativeHealth?.maxHp ?? display.maxHp
+        : display.maxHp
+    )
   );
   const healthCombatState = useNativeHealth
-    ? nativeHealth.hp <= 0
+    ? (projectedNativeHealth?.hp ?? 0) <= 0
       ? "dead"
-      : nativeHealth.lastDamageTime
+      : nativeHealth?.lastDamageTime
         ? "in_combat"
         : "idle"
     : display.combatState;

@@ -147,7 +147,7 @@ export function selectBackgroundMusicTrack(
     z >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ &&
     z < HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ
   ) {
-    return "music";
+    return "harthmere_music";
   }
 
   return "music";

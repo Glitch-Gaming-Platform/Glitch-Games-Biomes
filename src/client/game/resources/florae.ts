@@ -11,6 +11,7 @@ import type {
   ClientResourcesBuilder,
 } from "@/client/game/resources/types";
 import { floraGeometryToBufferGeometry } from "@/client/game/util/meshes";
+import { takeAtlasBase64Field } from "@/client/game/util/mobile_atlas_decode";
 import {
   makeBufferTexture,
   makeColorMapArray,
@@ -47,14 +48,18 @@ const floraMeshIndexBytes = new Cval({
   initialValue: 0,
 });
 
-async function genFloraColors() {
+async function genFloraColors({ clientConfig }: ClientContext) {
   const config = await jsonFetch<FloraAtlasData>(
     resolveAssetUrl("atlases/florae")
   );
 
+  // HARTHMERE_ATLAS_BASE64_DECODE (2026-08-04 mobile audit, item 6).
+  // `florae.json` is 1.22 MB of base64, the second largest atlas. Correct
+  // decode everywhere; the mobile flag only controls the payload release.
+  const shape = config.colors.shape;
   const colorMap = makeColorMapArray(
-    new Uint8Array(Buffer.from(config.colors.data, "base64").buffer),
-    ...config.colors.shape
+    takeAtlasBase64Field(config, "colors", clientConfig.mobileDevice),
+    ...shape
   );
   return makeDisposable(colorMap, () => {
     colorMap.dispose();
@@ -223,7 +228,9 @@ export async function addFloraResources(
 ) {
   await addSharedFloraResources(await loader.get("voxeloo"), builder);
 
-  builder.add("/terrain/flora/colors", genFloraColors);
+  // HARTHMERE_MOBILE_ATLAS_DECODE: `loader.provide` so the generator can read
+  // `clientConfig.mobileDevice`. The resource contract is otherwise unchanged.
+  builder.add("/terrain/flora/colors", loader.provide(genFloraColors));
   builder.addHashChecked(
     "/terrain/flora/mesh",
     loader.provide(genFloraMesh),

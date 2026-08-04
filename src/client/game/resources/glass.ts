@@ -11,6 +11,7 @@ import type {
   ClientResourcesBuilder,
 } from "@/client/game/resources/types";
 import { blockGeometryToBufferGeometry } from "@/client/game/util/meshes";
+import { takeAtlasBase64Field } from "@/client/game/util/mobile_atlas_decode";
 import {
   makeBufferTexture,
   makeBufferTextureFromBase64,
@@ -66,25 +67,30 @@ const liveGlassMeshCount = new Cval({
   initialValue: 0,
 });
 
-async function genGlassTextures() {
+async function genGlassTextures({ clientConfig }: ClientContext) {
   const config = await jsonFetch<BlockAtlasData>(
     resolveAssetUrl("atlases/glass")
   );
 
+  // HARTHMERE_ATLAS_BASE64_DECODE (2026-08-04 mobile audit, item 6). See
+  // `genBlockTextures`: correct decode everywhere, payload release on mobile.
+  const releasePayload = clientConfig.mobileDevice;
+  const shapes = {
+    colors: config.colors.shape,
+    mrea: config.mrea.shape,
+    index: config.index.shape,
+  };
   const ret: GlassTextures = {
     colorMap: makeColorMapArray(
-      new Uint8Array(Buffer.from(config.colors.data, "base64").buffer),
-      ...config.colors.shape
+      takeAtlasBase64Field(config, "colors", releasePayload),
+      ...shapes.colors
     ),
     mreaMap: makeColorMapArray(
-      new Uint8Array(Buffer.from(config.mrea.data, "base64").buffer),
-      ...config.mrea.shape,
+      takeAtlasBase64Field(config, "mrea", releasePayload),
+      ...shapes.mrea,
       false
     ),
-    index: makeBufferTextureFromBase64(
-      config.index.data,
-      ...config.index.shape
-    ),
+    index: makeBufferTextureFromBase64(config.index.data, ...shapes.index),
   };
   return makeDisposable(ret, () => {
     ret.index.dispose();

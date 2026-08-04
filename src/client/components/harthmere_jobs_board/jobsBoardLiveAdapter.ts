@@ -711,12 +711,26 @@ export function getHarthmereJobsBoardPrompt(
 }
 
 export function getHarthmereJobsBoardTabs(
-  snapshot: HarthmereJobsBoardSnapshot
+  snapshot: HarthmereJobsBoardSnapshot,
+  boardId = snapshot.defaultBoardId,
+  nowMs = Date.now()
 ) {
   return [
-    { id: "available", label: "Available", count: snapshot.openJobs.length },
-    { id: "accepted", label: "My Jobs", count: snapshot.myAcceptedJobs.length },
-    { id: "posted", label: "Posted", count: snapshot.myPostedJobs.length },
+    {
+      id: "available",
+      label: "Available",
+      count: getHarthmereAvailableJobsPanel(snapshot, boardId, nowMs).length,
+    },
+    {
+      id: "accepted",
+      label: "My Jobs",
+      count: getHarthmereMyJobsPanel(snapshot, nowMs, boardId).length,
+    },
+    {
+      id: "posted",
+      label: "Posted",
+      count: getHarthmerePostedJobsPanel(snapshot, boardId).length,
+    },
     { id: "post", label: "Post Job", count: 0 },
     { id: "safety", label: "Safety", count: snapshot.cooldown.abuseScore },
   ];
@@ -765,44 +779,50 @@ export function getHarthmereAvailableJobsPanel(
 
 export function getHarthmereMyJobsPanel(
   snapshot: HarthmereJobsBoardSnapshot,
-  nowMs = Date.now()
+  nowMs = Date.now(),
+  boardId?: string
 ) {
-  return snapshot.myAcceptedJobs.map((job) => {
-    const todo = snapshot.myTodos.find((entry) => entry.jobId === job.jobId);
-    return {
+  return snapshot.myAcceptedJobs
+    .filter((job) => boardId === undefined || job.boardId === boardId)
+    .map((job) => {
+      const todo = snapshot.myTodos.find((entry) => entry.jobId === job.jobId);
+      return {
+        jobId: job.jobId,
+        title: job.title,
+        status: job.status,
+        rewardGold: job.rewardGold,
+        deadlineAtMs: job.deadlineAtMs,
+        timeRemaining: formatHarthmereJobTimeRemaining(job.deadlineAtMs, nowMs),
+        todo,
+        todoStatus: todo?.status,
+        questTodoId: todo?.todoId,
+        mapMarkerId: job.mapMarkerId,
+        // Enable the turn-in/complete action while the job is active and the
+        // player still has a live (or already-verified) todo. The server is
+        // authoritative: if requirements aren't met, complete_job_quest is
+        // rejected and the payout step never runs, so this cannot pay early.
+        canComplete:
+          job.status === "active" &&
+          (todo?.status === "active" || todo?.status === "completed"),
+      };
+    });
+}
+
+export function getHarthmerePostedJobsPanel(
+  snapshot: HarthmereJobsBoardSnapshot,
+  boardId?: string
+) {
+  return snapshot.myPostedJobs
+    .filter((job) => boardId === undefined || job.boardId === boardId)
+    .map((job) => ({
       jobId: job.jobId,
       title: job.title,
       status: job.status,
       rewardGold: job.rewardGold,
-      deadlineAtMs: job.deadlineAtMs,
-      timeRemaining: formatHarthmereJobTimeRemaining(job.deadlineAtMs, nowMs),
-      todo,
-      todoStatus: todo?.status,
-      questTodoId: todo?.todoId,
-      mapMarkerId: job.mapMarkerId,
-      // Enable the turn-in/complete action while the job is active and the
-      // player still has a live (or already-verified) todo. The server is
-      // authoritative: if requirements aren't met, complete_job_quest is
-      // rejected and the payout step never runs, so this cannot pay early.
-      canComplete:
-        job.status === "active" &&
-        (todo?.status === "active" || todo?.status === "completed"),
-    };
-  });
-}
-
-export function getHarthmerePostedJobsPanel(
-  snapshot: HarthmereJobsBoardSnapshot
-) {
-  return snapshot.myPostedJobs.map((job) => ({
-    jobId: job.jobId,
-    title: job.title,
-    status: job.status,
-    rewardGold: job.rewardGold,
-    acceptedByActorId: job.acceptedByActorId,
-    escrowGold: job.escrowGold,
-    canCancel: job.status === "open",
-  }));
+      acceptedByActorId: job.acceptedByActorId,
+      escrowGold: job.escrowGold,
+      canCancel: job.status === "open",
+    }));
 }
 
 export function getHarthmereJobsBoardSafetyPanel(

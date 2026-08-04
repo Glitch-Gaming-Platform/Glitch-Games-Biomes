@@ -10,6 +10,7 @@ import { HarthmereBusinessShiftHUD } from "./HarthmereBusinessShiftHUD";
 import {
   createHarthmereBusinessInterfaceAdapter,
   fetchHarthmereBusinessEconomyState,
+  formatHarthmereBusinessPlayerWarning,
   harthmereBusinessWorldContextPayload,
   nearestHarthmereBusinessDashboardWorldContext,
   submitHarthmereBusinessEconomyMutation,
@@ -116,7 +117,11 @@ export function HarthmereBusinessLiveContainer({
       setState(next);
       return next;
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(
+        formatHarthmereBusinessPlayerWarning(
+          err instanceof Error ? err.message : String(err)
+        )
+      );
       return undefined;
     } finally {
       if (plan.clearLoadingWhenSettled) setLoading(false);
@@ -190,6 +195,31 @@ export function HarthmereBusinessLiveContainer({
 
   return (
     <>
+      {error ? (
+        <div
+          role="alert"
+          aria-live="assertive"
+          data-harthmere-business-load-error="true"
+          style={{
+            position: "fixed",
+            left: "50%",
+            top: 92,
+            zIndex: 1300,
+            width: "min(520px, calc(100vw - 28px))",
+            transform: "translateX(-50%)",
+            padding: "11px 14px",
+            border: "1px solid rgba(255, 125, 125, 0.72)",
+            borderRadius: 10,
+            background: "rgba(54, 11, 20, 0.96)",
+            color: "#fff1f1",
+            fontSize: 13,
+            lineHeight: 1.45,
+            boxShadow: "0 12px 28px rgba(0, 0, 0, 0.45)",
+          }}
+        >
+          <strong>Business services could not be loaded.</strong> {error}
+        </div>
+      ) : null}
       {canShowWorldPrompt && ownsInteraction ? (
         <HarthmereBusinessInteractionPrompt
           adapter={adapter}

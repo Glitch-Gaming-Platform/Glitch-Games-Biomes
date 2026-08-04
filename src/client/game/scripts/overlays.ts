@@ -110,6 +110,12 @@ import {
   harthmereProjectedNpcCandidates,
   harthmereProjectedNpcPresentation,
 } from "@/client/game/scripts/harthmere_npc_projection";
+import {
+  MAX_OVERLAY_OCCLUSION_MARCHES_PER_FRAME,
+  OverlayOcclusionRefreshQueue,
+  overlayOcclusionKey,
+  overlayProjectionsEqual,
+} from "@/client/game/scripts/overlay_frame_budget";
 import { ok } from "assert";
 import { isEqual } from "lodash";
 import { Vector3 } from "three";
@@ -224,6 +230,7 @@ const OVERLAY_TEXT_TIME_MS = 5300; // Add 300 miliseconds for fade out (beginHid
 
 const MAX_PLAYER_OVERLAY_DIST = 20;
 const MAX_NPC_OVERLAY_DIST = 15;
+
 // HARTHMERE_NPC_TALK_RADIUS_TIGHTEN:
 // The 8.5m talk radius let players talk to NPCs who were clearly not next to
 // them (and, combined with the full-hemisphere fallback, made the talk prompt
@@ -729,6 +736,25 @@ export class OverlayScript implements Script {
   lastPosition: Vec3 | undefined = undefined;
   private readonly projectedNpcOob = new Map<number, ReadonlyEntity>();
   private readonly projectedNpcOobInFlight = new Set<number>();
+  // HARTHMERE_OVERLAY_OCCLUSION_BUDGET (2026-08-03 frame-rate audit).
+  //
+  // `isOccluded()` runs a full voxel `terrainMarch` (WASM) from the camera to
+  // the overlay point, up to 50 m. `tick()` runs every frame and builds the
+  // whole overlay map from scratch, so every nameplate, quest giver, placeable,
+  // navigation aid and minigame element in range paid for its own raycast on
+  // every single frame.
+  //
+  // A captured production session had 2932 positioned entities in the client
+  // table (834 labels, 548 placeables, 159 NPCs, 107 quest givers), which is
+  // hundreds of 50 m WASM marches per frame. That session ran at 2-14 FPS on an
+  // Apple M1 Max whose own GPU benchmark reports 556 FPS, with a continuous run
+  // of `[Violation] 'requestAnimationFrame' handler took <N>ms`.
+  //
+  // Occlusion is a boolean used to fade a label. It does not need to be exact
+  // on the frame it changes, so results are memoised per overlay point and
+  // refreshed under a per-frame budget: the answer stays correct within ~100 ms
+  // while the per-frame raycast count is bounded by MAX_OCCLUSION_MARCHES.
+  private readonly occlusionRefreshes = new OverlayOcclusionRefreshQueue();
 
   constructor(
     private readonly userId: BiomesId,
@@ -891,15 +917,48 @@ export class OverlayScript implements Script {
       return true;
     }
 
-    const rayDist = length(rayDir);
-    rayDir = scale(1 / Math.max(1e-5, rayDist), rayDir);
-
-    let didHit = false;
-    terrainMarch(this.voxeloo, this.resources, camPos, rayDir, rayDist, () => {
-      didHit = true;
-      return false;
+    // Queue stale work instead of spending the budget in call order. At 2-14
+    // FPS the same first 24 labels are stale every frame; a direct counter
+    // therefore starves every later label forever. FIFO draining below keeps
+    // the cost bounded and gives every point a turn.
+    const cacheKey = overlayOcclusionKey(pos);
+    const camKey = overlayOcclusionKey(camPos);
+    const now = performance.now();
+    const cached = this.occlusionRefreshes.read(cacheKey, camKey, now);
+    if (cached.fresh) {
+      return cached.occluded ?? false;
+    }
+    this.occlusionRefreshes.request({
+      key: cacheKey,
+      camKey,
+      pos: [...pos],
+      camPos,
+      requestedAt: now,
     });
-    return didHit;
+    return cached.occluded ?? false;
+  }
+
+  private refreshQueuedOcclusion() {
+    for (const refresh of this.occlusionRefreshes.take(
+      MAX_OVERLAY_OCCLUSION_MARCHES_PER_FRAME
+    )) {
+      let rayDir = sub(refresh.pos, refresh.camPos);
+      const rayDist = length(rayDir);
+      rayDir = scale(1 / Math.max(1e-5, rayDist), rayDir);
+      let didHit = false;
+      terrainMarch(
+        this.voxeloo,
+        this.resources,
+        refresh.camPos,
+        rayDir,
+        rayDist,
+        () => {
+          didHit = true;
+          return false;
+        }
+      );
+      this.occlusionRefreshes.commit(refresh, didHit, performance.now());
+    }
   }
 
   applyPlayerNameOverlays(
@@ -2404,6 +2463,7 @@ export class OverlayScript implements Script {
   }
 
   tick(_dt: number) {
+    this.occlusionRefreshes.sweep(performance.now());
     const curTime = Date.now();
     const lootTimeout = 5 * 1000;
     const lootEvents = this.resources.get("/overlays/loot");
@@ -2432,6 +2492,7 @@ export class OverlayScript implements Script {
     const newOverlays: OverlayMap = new Map();
     const newProjection: ProjectionMap = new Map();
     this.applyAllOverlays(newOverlays, newProjection);
+    this.refreshQueuedOcclusion();
 
     const oldOverlays = this.resources.get("/overlays");
     if (!isEqual(newOverlays, oldOverlays)) {
@@ -2451,11 +2512,22 @@ export class OverlayScript implements Script {
       });
     }
 
-    this.resources.update("/overlays/projection", (projMap) => {
-      projMap.clear();
-      for (const [k, v] of newProjection) {
-        projMap.set(k, v);
-      }
-    });
+    // HARTHMERE_OVERLAY_PROJECTION_INVALIDATION (2026-08-03 frame-rate audit).
+    //
+    // This used to call `resources.update` unconditionally on every frame.
+    // `/overlays/projection` is a React resource, so an unconditional update
+    // invalidated every subscribed component -- including the projected overlay
+    // components and, transitively, the HUD -- and forced a full React
+    // reconciliation at frame rate even when the player and the world were
+    // completely still. Publish only when the projection actually changed.
+    const oldProjection = this.resources.get("/overlays/projection");
+    if (!overlayProjectionsEqual(oldProjection, newProjection)) {
+      this.resources.update("/overlays/projection", (projMap) => {
+        projMap.clear();
+        for (const [k, v] of newProjection) {
+          projMap.set(k, v);
+        }
+      });
+    }
   }
 }

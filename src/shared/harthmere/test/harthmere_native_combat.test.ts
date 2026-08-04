@@ -1,6 +1,7 @@
 import { TriggerState } from "@/shared/ecs/gen/components";
 import { anItem } from "@/shared/game/item";
 import {
+  HARTHMERE_INDISWORM_HOSTILITY,
   applyHarthmereNativeAttackStats,
   awardHarthmereNativeCombatXp,
   harthmereNativeItemCombatProfile,
@@ -308,6 +309,29 @@ describe("Harthmere native ECS combat rules", () => {
     assert.equal(profile.attackDistance, 2.35);
     assert.equal(profile.attackStrikeMomentSecs, 0.95);
     assert.equal(profile.attackIntervalSecs, 2.9);
+    assert.equal(profile.behaviorKind, "hostile");
+    assert.deepEqual(profile.aggroTrigger, {
+      kind: "proximity",
+      distance: HARTHMERE_INDISWORM_HOSTILITY.aggroDistance,
+    });
+    assert.equal(
+      profile.disengageDistance,
+      HARTHMERE_INDISWORM_HOSTILITY.disengageDistance
+    );
+    assert.equal(profile.walkSpeed, HARTHMERE_INDISWORM_HOSTILITY.walkSpeed);
+    assert.equal(profile.runSpeed, HARTHMERE_INDISWORM_HOSTILITY.runSpeed);
+    assert.equal(
+      profile.rotateSpeed,
+      HARTHMERE_INDISWORM_HOSTILITY.rotateSpeed
+    );
+    assert.equal(
+      profile.attackFovDeg,
+      HARTHMERE_INDISWORM_HOSTILITY.attackFovDeg
+    );
+    assert.deepEqual(biscuit.behavior?.chaseAttack?.aggroTrigger, {
+      kind: "proximity",
+      distance: HARTHMERE_INDISWORM_HOSTILITY.aggroDistance,
+    });
     assert.deepEqual(biscuit.boxSize, [1.05, 1.9, 1.05]);
     assert.ok(poisonSpit);
     assert.equal(poisonSpit.projectileVisualId, "indisworm_poison_spit");

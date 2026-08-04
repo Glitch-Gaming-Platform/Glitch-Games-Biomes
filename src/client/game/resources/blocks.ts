@@ -12,6 +12,7 @@ import type {
   ClientResourcesBuilder,
 } from "@/client/game/resources/types";
 import { blockGeometryToBufferGeometry } from "@/client/game/util/meshes";
+import { takeAtlasBase64Field } from "@/client/game/util/mobile_atlas_decode";
 import {
   makeBufferTexture,
   makeBufferTextureFromBase64,
@@ -87,25 +88,35 @@ const blockMeshEmptySurfaceCount = new Cval({
   initialValue: 0,
 });
 
-async function genBlockTextures() {
+async function genBlockTextures({ clientConfig }: ClientContext) {
   const config = await jsonFetch<BlockAtlasData>(
     resolveAssetUrl("atlases/blocks")
   );
 
+  // HARTHMERE_ATLAS_BASE64_DECODE (2026-08-04 mobile audit, item 6).
+  // `blocks.json` is the largest atlas at 1.43 MB of base64. Decoding is now
+  // correct on every platform (see `mobile_atlas_decode.ts` -- the previous
+  // `Buffer.from(...).buffer` expression discarded byteOffset/byteLength).
+  // The mobile-only part is the payload release: each ~1 MB string is dropped
+  // as it is consumed, so peak boot footprint is one payload rather than all
+  // three at once.
+  const releasePayload = clientConfig.mobileDevice;
+  const shapes = {
+    colors: config.colors.shape,
+    mrea: config.mrea.shape,
+    index: config.index.shape,
+  };
   const ret: BlockTextures = {
     colorMap: makeColorMapArray(
-      new Uint8Array(Buffer.from(config.colors.data, "base64").buffer),
-      ...config.colors.shape
+      takeAtlasBase64Field(config, "colors", releasePayload),
+      ...shapes.colors
     ),
     mreaMap: makeColorMapArray(
-      new Uint8Array(Buffer.from(config.mrea.data, "base64").buffer),
-      ...config.mrea.shape,
+      takeAtlasBase64Field(config, "mrea", releasePayload),
+      ...shapes.mrea,
       false
     ),
-    index: makeBufferTextureFromBase64(
-      config.index.data,
-      ...config.index.shape
-    ),
+    index: makeBufferTextureFromBase64(config.index.data, ...shapes.index),
   };
   return makeDisposable(ret, () => {
     ret.index.dispose();

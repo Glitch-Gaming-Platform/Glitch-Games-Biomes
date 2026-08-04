@@ -1,5 +1,11 @@
-import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
-import type { HarthmereBusinessInterfaceAdapter } from "./businessInterfaceLiveAdapter";
+import {
+  useClientContext,
+  useOptionalClientContext,
+} from "@/client/components/contexts/ClientContextReactContext";
+import {
+  formatHarthmereBusinessPlayerWarning,
+  type HarthmereBusinessInterfaceAdapter,
+} from "./businessInterfaceLiveAdapter";
 import { deserializeNpcCustomState } from "@/shared/npc/serde";
 import type { BiomesId } from "@/shared/ids";
 import * as React from "react";
@@ -67,19 +73,22 @@ function SpatialCustomerCard({
   sessionId,
   ticketId,
   entityId,
+  registryOwnerId,
 }: {
   adapter: HarthmereBusinessInterfaceAdapter;
   businessId: string;
   sessionId: string;
   ticketId: string;
   entityId: BiomesId;
+  registryOwnerId: string;
 }) {
   const { audioManager } = useClientContext();
   const panel = adapter.getCustomerMiniGame(businessId);
   const ticket = panel.activeSession?.queue.find(
     (candidate) => candidate.ticketId === ticketId
   );
-  const { customerState, screen } = useProjectedEntityPosition(entityId);
+  const { entity, customerState, screen } =
+    useProjectedEntityPosition(entityId);
   const ready = customerState?.phase === "serving";
   const customerName = panel.currentNpc?.displayName ?? "Customer";
 
@@ -94,7 +103,8 @@ function SpatialCustomerCard({
   }, [audioManager, customerState?.reaction]);
 
   React.useEffect(() => {
-    publishHarthmereBusinessCustomerTalkTarget({
+    if (!entity) return;
+    publishHarthmereBusinessCustomerTalkTarget(registryOwnerId, {
       adapter,
       businessId,
       businessType: panel.typeId,
@@ -119,10 +129,12 @@ function SpatialCustomerCard({
     businessId,
     customerName,
     customerState?.phase,
+    entity,
     entityId,
     panel.offers,
     panel.typeId,
     ready,
+    registryOwnerId,
     sessionId,
     ticket?.askLine,
     ticket?.patienceRemaining,
@@ -164,12 +176,14 @@ function SpatialCustomerCard({
     ticketId,
   ]);
 
-  const position = screen.visible
-    ? {
-        left: Math.max(190, Math.min(window.innerWidth - 190, screen.left)),
-        top: Math.max(130, Math.min(window.innerHeight - 210, screen.top)),
-      }
-    : { left: "50%", top: 150 };
+  // Never synthesize a top-centre customer card for an entity that is absent,
+  // unsubscribed, behind the camera, or otherwise off-screen. That fallback
+  // was the visible "other player's game" overlay in the production capture.
+  if (!entity || !screen.visible) return null;
+  const position = {
+    left: Math.max(190, Math.min(window.innerWidth - 190, screen.left)),
+    top: Math.max(130, Math.min(window.innerHeight - 210, screen.top)),
+  };
   return (
     <aside
       data-harthmere-business-spatial-customer="true"
@@ -210,7 +224,7 @@ function SpatialCustomerCard({
       <p style={{ margin: 0, color: "#c9bda7", fontSize: 12 }}>
         {ready
           ? "Talk to this customer to choose the business service response."
-          : "Stay behind the counter. The customer is using native pathing."}
+          : "Stay behind the counter. The customer is walking to you."}
       </p>
     </aside>
   );
@@ -225,12 +239,33 @@ export function HarthmereBusinessShiftHUD({
   businessId?: string;
   insideBusiness?: boolean;
 }) {
-  const { audioManager } = useClientContext();
+  const clientContext = useOptionalClientContext();
+  const audioManager = clientContext?.audioManager;
+  const registryOwnerId = React.useId();
+  const previousInsideBusiness = React.useRef(insideBusiness);
+  const leaveEndAttempt = React.useRef<string | undefined>(undefined);
+  const leaveEndTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  );
+  const [leaveError, setLeaveError] = React.useState<string>();
   const panel = businessId
     ? adapter.getCustomerMiniGame(businessId)
     : undefined;
   const session = panel?.activeSession;
   const ticket = panel?.currentTicket;
+  const endShift = React.useCallback(async () => {
+    if (!businessId || !session || session.status !== "active") return;
+    setLeaveError(undefined);
+    try {
+      await adapter.endCustomerSession(businessId, session.sessionId);
+    } catch (cause) {
+      setLeaveError(
+        formatHarthmereBusinessPlayerWarning(
+          cause instanceof Error ? cause.message : String(cause)
+        )
+      );
+    }
+  }, [adapter, businessId, session?.sessionId, session?.status]);
   const minigameMusicTrack = harthmereBusinessMinigameMusicTrack({
     businessId,
     insideBusiness,
@@ -238,6 +273,7 @@ export function HarthmereBusinessShiftHUD({
   });
 
   React.useEffect(() => {
+    if (!audioManager) return;
     audioManager.setBackgroundMusicOverride(
       HARTHMERE_BUSINESS_MINIGAME_MUSIC_OVERRIDE_OWNER,
       minigameMusicTrack
@@ -276,6 +312,42 @@ export function HarthmereBusinessShiftHUD({
     };
   }, [adapter, businessId, session?.sessionId, session?.status]);
 
+  React.useEffect(() => {
+    const wasInside = previousInsideBusiness.current;
+    previousInsideBusiness.current = insideBusiness;
+    if (!businessId || !session || session.status !== "active") {
+      leaveEndAttempt.current = undefined;
+      if (leaveEndTimer.current) clearTimeout(leaveEndTimer.current);
+      return;
+    }
+    if (insideBusiness) {
+      leaveEndAttempt.current = undefined;
+      if (leaveEndTimer.current) clearTimeout(leaveEndTimer.current);
+      setLeaveError(undefined);
+      return;
+    }
+    if (!wasInside || leaveEndAttempt.current === session.sessionId) return;
+    leaveEndTimer.current = setTimeout(() => {
+      leaveEndTimer.current = undefined;
+      if (previousInsideBusiness.current) return;
+      leaveEndAttempt.current = session.sessionId;
+      void endShift();
+    }, 1000);
+  }, [
+    businessId,
+    endShift,
+    insideBusiness,
+    session?.sessionId,
+    session?.status,
+  ]);
+
+  React.useEffect(
+    () => () => {
+      if (leaveEndTimer.current) clearTimeout(leaveEndTimer.current);
+    },
+    []
+  );
+
   // HARTHMERE_BUSINESS_TALK_TARGET_REGISTRY
   // Register every live customer of this shift, not only the one at the
   // counter. The projected card is proximity- and visibility-gated; talking is
@@ -288,10 +360,11 @@ export function HarthmereBusinessShiftHUD({
   // already walked out.
   React.useEffect(() => {
     if (!businessId || !panel || !session || session.status !== "active") {
-      clearHarthmereBusinessCustomerTalkTarget();
+      clearHarthmereBusinessCustomerTalkTarget(registryOwnerId);
       return;
     }
     publishHarthmereBusinessCustomerTalkTargets(
+      registryOwnerId,
       session.queue
         .filter(
           (entry) => entry.entityId !== undefined && entry.status === "waiting"
@@ -317,8 +390,12 @@ export function HarthmereBusinessShiftHUD({
           offers: panel.offers,
         }))
     );
-    return () => clearHarthmereBusinessCustomerTalkTarget();
-  }, [adapter, businessId, panel, session]);
+  }, [adapter, businessId, panel, registryOwnerId, session]);
+
+  React.useEffect(
+    () => () => clearHarthmereBusinessCustomerTalkTarget(registryOwnerId),
+    [registryOwnerId]
+  );
 
   if (!businessId || !session) return null;
   return (
@@ -342,21 +419,25 @@ export function HarthmereBusinessShiftHUD({
         {session.earnedGold} gold
         <button
           type="button"
-          onClick={() =>
-            void adapter.endCustomerSession(businessId, session.sessionId)
-          }
+          onClick={() => void endShift()}
           style={{ marginLeft: 9 }}
         >
           End shift
         </button>
+        {leaveError ? (
+          <div style={{ marginTop: 6, maxWidth: 320, color: "#ffc1b8" }}>
+            {leaveError}
+          </div>
+        ) : null}
       </div>
-      {ticket?.entityId ? (
+      {clientContext && ticket?.entityId ? (
         <SpatialCustomerCard
           adapter={adapter}
           businessId={businessId}
           sessionId={session.sessionId}
           ticketId={ticket.ticketId}
           entityId={ticket.entityId}
+          registryOwnerId={registryOwnerId}
         />
       ) : null}
     </>

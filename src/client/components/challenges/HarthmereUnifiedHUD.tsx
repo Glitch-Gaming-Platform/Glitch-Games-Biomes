@@ -64,6 +64,7 @@ import {
   HARTHMERE_LIVE_EQUIPMENT_EVENT,
 } from "@/client/components/challenges/harthmereEvents";
 import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
+import { useHarthmereNativeVitalsProjection } from "@/client/components/challenges/useHarthmereNativeVitalsProjection";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { HARTHMERE_HOTBAR_HELD_ITEM_EVENT } from "@/shared/harthmere/premium_weapon_catalog";
 import { readHarthmereNativeVitals } from "@/shared/harthmere/harthmere_native_vitals";
@@ -129,6 +130,8 @@ import { HarthmereBibleQuestRuntimeController } from "@/client/components/challe
 import { HarthmereHomeConsoleLiveContainer } from "@/client/components/harthmere_home";
 import { HarthmereBusinessLiveContainer } from "@/client/components/harthmere_business";
 import { nearestHarthmereBusinessBoardPhysicalPrompt } from "@/client/game/renderers/local_dev/harthmere_business_board_marker";
+import { harthmereBusinessInteriorContainingPosition } from "@/shared/harthmere/business_interior_runtime";
+import { harthmereBusinessOutpostBusinessId } from "@/shared/harthmere/business_customer_simulator";
 import { HarthmereJobsBoardLiveContainer } from "@/client/components/harthmere_jobs_board";
 import {
   HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS,
@@ -1197,6 +1200,10 @@ function StandingChip({
 function CompactStatusCluster() {
   const { reactResources, userId } = useClientContext();
   const nativeTriggerState = reactResources.use("/ecs/c/trigger_state", userId);
+  const nativeProjection = useHarthmereNativeVitalsProjection(
+    nativeTriggerState,
+    undefined
+  );
   const combat = useHarthmereCombatState();
   const death = useHarthmereDeathState();
   const reputation = useHarthmereReputationState();
@@ -1241,9 +1248,10 @@ function CompactStatusCluster() {
     staminaValue: Math.max(0, stamina.stamina),
     staminaMax: Math.max(1, Math.round(stamina.maxStamina)),
   });
-  const nativeVitals = readHarthmereNativeVitals(nativeTriggerState);
+  const nativeVitals = nativeProjection.vitals;
   const useNativeVitals =
-    nativeBiomesEcsAuthorityEnabled() && nativeTriggerState !== undefined;
+    nativeBiomesEcsAuthorityEnabled() &&
+    nativeProjection.hasAuthoritativeVitals;
   // Standing mutations are committed to this same server-synced TriggerState.
   // Once migrated, neither the chips nor their derived title may fall back to
   // the delayed live-status/local reputation mirrors.
@@ -2608,16 +2616,38 @@ function HarthmereBusinessWorldInterface({
     string | undefined
   >();
   const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
+  const containingBusiness = harthmereBusinessInteriorContainingPosition(
+    playerPosition
+      ? {
+          x: playerPosition.x,
+          y: playerPosition.y,
+          z: playerPosition.z,
+        }
+      : undefined
+  );
+  const containingBusinessId = containingBusiness
+    ? harthmereBusinessOutpostBusinessId(containingBusiness.outpostId)
+    : undefined;
+  React.useEffect(() => {
+    if (containingBusinessId) {
+      setSelectedBusinessId(containingBusinessId);
+    }
+  }, [containingBusinessId]);
+  const activeBusinessId = selectedBusinessId ?? containingBusinessId;
   const businessWorldContext = React.useMemo(
     () =>
-      selectedBusinessId
+      activeBusinessId
         ? {
-            nearbyBusinessId: selectedBusinessId,
-            insideBusiness: true,
+            nearbyBusinessId: activeBusinessId,
+            insideBusiness: containingBusinessId === activeBusinessId,
             interactionKeyLabel: "F",
+            outpostId:
+              containingBusinessId === activeBusinessId
+                ? containingBusiness?.outpostId
+                : undefined,
           }
         : undefined,
-    [selectedBusinessId]
+    [activeBusinessId, containingBusiness?.outpostId, containingBusinessId]
   );
   const openFromPrompt = React.useCallback(
     (
@@ -2630,8 +2660,7 @@ function HarthmereBusinessWorldInterface({
     },
     [onOpen]
   );
-  const closeAndClearSelection = React.useCallback(() => {
-    setSelectedBusinessId(undefined);
+  const closeAndKeepSelection = React.useCallback(() => {
     onClose();
   }, [onClose]);
   return (
@@ -2640,7 +2669,7 @@ function HarthmereBusinessWorldInterface({
       <HarthmereBusinessLiveContainer
         open={open}
         onOpen={onOpen}
-        onClose={closeAndClearSelection}
+        onClose={closeAndKeepSelection}
         showPrompt={false}
         worldContext={businessWorldContext}
         playerPosition={
@@ -2686,16 +2715,18 @@ function HarthmereBusinessBoardWorldPrompt({
 
   const worldCandidate = React.useMemo(
     () =>
-      prompt && projectedPrompt
+      prompt
         ? {
             id: `harthmere:business-board:${prompt.businessId}`,
-            priority:
-              WORLD_INTERACTION_PRIORITY.authoredStation - prompt.distance,
+            // A physical business board is the player's explicit station
+            // target. It must beat a customer or shopkeeper standing beside
+            // it, just like the town jobs boards do.
+            priority: WORLD_INTERACTION_PRIORITY.jobsBoard - prompt.distance,
             keyCodes: ["KeyF", "KeyE"],
             onInteract: openBusinessBoardFromPrompt,
           }
         : undefined,
-    [openBusinessBoardFromPrompt, projectedPrompt, prompt]
+    [openBusinessBoardFromPrompt, prompt]
   );
   const ownsInteraction = useWorldInteractionCandidate(worldCandidate);
 
@@ -2730,12 +2761,17 @@ function HarthmereBusinessBoardWorldPrompt({
       playerPosition,
       cameraPosition,
       prompt,
+      activeBoard: prompt,
       open: () => prompt && onOpen(prompt),
     };
     (window as any).__harthmereBusinessBoardPromptDebug = debug;
+    (window as any).__harthmereBusinessBoardDebug = debug;
     return () => {
       if ((window as any).__harthmereBusinessBoardPromptDebug === debug) {
         delete (window as any).__harthmereBusinessBoardPromptDebug;
+      }
+      if ((window as any).__harthmereBusinessBoardDebug === debug) {
+        delete (window as any).__harthmereBusinessBoardDebug;
       }
     };
   }, [cameraPosition, onOpen, playerPosition, prompt]);
@@ -2748,61 +2784,46 @@ function HarthmereBusinessBoardWorldPrompt({
     openBusinessBoardFromPrompt();
   };
   return (
-    <>
-      {projectedPrompt && (
-        <div
-          className="pointer-events-none fixed z-40 -translate-x-1/2 -translate-y-full px-3"
-          style={{
-            left: projectedPrompt.left,
-            top: projectedPrompt.top,
-          }}
-          data-harthmere-business-board-world-prompt="projected"
-        >
-          <button
-            type="button"
-            className="min-h-14 min-w-40 rounded-xl border-emerald-200/45 bg-black/86 hover:border-emerald-100 hover:bg-black/92 focus:ring-emerald-100 pointer-events-auto border px-3 py-2 text-left text-white shadow-[0_10px_28px_rgba(0,0,0,0.55)] outline-none backdrop-blur transition focus:ring-2"
-            onClick={openFromPromptClick}
-            aria-label={`Open ${prompt.displayName}`}
-          >
-            <span className="text-emerald-100 block text-[10px] font-black uppercase tracking-[0.12em]">
-              Click or press F
-            </span>
-            <span className="block text-sm font-black leading-tight">
-              Open {prompt.displayName}
-            </span>
-            <span className="block text-[11px] leading-tight text-white/70">
-              {Math.max(0, Math.round(prompt.distance))}m away
-            </span>
-          </button>
-        </div>
-      )}
-      <div
-        className="pointer-events-none fixed inset-x-0 bottom-[8.65rem] z-40 flex justify-center px-3"
-        data-harthmere-business-board-world-prompt="bottom"
+    <div
+      className={
+        projectedPrompt
+          ? "pointer-events-none fixed z-40 -translate-x-1/2 -translate-y-full px-3"
+          : "pointer-events-none fixed inset-x-0 bottom-[8.65rem] z-40 flex justify-center px-3"
+      }
+      style={
+        projectedPrompt
+          ? { left: projectedPrompt.left, top: projectedPrompt.top }
+          : undefined
+      }
+      data-harthmere-business-board-world-prompt={
+        projectedPrompt ? "projected" : "bottom"
+      }
+    >
+      <button
+        type="button"
+        className="rounded-xl border-emerald-200/45 bg-black/86 hover:border-emerald-100 hover:bg-black/92 focus:ring-emerald-100 pointer-events-auto flex min-h-14 min-w-40 items-center gap-3 border px-3 py-2 text-left text-white shadow-[0_10px_28px_rgba(0,0,0,0.55)] outline-none backdrop-blur transition focus:ring-2"
+        onClick={openFromPromptClick}
+        aria-label={`Open ${prompt.displayName}`}
+        data-harthmere-business-prompt="true"
+        data-business-id={prompt.businessId}
       >
-        <button
-          type="button"
-          className="rounded-xl border-emerald-200/35 bg-black/82 pointer-events-auto flex items-center gap-3 border px-4 py-3 text-white shadow-[0_10px_28px_rgba(0,0,0,0.55)] backdrop-blur"
-          onClick={openFromPromptClick}
-          aria-label={`Open ${prompt.displayName}`}
-        >
-          <span className="min-w-8 bg-white/12 grid h-8 place-items-center rounded-md border border-white/20 text-sm font-black">
-            F
+        <span className="min-w-8 bg-white/12 grid h-8 place-items-center rounded-md border border-white/20 text-sm font-black">
+          F
+        </span>
+        <span>
+          <span className="text-emerald-100 block text-[10px] font-black uppercase tracking-[0.12em]">
+            Click or press F
           </span>
-          <span className="text-left">
-            <span className="mb-0.5 rounded border-emerald-200/35 bg-emerald-200/12 px-1.5 py-0.5 text-emerald-100 inline-flex border text-[10px] font-black uppercase tracking-[0.16em]">
-              Business Board
-            </span>
-            <span className="block text-sm font-black">
-              Open business services
-            </span>
-            <span className="text-white/65 block text-[11px]">
-              Start shifts, buy goods, and request services.
-            </span>
+          <span className="block text-sm font-black leading-tight">
+            Open {prompt.displayName}
           </span>
-        </button>
-      </div>
-    </>
+          <span className="block text-[11px] leading-tight text-white/70">
+            {Math.max(0, Math.round(prompt.distance))}m away · Start shifts and
+            serve customers.
+          </span>
+        </span>
+      </button>
+    </div>
   );
 }
 

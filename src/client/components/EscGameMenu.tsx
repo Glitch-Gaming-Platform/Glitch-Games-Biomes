@@ -7,7 +7,6 @@ import {
 } from "@/client/components/contexts/PointerLockContext";
 import { usePointerLockUnlockWhileOpenActive } from "@/client/components/contexts/usePointerLockUnlockWhileOpenActive";
 import { useCachedEntity } from "@/client/components/hooks/client_hooks";
-import { ReportFlow } from "@/client/components/social/ReportFlow";
 import { HarthmereSystemsMenuPanel } from "@/client/components/challenges/HarthmereUnifiedHUD";
 import { useHarthmereDeathState } from "@/client/components/challenges/LocalDevHarthmereDeathSystem";
 import { DialogButton } from "@/client/components/system/DialogButton";
@@ -25,17 +24,15 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
   const [isEntering] = usePointerLockEnteringStatus();
   const [isLocked, setIsLocked] = usePointerLockStatus();
   const pointerLockDisabled = usePointerLockDisabledStatus();
-  const [isCreatingReport, setIsCreatingReport] = useState(false);
   const [wasEverLocked, setWasEverLocked] = useState(false);
   const harthmereDeath = useHarthmereDeathState();
   const activeMinigame = reactResources.use("/ecs/c/playing_minigame", userId);
   const minigame = useCachedEntity(activeMinigame?.minigame_id);
   // HARTHMERE_UI: when a panel that intentionally releases pointer lock
   // (Jobs Board, Home Console, Business Interface, Crafting Station) is
-  // open, suppress the escape menu entirely so its "Return to Game" / "Give
-  // Feedback" buttons don't appear on top of the panel. The panel owns the
-  // mouse and keyboard while it's open; the player closes it with the panel
-  // close button or Escape.
+  // open, suppress the escape menu entirely so its controls don't appear on
+  // top of the panel. The panel owns the mouse and keyboard while it's open;
+  // the player closes it with the panel close button or Escape.
   const unlockWhileOpenActive = usePointerLockUnlockWhileOpenActive();
 
   useEffect(() => {
@@ -51,8 +48,6 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
   useEffect(() => {
     if (isLocked) {
       setWasEverLocked(true);
-    } else {
-      setIsCreatingReport(false);
     }
   }, [isLocked]);
   const hideReturnToGameButton = getTypedStorageItem(
@@ -89,14 +84,7 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
       <div
         className="esc-game-controls"
         data-harthmere-esc-hidden-for-death-screen="true"
-      >
-        {isCreatingReport && (
-          <ReportFlow
-            onClose={() => onReportSubmitted()}
-            target={{ kind: "feedback" }}
-          />
-        )}
-      </div>
+      />
     );
   }
 
@@ -137,17 +125,6 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
     });
   }
 
-  // Trigger prompt for user feedback.
-  function handleGiveFeedback() {
-    setIsCreatingReport(true);
-  }
-
-  function onReportSubmitted() {
-    // After submitting a report return to the game.
-    setIsCreatingReport(false);
-    setIsLocked();
-  }
-
   if (!hideReturnToGameButton || activeMinigame) {
     escapeActions.push({
       onClick: () => {
@@ -158,11 +135,6 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
         : `${wasEverLocked ? "Return to Game" : "Enter Game"}`,
     });
   }
-
-  escapeActions.push({
-    name: "Give Feedback",
-    onClick: () => handleGiveFeedback(),
-  });
 
   return (
     <>
@@ -184,14 +156,6 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
           <HarthmereSystemsMenuPanel />
         </div>
       )}
-      <div className="esc-game-controls">
-        {isCreatingReport && (
-          <ReportFlow
-            onClose={() => onReportSubmitted()}
-            target={{ kind: "feedback" }}
-          />
-        )}
-      </div>
     </>
   );
 });

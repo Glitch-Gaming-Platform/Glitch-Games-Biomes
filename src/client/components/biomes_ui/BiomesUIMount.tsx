@@ -16,7 +16,6 @@ import { HarthmereLevelUpCelebration } from "./HarthmereLevelUpCelebration";
 import { HarthmereJobsBoardWorldInteraction } from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteraction";
 import { HarthmereRequestBoardWorldInteraction } from "@/client/components/harthmere_request_board/HarthmereRequestBoardWorldInteraction";
 import { HarthmereWantedBoardWorldInteraction } from "@/client/components/harthmere_wanted_board/HarthmereWantedBoardWorldInteraction";
-import { HarthmereBusinessWorldInteraction } from "@/client/components/harthmere_business/HarthmereBusinessWorldInteraction";
 import { HarthmerePropertyForSaleWorldInteraction } from "@/client/components/harthmere_building/HarthmerePropertyForSaleWorldInteraction";
 import { HarthmereGatheringNodeWorldInteraction } from "@/client/components/challenges/HarthmereGatheringNodeWorldInteraction";
 import { HarthmereObjectContainerPanel } from "@/client/components/challenges/HarthmereObjectContainerPanel";
@@ -158,7 +157,6 @@ export const BiomesUIMount: React.FunctionComponent<{
       <HarthmereWantedBoardWorldInteraction
         suppressPrompt={activeTab !== null}
       />
-      <HarthmereBusinessWorldInteraction suppressPrompt={activeTab !== null} />
       <HarthmerePropertyForSaleWorldInteraction
         suppressPrompt={activeTab !== null}
       />

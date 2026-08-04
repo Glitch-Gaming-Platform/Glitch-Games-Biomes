@@ -15,7 +15,7 @@ const candidates: HarthmereMobileRuntimePlacementCandidate[] = [
 ];
 
 describe("Harthmere mobile runtime placement streaming", () => {
-  it("keeps the original eager loader and projectile prefetch on desktop only", () => {
+  it("lazy-loads mobile combat VFX and bounds town loading on desktop and mobile", () => {
     const renderer = fs.readFileSync(
       path.join(
         process.cwd(),
@@ -35,8 +35,36 @@ describe("Harthmere mobile runtime placement streaming", () => {
     );
     assert.match(
       renderer,
-      /if \(this\.mobileDevice\) \{[\s\S]{0,300}this\.prepareMobileRuntimePlacements\(\)[\s\S]{0,300}\} else \{[\s\S]{0,200}this\.harthmereProjectileVisuals\.preloadAll\(\);[\s\S]{0,100}void this\.loadAll\(\)/
+      /if \(!this\.mobileDevice\) \{\s*this\.harthmereProjectileVisuals\.preloadAll\(\);\s*\}\s*if \(shouldRenderHarthmereRuntimeAssets\(\)\) \{[\s\S]{0,1600}this\.prepareMobileRuntimePlacements\(\)[\s\S]{0,300}this\.ready = true/
     );
+    assert.doesNotMatch(
+      renderer.slice(
+        renderer.indexOf("if (shouldRenderHarthmereRuntimeAssets())"),
+        renderer.indexOf("draw(scenes: Scenes, dt: number)")
+      ),
+      /void this\.loadAll\(\)/
+    );
+    assert.match(
+      renderer,
+      /this\.updateMobileRuntimeAssetStreaming\(dt, camera\)/
+    );
+  });
+
+  it("caches scene-wide player bone lookups instead of traversing every frame", () => {
+    const renderer = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/client/game/renderers/local_dev/harthmere_assets.ts"
+      ),
+      "utf8"
+    );
+    const lookup = renderer.slice(
+      renderer.indexOf("private resolveHarthmerePlayerBoneAnchor"),
+      renderer.indexOf("private updateHarthmereCombatPolishLocomotion")
+    );
+    assert.match(lookup, /harthmerePlayerBoneAnchorCache\.get\(cacheKey\)/);
+    assert.match(lookup, /nowMs < cached\.nextScanAtMs/);
+    assert.match(lookup, /harthmerePlayerBoneAnchorCache\.set\(cacheKey/);
   });
 
   it("keeps nearest repeated assets without exceeding the prototype budget", () => {

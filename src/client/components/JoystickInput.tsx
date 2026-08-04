@@ -1,5 +1,25 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { isTouchDevice } from "@/client/components/contexts/PointerLockContext";
+import { describeHotbarPrimaryAction } from "@/client/components/biomes_ui/hotbar/hotbarAction";
+import {
+  cycleHarthmereCombatTarget,
+  performHarthmereKeyedAttack,
+  toggleHarthmereWeaponDrawn,
+  useHarthmereMultiplayerCombatState,
+} from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
+import { readHarthmereCombatState } from "@/client/components/challenges/LocalDevHarthmereCombat";
+import { getHarthmereMultiplayerAttackDisabledReason } from "@/client/components/challenges/harthmereCombatDeathInterfaceRules";
+import {
+  MOBILE_PRIMARY_ACTION_SOURCE,
+  MOBILE_SECONDARY_ACTION_SOURCE,
+  mobileActionButtons,
+  mobileActionDisabledReason,
+  mobileCombatActionForKind,
+  type MobileActionButtonSpec,
+  type MobileActionKind,
+  type MobilePrimaryLabelKind,
+} from "@/client/game/util/mobile_action_controls";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import {
   containMobileControlEvent,
   preventMobileBrowserNavigationGesture,
@@ -500,6 +520,13 @@ export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
           )}
         </div>
       )}
+      {/*
+        HARTHMERE_MOBILE_ACTION_CONTROLS (2026-08-04 mobile audit, items 1
+        and 14). The right-thumb cluster: mine/attack/use, place, and the
+        Harthmere combat verbs that were previously keyboard-only. Mounted only
+        for `mobileDevice`, so desktop and pointerless-desktop are untouched.
+      */}
+      {userId && clientConfig.mobileDevice && <MobileActionButtons />}
       {userId && clientConfig.mobileDevice && mobileInteractAvailable && (
         <button
           type="button"
@@ -544,6 +571,231 @@ export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
           />
         </div>
       )}
+    </div>
+  );
+};
+
+/**
+ * HARTHMERE_MOBILE_ACTION_CONTROLS (2026-08-04 mobile audit, items 1 and 14).
+ *
+ * The right-thumb action cluster. Before this existed a phone could walk,
+ * jump, crouch, look, press F, and open menus -- but could not mine, place, or
+ * fight, because `primary`/`secondary` are bound to mouse buttons only and the
+ * Harthmere combat verbs (draw, target, basic, heavy, spark) are dispatched
+ * from a `keydown` handler.
+ *
+ * This is a separate component, not a branch inside `JoystickInput`, for one
+ * specific reason: it subscribes to combat state and the hotbar selection, and
+ * React hooks cannot be mounted conditionally. Keeping it separate means those
+ * subscriptions and their re-renders exist ONLY on a phone. `JoystickInput`
+ * itself still mounts on a touch-capable desktop, and that path is unchanged.
+ */
+const MobileActionButtons: React.FunctionComponent<{}> = () => {
+  const { input, reactResources } = useClientContext();
+  const [heldActions, setHeldActions] = useState<ReadonlySet<MobileActionKind>>(
+    () => new Set()
+  );
+  const actionPointerIdsRef = useRef(new Map<MobileActionKind, number>());
+
+  // Hold-capable controls drive the same synthetic motions the mouse drives,
+  // so `InteractScript` stays the single authority for what the selected item
+  // actually does. A press sets the motion to 1 and *holds* it -- that is what
+  // makes mining a slow block work, and it is why these are not implemented
+  // with the fixed-duration `pulseMotion` the hotbar uses.
+  const motionForHoldableAction = (kind: MobileActionKind) =>
+    kind === "primary" ? "primary_hold" : "secondary_hold";
+
+  const sourceForHoldableAction = (kind: MobileActionKind) =>
+    kind === "primary"
+      ? MOBILE_PRIMARY_ACTION_SOURCE
+      : MOBILE_SECONDARY_ACTION_SOURCE;
+
+  const pressHoldAction = (kind: MobileActionKind, pointerId: number) => {
+    if (actionPointerIdsRef.current.has(kind)) {
+      return;
+    }
+    actionPointerIdsRef.current.set(kind, pointerId);
+    input.setSyntheticMotion(
+      motionForHoldableAction(kind),
+      sourceForHoldableAction(kind),
+      1
+    );
+    setHeldActions((held) => new Set(held).add(kind));
+  };
+
+  const releaseHoldAction = (kind: MobileActionKind, updateUi = true) => {
+    actionPointerIdsRef.current.delete(kind);
+    input.setSyntheticMotion(
+      motionForHoldableAction(kind),
+      sourceForHoldableAction(kind),
+      0
+    );
+    if (updateUi) {
+      setHeldActions((held) => {
+        if (!held.has(kind)) {
+          return held;
+        }
+        const next = new Set(held);
+        next.delete(kind);
+        return next;
+      });
+    }
+  };
+
+  const releaseAllHoldActions = (updateUi = true) => {
+    for (const kind of [...actionPointerIdsRef.current.keys()]) {
+      releaseHoldAction(kind, false);
+    }
+    if (updateUi) {
+      setHeldActions(new Set());
+    }
+  };
+
+  // A stuck `primary_hold` would mine or swing forever, so release on every
+  // interruption -- the same set the crouch/jump controls already guard.
+  useEffect(() => {
+    const releaseForInterruption = () => releaseAllHoldActions();
+    const releaseWhenHidden = () => {
+      if (document.visibilityState !== "visible") {
+        releaseAllHoldActions();
+      }
+    };
+    window.addEventListener("blur", releaseForInterruption);
+    document.addEventListener("visibilitychange", releaseWhenHidden);
+    return () => {
+      window.removeEventListener("blur", releaseForInterruption);
+      document.removeEventListener("visibilitychange", releaseWhenHidden);
+      releaseAllHoldActions(false);
+    };
+  }, [input]);
+
+  /**
+   * Discrete combat controls route through the *existing* combat entry points
+   * rather than reimplementing them, so a phone press and a keyboard press
+   * produce the same animation, the same UpdateNpcHealthEvent, the same server
+   * range/item validation, and the same Anima retaliation.
+   */
+  const invokeCombatAction = (kind: MobileActionKind) => {
+    if (kind === "draw") {
+      toggleHarthmereWeaponDrawn();
+      return;
+    }
+    if (kind === "target") {
+      cycleHarthmereCombatTarget();
+      return;
+    }
+    const combatAction = mobileCombatActionForKind(kind);
+    if (combatAction) {
+      performHarthmereKeyedAttack(combatAction);
+    }
+  };
+
+  // The same subscription the desktop combat HUD uses, so the phone can never
+  // disagree with it about weapon stance or block reasons.
+  const combatState = useHarthmereMultiplayerCombatState();
+  const selectedItem = reactResources.use("/hotbar/selection")?.item;
+  const availability = React.useMemo(() => {
+    const player = readHarthmereCombatState().player;
+    return {
+      nativeCombatEnabled: nativeBiomesEcsAuthorityEnabled(),
+      weaponDrawn: Boolean(combatState.weaponDrawn),
+      attackBlockedReason: getHarthmereMultiplayerAttackDisabledReason(
+        "heavy",
+        combatState,
+        player
+      ),
+      sparkBlockedReason: getHarthmereMultiplayerAttackDisabledReason(
+        "spark",
+        combatState,
+        player
+      ),
+    };
+  }, [combatState]);
+  const specs: MobileActionButtonSpec[] = React.useMemo(
+    () =>
+      mobileActionButtons(
+        availability,
+        // The primary caption follows the selected item, so the button reads
+        // "Mine", "Attack", "Place" or "Use" instead of a generic verb. An
+        // empty hand still mines, which is why `undefined` is allowed through.
+        selectedItem
+          ? (describeHotbarPrimaryAction(selectedItem)
+              .kind as MobilePrimaryLabelKind)
+          : undefined
+      ),
+    [availability, selectedItem]
+  );
+
+  return (
+    <div className="mobile-action-buttons" data-biomes-mobile-actions="true">
+      {specs.map((spec) => {
+        const disabledReason = mobileActionDisabledReason(
+          spec.kind,
+          availability
+        );
+        const held = heldActions.has(spec.kind);
+        return (
+          <button
+            key={spec.kind}
+            type="button"
+            className={`mobile-movement-button mobile-action-button mobile-action-button--${
+              spec.kind
+            }${held ? " mobile-action-button--held" : ""}`}
+            aria-label={spec.ariaLabel}
+            aria-pressed={spec.holdable ? held : undefined}
+            title={disabledReason ?? spec.label}
+            disabled={Boolean(disabledReason)}
+            data-biomes-mobile-action-button={spec.testAttribute}
+            onPointerDown={(event) => {
+              containMobileControlEvent(event);
+              if (disabledReason) {
+                return;
+              }
+              if (spec.holdable) {
+                event.currentTarget.setPointerCapture?.(event.pointerId);
+                pressHoldAction(spec.kind, event.pointerId);
+              } else {
+                // Discrete controls fire on press rather than click so a combat
+                // action feels immediate and cannot be swallowed by iOS's
+                // synthetic-click delay.
+                invokeCombatAction(spec.kind);
+              }
+            }}
+            onPointerUp={(event) => {
+              containMobileControlEvent(event);
+              if (
+                spec.holdable &&
+                actionPointerIdsRef.current.get(spec.kind) === event.pointerId
+              ) {
+                releaseHoldAction(spec.kind);
+              }
+            }}
+            onPointerCancel={(event) => {
+              containMobileControlEvent(event);
+              if (
+                spec.holdable &&
+                actionPointerIdsRef.current.get(spec.kind) === event.pointerId
+              ) {
+                releaseHoldAction(spec.kind);
+              }
+            }}
+            onLostPointerCapture={(event) => {
+              containMobileControlEvent(event);
+              if (
+                spec.holdable &&
+                actionPointerIdsRef.current.get(spec.kind) === event.pointerId
+              ) {
+                releaseHoldAction(spec.kind);
+              }
+            }}
+            onClick={containMobileControlEvent}
+            onContextMenu={containMobileControlEvent}
+          >
+            <span className="mobile-movement-button__key">{spec.glyph}</span>
+            <span className="mobile-movement-button__label">{spec.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 };

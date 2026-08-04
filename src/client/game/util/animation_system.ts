@@ -248,7 +248,8 @@ export class AnimationSystem<
             v[a],
             normalizedDesiredWeights[a],
             weightSmoothingDt,
-            accum.animations[a]?.easeInTime
+            accum.animations[a]?.easeInTime,
+            accum.animations[a]?.easeOutTime
           );
         });
       } else {
@@ -499,20 +500,38 @@ function normalizeWeights<W extends Record<string, number>>(a: W): W {
   return mapWeights(a, (x) => x / s);
 }
 
+export const DEFAULT_ANIMATION_EASE_TIME = 0.25;
+
 export function getSmoothedWeight(
   currentWeight: number,
   desiredWeight: number,
   dt: number,
-  easeInTime?: number
+  easeInTime?: number,
+  easeOutTime?: number
 ) {
-  const defaultEaseTime = 0.25;
-
   const weightDiff = desiredWeight - currentWeight;
-  const easeTime = weightDiff > 0 && easeInTime ? easeInTime : defaultEaseTime;
-  const weightVelocity = 1 / easeTime;
-  const dw = Math.min(1, weightVelocity * dt);
+  const rising = weightDiff > 0;
+  const easeTime =
+    (rising ? easeInTime : easeOutTime) ?? DEFAULT_ANIMATION_EASE_TIME;
+  if (!(easeTime > 0)) {
+    return desiredWeight;
+  }
 
-  const newWeight = currentWeight + dw * (desiredWeight - currentWeight);
+  // Exponential approach rather than `min(1, dt / easeTime)`.
+  //
+  // The linear form degenerates into a hard snap whenever a frame is longer
+  // than the ease time: at 14 FPS a frame is 71 ms, so an 80 ms ease moved 89%
+  // of the way in a single frame and the pose visibly popped. Worse, the amount
+  // blended per frame depended on the frame rate, so the same transition felt
+  // different on different machines.
+  //
+  // `1 - exp(-dt / easeTime)` is the frame-rate-independent form of the same
+  // first-order approach: it can never overshoot, and the weight reaches the
+  // same point after a given amount of wall time no matter how that time was
+  // divided into frames.
+  const dw = 1 - Math.exp(-dt / easeTime);
+
+  const newWeight = currentWeight + dw * weightDiff;
 
   return newWeight < 0.001 ? 0 : newWeight;
 }
@@ -544,6 +563,12 @@ interface AnimationStatus {
   repeat: RepeatType;
   startTime: number;
   easeInTime?: number;
+  /**
+   * Fade-out time. Without this the ease was asymmetric: an expression could
+   * specify a fast ease-in but always fell back to the 0.25 s default on the
+   * way out, so it snapped on and drifted off.
+   */
+  easeOutTime?: number;
 }
 
 type AnimationStatuses<A extends AnyAnimationSystem> = {

@@ -2,6 +2,7 @@ import assert from "assert";
 import {
   HARTHMERE_GATHERING_AUTHORITY_NODES,
   HARTHMERE_GATHERING_NODE_INTERACTION_RADIUS,
+  harthmereGatheringRequirementKeysForEquippedTool,
   harthmereGatheringAuthorityNode,
   resolveHarthmereGatheringAuthorityAttempt,
 } from "../gathering_node_authority";
@@ -15,6 +16,70 @@ describe("Harthmere gathering node authority", () => {
     assert.equal(node.requiredTool, "rusty_pickaxe");
     assert.equal(node.terrainFrame, "additive_town");
     assert.deepEqual(node.position, [2103, 53, -270]);
+  });
+
+  it("projects native tool capabilities into every compatible gathering requirement", () => {
+    assert.deepEqual(
+      harthmereGatheringRequirementKeysForEquippedTool({
+        id: 101 as any,
+        semanticItemId: "b:101",
+        isAxe: true,
+      }),
+      ["b:101", "woodcutters_axe"]
+    );
+    assert.deepEqual(
+      harthmereGatheringRequirementKeysForEquippedTool({
+        id: 102 as any,
+        semanticItemId: "b:102",
+        isPickaxe: true,
+      }),
+      ["b:102", "rusty_pickaxe"]
+    );
+    assert.deepEqual(
+      harthmereGatheringRequirementKeysForEquippedTool({
+        id: 103 as any,
+        semanticItemId: "b:103",
+        action: "fish",
+      }),
+      ["b:103", "simple_fishing_rod"]
+    );
+    assert.deepEqual(
+      harthmereGatheringRequirementKeysForEquippedTool({
+        semanticItemId: "skinning_knife",
+      }),
+      ["skinning_knife"]
+    );
+  });
+
+  it("accepts an ordinary native axe at every axe-gated node", () => {
+    const axeRequirement = harthmereGatheringRequirementKeysForEquippedTool({
+      id: 1534621126189595 as any,
+      semanticItemId: "b:1534621126189595",
+      isAxe: true,
+    });
+    const axeNodes = HARTHMERE_GATHERING_AUTHORITY_NODES.filter(
+      (candidate) => candidate.requiredTool === "woodcutters_axe"
+    );
+    assert.ok(axeNodes.length > 1);
+    for (const axeNode of axeNodes) {
+      assert.equal(
+        resolveHarthmereGatheringAuthorityAttempt({
+          nodeId: axeNode.id,
+          actorPosition: {
+            x: axeNode.position[0],
+            y: axeNode.position[1],
+            z: axeNode.position[2],
+          },
+          equippedItemIds: axeRequirement,
+          equippedBiomesItemIds: [1534621126189595 as any],
+          professionLevel: axeNode.requiredSkill,
+          nowMs: 1_700_000_000_000,
+          randomSeed: `native-axe:${axeNode.id}`,
+        }).ok,
+        true,
+        axeNode.id
+      );
+    }
   });
 
   it("uses production-probed heights for original-map wilderness nodes", () => {

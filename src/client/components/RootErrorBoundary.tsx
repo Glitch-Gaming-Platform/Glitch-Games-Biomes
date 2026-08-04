@@ -5,13 +5,11 @@ import {
 } from "@/client/components/system/DialogBox";
 import type { DialogButtonType } from "@/client/components/system/DialogButton";
 import { DialogButton } from "@/client/components/system/DialogButton";
-import { MaybeError } from "@/client/components/system/MaybeError";
 import { UnsupportedWebGLError } from "@/client/game/errors";
 import { reportClientError } from "@/client/util/request_helpers";
 import { resetSafeLocalData } from "@/client/util/resource_helpers";
 import type { LogMessage } from "@/shared/logging";
 import { addSink, log, removeSink } from "@/shared/logging";
-import { messageFromError } from "@/shared/util/helpers";
 import type { ErrorInfo, PropsWithChildren } from "react";
 import React from "react";
 
@@ -127,15 +125,17 @@ const UnknownErrorDialog: React.FunctionComponent<{
   setBusy: () => void;
   cancelError: () => void;
 }> = ({ error, busy, setBusy, cancelError }) => {
-  const message = messageFromError(error);
+  // Technical exception text is retained in telemetry by componentDidCatch.
+  // Never expose raw JavaScript, backend codes, or stack-adjacent details to
+  // players on the fatal screen.
+  void error;
   return (
     <DialogBox>
       <DialogBoxTitle>Unexpected Error</DialogBoxTitle>
       <DialogBoxContents>
-        <MaybeError error={message} />
         <div className="full-page-error-description">
-          Something went wrong in Biomes. Our engineering team has been alerted.
-          We recommend you try refreshing your browser.
+          The game ran into a problem and paused to protect your session. Your
+          progress is still saved. Refresh the page to return to the world.
         </div>
         <div className="dialog-button-group">
           <RefreshButton type="primary" busy={busy} setBusy={setBusy} />

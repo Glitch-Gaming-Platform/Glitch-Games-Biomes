@@ -1,6 +1,8 @@
 /// <reference types="mocha" />
 import {
+  canTraceCursorEntity,
   canAttackFilter,
+  isNativeEcsAttackTarget,
   shouldAddCrosshairMeleeTarget,
   traceNpcMetadataCursorHits,
 } from "@/client/game/resources/melee_attack_region";
@@ -23,6 +25,11 @@ describe("harthmere melee attack entity filtering", () => {
     } as any;
 
     assert.equal(canAttackFilter(ruleset, false, undefined, mucker), true);
+    assert.equal(
+      isNativeEcsAttackTarget(mucker),
+      false,
+      "presentation compatibility must not masquerade as a native ECS NPC"
+    );
   });
 
   it("does not turn non-living world objects with health into attack targets", () => {
@@ -48,6 +55,7 @@ describe("harthmere melee attack entity filtering", () => {
     } as any;
 
     assert.equal(canAttackFilter(ruleset, false, undefined, mucker), true);
+    assert.equal(isNativeEcsAttackTarget(mucker), true);
   });
 
   it("allows real Harthmere animals even when they reuse the dMucker NPC type", () => {
@@ -177,9 +185,58 @@ describe("Harthmere NPC metadata cursor ray fallback", () => {
     );
   });
 
+  it("keeps native NPCs eligible for the metadata trace that replaces the generic trace", () => {
+    assert.equal(
+      canTraceCursorEntity({
+        entity: npc,
+        playerId: 1 as BiomesId,
+        nativeEcsAuthority: true,
+        pass: "generic",
+      }),
+      false
+    );
+    assert.equal(
+      canTraceCursorEntity({
+        entity: npc,
+        playerId: 1 as BiomesId,
+        nativeEcsAuthority: true,
+        pass: "native_npc_metadata",
+      }),
+      true
+    );
+  });
+
   it("does not manufacture a hit when the ray misses the NPC box", () => {
     const table = { scan: () => [npc] } as any;
     const hits = traceNpcMetadataCursorHits(table, [4, 1, 0], [0, 0, 1], {
+      maxDistance: 8,
+    });
+
+    assert.deepEqual(hits, []);
+  });
+
+  it("ray-tests the latency-smoothed body that is actually rendered", () => {
+    const authoritativeAhead = {
+      ...npc,
+      position: { v: [2, 0, 5] },
+    } as any;
+    const table = { scan: () => [authoritativeAhead] } as any;
+    const hits = traceNpcMetadataCursorHits(table, [0, 1, 0], [0, 0, 1], {
+      maxDistance: 8,
+      aabbForEntity: (entity) => [
+        [-0.5, entity.position.v[1], 4.5],
+        [0.5, entity.position.v[1] + 2, 5.5],
+      ],
+    });
+
+    assert.equal(hits.length, 1);
+    assert.equal(hits[0].entity.id, npc.id);
+    assert.equal(hits[0].distance, 4.5);
+  });
+
+  it("does not use a broad cone to pull in an off-crosshair bystander", () => {
+    const table = { scan: () => [npc] } as any;
+    const hits = traceNpcMetadataCursorHits(table, [0.65, 1, 0], [0, 0, 1], {
       maxDistance: 8,
     });
 

@@ -39,6 +39,8 @@ const path = require("path");
 const ROOT = path.resolve(__dirname, "../..");
 const OUT_DIR = path.join(ROOT, "artifacts/cutscenes");
 const ORIGIN = process.env.HARTHMERE_E2E_URL || "http://localhost:3000";
+const SYNC_BASE_URL = process.env.HARTHMERE_E2E_SYNC_BASE_URL;
+const HEADED_CAPTURE = process.env.PROMO_CAPTURE_HEADED === "1";
 const DEFAULT_TIMEOUT_MS = Number(process.env.PROMO_CAPTURE_TIMEOUT_MS || 240_000);
 
 function parseArgs(argv) {
@@ -95,6 +97,11 @@ async function main() {
 
   const extra = { captureRun: String(args.run) };
   if (args.at !== undefined) extra.captureAt = String(args.at);
+  if (SYNC_BASE_URL) {
+    extra.harthmere_native_ecs_e2e = "1";
+    extra.syncBaseUrl = SYNC_BASE_URL;
+    extra.glitch_auto_play = "1";
+  }
   const url = registry.promoCaptureAuthUrl(scene, ORIGIN, extra);
 
   console.log(`scene   ${scene.id}`);
@@ -114,11 +121,17 @@ async function main() {
   }
 
   const browser = await chromium.launch({
+    headless: !HEADED_CAPTURE,
     args: [
       "--no-sandbox",
-      // The engine needs a GL context; on headless hosts that means SwiftShader.
-      "--use-gl=swiftshader",
-      "--enable-unsafe-swiftshader",
+      ...(HEADED_CAPTURE
+        ? ["--ignore-gpu-blocklist"]
+        : [
+            // The engine needs a GL context; on headless hosts that means
+            // SwiftShader. Desktop capture intentionally keeps the native GPU.
+            "--use-gl=swiftshader",
+            "--enable-unsafe-swiftshader",
+          ]),
       "--disable-dev-shm-usage",
     ],
   });
@@ -137,15 +150,31 @@ async function main() {
     const deadline = Date.now() + DEFAULT_TIMEOUT_MS;
     let state;
     while (Date.now() < deadline) {
-      state = await page.evaluate(() => {
-        const el = document.getElementById("biomes-promo-capture-output");
-        if (!el || !el.textContent) return undefined;
-        try {
-          return JSON.parse(el.textContent);
-        } catch {
-          return undefined;
+      try {
+        state = await page.evaluate(() => {
+          const el = document.getElementById("biomes-promo-capture-output");
+          if (!el || !el.textContent) return undefined;
+          try {
+            return JSON.parse(el.textContent);
+          } catch {
+            return undefined;
+          }
+        });
+      } catch (error) {
+        const message = String(error);
+        if (
+          /execution context was destroyed|cannot find context with specified id|most likely because of a navigation/i.test(
+            message
+          )
+        ) {
+          // The visual-auth bridge intentionally replaces its document while
+          // redirecting to the observer route. That navigation is progress,
+          // not a failed capture; resume polling in the new page context.
+          await new Promise((r) => setTimeout(r, 250));
+          continue;
         }
-      });
+        throw error;
+      }
       // A queued request is not a started scene, and a started scene is not a
       // finished one. Only "complete" or "error" are terminal.
       if (state && (state.status === "complete" || state.status === "error")) {

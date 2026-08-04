@@ -32,7 +32,11 @@ export function tryExitPointerLock() {
   }
 }
 
-type PointerLockResult = "locked" | "gesture-required" | "error";
+type PointerLockResult =
+  | "locked"
+  | "gesture-required"
+  | "terminal-error"
+  | "error";
 
 // Desktop Safari and all iOS browsers run WebKit, which only grants pointer
 // lock from an active user gesture. Chrome/Edge (Blink) and Firefox (Gecko)
@@ -70,6 +74,23 @@ function isGestureRequiredError(error: unknown): boolean {
   return name === "NotAllowedError" && isWebKitEngine();
 }
 
+export function isTerminalPointerLockErrorForTest(error: unknown): boolean {
+  const name = String((error as { name?: string } | null)?.name ?? "");
+  const message = String(
+    (error as { message?: string } | null)?.message ?? ""
+  );
+  // Chromium returns this UnknownError when the current embedding/platform
+  // exposes Pointer Lock but cannot complete it. Retrying the same request at
+  // 100 Hz cannot recover and produced the audit's console/main-thread flood.
+  // Keep SecurityError/NotAllowedError out of this classifier: those can be a
+  // transient post-Esc cooldown or a user-gesture requirement handled above.
+  return (
+    name === "UnknownError" ||
+    /if you see this error we have a bug/i.test(message) ||
+    /pointer lock.*(?:not supported|unavailable|cannot be used)/i.test(message)
+  );
+}
+
 async function requestPointerLockWithUnadjustedMovement(
   element: HTMLCanvasElement
 ): Promise<PointerLockResult> {
@@ -97,12 +118,22 @@ async function requestPointerLockWithUnadjustedMovement(
     if (isGestureRequiredError(error)) {
       return "gesture-required";
     }
+    if (isTerminalPointerLockErrorForTest(error)) {
+      log.warn("Pointer lock is unavailable; using focused input", { error });
+      return "terminal-error";
+    }
     try {
       await (element.requestPointerLock() as unknown as Promise<unknown>);
       return "locked";
     } catch (error: any) {
       if (isGestureRequiredError(error)) {
         return "gesture-required";
+      }
+      if (isTerminalPointerLockErrorForTest(error)) {
+        log.warn("Pointer lock is unavailable; using focused input", {
+          error,
+        });
+        return "terminal-error";
       }
       log.warn("Unable to request pointer lock", { error });
       return "error";
@@ -235,10 +266,16 @@ export class PointerLockManager {
   private tryLock(element: HTMLCanvasElement) {
     fireAndForget(
       requestPointerLockWithUnadjustedMovement(element).then((result) => {
-        if (result === "gesture-required") {
+        if (result === "gesture-required" || result === "terminal-error") {
           // The browser (Safari/WebKit) only grants pointer lock from an
           // active user gesture. Timer-driven retries can never succeed and
           // only flood the console, so abandon the retry loop immediately.
+          // Chromium's terminal UnknownError has the same retry policy and
+          // falls back to focused pointerless input.
+          if (result === "terminal-error") {
+            this.setPointerLockDisabled(true);
+            element.focus();
+          }
           this.stopLockRetry();
         }
       })
@@ -298,7 +335,7 @@ export class PointerLockManager {
             this.tryLock(this.lockElementRef.current);
           }
         }
-      }, 10);
+      }, 125);
     }
   }
 

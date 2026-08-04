@@ -2,6 +2,8 @@
 
 import { harthmereHudStandingForTest } from "@/client/components/challenges/HarthmereUnifiedHUD";
 import assert from "assert";
+import { readFileSync } from "fs";
+import path from "path";
 
 describe("Harthmere HUD native standing", () => {
   const legacyStanding = {
@@ -28,6 +30,29 @@ describe("Harthmere HUD native standing", () => {
     assert.equal(
       harthmereHudStandingForTest(legacyStanding, nativeStanding, false),
       legacyStanding
+    );
+  });
+
+  it("uses the authenticated native-vitals projection while TriggerState is late", () => {
+    const source = readFileSync(
+      path.join(
+        process.cwd(),
+        "src/client/components/challenges/HarthmereUnifiedHUD.tsx"
+      ),
+      "utf8"
+    );
+    assert.ok(source.includes("useHarthmereNativeVitalsProjection"));
+    assert.ok(
+      source.includes(
+        "const nativeVitals = nativeProjection.vitals"
+      )
+    );
+    assert.ok(source.includes("nativeProjection.hasAuthoritativeVitals"));
+    assert.equal(
+      source.includes(
+        "nativeBiomesEcsAuthorityEnabled() && nativeTriggerState !== undefined"
+      ),
+      false
     );
   });
 });

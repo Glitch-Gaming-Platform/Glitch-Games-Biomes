@@ -1,19 +1,15 @@
 import {
-  HARTHMERE_PLAYER_VOICE_CHANNEL_KEY,
-  HARTHMERE_PLAYER_VOICE_AUDIBLE_RADIUS,
+  classifyHarthmereVoiceTokenResponse,
   makeHarthmereVoiceRoomCreateBody,
   normalizeHarthmereVoiceTokenResponse,
-  parseHarthmereVoiceIceServers,
   selectHarthmereVoiceRoomCandidates,
 } from "@/server/glitch/harthmere_voice";
 import assert from "assert";
 
 describe("Harthmere Glitch player voice", () => {
-  it("creates an opt-in proximity Opus room without recording", () => {
+  it("creates a proximity Opus room with only documented fields", () => {
     const body = makeHarthmereVoiceRoomCreateBody({
       playerId: "1234",
-      displayName: "Cinder",
-      iceServers: [{ urls: "stun:example.test:3478" }],
     });
 
     assert.equal(body.player_id, "1234");
@@ -22,25 +18,18 @@ describe("Harthmere Glitch player voice", () => {
     assert.equal(body.codec, "opus");
     assert.equal(body.sample_rate, 48_000);
     assert.equal(body.channels, 1);
-    assert.equal(body.recording_allowed, false);
-    assert.equal(body.moderation_enabled, true);
-    assert.equal(body.metadata.channel_key, HARTHMERE_PLAYER_VOICE_CHANNEL_KEY);
-    assert.equal(
-      body.metadata.proximity_radius,
-      HARTHMERE_PLAYER_VOICE_AUDIBLE_RADIUS
-    );
-    assert.deepEqual(body.connection_config.iceServers, [
-      { urls: "stun:example.test:3478" },
+    assert.deepEqual(Object.keys(body).sort(), [
+      "bitrate",
+      "channels",
+      "codec",
+      "frame_duration_ms",
+      "max_participants",
+      "player_id",
+      "provider",
+      "sample_rate",
+      "topology",
+      "ttl_minutes",
     ]);
-  });
-
-  it("lets Glitch inject platform TURN servers when no title override exists", () => {
-    const body = makeHarthmereVoiceRoomCreateBody({
-      playerId: "1234",
-      displayName: "Cinder",
-    });
-
-    assert.deepEqual(body.connection_config, {});
   });
 
   it("selects only active non-full Biomes proximity rooms", () => {
@@ -52,16 +41,14 @@ describe("Harthmere Glitch player voice", () => {
         provider: "glitch_relay",
         participant_count: 32,
         max_participants: 32,
-        metadata: { channel_key: HARTHMERE_PLAYER_VOICE_CHANNEL_KEY },
       },
       {
         id: "other-game",
         state: "active",
-        topology: "proximity",
+        topology: "party",
         provider: "glitch_relay",
         participant_count: 1,
         max_participants: 32,
-        metadata: { channel_key: "another-game" },
       },
       {
         id: "later",
@@ -70,7 +57,6 @@ describe("Harthmere Glitch player voice", () => {
         provider: "glitch_relay",
         participant_count: 2,
         max_participants: 32,
-        metadata: { channel_key: HARTHMERE_PLAYER_VOICE_CHANNEL_KEY },
         created_at: "2026-08-02T10:00:00Z",
       },
       {
@@ -80,7 +66,6 @@ describe("Harthmere Glitch player voice", () => {
         provider: "glitch_relay",
         participant_count: 3,
         max_participants: 32,
-        metadata: { channel_key: HARTHMERE_PLAYER_VOICE_CHANNEL_KEY },
         created_at: "2026-08-02T09:00:00Z",
       },
     ]);
@@ -91,49 +76,61 @@ describe("Harthmere Glitch player voice", () => {
     );
   });
 
-  it("normalizes SDK-style data envelopes and rejects missing tokens", () => {
+  it("normalizes documented create and join response shapes", () => {
     assert.deepEqual(
       normalizeHarthmereVoiceTokenResponse({
         data: {
-          voice_room: { id: "room" },
+          voice_room: { id: "room", state: "active" },
           participant: { id: "participant" },
           voice_token: "voice-token",
         },
       }),
       {
-        voice_room: { id: "room" },
+        voice_room: { id: "room", state: "active" },
         participant: { id: "participant" },
         voice_token: "voice-token",
       }
     );
+    assert.deepEqual(
+      normalizeHarthmereVoiceTokenResponse({
+        room: { id: "joined-room", state: "active" },
+        participant: { id: "participant" },
+        voice_token: "joined-token",
+      }),
+      {
+        voice_room: { id: "joined-room", state: "active" },
+        participant: { id: "participant" },
+        voice_token: "joined-token",
+      }
+    );
+  });
+
+  it("rejects closed rooms before signaling can start", () => {
+    assert.deepEqual(
+      classifyHarthmereVoiceTokenResponse({
+        voice_room: { id: "closed-room", state: "closed" },
+        participant: { id: "participant" },
+        voice_token: "stale-token",
+      }),
+      { kind: "inactive", state: "closed" }
+    );
     assert.equal(
       normalizeHarthmereVoiceTokenResponse({
-        voice_room: { id: "room" },
+        room: { id: "closed-room", state: "closed" },
         participant: { id: "participant" },
+        voice_token: "stale-token",
       }),
       undefined
     );
   });
 
-  it("accepts configured ICE servers and safely falls back on bad JSON", () => {
-    assert.deepEqual(
-      parseHarthmereVoiceIceServers(
-        JSON.stringify([
-          {
-            urls: ["stun:one.example", "turn:two.example"],
-            username: "user",
-            credential: "credential",
-          },
-        ])
-      ),
-      [
-        {
-          urls: ["stun:one.example", "turn:two.example"],
-          username: "user",
-          credential: "credential",
-        },
-      ]
+  it("rejects missing voice tokens", () => {
+    assert.equal(
+      normalizeHarthmereVoiceTokenResponse({
+        voice_room: { id: "room", state: "active" },
+        participant: { id: "participant" },
+      }),
+      undefined
     );
-    assert.ok(parseHarthmereVoiceIceServers("not-json").length > 0);
   });
 });

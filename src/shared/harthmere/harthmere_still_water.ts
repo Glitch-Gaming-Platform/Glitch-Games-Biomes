@@ -53,9 +53,7 @@ export const HARTHMERE_STILL_WATER_VERSION =
 
 /** Materials, keyed by `localDevMaterials()` names. */
 export type HarthmereStillWaterMaterial =
-  | "stonePolished"
-  | "stoneBrick"
-  | "oakLumber";
+  "stonePolished" | "stoneBrick" | "oakLumber";
 
 export interface HarthmereStillWaterFeature {
   readonly id: "market_fountain" | "stable_trough" | "watermill_race";
@@ -156,14 +154,14 @@ function onFountainCardinalPost(authoredX: number, authoredZ: number) {
 // (455..459, -246..-242). Rebuilt as an actual trough — a one-voxel oak wall
 // around a 3x3 well of water.
 //
-// Shifted one voxel south of the authored patch. Its northern row, z = -246,
-// was inside `traveler_hearth_player_house` (448..466, -266..-246) — harmless
-// while it was a decorative wool block that the house generator overrode, but
-// not something to put a water source in. One row is the whole correction; the
-// trough stays in its own yard next to the hayrack.
+// The shell-polish pass moved `traveler_hearth_player_house` onto
+// x=448..466,z=-252..-232, which swallowed the former trough at
+// x=455..459,z=-245..-241. Keep the trough beside the hayrack post at
+// (444,-242), but move its 5x5 footprint immediately west of that post and
+// outside both the house and the stable shell.
 export const HARTHMERE_TROUGH_BOUNDS = {
-  x0: 455,
-  x1: 459,
+  x0: 439,
+  x1: 443,
   z0: -245,
   z1: -241,
 } as const;

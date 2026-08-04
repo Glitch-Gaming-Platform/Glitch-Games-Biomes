@@ -5,7 +5,7 @@
 // when an "unlock-while-open" panel (Jobs Board, Home Console, Business
 // Interface, Crafting Station) is open. Those panels intentionally release
 // pointer lock so the player can use the mouse; the escape menu must NOT
-// render its "Return to Game" / "Give Feedback" overlay on top of them.
+// render its escape-menu overlay on top of them.
 //
 // We use a structural (source-text) check because EscGameMenu has deep
 // `useClientContext` / `usePointerLockManager` dependencies that make a
@@ -32,6 +32,18 @@ const POLICY_PATH = path.join(
 );
 
 describe("EscGameMenu unlock-while-open suppression (V147)", () => {
+  it("does not expose the feedback report UI", () => {
+    const source = readFileSync(ESC_GAME_MENU_PATH, "utf8");
+    assert.ok(
+      !source.includes('name: "Give Feedback"'),
+      "EscGameMenu must not render a Give Feedback action"
+    );
+    assert.ok(
+      !source.includes("<ReportFlow"),
+      "EscGameMenu must not mount the feedback report flow"
+    );
+  });
+
   it("imports the unlock-while-open active hook", () => {
     const source = readFileSync(ESC_GAME_MENU_PATH, "utf8");
     assert.ok(
@@ -63,7 +75,9 @@ describe("EscGameMenu unlock-while-open suppression (V147)", () => {
   it("places the suppression guard before the escape-menu render block so no buttons leak", () => {
     const source = readFileSync(ESC_GAME_MENU_PATH, "utf8");
     const guardIndex = source.indexOf("if (unlockWhileOpenActive)");
-    const escControlsIndex = source.indexOf('className="esc-game-controls select-none"');
+    const escControlsIndex = source.indexOf(
+      'className="esc-game-controls select-none"'
+    );
     assert.notEqual(guardIndex, -1, "guard must be present");
     assert.notEqual(escControlsIndex, -1, "escape menu render must be present");
     assert.ok(

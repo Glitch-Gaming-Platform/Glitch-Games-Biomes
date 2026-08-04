@@ -8,6 +8,10 @@ import type { RendererController } from "@/client/game/renderers/renderer_contro
 import type { ClientResources } from "@/client/game/resources/types";
 import type { ScriptController } from "@/client/game/scripts/script_controller";
 import { refreshBikkie } from "@/client/game/util/bikkie";
+import {
+  renderFpsCapForDevice,
+  shouldRenderFrame,
+} from "@/client/game/util/mobile_frame_pacing";
 import { cleanEmitterCallback } from "@/client/util/helpers";
 import type { Change, ChangeBuffer } from "@/shared/ecs/change";
 import { changedBiomesId } from "@/shared/ecs/change";
@@ -38,6 +42,9 @@ export class Loop {
   private cleanUps: Array<() => unknown> = [];
   private lastBikkieTrayId?: BiomesId;
   private requestedAnimationFrame = 0;
+  // Timestamp of the last frame we actually rendered, used only by the mobile
+  // render cap. Undefined until the first rendered frame.
+  private lastRenderAtMs?: number;
 
   constructor(
     private readonly self: BiomesId,
@@ -50,7 +57,11 @@ export class Loop {
     private readonly scripts: ScriptController,
     private readonly indexedResources: IndexedResources,
     private readonly io: ClientIo,
-    private readonly rendererController: RendererController
+    private readonly rendererController: RendererController,
+    // HARTHMERE_MOBILE_FRAME_CAP (2026-08-04 mobile audit, item 4).
+    // `undefined` on desktop, which means "render on every animation frame" --
+    // i.e. exactly the previous behaviour.
+    private readonly renderFpsCap?: number
   ) {
     if (global.recent === undefined) {
       global.recent = [];
@@ -229,7 +240,26 @@ export class Loop {
       // Publish events to server, do not block on this.
       fireAndForget(this.events.flush());
 
-      this.rendererController.renderFrame();
+      // HARTHMERE_MOBILE_FRAME_CAP (2026-08-04 mobile audit, item 4).
+      //
+      // Only *rendering* is paced. Everything above this line -- ECS flush,
+      // clock, tweaks, the fixed-rate simulation ticker, and event publishing
+      // -- still runs on every animation frame, so input latency, physics and
+      // networking are unchanged by the cap.
+      //
+      // `renderFpsCap` is undefined on desktop, so `shouldRenderFrame` returns
+      // true unconditionally there and this is a no-op.
+      const nowMs = getNowMs();
+      if (
+        shouldRenderFrame({
+          nowMs,
+          lastRenderAtMs: this.lastRenderAtMs,
+          targetFps: this.renderFpsCap,
+        })
+      ) {
+        this.lastRenderAtMs = nowMs;
+        this.rendererController.renderFrame();
+      }
 
       // Give the resource system some time for garbage collection.
       // TODO: Consider running this on the async queue so that it substracts from
@@ -258,6 +288,7 @@ export async function loadLoop(loader: RegistryLoader<ClientContext>) {
     indexedReosurces,
     io,
     rendererController,
+    clientConfig,
   ] = await Promise.all([
     loader.get("userId"),
     loader.get("events"),
@@ -270,6 +301,7 @@ export async function loadLoop(loader: RegistryLoader<ClientContext>) {
     loader.get("indexedResources"),
     loader.get("io"),
     loader.get("rendererController"),
+    loader.get("clientConfig"),
   ]);
   return new Loop(
     userId,
@@ -282,6 +314,9 @@ export async function loadLoop(loader: RegistryLoader<ClientContext>) {
     scripts,
     indexedReosurces,
     io,
-    rendererController
+    rendererController,
+    // HARTHMERE_MOBILE_FRAME_CAP: mobile-only. Desktop receives `undefined`
+    // and keeps rendering on every animation frame.
+    renderFpsCapForDevice(clientConfig.mobileDevice)
   );
 }

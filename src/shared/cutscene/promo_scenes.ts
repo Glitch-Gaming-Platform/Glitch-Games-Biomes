@@ -7,18 +7,24 @@
 // PRESENT-DAY CAST POLICY — LOAD BEARING
 // A real player or seeded ECS NPC must render through the snapshot player-like
 // appearance pipeline. Generic `townsperson_*` ghosts are forbidden here: that
-// fallback was the source of the blocky wrong-NPC screenshots. Ghost bindings
-// remain valid only for actual memory/flashback scenes in ch1_scenes.ts.
+// fallback was the source of the blocky wrong-NPC screenshots. The only promo
+// exception is the explicit eleven-boss catalog below, whose world-scale GLBs
+// are the canonical, mutation-free renderer assets for cinematic staging.
 
 import {
   validateCutsceneDef,
   type CutsceneDef,
   type CutsceneVec3,
 } from "@/shared/cutscene/schema";
+import {
+  HARTHMERE_BOSS_VISUAL_ASSETS,
+  type HarthmereBossVisualAsset,
+  type HarthmereBossVisualId,
+} from "@/shared/harthmere/boss_visual_assets";
 import { ch1DungeonAuthoredToWorld } from "@/shared/harthmere/ch1_dungeon_terrain";
 
 export const PROMO_SCENES_VERSION =
-  "promo-scenes-v2-real-cast-landscape-batch" as const;
+  "promo-scenes-v3-seed-audited-boss-staging" as const;
 
 export interface PromoBrand {
   /** Always the game name. Rendered large, top-left. */
@@ -641,6 +647,327 @@ const SECTOR_PROMO_SCENES: readonly PromoSceneDef[] =
     ],
   }));
 
+// ---------------------------------------------------------------------------
+// Harthmere boss marketing stills
+//
+// These use the canonical world-scale GLBs generated for the actual encounter
+// bosses. They are staged as client-only puppets so all eleven can be captured
+// consistently without moving, spawning, damaging, or otherwise mutating an
+// authoritative ECS combatant. The map positions are the bosses' encounter
+// spaces; the camera paths are deliberately close, low, and three-quarter.
+// ---------------------------------------------------------------------------
+
+export interface HarthmereBossPromoSpec {
+  id: HarthmereBossVisualId;
+  area: string;
+  stage: CutsceneVec3;
+  cameraFar: CutsceneVec3;
+  cameraNear: CutsceneVec3;
+  timeOfDay: number;
+  fov: number;
+  framingBias?: number;
+  /** Canonical authored yaw when the boss asset should not auto-face camera. */
+  yaw?: number;
+  animation?: "attack1" | "attack2";
+}
+
+export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
+  Object.freeze([
+    {
+      id: "muck_scarred_helix",
+      area: "West Muck Breach",
+      stage: [232, 33, -506],
+      cameraFar: [222, 36, -496],
+      cameraNear: [225, 35, -499],
+      timeOfDay: 0.78,
+      fov: 30,
+      framingBias: 1.2,
+      animation: "attack2",
+    },
+    {
+      id: "gilded_bull",
+      area: "Sun Court",
+      stage: [2968, 44, -312],
+      // Accepted Sun Court sector-proof lane. The rejected diagonal framed
+      // only the court's wrong-coloured sky beyond the north aperture.
+      cameraFar: [2946, 50, -304],
+      cameraNear: [2951, 48, -307],
+      timeOfDay: 0.38,
+      fov: 36,
+      framingBias: 1.15,
+      animation: "attack2",
+    },
+    {
+      id: "ninth_winter",
+      area: "Ash Hall",
+      stage: [3524, 65, -344],
+      // Stay on the accepted Ash Hall interior axis (local z=-88).
+      cameraFar: [3498, 70, -344],
+      cameraNear: [3505, 69, -344],
+      timeOfDay: 0.86,
+      fov: 42,
+      framingBias: 2.5,
+      animation: "attack2",
+    },
+    {
+      id: "failed_apprentice",
+      area: "Bellward Halls — Bell Ring",
+      // Authored runtime placement beside the broken handbell. The retained
+      // screenshot stack disables the optional +1600 additive-town offset.
+      stage: [354, 53, -313.4],
+      cameraFar: [366, 58, -301],
+      cameraNear: [363, 56.5, -304],
+      timeOfDay: 0.73,
+      fov: 35,
+      framingBias: 1.3,
+      yaw: Math.PI,
+      animation: "attack2",
+    },
+    {
+      id: "first_choir",
+      area: "Bellward Halls — Central Choir",
+      // Runtime triad floor sigil and three harmony candles.
+      stage: [356, 53, -309],
+      cameraFar: [370, 58, -295],
+      cameraNear: [367, 56.5, -298],
+      timeOfDay: 0.78,
+      fov: 35,
+      framingBias: 1.15,
+      yaw: Math.PI,
+      animation: "attack2",
+    },
+    {
+      id: "echo_singer",
+      area: "Veins of the Wyrm — Echo Hall",
+      // Runtime phase-safe essence pool in Old Well / Underways.
+      stage: [632, 53, -318],
+      cameraFar: [616, 59, -302],
+      cameraNear: [620, 56.5, -306],
+      timeOfDay: 0.71,
+      fov: 36,
+      framingBias: 1.6,
+      yaw: Math.PI,
+      animation: "attack2",
+    },
+    {
+      id: "vyrahel_vein_keeper",
+      area: "Veins of the Wyrm — Spine Hall",
+      // Shoot from north of the runtime rib wall so it remains backdrop.
+      stage: [642, 53, -334],
+      cameraFar: [656, 59, -350],
+      cameraNear: [653, 56.5, -346],
+      timeOfDay: 0.66,
+      fov: 35,
+      framingBias: 1.35,
+      yaw: Math.PI,
+      animation: "attack1",
+    },
+    {
+      id: "thaedryn_bellbound",
+      area: "Wyrm's Bed",
+      stage: [640, 53, -268],
+      // Shoot from the True-Bell side, close enough to read the dragon and
+      // binding silhouettes rather than losing them in atmospheric void.
+      cameraFar: [618, 64, -240],
+      cameraNear: [623, 60, -247],
+      timeOfDay: 0.75,
+      fov: 39,
+      framingBias: 3.2,
+      yaw: Math.PI,
+      animation: "attack2",
+    },
+    {
+      id: "hex_wraith",
+      area: "Gravewood Pale Muck",
+      // Exact grounded legacy bounty marker in Gravewood Pale Muck. The
+      // rejected frame used a Watchtower Muck Patch seed from a different
+      // encounter family and therefore photographed the wrong scenery.
+      stage: [632.924, 47, 146.321],
+      cameraFar: [620, 53, 159],
+      cameraNear: [624, 51, 155],
+      timeOfDay: 0.74,
+      fov: 30,
+      framingBias: 0.9,
+      animation: "attack2",
+    },
+    {
+      id: "alpha_mucker",
+      area: "Old Wood Muck Patch",
+      // Exact grounded legacy bounty marker. Pull the lens outside the
+      // fourteen-metre canopy; the rejected camera sat inside the boss crown.
+      stage: [648.693, 57, -455],
+      cameraFar: [678, 66, -428],
+      cameraNear: [670, 63, -436],
+      timeOfDay: 0.72,
+      fov: 36,
+      framingBias: 2.5,
+      animation: "attack2",
+    },
+    {
+      id: "root_crowned_dead",
+      area: "Deep Old Wood",
+      // Runtime public-event marker among standing stones and ritual light.
+      stage: [620, 53, -505],
+      // Approach from the southwest between the ancient trees. The rejected
+      // northeast camera stood behind a dark terrain lip above the ritual.
+      cameraFar: [603, 60, -518],
+      cameraNear: [608, 57, -514],
+      timeOfDay: 0.8,
+      fov: 32,
+      framingBias: 1.35,
+      animation: "attack2",
+    },
+  ]);
+
+function bossVisual(id: HarthmereBossVisualId): HarthmereBossVisualAsset {
+  const visual = HARTHMERE_BOSS_VISUAL_ASSETS.find(
+    (candidate) => candidate.id === id
+  );
+  if (!visual) {
+    throw new Error(`no Harthmere boss visual is registered for ${id}`);
+  }
+  return visual;
+}
+
+export function harthmereBossPromoAssetUrl(id: HarthmereBossVisualId): string {
+  return bossVisual(id).assetUrl.replace(/\.glb$/i, "_world.glb");
+}
+
+export function isHarthmereBossPromoGhostAsset(asset: string): boolean {
+  return HARTHMERE_BOSS_VISUAL_ASSETS.some(
+    (visual) => harthmereBossPromoAssetUrl(visual.id) === asset
+  );
+}
+
+function bossFrameFocus(
+  spec: HarthmereBossPromoSpec,
+  visual: HarthmereBossVisualAsset
+): CutsceneVec3 {
+  const dx = spec.stage[0] - spec.cameraNear[0];
+  const dz = spec.stage[2] - spec.cameraNear[2];
+  const length = Math.max(0.001, Math.hypot(dx, dz));
+  const screenRightX = dz / length;
+  const screenRightZ = -dx / length;
+  const bias =
+    spec.framingBias ?? Math.min(4, Math.max(0.8, visual.worldSize[0] * 0.2));
+  return [
+    spec.stage[0] - screenRightX * bias,
+    spec.stage[1] + visual.worldSize[1] * 0.48,
+    spec.stage[2] - screenRightZ * bias,
+  ];
+}
+
+function bossPromoScene(spec: HarthmereBossPromoSpec): CutsceneDef {
+  const visual = bossVisual(spec.id);
+  const bossRole = `boss_${spec.id}`;
+  const frameFocus = bossFrameFocus(spec, visual);
+  return validPromoScene(
+    {
+      id: `promo-boss-${spec.id.replaceAll("_", "-")}`,
+      name: `${visual.displayName} Marketing Hero Still`,
+      version: 1,
+      priority: 100_000,
+      settings: safePromoSettings(spec.timeOfDay, 18),
+      cast: [
+        {
+          role: bossRole,
+          binding: {
+            kind: "ghost",
+            asset: harthmereBossPromoAssetUrl(spec.id),
+            family: "quest_creature",
+            spawnAt: spec.stage,
+            height: visual.worldSize[1],
+          },
+          required: true,
+        },
+        {
+          role: "frameFocus",
+          binding: {
+            kind: "anchor",
+            position: frameFocus,
+            height: 0,
+            label: `${visual.displayName} hero framing target`,
+          },
+        },
+        {
+          role: "cameraFacing",
+          binding: {
+            kind: "anchor",
+            position: spec.cameraNear,
+            height: 0,
+            label: `${visual.displayName} camera eyeline`,
+          },
+        },
+      ],
+      shots: [
+        {
+          id: "boss-hero",
+          duration: 4.5,
+          camera: {
+            kind: "dolly",
+            waypoints: [
+              { position: spec.cameraFar },
+              { position: spec.cameraNear },
+            ],
+            lookAtRole: "frameFocus",
+            easing: "easeInOut",
+          },
+          actions: [
+            { kind: "fov", at: 0, fov: spec.fov },
+            {
+              kind: "teleport",
+              at: 0,
+              role: bossRole,
+              to: spec.stage,
+              ...(spec.yaw === undefined ? {} : { faceYaw: spec.yaw }),
+            },
+            ...(spec.yaw === undefined
+              ? [
+                  {
+                    kind: "face" as const,
+                    at: 0.05,
+                    role: bossRole,
+                    towards: { role: "cameraFacing" },
+                  },
+                ]
+              : []),
+            {
+              kind: "emote",
+              at: 1.35,
+              role: bossRole,
+              emote: spec.animation ?? "attack2",
+            },
+          ],
+        },
+      ],
+      onEnd: { placements: [], commits: [] },
+    },
+    `promo-boss-${spec.id}`
+  );
+}
+
+const HARTHMERE_BOSS_PROMO_SCENES: readonly PromoSceneDef[] =
+  HARTHMERE_BOSS_PROMO_SPECS.map((spec) => {
+    const visual = bossVisual(spec.id);
+    return {
+      id: `boss-${spec.id.replaceAll("_", "-")}`,
+      shotId: "boss-hero",
+      captureAt: 2.05,
+      captureAtMax: 4.25,
+      filename: `biomes-harthmere-boss-${spec.id.replaceAll("_", "-")}.png`,
+      brand: {
+        title: "Biomes",
+        subtitle: `HARTHMERE BOSS // ${visual.displayName.toUpperCase()} // ${spec.area.toUpperCase()}`,
+      },
+      observer: {
+        position: spec.cameraFar,
+        orientation: [-0.1, 0],
+      },
+      build: () => bossPromoScene(spec),
+      groups: ["boss-marketing"],
+    };
+  });
+
 export const PROMO_SCENES: readonly PromoSceneDef[] = Object.freeze([
   {
     id: "dungeon-portal",
@@ -701,6 +1028,7 @@ export const PROMO_SCENES: readonly PromoSceneDef[] = Object.freeze([
     ],
   },
   ...SECTOR_PROMO_SCENES,
+  ...HARTHMERE_BOSS_PROMO_SCENES,
 ]);
 
 export function promoSceneById(id: string): PromoSceneDef | undefined {
@@ -849,10 +1177,19 @@ export async function validatePromoScenes(): Promise<string[]> {
     } else if (scene.captureAtMax > shot.duration) {
       errors.push(`${scene.id}: captureAtMax exceeds shot duration`);
     }
-    if (def.cast.some((member) => member.binding.kind === "ghost")) {
-      errors.push(
-        `${scene.id}: promotional/present-day scenes may not use generic ghost NPCs`
-      );
+    for (const member of def.cast) {
+      if (member.binding.kind !== "ghost") {
+        continue;
+      }
+      const approvedBossPuppet =
+        scene.groups?.includes("boss-marketing") &&
+        member.binding.family === "quest_creature" &&
+        isHarthmereBossPromoGhostAsset(member.binding.asset);
+      if (!approvedBossPuppet) {
+        errors.push(
+          `${scene.id}: promotional/present-day scenes may not use generic ghost NPCs`
+        );
+      }
     }
     if (def.settings.mode !== "clientPuppet") {
       errors.push(`${scene.id}: promo stills must be clientPuppet`);

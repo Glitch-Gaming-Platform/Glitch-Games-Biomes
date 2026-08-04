@@ -26,9 +26,12 @@ had nowhere to be. Nine staircases stood in their own doorway. And the town had
 no streets at all — the three constants named as if they were roads are all
 air-clearing and prop-filtering masks, none of which paves anything.
 
-Every one of those is now fixed, and pinned by 21 new assertions in
-`src/shared/harthmere/test/harthmere_building_shells.test.ts`. All 36 tests
-across the two building suites pass.
+Every one of those is now fixed, and pinned by 25 new assertions in
+`src/shared/harthmere/test/harthmere_building_shells.test.ts`.
+
+The seam where Harthmere meets the imported map is covered too: the town paving
+now reaches all four wilds roads, and the flat plain either side of the join is
+a hillside with a pass cut through it for the road.
 
 ---
 
@@ -253,11 +256,33 @@ an accident of which buildings someone typed in.
   deterministic.
 
 `harthmere_building_interiors.test.ts` updated: the assertion that pinned seven
-authored overlaps now asserts zero. All 15 of its existing tests still pass
-unchanged — the shell moves did not disturb a single furniture invariant.
+authored overlaps now asserts zero.
 
-**36 passing, 0 failing.** `tsc --strict --noUnusedLocals` clean on the changed
-shared modules.
+**Shell and street suite: 21 passing, 0 failing.** `tsc --strict
+--noUnusedLocals` clean on the changed shared modules.
+
+**Two pre-existing interiors assertions now fail, for a reason unrelated to this
+pass.** `harthmereBuildingFurniture()` in `harthmere_building_interiors.ts` was
+changed mid-session to filter its own output down to ceiling lights:
+
+```ts
+const structuralLighting = all.filter((box) => box.piece === "ceiling_led");
+furnitureCache.set(building.name, structuralLighting);
+return structuralLighting;
+```
+
+The generator still runs and still places furniture — tracing shows nine pieces
+on the smithy's ground floor and sixteen in the Copper Kettle's common room —
+and then every one of them is discarded before the caller sees it. Every
+building in Harthmere is now an empty room with two LEDs in the ceiling.
+
+That makes two assertions in the interiors suite false by construction
+("furnishes all 57 buildings" and "gives each kind of building the furniture it
+should have"), and it is presumably deliberate — a performance measure, or a
+move to prop-based interiors. It was left exactly as found: interiors are out of
+scope for this pass, and reverting someone else's in-progress change is not a
+call this audit should make. But the two tests and the module now contradict each
+other, and one of them should be updated to say which is intended.
 
 ### The town, after
 
@@ -338,7 +363,239 @@ shared modules.
 
 ---
 
-## Part IV — Still open
+## Part IIIa — Deploying this to a world that already exists
+
+Editing the building table is not enough, and this was very nearly shipped
+invisible. Two independent gates stood in the way.
+
+**1. The seed fingerprint did not know the building table existed.**
+`makeLocalDevSeedFingerprint()` hashes roughly twenty-five version constants —
+`buildingStyleVersion`, `townSurfaceStyleVersion`,
+`additiveTownInteriorsVersion` and so on — but it did **not** include
+`HARTHMERE_TOWN_BUILDINGS_VERSION`, the version of the table that says where the
+buildings are. So a deploy carrying moved shells would compute a fingerprint
+identical to the recorded one, log *"Skipping local dev starter town seed;
+fingerprint already current"*, and return. Nothing would run.
+
+**2. Even with a changed fingerprint, no shard would have been rebuilt.**
+In the default `additive` mode, `terrainIdsToBuild` collects only shards that are
+missing, that fail the unsolid-surface probe, or that carry authored water.
+Moving a building satisfies none of those — the shard is present, and the ground
+is still solid.
+
+**3. And moving a building makes that worse, not merely inert.** The old shells
+live in `shard_seed` at their old coordinates. Additive seeding creates and never
+erases, so anything short of a full authored rebuild of those shards would leave
+the Guard Yard Office standing in two places at once.
+
+The fix follows the `HARTHMERE_AUTHORED_WATER` precedent in the same function,
+which exists because that block once sat behind an env flag and ordinary deploys
+left the carved river dry:
+
+- `HARTHMERE_TOWN_BUILDINGS_VERSION` (bumped to `-shell-polish-v2`),
+  `HARTHMERE_TOWN_SHELL_REBUILD_VERSION` and `HARTHMERE_TOWN_STREETS_VERSION` now
+  ride in the seed fingerprint, so the deploy that carries a shell change is the
+  deploy whose fingerprint stops matching.
+- `localDevTerrainShardHoldsRebuiltTownShell()` queues every existing shard whose
+  authored span intersects the town-core rebuild span, between the ground plane
+  and relY 40, for a **full authored rebuild**. The span is derived from the
+  core footprints with a 16-voxel margin rather than listed, so a future move
+  cannot fall outside it — verified: every changed footprint, old position and
+  new, lies inside it.
+- Unlike the water block this is **conditional on the fingerprint mismatch**, so
+  it fires on exactly one deploy and is a no-op afterwards. Scope: 100 shard
+  columns x 2 y-layers = **200 shards**.
+
+Player work is preserved. The rebuild is a partial ECS update that rewrites only
+the seed identity; `shard_diff`, shapes, placer, occupancy, farming, growth,
+moisture, water, muck and restoration state are all omitted from the change and
+therefore survive, including concurrent writes made while maintenance runs.
+
+No env flag, no admin action: deploy is enough.
+
+---
+
+## Part IIIb — Reconciliation review, and the seam to the main map
+
+### The expanded production repair: verified
+
+`repair-harthmere-town-production.cjs` was widened to target every canonical
+shard the shells and streets touch. Checked independently against the geometry
+rather than taken on trust:
+
+| Property | Result |
+| --- | --- |
+| Shards targeted | **142** (was 14) |
+| Old, pre-move shell positions covered | **all of them** — no ghost walls |
+| Chimney stacks above the roof line covered | yes |
+| Balcony decks outside the footprint covered | yes |
+| Every street voxel covered | yes |
+| Paving inside a building | none |
+| `storyHeight()` matches the shell generator | yes (`slum ? 4 : 5`) |
+| Mutable overlays | untouched — only `shard_seed` and `box` are written |
+
+The replacement is composed from the canonical seed first and the town-style
+overrides applied on top, then compared and written once, so a retry is
+idempotent and a half-restored shard is never visible.
+
+One structural note: the script derives its target set from the **new**
+footprints, and the old ones are covered only because the moves were small
+relative to a 32-voxel shard and neighbours filled the gaps. That holds today —
+verified voxel by voxel — but it is incidental, not designed. If a future move
+is large, the old shell's shards must be added explicitly.
+
+### Three gaps found in the reconciliation path
+
+**1. Nothing checked that `dist/shim.js` was current — fixed.** The writer reads
+its target set from the worktree and its replacement geometry from the packaged
+bundle. A stale image would rebuild all 142 shards from old geometry, *reverting*
+the shells and streets, while still printing the worktree's version numbers and
+reporting success. The persisted-world audit would not catch it: it checks the
+town surface and four roofs, and verifies no shell position or street voxel. The
+repair script now asserts the bundle contains the worktree's building-table and
+street-network versions and refuses to write otherwise. (Today's bundle, built
+02:40, passes: it carries `harthmere-town-buildings-shell-polish-v2` and matches
+the moved coordinates and all four added floors exactly.)
+
+**2. The repair timeout was still sized for fourteen shards — fixed.** 300s for
+142 shards, each a full 32³ generation plus load/save, is tight; a kill leaves
+the town partially repaired — atomic per shard, so nothing corrupts, but some
+shells stay at their old coordinates until the next deploy. Raised to 900s and
+the stale "only the 14 affected canonical shard seeds" comment corrected.
+
+**3. The verifier was not widened with the writer.** `audit-harthmere-town-repair.cjs`
+still checks only the town surface and four roofs. It should gain a shell-position
+and street-voxel probe so the gate can actually fail on the case the writer now
+exists to prevent. Left as an open item — it is the audit's own contract, not
+this pass's.
+
+### The seam where Harthmere meets the main map
+
+The extension sits at authored X + 1600. The imported map ends at X=1792, which
+is exactly where the first extension shard begins, and the extension covers
+X=1792..2560, Z=-576..192 at a flat ground plane of Y=52.
+
+What is already handled, and correctly:
+
+- **The north and south notches** east of X=1792, where world metadata claims
+  land the extension does not seed, are closed by
+  `harthmereExtensionVoidCollisionBoxes()` and hidden behind the rising ridge in
+  `extension_edge_horizon.ts`. A player cannot walk into a missing shard.
+- **Surface solidity** across every extension shard is gated on each deploy by
+  `audit-production-extension-terrain.cjs` — the probe that caught the sunken
+  forest pits.
+- **The approach road** is engineered rather than assumed:
+  `harthmere_connector_route.ts` routes from the Grove's east road, descends to
+  a confirmed Y=56 landing, and cut/fills (up to 12 voxels) along
+  Z=-209 to the boundary at X=1792, where the extension generator takes over
+  with its own gravel road to the West Gate.
+
+What was wrong, and is now fixed:
+
+- **The town's paving was an island.** The street network connected all 46 front
+  doors and then stopped 16 to 42 voxels short of every one of the four authored
+  wilds roads. A player walking the gravel road in from the old-map seam stepped
+  onto open grass at the West Gate, crossed it, and picked up paving somewhere
+  in the middle of town. The four road heads are now landings in their own right,
+  so the network is continuous from the seam to the last apartment door — all
+  four now meet the paving at **0 voxels**, and a new assertion holds them there.
+- Re-verified after the change: the network still paves nothing inside a
+  building, and still never crosses the Brell or the fountain, trough and mill
+  race — **0 street voxels over the river channel, 0 over still water.**
+
+Network after: **6,139 paved voxels in 167 rectangles**, built in ~90 ms.
+
+### The land either side of the road at the join — now a hillside
+
+The seam had one more problem the road fix does not touch. West of X=1792 is real
+imported landscape with real relief. East of it the additive terrain is a
+dead-flat plane at Y=52 for the entire 768-block band. The join was therefore a
+straight north-south line, 768 voxels long, with landscape on one side and a
+table-top on the other. It did not read as terrain; it read as the edge of a
+level.
+
+`harthmere_west_seam_ridge.ts` (new) puts hills there, with a pass cut through
+for the road — the same job `extension_edge_horizon.ts` already does for the
+north and south notches, applied to the seam the player actually walks through.
+
+| | |
+| --- | --- |
+| Band | world X 1792..1880, full extension Z range −576..192 |
+| Crest | Y 74–75, i.e. 22–23 above the plane |
+| Raised columns | 64,113 |
+| Road pass | 21 voxels flat at the plane, ramping up over 26 either side |
+| Steepest step | **1 voxel** — a walkable hillside everywhere, no cliffs |
+
+Two rules keep it safe, and both are asserted:
+
+- **Zero rise at the seam column itself**, ramping up over the next 24 voxels.
+  The imported map's height at X=1791 is not knowable from this side of the
+  join, so raising ground exactly on the line risks butting a 20-block face
+  against whatever is actually there. Swelling eastward from the plane cannot.
+- **Back to the plain well before the town.** The ridge ends at X=1880; the
+  westernmost structure is at 1940 and paving starts at 1924. A test pins that
+  no building and no street ever falls inside the band.
+
+It is add-only — it never writes at or below the ground plane — so it cannot
+carve the road surface, the town, or anything the earlier passes authored.
+
+Reconciliation: the ridge is new ground on shards that **already exist**, which
+is precisely the case additive seeding cannot detect. It is wired into all three
+gates — the seed fingerprint, `localDevTerrainShardHoldsRebuiltTownShell()` (the
+footprint-derived span stops 44 blocks east of it, so the ridge band is checked
+separately), and the production repair's target set. Verified: every raised ridge
+voxel falls inside that set.
+
+### Five structures that did not exist in production
+
+Writing the ridge test surfaced this, and it is the most serious thing in the
+audit: **five authored structures had no terrain beneath them and were never
+written at all.** The additive seeder only generates shards inside
+`HARTHMERE_EXTENSION_WORLD_BOUNDS`, and that band was sized for the West Muck
+Breach at Z=−560 plus one shard of support — the right rule for keeping
+creatures off the void, and the wrong rule for deciding which authored content
+exists. They render correctly in an unshifted authored world, which is how it
+survived.
+
+It was not only buildings. The Gravewood cemetery fence (authored 752..808,
+206..262), a bandit seed, and two NPC bedrooms were outside the band as well —
+the trim was cutting away whole authored districts, not five isolated shells.
+
+| Structure | Was | Fix |
+| --- | --- | --- |
+| `charcoal_burners_camp` | z −650, outside Z | band widened |
+| `deep_old_wood_glade_lodge` | z −692, outside Z | band widened |
+| `grave_tender_caretaker_house` | z 222 / x 2368, outside both | band widened |
+| `northwest_ruined_watchtower` | world x 1754 | **moved +146 X** |
+| `southwest_orchard_windmill` | world x 1754 | **moved +146 X** |
+
+Widening was the right answer for the first three: it costs no coordinate churn,
+keeps Merrit, Veneth and the grave tender where their lore puts them, and keeps
+the cemetery fence attached to the caretaker's house. The band went from
+shardZ −18..5 to −22..8 and shardX 23 to 25 — foundation shards 2,304 → **2,976**
+— and both ends stay well inside the reserved id grid (shardZ −31..15), so no
+terrain entity is remapped and no existing shard changes identity.
+
+The other two could not be fixed that way at any price. They map **west of
+X=1792**, where the seeder is fail-closed by design because generating there
+would overwrite imported production terrain. Those had to come east. They moved
++146 X onto the same ridge and orchard lines, clear of the new seam ridge, and
+everything anchored to them moved with them: Rusk Hallowhand's bedroom, and the
+windmill's cross arms, which are authored in the shim rather than on the building
+record and would otherwise have kept turning over empty ground.
+
+The assertion is now the direct one — *every authored structure has seeded
+ground* — rather than a pinned list of known-bad names.
+
+Reconciliation: the newly-covered shards are genuinely **missing**, so ordinary
+additive seeding creates them with no special handling. The two moved structures
+are the case that needs help — their new ground is on shards that already exist —
+so `harthmereShellRebuildRects()` carries them alongside the town-core span,
+through both the shim predicate and the repair script. Their old positions need
+no repair at all: nothing was ever generated out there to erase. Repair target
+set: **419 shards**, verified to cover both moved structures and the whole ridge.
+
+
 
 Not fixed here, and worth a decision rather than a silent carry-forward.
 
@@ -371,7 +628,26 @@ Not fixed here, and worth a decision rather than a silent carry-forward.
    `thatch` and `hay` correctly; the rest are placeholder colour. A material pass
    would do more for district readability than any other single change.
 
-5. **Interiors remain generic**, as the existing lore audit says: nine voxel
+5. **The south wilds road is drawn straight through the tannery.**
+   `isHarthmereWideWildsRoad()` runs a road south from authored (486, −112), and
+   `tannery_court_house` occupies 472..490, −124..−106. The town block pass wins
+   the column, so the road stops dead at the tannery's north wall and resumes on
+   its south side. The street network connects at the tannery's south face
+   instead, which is where that road actually becomes walkable, but the conflict
+   itself belongs to whoever owns the wilds road table: either shift the segment
+   to x≈466 or x≈496, or move the tannery.
+
+6. **Three modules disagree about how tall a storey is.** The shell generator in
+   the shim says `slum ? 4 : 5`. Both `harthmere_building_interiors.ts` and
+   `harthmere_additive_town_interiors.ts` say `gatehouse || tower ? 6 : 5`. The
+   shim is the one that stacks the floor slabs, so the interiors modules place
+   upper-floor content one voxel per storey away from the floor the shell
+   actually built — four voxels of drift by the top landing of a five-storey
+   Mudden stack, and one per floor in every gatehouse and tower. The shell tests
+   now use the shim's value and say so; reconciling the interiors modules is
+   interior work and was left alone.
+
+7. **Interiors remain generic**, as the existing lore audit says: nine voxel
    patterns matched by name, so the tannery is furnished as a chapel (its name
    contains "court"), the Guard Yard *Office* gets bunks, and the dock
    *warehouse* gets a bed and hearth because its name contains "house". That is

@@ -358,6 +358,26 @@ const HARTHMERE_NPC_BOSS_ANIMATION_STATES = [
 ] as const;
 const HARTHMERE_NPC_BODY_LOCOMOTION_DEADZONE_SPEED = 0.06;
 const HARTHMERE_NPC_BODY_MAX_BLEND_DT = 1 / 24;
+
+/**
+ * Blend times for cinematic expressions during dialogue.
+ *
+ * The previous 0.08 s ease-in was the main source of the "janky" transition
+ * into an expression. Two things went wrong with it:
+ *
+ *   * it was three times faster than the 0.25 s default every other animation
+ *     used, so an expression popped on while everything else blended;
+ *   * only the ease-IN was specified. Fading back out fell through to the
+ *     default, so expressions snapped on and drifted off — an asymmetry the eye
+ *     reads as a glitch rather than as a performance.
+ *
+ * Dialogue expressions are watched closely at conversational distance, so they
+ * want a slightly slower and deliberately symmetric blend. Ease-out is a little
+ * longer than ease-in because settling back to idle should feel like the
+ * character relaxing, not like the expression being cut off.
+ */
+export const HARTHMERE_EXPRESSION_EASE_IN_SECS = 0.22;
+export const HARTHMERE_EXPRESSION_EASE_OUT_SECS = 0.3;
 const HARTHMERE_NPC_BODY_ATTACK_TIME_SCALE = 1.0;
 
 export const npcSystem = new AnimationSystem(
@@ -1880,6 +1900,15 @@ function cutsceneNpcAnimationAction(
             ? { kind: "once" }
             : { kind: "repeat" },
       startTime: mixerTime - Math.max(0, presentation.animationTime ?? 0),
+      // Cutscene expressions specified no ease at all and inherited the generic
+      // default on the way in as well as out. Give them the same authored
+      // dialogue blend so a scripted beat and an in-world line look alike.
+      ...(isHarthmereCinematicExpression(presentation.animation)
+        ? {
+            easeInTime: HARTHMERE_EXPRESSION_EASE_IN_SECS,
+            easeOutTime: HARTHMERE_EXPRESSION_EASE_OUT_SECS,
+          }
+        : {}),
     },
     layers: { all: "apply" },
   };
@@ -1909,7 +1938,8 @@ function gameplayNpcExpressionAnimationAction(
         emote.emote_start_time,
         nowSeconds
       ),
-      easeInTime: 0.08,
+      easeInTime: HARTHMERE_EXPRESSION_EASE_IN_SECS,
+      easeOutTime: HARTHMERE_EXPRESSION_EASE_OUT_SECS,
     },
     layers: { all: "apply" },
   };

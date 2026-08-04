@@ -93,7 +93,7 @@ materialize_authored_water() {
     return
   fi
   log "START Harthmere authored-water materialization (river, mill race, basins)"
-  APPLY=1 \
+  APPLY=1 timeout "${HARTHMERE_AUTHORED_WATER_TIMEOUT_SECONDS:-300}" \
     node scripts/harthmere/materialize-harthmere-authored-water.cjs
   log "PASS Harthmere authored-water materialization"
 }
@@ -135,15 +135,21 @@ repair_harthmere_town() {
   fi
   # Ordinary deploys use additive terrain mode, which correctly preserves
   # existing shards but therefore cannot migrate previously-authored town
-  # surfaces or roofs. This narrow writer reconstructs only the 14 affected
-  # canonical shard seeds, preserves all mutable ECS overlays (including
-  # shard_diff and shard_water), applies the reviewed town-style overrides,
-  # and retires only the audited generic/customer NPC ids.
+  # surfaces, roofs, moved shells, added floors, or the derived street network.
+  # This writer reconstructs the ~142 canonical shard seeds those volumes touch
+  # (up from 14 before the shell/street pass), preserves all mutable ECS
+  # overlays (including shard_diff and shard_water), applies the reviewed
+  # town-style overrides, and retires only the audited generic/customer NPC ids.
+  #
+  # The timeout below is per-run, not per-shard, and a kill leaves the town
+  # PARTIALLY repaired: each shard commit is atomic, so nothing corrupts, but
+  # some shells would still be at their old coordinates until the next deploy.
+  # Budget for the full set rather than the old fourteen.
   log "START persisted Harthmere town surface, roof, and NPC repair"
   APPLY=1 \
     APPLY_SHARD_BATCH_SIZE="${HARTHMERE_TOWN_REPAIR_APPLY_SHARD_BATCH_SIZE:-4}" \
     timeout --signal=TERM --kill-after=30s \
-      "${HARTHMERE_TOWN_REPAIR_TIMEOUT_SECONDS:-300}" \
+      "${HARTHMERE_TOWN_REPAIR_TIMEOUT_SECONDS:-900}" \
       node scripts/harthmere/repair-harthmere-town-production.cjs
   log "PASS persisted Harthmere town surface, roof, and NPC repair"
 }

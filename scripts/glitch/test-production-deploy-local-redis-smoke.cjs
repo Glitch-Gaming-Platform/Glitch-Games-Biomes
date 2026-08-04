@@ -562,8 +562,11 @@ ok(
   "deploy has an explicit Glitch API base URL"
 );
 ok(
-  script.includes('NEXT_PUBLIC_GLITCH_TITLE_ID="$GLITCH_TITLE_ID"'),
-  "Next build and Azure runtime include the Glitch title id for client identity"
+  script.includes('NEXT_PUBLIC_GLITCH_TITLE_ID="$GLITCH_TITLE_ID"') &&
+    script.includes(
+      'HARTHMERE_DEPLOY_TAG="$TAG-$(date -u +%Y%m%d%H%M%S)"'
+    ),
+  "Next build and Azure runtime include identity and force a fresh deploy revision"
 );
 ok(
   script.includes('BIOMES_BUILD_ID="$build_id"') &&
@@ -1148,6 +1151,16 @@ ok(
   "deploy can explicitly skip business outpost reconciliation only by request"
 );
 ok(
+  script.includes("HARTHMERE_SKIP_AUTHORED_WATER_MATERIALIZE") &&
+    harthmereProductionReconciliation.includes(
+      "HARTHMERE_AUTHORED_WATER_TIMEOUT_SECONDS"
+    ) &&
+    harthmereProductionReconciliation.includes(
+      'timeout "${HARTHMERE_AUTHORED_WATER_TIMEOUT_SECONDS:-300}"'
+    ),
+  "authored-water reconciliation has a bounded exit and resumable skip"
+);
+ok(
   script.includes("HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION"),
   "deploy can explicitly skip broad world sync reconciliation only by request"
 );
@@ -1197,19 +1210,24 @@ ok(
     ) &&
     harthmereProductionReconciliation.includes("verify_harthmere_town") &&
     harthmereProductionReconciliation.indexOf("repair_harthmere_town\n") <
-      harthmereProductionReconciliation.indexOf("materialize_business_outposts\n") &&
+      harthmereProductionReconciliation.indexOf(
+        "materialize_business_outposts\n"
+      ) &&
     harthmereProductionReconciliation.lastIndexOf("verify_harthmere_town\n") >
-      harthmereProductionReconciliation.indexOf("materialize_connector_route\n")
-    ,
+      harthmereProductionReconciliation.indexOf(
+        "materialize_connector_route\n"
+      ),
   "in-VNet reconciliation repairs persisted town terrain/NPCs before downstream writers and verifies the final world"
 );
 ok(
   harthmereTownProductionRepair.includes(
-    "harthmere-town-production-repair-v1"
+    "harthmere-town-production-repair-v2"
   ) &&
     harthmereTownProductionRepair.includes(
       "HARTHMERE_TOWN_TARGETED_REPAIR_READY"
     ) &&
+    harthmereTownProductionRepair.includes("harthmereTownStreetRects") &&
+    harthmereTownProductionRepair.includes("addCanonicalShardTarget") &&
     harthmereTownProductionRepair.includes("entity.setShardSeed") &&
     !harthmereTownProductionRepair.includes("setShardWater") &&
     harthmereTownRepairAudit.includes("HARTHMERE_TOWN_REPAIR_READY") &&

@@ -10,7 +10,10 @@ import fs from "fs";
 import path from "path";
 import {
   CH1_DUNGEON_SECTOR_PROOFS,
+  HARTHMERE_BOSS_PROMO_SPECS,
   PROMO_SCENES,
+  harthmereBossPromoAssetUrl,
+  isHarthmereBossPromoGhostAsset,
   promoBatchCaptureAuthUrl,
   promoCaptureAt,
   promoCaptureAuthUrl,
@@ -49,10 +52,57 @@ describe("promo scenes - registry", () => {
         }`
       );
       for (const member of def.cast) {
-        assert.notEqual(
-          member.binding.kind,
-          "ghost",
-          `${scene.id}: present-day marketing must render the real player/ECS cast`
+        if (member.binding.kind !== "ghost") {
+          continue;
+        }
+        assert.ok(
+          scene.groups?.includes("boss-marketing") &&
+            member.binding.family === "quest_creature" &&
+            isHarthmereBossPromoGhostAsset(member.binding.asset),
+          `${scene.id}: only canonical world-scale boss puppets may use promo ghosts`
+        );
+      }
+    }
+  });
+
+  it("registers all eleven Harthmere bosses as one warm marketing batch", async () => {
+    const scenes = promoScenesInGroup("boss-marketing");
+    assert.equal(HARTHMERE_BOSS_PROMO_SPECS.length, 11);
+    assert.equal(scenes.length, 11);
+    assert.equal(new Set(scenes.map((scene) => scene.id)).size, 11);
+    assert.equal(new Set(scenes.map((scene) => scene.filename)).size, 11);
+
+    for (const [index, scene] of scenes.entries()) {
+      const spec = HARTHMERE_BOSS_PROMO_SPECS[index]!;
+      const def = await scene.build();
+      const boss = def.cast.find((member) => member.binding.kind === "ghost");
+      assert.ok(boss, `${scene.id}: missing cinematic boss puppet`);
+      assert.equal(boss!.binding.kind, "ghost");
+      if (boss!.binding.kind === "ghost") {
+        assert.equal(boss!.binding.asset, harthmereBossPromoAssetUrl(spec.id));
+        assert.equal(boss!.binding.family, "quest_creature");
+        assert.deepEqual(boss!.binding.spawnAt, spec.stage);
+      }
+      assert.deepEqual(scene.observer.position, spec.cameraFar);
+      assert.ok(scene.filename.endsWith(`${spec.id.replaceAll("_", "-")}.png`));
+    }
+  });
+
+  it("keeps Underways boss staging in the running stack's unshifted authored space", () => {
+    const expectedX: Readonly<Partial<Record<(typeof HARTHMERE_BOSS_PROMO_SPECS)[number]["id"], number>>> = {
+      failed_apprentice: 354,
+      first_choir: 356,
+      echo_singer: 632,
+      vyrahel_vein_keeper: 642,
+      thaedryn_bellbound: 640,
+    };
+    for (const spec of HARTHMERE_BOSS_PROMO_SPECS) {
+      const x = expectedX[spec.id];
+      if (x !== undefined) {
+        assert.equal(
+          spec.stage[0],
+          x,
+          `${spec.id}: do not apply the optional +1600 town offset when the capture stack disables it`
         );
       }
     }
@@ -69,7 +119,8 @@ describe("promo scenes - registry", () => {
     assert.ok(
       !promoScenesInGroup("chapter1-visual-repair").some(
         (scene) =>
-          scene.id === "dungeon-portal" || scene.id === "sector-d1-dune-threshold"
+          scene.id === "dungeon-portal" ||
+          scene.id === "sector-d1-dune-threshold"
       ),
       "repair batches must not re-test the already-passed gate or dune proof"
     );
@@ -96,10 +147,7 @@ describe("promo scenes - registry", () => {
       "utf8"
     );
     const ioSource = fs.readFileSync(
-      path.join(
-        REPO_ROOT,
-        "src/client/game/context_managers/client_io.ts"
-      ),
+      path.join(REPO_ROOT, "src/client/game/context_managers/client_io.ts"),
       "utf8"
     );
     const playerSource = fs.readFileSync(
@@ -272,8 +320,7 @@ describe("promo scenes - framing contract", () => {
     // Narrow FOV: at 70+ the player drifts off the aperture and the shot
     // stops reading as "standing before a portal".
     const fov = shot.actions.find((a) => a.kind === "fov") as
-      | { fov: number }
-      | undefined;
+      { fov: number } | undefined;
     assert.ok(fov && fov.fov <= 45, "promo portal FOV must stay compressed");
 
     // The camera must look at the gate, not at the player.

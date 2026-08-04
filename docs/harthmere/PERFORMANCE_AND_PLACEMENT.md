@@ -1,6 +1,6 @@
 # Harthmere Performance And Placement Guide
 
-Last updated: 2026-08-01
+Last updated: 2026-08-03
 
 This guide is the current operating contract for Harthmere placement,
 streaming, NPC grounding, quest markers, and performance diagnostics.
@@ -110,10 +110,46 @@ Current guardrails:
 - Keep worst-frame history capped.
 - Auto-throttle survey sampling when frame rate stays low.
 - Pre-warm shard rings on spawn and after long fast-travel moves.
+- **Never issue an unbounded number of `terrainMarch` calls in a per-frame
+  script.** Any occlusion or line-of-sight test that runs once per entity must
+  be memoised and capped per frame. See the 2026-08-03 captured session below.
+- **Never call `resources.update` on a React-observed resource unconditionally
+  in a per-frame path.** Compare first. An unconditional update reconciles the
+  whole HUD at frame rate.
+- **Do not gate non-town systems on
+  `shouldRenderHarthmereRuntimeAssets()`.** That flag is true on localhost and
+  false in production. Anything gated on it is, by definition, never tested by
+  the thing it exists to improve. The shard pre-warm below was gated this way
+  from the day it was written.
+- **A listener, timer or rAF loop registered unconditionally must not have its
+  only consumer behind a gate.** That split — register in the constructor,
+  consume in `draw()` — is how the combat VFX and the player weapon rig both
+  ended up computing every frame in production and drawing nothing.
+- **Never disable an adaptive system in order to make a device start
+  conservatively.** Set its *starting value* and *clamp its range* instead.
+  `forceRenderScale = 0.5` on mobile looked like a conservative default but it
+  short-circuits `computeRenderScale` before the `dynamic` branch, which
+  disabled the entire quality ladder on phones — the same defect finding 13
+  fixed for desktop. Starting point and permitted range are different knobs;
+  conflating them costs the adaptation. See the 2026-08-04 batch below.
+- **A phone-only fix that depends on CSS `env(safe-area-inset-*)` must confirm
+  `viewport-fit=cover` is on the viewport meta.** Without it iOS reports every
+  inset as `0px` and each `max(fallback, env(...))` silently returns its
+  fallback, so the fix appears to work in portrait and quietly fails against
+  the landscape notch.
 
 Fast-travel destinations should queue the pre-warm ring before the player
 camera engages. The pre-warm descriptor lives in
 `HARTHMERE_PERF_AND_PLACEMENT_PREWARM`.
+
+**2026-08-03:** the pre-warm was documented here as shipped but had in fact
+never run for a player. `TerrainRenderer.updateHarthmereTerrainPrewarm`
+early-returned on `!shouldRenderHarthmereRuntimeAssets()` — true on localhost,
+false in production — even though it reads only native terrain resources
+(`/ecs/terrain`, `/terrain/occluder`, `/terrain/combined_mesh`) and has nothing
+to do with Harthmere runtime assets. It borrowed that flag because its tuning
+constants live in `town_production_polish.ts`. The gate is removed and the
+`harthmere_runtime_mode` import is gone from `terrain.ts` entirely.
 
 ## Production FPS Baseline — 2026-08-01
 
@@ -235,6 +271,122 @@ The source response installed for this evidence:
 
 This batch does not reduce the 192 m dynamic view-distance floor and does not
 change explicit Low/Safe graphics modes.
+
+### Production follow-up — 2026-08-03 (captured session)
+
+A 374-second HAR + console capture from a real production session
+(`www.glitch.fun`, Apple M1 Max, Chrome 151) finally localised the remaining
+CPU/main-thread pressure the 2026-08-01 and 2026-08-02 samples kept pointing at
+without naming.
+
+What the capture established:
+
+```text
+GPU Tier Info: {"fps":556,"gpu":"apple m1 max","isMobile":false,"tier":3,"type":"BENCHMARK"}
+Aegis low-FPS reports: 48 samples, range 0-14, median 10
+[Violation] 'requestAnimationFrame' handler took <N>ms: continuous
+```
+
+So tier detection was correct, the hardware was fast, and the frame loop was
+the problem — consistent with every earlier "CPU is the bottleneck" conclusion.
+
+The client's own `/api/cval_logging` payload named the scale factor:
+
+```text
+position_selector: 2932     collideable_selector: 1217   label_selector: 834
+placeable_selector: 548     npc_metadata_selector: 159   named_quest_giver_selector: 107
+minigame_elements_selector: 82
+```
+
+The dominant cost was `OverlayScript.tick` in
+`src/client/game/scripts/overlays.ts`, which runs every frame and calls
+`isOccluded()` once per overlay. `isOccluded` is a full voxel `terrainMarch`
+through WASM, camera to target, up to 50 m. With the entity counts above that
+is **hundreds of raycasts per frame**. The same tick then republished
+`/overlays/projection` unconditionally, invalidating every subscribed React
+component — including the HUD — at frame rate even when nothing had moved.
+
+Guardrails added (these belong with the ones in
+[Performance Guardrails](#performance-guardrails)):
+
+- **Occlusion is memoised and budgeted.** Results are cached on the
+  metre-quantised (target, camera) pair with a 100 ms TTL, and no more than
+  `MAX_OCCLUSION_MARCHES_PER_FRAME = 24` marches may be issued in a single
+  frame. Over budget, the previous answer is reused. The per-frame cost is now
+  constant instead of linear in entity count.
+- **The projection map publishes only on real change**, compared with an
+  allocation-free walk and a 0.5 px epsilon rather than `lodash.isEqual`.
+
+Two adaptivity defects were closed in the same pass:
+
+- **Dynamic render scale required a GPU timer.** Without
+  `EXT_disjoint_timer_query_webgl2` the client pinned a *fixed* render scale for
+  the whole session — `[3840, 2160]` on `high`, a 4K internal resolution with no
+  way to back off. That extension is routinely missing in embedded iframes,
+  which is exactly how Glitch hosts this game. Dynamic scale is now always
+  selected, and `bottleneck()` infers GPU pressure from unaccounted frame time
+  when the timer is absent.
+- **Timer gauge writes are sampled 1-in-16.** `timeCode` stops 40–200 times per
+  frame; the smoothed average still receives every sample, only the metric
+  publish is throttled.
+
+Full analysis and the remaining ranked work:
+`HARTHMERE_RENDER_PERF_AUDIT_2026-08-03.md` (§ A.0 and the evening remediation
+log entry).
+
+**Not yet re-measured.** The next production sample should show
+`performanceTiming:scripts:overlay` dropping sharply with
+`renderer.<name>.threejs.info` unchanged. If `scripts:overlay` is still
+dominant, the next move is splitting the overlay content rebuild (10 Hz) from
+the projection update (per frame).
+
+### Mobile optimization batch — 2026-08-04
+
+Source-only. Full findings and evidence:
+`HARTHMERE_MOBILE_OPTIMIZATION_AUDIT_2026-08-04.md`; product-facing log:
+`docs/harthmere/MOBILE_GAMEPLAY_ISSUES.md`.
+
+Everything below is gated on `clientConfig.mobileDevice`, or on a clamp set
+that is `undefined` on desktop. Desktop render scale, draw distance, frame
+pacing, context-loss handling, atlas decode, and controls are unchanged.
+
+| Change | Mobile behaviour | Desktop behaviour |
+| --- | --- | --- |
+| Touch action cluster | Hold-capable Primary/Secondary plus Draw/Target/Heavy/Spark | Not mounted |
+| Device profile + clamped ladder | `constrained`/`standard`/`capable`, dynamic within range | Unclamped, unchanged |
+| Render frame cap | 30 FPS render target; simulation unpaced | Uncapped |
+| WebGL context restore | Rebuild via `reattach()`, loss logged as a warning | `log.fatal`, unchanged |
+| Atlas decode | Payload released per field | Same shared decoder (see below) |
+| `viewport-fit=cover` | Safe-area insets resolve | Insets are 0 either way |
+
+**One change in this batch is not mobile-gated.** Five call sites decoded
+base64 with `new Uint8Array(Buffer.from(data, "base64").buffer)`, which
+discards `byteOffset`/`byteLength`; Node pools sub-4 KiB allocations, so it
+returned a view over the shared pool rather than the payload. It worked in the
+browser only because the browserify polyfill allocates exactly. All five now
+use one `decodeBase64Bytes` (native `atob` first, offset-respecting `Buffer`
+fallback). No-op for the shipped browser client, correctness fix everywhere
+else — including the GLB path in `item_mesh.ts`, which was handing the parser a
+buffer whose byte 0 was not the GLB header. **Guardrail:** never take `.buffer`
+off a `Buffer`/typed array without also taking `byteOffset` and `byteLength`.
+
+The mobile ladder replaces the previous `forceRenderScale = 0.5` pin. The
+`standard` class starts at exactly 0.5 render scale / 64 m — the profile
+validated on the physical iPhone 12 mini — so no phone starts anywhere new. No
+class may exceed 96 m, which is the radius the `JETSAM_REASON_MEMORY_HIGHWATER`
+sessions were running: draw distance drives retained terrain meshes and
+therefore WebContent footprint, not just frame time. Explicit `forceDrawDistance`
+/ `forceRenderScale` / `forceGraphicsQuality` URL diagnostics still win.
+
+**Not measured.** This batch is a code-path argument plus unit coverage. It has
+not been run on the connected iPhone and is not deployed. The next physical
+pass should confirm: no new jetsam event over ten minutes in both orientations;
+`renderer:graphics:settings` moving within the clamps rather than sitting
+still; a sustained 30 FPS render interval; and that mine, place, and each
+combat control resolve the same server events as their desktop equivalents.
+
+Still open after this batch: KTX2/gltfpack over the NPC assets (0 `.ktx2` files
+shipped, `big_mucker` still 15.5 MB), the binary atlas format, and `useWorker`.
 
 ## Render Distance Contract
 
@@ -869,7 +1021,11 @@ individual offender.
 | `src/client/components/challenges/LocalDevHarthmereQuests.tsx`            | Quest definitions, quest targets, target terrain labels                |
 | `src/client/components/challenges/LocalDevHarthmereMissionSystem.tsx`     | Tracked mission state, auto-untrack, marker-clear events               |
 | `src/client/components/challenges/SnapshotLiveDiagnostics.tsx`            | Auto-survey, wandering filter, auto-throttle, mission audit            |
-| `src/client/game/client_config.ts`                                        | Glitch/embed dynamic draw-distance floor and client feature flags      |
+| `src/client/game/client_config.ts`                                        | Glitch/embed draw-distance floor, feature flags, mobile device profile |
+| `src/client/game/util/mobile_device_profile.ts`                           | Phone capability class and its render-scale/draw-distance clamps       |
+| `src/client/game/util/mobile_frame_pacing.ts`                             | Mobile-only 30 FPS render cap (simulation rate is untouched)           |
+| `src/client/game/util/mobile_action_controls.ts`                          | Which phone action/combat buttons exist, their labels and block rules  |
+| `src/client/game/util/mobile_atlas_decode.ts`                             | Shared correct base64 decode; mobile-only per-field payload release    |
 | `src/client/game/resources/graphics_settings.ts`                          | Draw-distance floors and dynamic graphics settings                     |
 | `src/client/game/resources/dynamic_settings_updater.ts`                   | CPU/GPU quality adaptation policy                                      |
 | `src/client/game/renderers/renderer_controller.ts`                        | Frame orchestration and version-aware React flush                      |

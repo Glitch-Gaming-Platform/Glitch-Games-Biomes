@@ -3,8 +3,10 @@ import { HybridWorldApi } from "@/server/shared/world/hfc/hybrid";
 import { Expires, NpcState, Position } from "@/shared/ecs/gen/components";
 import {
   HARTHMERE_BUSINESS_INTERIORS,
+  harthmereBusinessCustomerQueueTarget,
   harthmereBusinessCustomerSpawnPoint,
   harthmereBusinessCustomerSessionEntityId,
+  harthmereBusinessInteriorInteractionPoints,
 } from "@/shared/harthmere/business_interior_runtime";
 import {
   createHarthmereBusinessCustomerQueue,
@@ -24,14 +26,15 @@ import {
 
 function sessionFor(
   record: (typeof HARTHMERE_BUSINESS_INTERIORS)[number],
-  suffix = ""
+  suffix = "",
+  actorId = "native_matrix_actor"
 ) {
   const sessionId = `session_${record.outpostId}${suffix}`;
   const queue = createHarthmereBusinessCustomerQueue({
     businessId: `business:${record.outpostId}`,
     typeId: record.businessType as any,
     sessionId,
-    actorId: "native_matrix_actor",
+    actorId,
     actorEntityId: 123456 as any,
     nowMs: 1000,
     count: 3,
@@ -41,7 +44,7 @@ function sessionFor(
     sessionId,
     businessId: `business:${record.outpostId}`,
     typeId: record.businessType,
-    actorId: "native_matrix_actor",
+    actorId,
     actorEntityId: 123456 as any,
     status: "active",
     startedAtMs: 1000,
@@ -103,7 +106,187 @@ describe("native ECS business customer session materialization", () => {
     }
   });
 
-  it("admits each follower only after the preceding customer settles", () => {
+  it("materializes only the requesting actor while retaining foreign route occupancy", () => {
+    const record = HARTHMERE_BUSINESS_INTERIORS[0];
+    const mine = sessionFor(record, "_mine", "actor_a");
+    const theirs = sessionFor(record, "_theirs", "actor_b");
+    const economy = defaultHarthmereProductionEconomyState();
+    (economy.businessSystems as any).customerSessions = {
+      [mine.sessionId]: mine,
+      [theirs.sessionId]: theirs,
+    };
+
+    const foreignState = deserializeNpcCustomState(undefined);
+    foreignState.businessCustomer = {
+      version: "harthmere-business-customer-behavior-v1",
+      sessionId: theirs.sessionId,
+      ticketId: theirs.queue[0].ticketId,
+      outpostId: record.outpostId,
+      businessType: record.businessType,
+      phase: "entering",
+      reaction: "neutral",
+      entrance: [0, 0, 0],
+      queueTarget: [0, 0, 0],
+      customer: [0, 0, 0],
+      staff: [0, 0, 0],
+      departure: [0, 0, 0],
+      waypoints: [[1, 0, 1]],
+      waypointIndex: 0,
+      lastPhaseChangedAtSeconds: 90,
+    };
+    const occupied = new Map([
+      [
+        theirs.queue[0].entityId,
+        {
+          id: theirs.queue[0].entityId,
+          position: Position.create({
+            v: harthmereBusinessCustomerSpawnPoint(record, 0),
+          }),
+          npc_state: NpcState.create({
+            data: serializeNpcCustomState(foreignState),
+          }),
+        },
+      ],
+    ]);
+    assert.deepEqual(
+      buildHarthmereBusinessCustomerSessionNpcChanges({
+        economy,
+        actorId: "actor_a",
+        nowSeconds: 100,
+        existingEntities: occupied,
+      }),
+      [],
+      "a foreign customer on the route must defer, not be rewritten or overlapped"
+    );
+    const actorBChanges = buildHarthmereBusinessCustomerSessionNpcChanges({
+      economy,
+      actorId: "actor_b",
+      nowSeconds: 100,
+      existingEntities: occupied,
+    });
+    assert.ok(
+      actorBChanges.every(
+        (change) =>
+          change.kind !== "create" ||
+          change.entity.id === theirs.queue[0].entityId
+      ),
+      "actor B must never materialize actor A's customer"
+    );
+  });
+
+  it("does not let permanent ambient patrons block the real shift customer", () => {
+    const record = HARTHMERE_BUSINESS_INTERIORS[0];
+    const session = sessionFor(record);
+    const patronState = deserializeNpcCustomState(undefined);
+    patronState.businessCustomer = {
+      version: "harthmere-business-customer-behavior-v1",
+      sessionId: `persistent:${record.outpostId}`,
+      ticketId: "ambient-patron",
+      outpostId: record.outpostId,
+      businessType: record.businessType,
+      phase: "patron_wandering",
+      reaction: "neutral",
+      entrance: [0, 0, 0],
+      queueTarget: [0, 0, 0],
+      customer: [0, 0, 0],
+      staff: [0, 0, 0],
+      departure: [0, 0, 0],
+      waypoints: [[0, 0, 0]],
+      waypointIndex: 0,
+      lastPhaseChangedAtSeconds: 90,
+    };
+    const changes = buildHarthmereBusinessCustomerSessionNpcChanges({
+      economy: economyFor(session),
+      nowSeconds: 100,
+      existingEntities: new Map([
+        [
+          999 as any,
+          {
+            id: 999 as any,
+            position: Position.create({ v: [0, 0, 0] }),
+            npc_state: NpcState.create({
+              data: serializeNpcCustomState(patronState),
+            }),
+          },
+        ],
+      ]),
+    });
+    assert.ok(
+      changes.some(
+        (change) =>
+          change.kind === "create" &&
+          change.entity.id === session.queue[0].entityId
+      ),
+      "ambient patrons must not count as a prior customer route"
+    );
+  });
+
+  it("cleans an inactive foreign route without taking over an active foreign game", () => {
+    const record = HARTHMERE_BUSINESS_INTERIORS[0];
+    const mine = sessionFor(record, "_mine_cleanup", "actor_a");
+    const stale = sessionFor(record, "_stale_cleanup", "actor_b");
+    stale.status = "expired";
+    stale.currentTicketId = undefined;
+    stale.queue[0].status = "left";
+    stale.queue[0].spatialPhase = "cancelled";
+    const economy = defaultHarthmereProductionEconomyState();
+    (economy.businessSystems as any).customerSessions = {
+      [mine.sessionId]: mine,
+      [stale.sessionId]: stale,
+    };
+    const staleState = deserializeNpcCustomState(undefined);
+    staleState.businessCustomer = {
+      version: "harthmere-business-customer-behavior-v1",
+      sessionId: stale.sessionId,
+      ticketId: stale.queue[0].ticketId,
+      outpostId: record.outpostId,
+      businessType: record.businessType,
+      phase: "entering",
+      reaction: "neutral",
+      entrance: [0, 0, 0],
+      queueTarget: [0, 0, 0],
+      customer: [0, 0, 0],
+      staff: [0, 0, 0],
+      departure: [0, 0, 0],
+      waypoints: [[1, 0, 1]],
+      waypointIndex: 0,
+      lastPhaseChangedAtSeconds: 90,
+    };
+    const changes = buildHarthmereBusinessCustomerSessionNpcChanges({
+      economy,
+      actorId: "actor_a",
+      nowSeconds: 100,
+      existingEntities: new Map([
+        [
+          stale.queue[0].entityId,
+          {
+            id: stale.queue[0].entityId,
+            position: Position.create({
+              v: harthmereBusinessCustomerSpawnPoint(record, 0),
+            }),
+            npc_state: NpcState.create({
+              data: serializeNpcCustomState(staleState),
+            }),
+          },
+        ],
+      ]),
+    });
+    const staleUpdate = changes.find(
+      (change) =>
+        change.kind === "update" && change.entity.id === stale.queue[0].entityId
+    );
+    assert.equal(staleUpdate?.kind, "update");
+    assert.equal(
+      deserializeNpcCustomState(
+        staleUpdate?.kind === "update"
+          ? staleUpdate.entity.npc_state?.data
+          : undefined
+      ).businessCustomer?.phase,
+      "cancelled"
+    );
+  });
+
+  it("materializes only the current ticket, then advances one customer at a time", () => {
     const record = HARTHMERE_BUSINESS_INTERIORS[0];
     const session = sessionFor(record);
     const existingFor = (
@@ -130,10 +313,16 @@ describe("native ECS business customer session materialization", () => {
         waypointIndex: 0,
         lastPhaseChangedAtSeconds: 90,
       };
+      const position =
+        phase === "serving"
+          ? harthmereBusinessInteriorInteractionPoints(record).customer
+          : phase === "queued"
+            ? harthmereBusinessCustomerQueueTarget(record, ticketIndex)
+            : harthmereBusinessCustomerSpawnPoint(record, ticketIndex);
       return {
         id: ticket.entityId,
         position: Position.create({
-          v: harthmereBusinessCustomerSpawnPoint(record, ticketIndex),
+          v: position,
         }),
         npc_state: NpcState.create({
           data: serializeNpcCustomState(decoded),
@@ -160,7 +349,26 @@ describe("native ECS business customer session materialization", () => {
         [session.queue[0].entityId, existingFor(0, "serving")],
       ]),
     });
-    const firstFollower = leadServing.filter(
+    assert.equal(
+      leadServing.filter((change) => change.kind === "create").length,
+      0,
+      "a serving lead must not make the rest of the store run for the door"
+    );
+
+    session.queue[0].status = "served";
+    session.queue[0].spatialPhase = "departing";
+    session.servedTicketIds.push(session.queue[0].ticketId);
+    session.currentTicketId = session.queue[1].ticketId;
+    const firstFollowerActive = buildHarthmereBusinessCustomerSessionNpcChanges(
+      {
+        economy: economyFor(session),
+        nowSeconds: 102,
+        existingEntities: new Map([
+          [session.queue[0].entityId, existingFor(0, "serving")],
+        ]),
+      }
+    );
+    const firstFollower = firstFollowerActive.filter(
       (change) => change.kind === "create"
     );
     assert.equal(firstFollower.length, 1);
@@ -169,21 +377,18 @@ describe("native ECS business customer session materialization", () => {
       session.queue[1].entityId
     );
 
-    const followerQueued = buildHarthmereBusinessCustomerSessionNpcChanges({
+    const followerServing = buildHarthmereBusinessCustomerSessionNpcChanges({
       economy: economyFor(session),
-      nowSeconds: 102,
+      nowSeconds: 103,
       existingEntities: new Map([
         [session.queue[0].entityId, existingFor(0, "serving")],
-        [session.queue[1].entityId, existingFor(1, "queued")],
+        [session.queue[1].entityId, existingFor(1, "serving")],
       ]),
     });
-    const secondFollower = followerQueued.filter(
-      (change) => change.kind === "create"
-    );
-    assert.equal(secondFollower.length, 1);
     assert.equal(
-      secondFollower[0].kind === "create" && secondFollower[0].entity.id,
-      session.queue[2].entityId
+      followerServing.filter((change) => change.kind === "create").length,
+      0,
+      "the third customer remains an economy record until queue advance"
     );
   });
 

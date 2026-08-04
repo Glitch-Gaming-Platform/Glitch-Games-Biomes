@@ -8,12 +8,17 @@ describe("Harthmere population persistence wiring", () => {
     "utf8"
   );
 
-  it("does not persist customer-only business patrons", () => {
+  it("persists stationary ambient business patrons separately from shift customers", () => {
+    assert.ok(shim.includes("buildHarthmereBusinessCustomerNpcSeedChanges"));
+    assert.ok(shim.includes("...localDevBusinessCustomerNpcIds()"));
     assert.ok(
-      !shim.includes("buildHarthmereBusinessCustomerNpcSeedChanges"),
-      "session-only business customers must not be wired into world seeding"
+      !shim.includes("makeRetiredBusinessCustomerNpcChanges"),
+      "v2 patron_wandering NPCs must not be retired as session-only customers"
     );
-    assert.ok(shim.includes("makeRetiredBusinessCustomerNpcChanges"));
+    assert.ok(
+      shim.includes("candidateIds.every((id) => existingIds.has(id))"),
+      "a current runtime marker must still self-heal missing patrons"
+    );
   });
 
   it("runs the scoped generic-townsperson retirement policy", () => {

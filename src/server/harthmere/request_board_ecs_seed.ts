@@ -8,7 +8,11 @@ import {
 } from "@/shared/ecs/gen/components";
 import type { Entity } from "@/shared/ecs/gen/entities";
 import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
-import { HARTHMERE_DOCK_FISHING_BOARD } from "@/shared/harthmere/native_request_boards";
+import {
+  HARTHMERE_COLLECTIVE_RESEARCH_BOARD_ID,
+  HARTHMERE_COLLECTIVE_RESEARCH_BOARD_PHYSICAL_POSITION,
+  HARTHMERE_DOCK_FISHING_BOARD,
+} from "@/shared/harthmere/native_request_boards";
 import { HARTHMERE_EXTENSION_FEET_Y } from "@/shared/harthmere/world_extension";
 import type { BiomesId } from "@/shared/ids";
 
@@ -20,10 +24,13 @@ import type { BiomesId } from "@/shared/ids";
  * by the optimized request-board renderer, not by a placeable component.
  */
 export const HARTHMERE_REQUEST_BOARD_ECS_SEED_VERSION =
-  "harthmere-request-board-ecs-seed-v1" as const;
+  "harthmere-request-board-ecs-seed-v2-relocated-collective" as const;
 
 export function harthmereRequestBoardEcsSeedEntityIds(): BiomesId[] {
-  return [HARTHMERE_DOCK_FISHING_BOARD.entityId];
+  return [
+    HARTHMERE_DOCK_FISHING_BOARD.entityId,
+    HARTHMERE_COLLECTIVE_RESEARCH_BOARD_ID,
+  ];
 }
 
 function dockFishingBoardEntity(): Entity {
@@ -60,6 +67,19 @@ export function buildHarthmereRequestBoardEcsSeedChanges(input: {
       kind: existingIds.has(entity.id) ? "update" : "create",
       tick: input.tick,
       entity,
+    },
+    // This is an update-only migration of the restored snapshot authority.
+    // Keeping it in the seed makes warm Redis and fresh production-shaped
+    // worlds converge on the same renderer/prompt/server position.
+    {
+      kind: "update",
+      tick: input.tick,
+      entity: {
+        id: HARTHMERE_COLLECTIVE_RESEARCH_BOARD_ID,
+        position: Position.create({
+          v: [...HARTHMERE_COLLECTIVE_RESEARCH_BOARD_PHYSICAL_POSITION],
+        }),
+      },
     },
   ];
 }

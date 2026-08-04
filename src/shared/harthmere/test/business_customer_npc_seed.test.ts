@@ -12,18 +12,16 @@ import {
 import { HARTHMERE_BUSINESS_OWNER_NPC_SEEDS } from "@/shared/harthmere/business_owner_npc_seed";
 
 describe("business customer NPC seeds", () => {
-  it("seeds 2-5 customers in every outpost business", () => {
+  it("evenly distributes exactly three customers to every outpost business", () => {
     const perOutpost = new Map<string, number>();
     for (const seed of HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS) {
       perOutpost.set(seed.outpostId, (perOutpost.get(seed.outpostId) ?? 0) + 1);
     }
     for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS) {
       const count = perOutpost.get(outpost.outpostId) ?? 0;
-      assert.ok(
-        count >= 2 && count <= 5,
-        `${outpost.outpostId} has ${count} customers (want 2-5)`
-      );
+      assert.equal(count, 3, `${outpost.outpostId} has ${count} customers`);
     }
+    assert.equal(HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS.length, 57);
   });
 
   it("gives every customer a unique entity id, offset, customerNpcId, and copy", () => {
@@ -73,6 +71,16 @@ describe("business customer NPC seeds", () => {
         `${seed.customerNpcId} Z ${z} outside footprint`
       );
       assert.equal(y, site!.groundY, `${seed.customerNpcId} not on ground`);
+      assert.ok(seed.waypoints.length >= 4);
+      for (const [wx, wy, wz] of seed.waypoints) {
+        assert.ok(
+          wx >= site!.footprint.xMin + 2 && wx <= site!.footprint.xMax - 2
+        );
+        assert.ok(
+          wz >= site!.footprint.zMin + 2 && wz <= site!.footprint.zMax - 2
+        );
+        assert.equal(wy, site!.groundY);
+      }
     }
   });
 

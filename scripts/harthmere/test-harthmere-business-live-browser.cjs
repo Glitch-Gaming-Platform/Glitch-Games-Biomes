@@ -41,9 +41,13 @@ const {
   harthmereBusinessCraftingStationSeedByOutpost,
 } = require("../../src/shared/harthmere/business_crafting_station_seed");
 const {
+  HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS,
   HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS,
   harthmereBusinessOutpostBusinessId,
 } = require("../../src/shared/harthmere/business_customer_simulator");
+const {
+  HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS,
+} = require("../../src/shared/harthmere/business_customer_npc_seed");
 const { deserializeNpcCustomState } = require("../../src/shared/npc/serde");
 
 const root = path.resolve(__dirname, "../..");
@@ -386,10 +390,20 @@ async function openActor(browser) {
       report.browserFailures.push(`request:${failure}:${request.url()}`);
     }
   });
-  await page.goto(gameUrl(), {
+  const gameResponse = await page.goto(gameUrl(), {
     waitUntil: "domcontentloaded",
     timeout: timeoutMs,
   });
+  assert(
+    gameResponse?.ok(),
+    `Game page failed HTTP ${gameResponse?.status() ?? "no response"}; ` +
+      "do not wait for browser bridges after an SSR failure"
+  );
+  await waitForActorReady(page);
+  return { context, page };
+}
+
+async function waitForActorReady(page) {
   await page.waitForFunction(
     (id) =>
       globalThis.__harthmereNativeEcsE2E?.version === "native-ecs-e2e-v1" &&
@@ -405,7 +419,6 @@ async function openActor(browser) {
     { timeout: timeoutMs }
   );
   await page.evaluate(() => globalThis.__harthmereBusinessInteriors.ready());
-  return { context, page };
 }
 
 function serializedChange(change) {
@@ -456,66 +469,109 @@ async function dismissEnterGame(page) {
 }
 
 async function placePlayer(page, position) {
-  const current = await authoritativeEntity(page, actorId);
-  const maxHp = Math.max(1, current?.health?.maxHp ?? 100);
-  const liveTeleport = await page.evaluate(
-    ({ id, position }) => {
-      const teleport = globalThis.__harthmereLivePlayerDebug?.teleportTo;
-      const result =
-        typeof teleport === "function"
-          ? teleport({
-              x: position[0],
-              y: position[1],
-              z: position[2],
-              name: "businessCustomerE2E",
-              reason: "Stream the authoritative business interior district",
-            })
-          : undefined;
-      const resources = globalThis.clientContext?.resources;
-      if (!resources) throw new Error("client resources unavailable");
-      resources.update("/sim/player", id, (player) => {
-        player.position = [...position];
-        player.orientation = [0, 0];
-        player.velocity = [0, 0, 0];
-      });
-      resources.update("/scene/local_player", (localPlayer) => {
-        localPlayer.player.position = [...position];
-        localPlayer.player.orientation = [0, 0];
-        localPlayer.player.velocity = [0, 0, 0];
-      });
-      return result;
-    },
-    { id: actorId, position }
-  );
-  if (liveTeleport) {
-    assert.equal(
-      liveTeleport.teleported,
-      true,
-      `live player did not stream business ${position.join(",")}`
+  let last;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const current = await authoritativeEntity(page, actorId);
+    const maxHp = Math.max(1, current?.health?.maxHp ?? 100);
+    const liveTeleport = await page.evaluate(
+      ({ id, position }) => {
+        const reactResources = globalThis.clientContext?.reactResources;
+        reactResources?.set("/game_modal", { kind: "empty" });
+        const teleport = globalThis.__harthmereLivePlayerDebug?.teleportTo;
+        const result =
+          typeof teleport === "function"
+            ? teleport({
+                x: position[0],
+                y: position[1],
+                z: position[2],
+                name: "businessCustomerE2E",
+                reason: "Stream the authoritative business interior district",
+              })
+            : undefined;
+        const resources = globalThis.clientContext?.resources;
+        if (!resources) throw new Error("client resources unavailable");
+        resources.update("/sim/player", id, (player) => {
+          player.position = [...position];
+          player.orientation = [0, 0];
+          player.velocity = [0, 0, 0];
+        });
+        resources.update("/scene/local_player", (localPlayer) => {
+          localPlayer.player.position = [...position];
+          localPlayer.player.orientation = [0, 0];
+          localPlayer.player.velocity = [0, 0, 0];
+        });
+        return result;
+      },
+      { id: actorId, position }
     );
+    if (liveTeleport) {
+      assert.equal(
+        liveTeleport.teleported,
+        true,
+        `live player did not stream business ${position.join(",")}`
+      );
+    }
+    await applyChanges(page, {
+      kind: "update",
+      entity: {
+        id: actorId,
+        position: Position.create({ v: [...position] }),
+        orientation: Orientation.create({ v: [0, 0] }),
+        health: Health.create({ hp: maxHp, maxHp }),
+        death_info: null,
+        iced: null,
+      },
+    });
+    await publish(
+      page,
+      new MoveEvent({
+        id: actorId,
+        position: [...position],
+        orientation: [0, 0],
+        velocity: [0, 0, 0],
+      })
+    );
+    await delay(350);
+    await page.evaluate(
+      ({ id, position }) => {
+        globalThis.clientContext?.reactResources?.set("/game_modal", {
+          kind: "empty",
+        });
+        const resources = globalThis.clientContext?.resources;
+        resources?.update("/sim/player", id, (player) => {
+          player.position = [...position];
+          player.orientation = [0, 0];
+          player.velocity = [0, 0, 0];
+        });
+        resources?.update("/scene/local_player", (localPlayer) => {
+          localPlayer.player.position = [...position];
+          localPlayer.player.orientation = [0, 0];
+          localPlayer.player.velocity = [0, 0, 0];
+        });
+      },
+      { id: actorId, position }
+    );
+    await dismissEnterGame(page);
+    await delay(350);
+    last = await authoritativeEntity(page, actorId);
+    const authoritativePosition = last?.position?.v;
+    if (
+      last?.health?.hp > 0 &&
+      !last?.death_info &&
+      authoritativePosition &&
+      distance(authoritativePosition, position) <= 1.5
+    ) {
+      return;
+    }
   }
-  await applyChanges(page, {
-    kind: "update",
-    entity: {
-      id: actorId,
-      position: Position.create({ v: [...position] }),
-      orientation: Orientation.create({ v: [0, 0] }),
-      health: Health.create({ hp: maxHp, maxHp }),
-      death_info: null,
-      iced: null,
-    },
-  });
-  await publish(
-    page,
-    new MoveEvent({
-      id: actorId,
-      position: [...position],
-      orientation: [0, 0],
-      velocity: [0, 0, 0],
-    })
+  throw new Error(
+    `player placement did not remain alive and stable at ${position.join(",")}; ` +
+      `last=${JSON.stringify({
+        hp: last?.health?.hp,
+        position: last?.position?.v,
+        dead: Boolean(last?.death_info),
+      })}`
   );
-  await delay(300);
-  await dismissEnterGame(page);
 }
 
 async function authoritativeEntity(page, id) {
@@ -583,13 +639,13 @@ async function submitCleanupMutation(page, operation, payload) {
         }),
       });
       const body = await response.json();
-      const backendRejection = body.backendMutation?.warnings?.find(
-        (warning) => String(warning).startsWith("economy_rejected:")
+      const backendRejection = body.backendMutation?.warnings?.find((warning) =>
+        String(warning).startsWith("economy_rejected:")
       );
       if (!response.ok || body.ok === false || backendRejection) {
         throw new Error(
           backendRejection ??
-          body.validation?.errors?.[0] ??
+            body.validation?.errors?.[0] ??
             body.warnings?.[0] ??
             `business_cleanup_http_${response.status}`
         );
@@ -648,7 +704,9 @@ async function cleanupActorBusinessSessions(page, onlyBusinessId) {
 function activeSessionForBusiness(state, businessId) {
   return Object.values(state?.businessSystems?.customerSessions ?? {}).find(
     (session) =>
-      session.businessId === businessId && session.status === "active"
+      session.businessId === businessId &&
+      String(session.actorId) === String(state?.actorId) &&
+      session.status === "active"
   );
 }
 
@@ -696,15 +754,46 @@ async function screenshot(page, row, stage) {
   return file;
 }
 
+async function assertPlayerReadableBusinessUi(page, stage) {
+  const visibleText = await page.locator("body").innerText();
+  assert.doesNotMatch(
+    visibleText,
+    /economy_(?:rejected|warning)|native_ecs_materialization_deferred|business_[a-z0-9]+_[a-z0-9_]+|TypeError|ReferenceError|RangeError|SyntaxError|Cannot read properties of|is not a function/i,
+    `${stage} exposed a backend code to the player`
+  );
+}
+
 async function closeBusinessPanel(page) {
-  const close = page.getByRole("button", {
-    name: "Close business interface",
-  });
-  if (await close.count()) await close.click();
+  const selector = '[data-harthmere-business-interface="true"]';
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const close = page.getByRole("button", {
+      name: "Close business interface",
+    });
+    if (!(await close.count())) return false;
+    try {
+      // Shift start intentionally closes this same panel. Cleanup must tolerate
+      // that product transition winning the race after the locator was found.
+      await close.first().evaluate((button) => button.click());
+      await page.waitForSelector(selector, {
+        state: "detached",
+        timeout: 5_000,
+      });
+      return true;
+    } catch (error) {
+      if (!(await page.locator(selector).count())) return true;
+      if (attempt === 2) throw error;
+      await delay(50);
+    }
+  }
+  return false;
 }
 
 async function runBusiness(page, record, index) {
   const businessId = harthmereBusinessOutpostBusinessId(record.outpostId);
+  const outpost =
+    HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS[record.outpostId];
+  assert.ok(outpost, `${record.outpostId} procedural outpost is missing`);
+  const board = outpost.dashboardAccessPoint.position;
   const points = harthmereBusinessInteriorInteractionPoints(record);
   const departure = harthmereBusinessCustomerDeparturePoint(record, 0);
   const result = {
@@ -712,6 +801,7 @@ async function runBusiness(page, record, index) {
     outpostId: record.outpostId,
     businessType: record.businessType,
     businessId,
+    board,
     displayName: record.displayName,
     origin: record.assetWorldAnchor,
     desk: record.deskWorldPivot,
@@ -726,13 +816,23 @@ async function runBusiness(page, record, index) {
   };
   const indexed = { record, index };
   await closeBusinessPanel(page);
-  await placePlayer(page, points.staff);
+  await placePlayer(page, [board.x, board.y, board.z]);
   const activeBoard = await waitFor(
     `${record.outpostId} active counter`,
     () => page.evaluate(() => globalThis.__harthmereBusinessBoardDebug),
     (debug) => debug?.activeBoard?.outpostId === record.outpostId
   );
   assert.equal(activeBoard.value.activeBoard.businessId, businessId);
+  const actorScopedEconomy = await economyState(page);
+  assert.ok(
+    Object.values(
+      actorScopedEconomy?.businessSystems?.customerSessions ?? {}
+    ).every(
+      (session) =>
+        String(session.actorId) === String(actorScopedEconomy.actorId)
+    ),
+    "The business snapshot must never expose another player's customer shift"
+  );
   const interior = await waitFor(
     `${record.outpostId} combined interior`,
     () =>
@@ -819,6 +919,39 @@ async function runBusiness(page, record, index) {
     `${record.outpostId} visible machine collision must not be duplicated`
   );
   result.craftingInteractionAnchorId = Number(stationSeed.entityId);
+
+  const patronSeeds = HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS.filter(
+    (seed) => seed.outpostId === record.outpostId
+  );
+  const patronBefore = await authoritativeEntities(
+    page,
+    patronSeeds.map((seed) => seed.entityId)
+  );
+  await delay(750);
+  const patronAfter = await authoritativeEntities(
+    page,
+    patronSeeds.map((seed) => seed.entityId)
+  );
+  assert.equal(
+    patronBefore.size,
+    patronSeeds.length,
+    `${record.outpostId} ambient patrons missing before the shift`
+  );
+  assert.equal(
+    patronAfter.size,
+    patronSeeds.length,
+    `${record.outpostId} ambient patrons missing after the hold sample`
+  );
+  for (const seed of patronSeeds) {
+    const before = patronBefore.get(Number(seed.entityId))?.position?.v;
+    const after = patronAfter.get(Number(seed.entityId))?.position?.v;
+    assert.ok(before && after, `${seed.customerNpcId} position missing`);
+    assert.ok(
+      distance(before, after) <= 0.15,
+      `${seed.customerNpcId} ran across the shop before the shift started`
+    );
+  }
+  result.stationaryPatronCount = patronSeeds.length;
   result.screenshots.push(await screenshot(page, indexed, "interior"));
 
   const retainedEnd = page.getByRole("button", { name: "End shift" });
@@ -834,23 +967,59 @@ async function runBusiness(page, record, index) {
       { state: "detached", timeout: timeoutMs }
     );
   }
+  assert.equal(
+    await page
+      .locator('[data-harthmere-business-spatial-customer="true"]')
+      .count(),
+    0,
+    "No stale or foreign customer card may remain before this shift starts"
+  );
 
-  // Re-acquire the station immediately before opening it. The board component
+  // Re-acquire the physical board immediately before opening it. The component
   // intentionally unmounts when streaming briefly loses the local-player
-  // position, so retaining an earlier debug object and calling it much later
-  // turns an otherwise valid row into `undefined.open` harness noise.
-  await placePlayer(page, points.staff);
+  // position, so retaining an earlier locator much later creates stale harness
+  // evidence. Open through the same rendered player control used in gameplay;
+  // the debug bridge is observation-only here.
+  await placePlayer(page, [board.x, board.y, board.z]);
   await waitFor(
-    `${record.outpostId} atomic counter open`,
+    `${record.outpostId} physical board ready`,
     () =>
       page.evaluate((outpostId) => {
         const debug = globalThis.__harthmereBusinessBoardDebug;
-        if (debug?.activeBoard?.outpostId !== outpostId) return false;
-        debug.open();
-        return true;
+        return debug?.activeBoard?.outpostId === outpostId;
       }, record.outpostId),
     Boolean
   );
+  const boardPrompt = page.locator(
+    `[data-harthmere-business-prompt="true"][data-business-id="${businessId}"]`
+  );
+  await boardPrompt.waitFor({ state: "visible", timeout: timeoutMs });
+  assert.equal(
+    await boardPrompt.count(),
+    1,
+    "Business board prompt must be unique"
+  );
+  await boardPrompt.click();
+  await page.waitForSelector(
+    `[data-harthmere-business-interface="true"][data-business-id="${businessId}"]`,
+    { timeout: timeoutMs }
+  );
+  const playerClose = page.getByRole("button", {
+    name: "Close business interface",
+  });
+  assert.equal(
+    await playerClose.count(),
+    1,
+    "Business interface must expose one player-readable close control"
+  );
+  await playerClose.click();
+  await page.waitForSelector(
+    `[data-harthmere-business-interface="true"][data-business-id="${businessId}"]`,
+    { state: "detached", timeout: timeoutMs }
+  );
+  result.phases.push("player_closed_board");
+  await boardPrompt.waitFor({ state: "visible", timeout: timeoutMs });
+  await boardPrompt.click();
   await page.waitForSelector(
     `[data-harthmere-business-interface="true"][data-business-id="${businessId}"]`,
     { timeout: timeoutMs }
@@ -867,14 +1036,19 @@ async function runBusiness(page, record, index) {
     0,
     "Detached customer card arena must remain retired"
   );
-  const start = page.getByRole("button", { name: "Start shift at counter" });
+  const start = page.getByRole("button", { name: "Start customer shift" });
   assert.equal(await start.count(), 1, "Start shift control must be unique");
+  await assertPlayerReadableBusinessUi(
+    page,
+    `${record.outpostId} shift control`
+  );
   result.screenshots.push(await screenshot(page, indexed, "shift-control"));
-  await start.click();
+  await start.click({ timeout: timeoutMs });
   await page.waitForSelector('[data-harthmere-business-shift-status="true"]', {
     timeout: timeoutMs,
   });
   await closeBusinessPanel(page);
+  await placePlayer(page, points.staff);
   result.screenshots.push(
     await screenshot(page, indexed, "shift-started-behind-counter")
   );
@@ -956,6 +1130,10 @@ async function runBusiness(page, record, index) {
       `${definedOffer.label} must appear exactly once in customer talk`
     );
   }
+  await assertPlayerReadableBusinessUi(
+    page,
+    `${record.outpostId} customer talk`
+  );
   result.screenshots.push(
     await screenshot(page, indexed, "customer-talk-service-options")
   );
@@ -1056,16 +1234,26 @@ async function runBusiness(page, record, index) {
     1,
     "HUD end-shift action must be unique"
   );
-  await endShift.click();
+  const endingSessionId = nextServing.value.session.sessionId;
+  await placePlayer(page, departure);
   await page.waitForSelector('[data-harthmere-business-shift-status="true"]', {
     state: "detached",
     timeout: timeoutMs,
   });
-  await waitFor(
-    `${record.outpostId} authoritative shift end`,
-    () => economyState(page),
-    (state) => !activeSessionForBusiness(state, businessId)
+  const ended = await waitFor(
+    `${record.outpostId} authoritative shift end after leaving the business`,
+    async () => {
+      const state = await economyState(page);
+      return state?.businessSystems?.customerSessions?.[endingSessionId];
+    },
+    (session) => session?.status === "aborted"
   );
+  assert.equal(ended.value.status, "aborted");
+  assert.ok(
+    ended.value.queue.every((ticket) => ticket.status !== "waiting"),
+    "leaving the business must close every remaining customer ticket"
+  );
+  result.endedByLeavingBusiness = true;
   result.status = "passed";
   return result;
 }
@@ -1099,6 +1287,21 @@ async function main() {
     assert.deepEqual(loaded, { expected: 19, count: 19 });
     for (let index = 0; index < rows.length; index += 1) {
       const record = rows[index];
+      if (!actor) {
+        try {
+          actor = await openActor(browser);
+        } catch (reopenError) {
+          report.failures.push({
+            index,
+            outpostId: record.outpostId,
+            error:
+              `Fresh browser recovery failed before row: ` +
+              (reopenError?.stack || String(reopenError)),
+          });
+          persistReport();
+          continue;
+        }
+      }
       try {
         const result = await runBusiness(actor.page, record, index);
         report.rows.push(result);
@@ -1121,14 +1324,24 @@ async function main() {
           );
         } catch {}
         console.error(`FAIL ${record.outpostId}: ${error?.stack || error}`);
-        await closeBusinessPanel(actor.page).catch(() => undefined);
-        failure.sessionCleanup = await cleanupActorBusinessSessions(
-          actor.page,
-          harthmereBusinessOutpostBusinessId(record.outpostId)
-        ).catch((cleanupError) => {
+        // A React root error or death-modal crash can leave the page incapable
+        // of cleanup while the authoritative world remains healthy. Reopen a
+        // fresh authenticated browser surface after every failed row, then
+        // clean only that actor-owned business session. This keeps the batch
+        // non-fail-fast without allowing one broken row to invalidate the next
+        // eighteen observations.
+        await actor.context.close().catch(() => undefined);
+        actor = undefined;
+        try {
+          actor = await openActor(browser);
+          failure.browserRecovered = true;
+          failure.sessionCleanup = await cleanupActorBusinessSessions(
+            actor.page,
+            harthmereBusinessOutpostBusinessId(record.outpostId)
+          );
+        } catch (cleanupError) {
           failure.cleanupError = cleanupError?.stack || String(cleanupError);
-          return [];
-        });
+        }
       } finally {
         persistReport();
       }

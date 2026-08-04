@@ -37,6 +37,9 @@ already-populated external Redis container.
 Options:
   --app NAME                 Existing app container (${DEFAULT_APP})
   --redis NAME               Retained Redis container (${DEFAULT_REDIS})
+  --image IMAGE              Replacement base image (default: current app image)
+  --allow-post-push-deploy   Ignore an outer deploy shell only after its local
+                             compiler/buildx children have exited
   --build MODE               none, next, server, or all (default: none)
   --build-id ID              Shared Next/server build id for --build
   --ready-timeout-seconds N  Complete lifecycle timeout (default: 900)
@@ -54,6 +57,8 @@ function parseArgs(argv) {
   const options = {
     app: DEFAULT_APP,
     redis: DEFAULT_REDIS,
+    image: undefined,
+    allowPostPushDeploy: false,
     build: "none",
     buildId: undefined,
     readyTimeoutSeconds: 900,
@@ -70,6 +75,12 @@ function parseArgs(argv) {
         break;
       case "--redis":
         options.redis = argv[++i];
+        break;
+      case "--image":
+        options.image = argv[++i];
+        break;
+      case "--allow-post-push-deploy":
+        options.allowPostPushDeploy = true;
         break;
       case "--build":
         options.build = argv[++i];
@@ -371,7 +382,7 @@ function replacementCreateArgs({
       `type=bind,source=${path.join(root, relativeSource)},target=${target},readonly`
     );
   }
-  args.push(source.Image);
+  args.push(image.Id);
   return { args, network };
 }
 
@@ -458,24 +469,29 @@ async function verifyRedisWorld(
   };
 }
 
-function findBuildOwners() {
+function findBuildOwners(allowPostPushDeploy = false) {
   const result = command("ps", ["-axo", "pid=,command="], {
     allowFailure: true,
   });
   if (result.status !== 0) return [];
-  const pattern =
-    /(?:scripts\/glitch\/deploy-production-local-redis-smoke[.]sh|(?:^|\s)(?:[.]\/)?b\s+build\s+(?:next|server)|node_modules\/(?:[.]bin\/)?next\s+build|next\/dist\/bin\/next\s+build|server[.]webpack[.]config[.]cjs|webpack[^\n]*server)/i;
+  const compilerPattern =
+    /(?:(?:^|\s)(?:[.]\/)?b\s+build\s+(?:next|server)|node_modules\/(?:[.]bin\/)?next\s+build|next\/dist\/bin\/next\s+build|server[.]webpack[.]config[.]cjs|webpack[^\n]*server|docker\s+buildx\s+build)/i;
+  const deployPattern =
+    /scripts\/glitch\/deploy-production-local-redis-smoke[.]sh/i;
   return result.stdout
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
     .filter(
-      (line) => !line.startsWith(`${process.pid} `) && pattern.test(line)
+      (line) =>
+        !line.startsWith(`${process.pid} `) &&
+        (compilerPattern.test(line) ||
+          (!allowPostPushDeploy && deployPattern.test(line)))
     );
 }
 
-function requireNoBuildOwners() {
-  const owners = findBuildOwners();
+function requireNoBuildOwners(allowPostPushDeploy = false) {
+  const owners = findBuildOwners(allowPostPushDeploy);
   if (owners.length) {
     throw new Error(
       `Build outputs are currently owned by another compiler:\n${owners.join("\n")}`
@@ -521,9 +537,9 @@ function pinnedBuildEnvironment(buildId) {
   };
 }
 
-function runBuild(mode, buildId) {
+function runBuild(mode, buildId, allowPostPushDeploy = false) {
   if (mode === "none") return;
-  requireNoBuildOwners();
+  requireNoBuildOwners(allowPostPushDeploy);
   const env = pinnedBuildEnvironment(buildId);
   const targets = mode === "all" ? ["next", "server"] : [mode];
   for (const target of targets) {
@@ -534,7 +550,7 @@ function runBuild(mode, buildId) {
       allowFailure: true,
     });
     if (result.status !== 0) {
-      const owners = findBuildOwners();
+      const owners = findBuildOwners(allowPostPushDeploy);
       throw new Error(
         `Build ${target} failed with exit ${result.status}${
           owners.length
@@ -543,7 +559,7 @@ function runBuild(mode, buildId) {
         }`
       );
     }
-    requireNoBuildOwners();
+    requireNoBuildOwners(allowPostPushDeploy);
   }
 }
 
@@ -584,11 +600,11 @@ function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-async function requireStableArtifacts() {
-  requireNoBuildOwners();
+async function requireStableArtifacts(allowPostPushDeploy = false) {
+  requireNoBuildOwners(allowPostPushDeploy);
   const first = artifactFingerprint();
   await sleep(1000);
-  requireNoBuildOwners();
+  requireNoBuildOwners(allowPostPushDeploy);
   const second = artifactFingerprint();
   if (!sameJson(first, second)) {
     throw new Error(
@@ -707,7 +723,7 @@ async function refresh(options) {
       `Source app is not valid warm-stack evidence (RestartCount=${source.RestartCount}, OOMKilled=${source.State.OOMKilled})`
     );
   }
-  const image = inspectImage(source.Image);
+  const image = inspectImage(options.image || source.Image);
   const sourceEnv = envMap(source.Config.Env);
   const titleId =
     sourceEnv.get("GLITCH_TITLE_ID") || "42de534c-600f-4228-af9e-b69faef94cce";
@@ -728,13 +744,13 @@ async function refresh(options) {
       .replace(/[-:.TZ]/g, "")
       .slice(0, 14)}`;
   if (!options.dryRun) {
-    runBuild(options.build, buildId);
+    runBuild(options.build, buildId, options.allowPostPushDeploy);
   } else if (options.build !== "none") {
     console.log(
       `DRY RUN: would build ${options.build} with BIOMES_BUILD_ID=${buildId}`
     );
   }
-  const artifacts = await requireStableArtifacts();
+  const artifacts = await requireStableArtifacts(options.allowPostPushDeploy);
   const redisBefore = await verifyRedisWorld(
     options.redis,
     titleId,
@@ -757,7 +773,7 @@ async function refresh(options) {
   inferPublishedPort(source, 4900);
 
   console.log(
-    `Warm refresh plan: app=${options.app} redis=${options.redis} image=${source.Image} build=${artifacts.buildId} dbsize=${redisBefore.dbsize}`
+    `Warm refresh plan: app=${options.app} redis=${options.redis} image=${image.Id} build=${artifacts.buildId} dbsize=${redisBefore.dbsize}`
   );
   if (options.dryRun) {
     console.log(
@@ -798,9 +814,9 @@ async function refresh(options) {
       temporaryName,
       options.redis
     );
-    if (replacement.Image !== source.Image) {
+    if (replacement.Image !== image.Id) {
       throw new Error(
-        `Replacement image ${replacement.Image} does not match source image ${source.Image}`
+        `Replacement image ${replacement.Image} does not match requested image ${image.Id}`
       );
     }
     const redisAfterCreate = inspectContainer(options.redis);

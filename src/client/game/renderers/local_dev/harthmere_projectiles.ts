@@ -1369,6 +1369,23 @@ export class HarthmereProjectileVisualRuntime {
     ) => void
   ) {}
 
+  /**
+   * True while anything in this layer still needs to be drawn.
+   *
+   * HARTHMERE_COMBAT_VFX_ALWAYS_ON: the host renderer uses this to decide
+   * whether to attach its root to the scene on frames where the town half of
+   * the renderer has nothing to draw (production, where the runtime-asset gate
+   * is off). Without it, combat VFX are spawned into a detached group.
+   */
+  hasActiveVisuals() {
+    return (
+      this.active.length > 0 ||
+      this.activeShapes.length > 0 ||
+      this.activeMagicCharges.length > 0 ||
+      this.impacts.length > 0
+    );
+  }
+
   preloadAll() {
     for (const definition of HARTHMERE_PROJECTILE_VISUALS) {
       void this.load(definition);

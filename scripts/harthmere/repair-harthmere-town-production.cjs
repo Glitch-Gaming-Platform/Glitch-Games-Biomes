@@ -35,14 +35,27 @@ const {
 const { harthmereTownSurfaceMaterialAt } = require(
   path.join(process.cwd(), "src/shared/harthmere/harthmere_town_surface")
 );
+const { HARTHMERE_TOWN_STREETS_VERSION, harthmereTownStreetRects } = require(
+  path.join(process.cwd(), "src/shared/harthmere/harthmere_town_streets")
+);
+const {
+  HARTHMERE_TOWN_BUILDINGS_VERSION,
+  harthmereShellRebuildRects,
+} = require(
+  path.join(process.cwd(), "src/shared/harthmere/harthmere_town_buildings")
+);
+const {
+  HARTHMERE_WEST_SEAM_RIDGE_BOUNDS,
+  HARTHMERE_WEST_SEAM_RIDGE_MAX_RISE,
+  HARTHMERE_WEST_SEAM_RIDGE_VERSION,
+} = require(
+  path.join(process.cwd(), "src/shared/harthmere/harthmere_west_seam_ridge")
+);
 const { HARTHMERE_RETIRED_GENERIC_TOWNSPERSON_IDS } = require(
   path.join(
     process.cwd(),
     "src/shared/harthmere/harthmere_npc_population_policy"
   )
-);
-const { HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS } = require(
-  path.join(process.cwd(), "src/shared/harthmere/business_customer_npc_seed")
 );
 const {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
@@ -57,7 +70,7 @@ const APPLY_SHARD_BATCH_SIZE = Math.max(
   Number.parseInt(process.env.APPLY_SHARD_BATCH_SIZE || "4", 10)
 );
 const HARTHMERE_TOWN_PRODUCTION_REPAIR_VERSION =
-  "harthmere-town-production-repair-v1";
+  "harthmere-town-production-repair-v2";
 
 const MATERIAL_NAME = {
   grass: "grass",
@@ -95,6 +108,33 @@ function loadCanonicalTerrainBuilder() {
   const source = fs.readFileSync(bundlePath, "utf8");
   if (!source.includes(startMarker)) {
     throw new Error(`Unable to locate shim startup marker in ${bundlePath}`);
+  }
+  // BUNDLE FRESHNESS GATE.
+  //
+  // This writer reads its target set from the WORKTREE (building table, street
+  // network) and its replacement geometry from the PACKAGED BUNDLE. If the two
+  // disagree, the repair does the worst possible thing: it rebuilds every
+  // targeted shard from stale geometry and thereby REVERTS the shells and
+  // streets the deploy was meant to ship, while still reporting success and
+  // printing the worktree's version numbers.
+  //
+  // Nothing else in the deploy catches this. The persisted-world audit checks
+  // the town surface and four roofs; it does not verify a single shell position
+  // or street voxel. So the check belongs here, before anything is written.
+  for (const [label, version] of [
+    ["building table", HARTHMERE_TOWN_BUILDINGS_VERSION],
+    ["street network", HARTHMERE_TOWN_STREETS_VERSION],
+    ["west seam ridge", HARTHMERE_WEST_SEAM_RIDGE_VERSION],
+  ]) {
+    if (!source.includes(version)) {
+      throw new Error(
+        `Stale ${bundlePath}: it does not contain the worktree's ${label} ` +
+          `version "${version}". Rebuild the image from this worktree before ` +
+          `running the town repair — reconstructing shards from an older ` +
+          `bundle would overwrite the current shells and streets with the ` +
+          `geometry they replaced.`
+      );
+    }
   }
   const instrumented = source.replace(
     startMarker,
@@ -170,8 +210,98 @@ function addEdit(editsByEntity, position, value, reason) {
   editsByEntity.set(id, edits);
 }
 
+function addCanonicalShardTarget(editsByEntity, position) {
+  const id = terrainEntityIdForPosition(position);
+  if (!editsByEntity.has(id)) {
+    editsByEntity.set(id, []);
+  }
+}
+
+function inclusiveShardSamples(min, max) {
+  const values = new Set([min, max]);
+  let value = Math.floor(min / 32) * 32 + 31;
+  while (value < max) {
+    values.add(Math.max(min, value));
+    values.add(Math.min(max, value + 1));
+    value += 32;
+  }
+  return [...values];
+}
+
 function buildEdits() {
   const editsByEntity = new Map();
+
+  // Shell moves and the derived street network are authored by the canonical
+  // shim generator. Target every shard their volumes overlap so ordinary
+  // reconciliation migrates existing production shards instead of only new
+  // worlds. The actual replacement is composed from the canonical seed below;
+  // these entries merely widen the reviewed target set.
+  for (const building of HARTHMERE_BUILDINGS) {
+    const shellTopRelY = floorCount(building) * storyHeight(building);
+    const roofTopRelY = shellTopRelY + harthmereBuildingRoofRise(building);
+    for (const x of inclusiveShardSamples(building.x0 - 1, building.x1 + 1)) {
+      for (const z of inclusiveShardSamples(building.z0 - 1, building.z1 + 1)) {
+        for (const relY of inclusiveShardSamples(0, roofTopRelY)) {
+          addCanonicalShardTarget(editsByEntity, [
+            x + HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+            HARTHMERE_EXTENSION_GROUND_Y + relY,
+            z + HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
+          ]);
+        }
+      }
+    }
+  }
+  for (const rect of harthmereTownStreetRects()) {
+    for (const x of inclusiveShardSamples(rect.x0, rect.x1)) {
+      for (const z of inclusiveShardSamples(rect.z0, rect.z1)) {
+        addCanonicalShardTarget(editsByEntity, [
+          x + HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+          HARTHMERE_EXTENSION_GROUND_Y,
+          z + HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
+        ]);
+      }
+    }
+  }
+
+  // Ground the shell pass rewrote outside the town core: the two Wilds
+  // structures that had to come east across the old map's edge. Their new
+  // footprints sit on shards that already exist, so additive seeding will not
+  // touch them and the canonical rebuild has to be asked for explicitly.
+  for (const rect of harthmereShellRebuildRects()) {
+    for (const x of inclusiveShardSamples(rect.x0, rect.x1)) {
+      for (const z of inclusiveShardSamples(rect.z0, rect.z1)) {
+        for (const relY of inclusiveShardSamples(0, 40)) {
+          addCanonicalShardTarget(editsByEntity, [
+            x + HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+            HARTHMERE_EXTENSION_GROUND_Y + relY,
+            z + HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
+          ]);
+        }
+      }
+    }
+  }
+
+  // The west seam ridge is the hillside either side of the road where the
+  // imported map hands over. Unlike everything above it is authored in WORLD
+  // coordinates and sits west of the town, so the offset must not be applied.
+  // It is new ground on shards that already exist — the exact case additive
+  // seeding cannot detect, since those shards are neither missing nor unsolid.
+  for (const x of inclusiveShardSamples(
+    HARTHMERE_WEST_SEAM_RIDGE_BOUNDS.minX,
+    HARTHMERE_WEST_SEAM_RIDGE_BOUNDS.maxX
+  )) {
+    for (const z of inclusiveShardSamples(
+      HARTHMERE_WEST_SEAM_RIDGE_BOUNDS.minZ,
+      HARTHMERE_WEST_SEAM_RIDGE_BOUNDS.maxZ
+    )) {
+      for (const y of inclusiveShardSamples(
+        HARTHMERE_EXTENSION_GROUND_Y,
+        HARTHMERE_EXTENSION_GROUND_Y + HARTHMERE_WEST_SEAM_RIDGE_MAX_RISE
+      )) {
+        addCanonicalShardTarget(editsByEntity, [x, y, z]);
+      }
+    }
+  }
 
   // This is the exact surface sampled by audit-harthmere-town-repair.cjs.
   // Undefined style cells are intentionally open grass rather than another
@@ -339,10 +469,7 @@ async function applyTerrain(
 }
 
 async function retireNpcRows(world) {
-  const ids = [
-    ...HARTHMERE_RETIRED_GENERIC_TOWNSPERSON_IDS,
-    ...HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS.map((seed) => seed.entityId),
-  ];
+  const ids = [...HARTHMERE_RETIRED_GENERIC_TOWNSPERSON_IDS];
   const rows = await world.getWithVersion(ids);
   const existing = rows
     .map(([version, entity], index) => ({ id: ids[index], version, entity }))
@@ -382,6 +509,8 @@ async function main() {
       JSON.stringify(
         {
           version: HARTHMERE_TOWN_PRODUCTION_REPAIR_VERSION,
+          streetsVersion: HARTHMERE_TOWN_STREETS_VERSION,
+          westSeamRidgeVersion: HARTHMERE_WEST_SEAM_RIDGE_VERSION,
           apply: APPLY,
           terrain,
           npcs,

@@ -3622,7 +3622,8 @@ export function createHarthmereProductionEconomyClientSnapshot(
     marketOrders: state.marketOrders,
     businessSystems:
       createHarthmereProductionEconomyBusinessSystemsClientSnapshot(
-        (state as any).businessSystems
+        (state as any).businessSystems,
+        actorId
       ),
     balanceWarnings: validateHarthmereEconomyBalance(state),
     ledger: state.ledger.slice(-100),
@@ -3630,7 +3631,8 @@ export function createHarthmereProductionEconomyClientSnapshot(
 }
 
 export function createHarthmereProductionEconomyBusinessSystemsClientSnapshot(
-  raw: unknown
+  raw: unknown,
+  actorId: string
 ) {
   const systems = normalizeHarthmereEconomyBusinessSystemsState(raw);
   const outpostBuildings = Object.fromEntries(
@@ -3656,6 +3658,11 @@ export function createHarthmereProductionEconomyBusinessSystemsClientSnapshot(
   );
   return {
     ...systems,
+    customerSessions: Object.fromEntries(
+      Object.entries(systems.customerSessions).filter(
+        ([, session]) => session.actorId === actorId
+      )
+    ),
     outpostBuildings,
   };
 }

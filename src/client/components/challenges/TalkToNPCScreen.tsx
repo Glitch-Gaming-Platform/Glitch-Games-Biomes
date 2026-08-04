@@ -20,11 +20,14 @@ import { JACKIE_ID } from "@/client/util/nux/state_machines";
 import { completeHarthmereDailyTaskSoon } from "@/client/components/challenges/harthmereDailyTasks";
 import { HarthmereBusinessCustomerTalkDialog } from "@/client/components/harthmere_business/HarthmereBusinessCustomerTalkDialog";
 import { useHarthmereBusinessCustomerTalkTarget } from "@/client/components/harthmere_business/harthmereBusinessCustomerTalkState";
+import { HarthmereRequestBoardLiveContainer } from "@/client/components/harthmere_request_board/HarthmereRequestBoardLiveContainer";
 import { AdminDeleteEvent, AdminIceEvent } from "@/shared/ecs/gen/events";
 import { reportFunnelStage } from "@/shared/funnel";
+import { isHarthmereRequestBoardEntityId } from "@/shared/harthmere/native_request_boards";
 import type { BiomesId } from "@/shared/ids";
+import { deserializeNpcCustomState } from "@/shared/npc/serde";
 import { fireAndForget } from "@/shared/util/async";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export const AdminNPCButtons: React.FunctionComponent<{
   npcId: BiomesId;
@@ -95,6 +98,18 @@ export const TalkToNPCScreen: React.FunctionComponent<{
   const isAdmin = authManager.currentUser.hasSpecialRole("admin");
   const businessCustomerTalk =
     useHarthmereBusinessCustomerTalkTarget(talkingToNPCId);
+  const nativeNpcState = clientContext.reactResources.use(
+    "/ecs/c/npc_state",
+    talkingToNPCId
+  );
+  const nativeBusinessCustomer = useMemo(
+    () =>
+      nativeNpcState?.data
+        ? deserializeNpcCustomState(nativeNpcState.data).businessCustomer
+        : undefined,
+    [nativeNpcState?.data]
+  );
+  const requestBoard = isHarthmereRequestBoardEntityId(talkingToNPCId);
   const trueRelevantSteps = useRelevantStepsForEntity(talkingToNPCId);
   const [queryingStep, setQueryingStep] = useState(false);
   const [trackedQuest] = clientContext.mapManager.react.useTrackedQuestId();
@@ -151,7 +166,14 @@ export const TalkToNPCScreen: React.FunctionComponent<{
   };
 
   let dialogContent: JSX.Element;
-  if (businessCustomerTalk) {
+  if (requestBoard) {
+    dialogContent = (
+      <HarthmereRequestBoardLiveContainer
+        boardEntityId={talkingToNPCId}
+        onClose={onClose}
+      />
+    );
+  } else if (businessCustomerTalk) {
     // Session-only business customers are a distinct in-world minigame role.
     // Talking to one must present the authoritative service offers, never the
     // ambient Chit Chat / Ask about this place / reputation options. The
@@ -162,6 +184,19 @@ export const TalkToNPCScreen: React.FunctionComponent<{
       <HarthmereBusinessCustomerTalkDialog
         talkingToNPCId={talkingToNPCId}
         onClose={onClose}
+      />
+    );
+  } else if (
+    nativeBusinessCustomer &&
+    nativeBusinessCustomer.phase !== "patron_wandering"
+  ) {
+    dialogContent = (
+      <TalkToNpc
+        talkingToNpcId={talkingToNPCId}
+        id="business-customer-in-use"
+        dialogText="<text>This customer is already part of an active business shift. If this is your shift, return behind the counter and try again in a moment. Otherwise, wait until the current shift ends.</text>"
+        advanceText="Close"
+        completeStep={onClose}
       />
     );
   } else if (queryingStep) {

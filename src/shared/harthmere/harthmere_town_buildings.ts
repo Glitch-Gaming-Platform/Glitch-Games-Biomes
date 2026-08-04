@@ -18,7 +18,105 @@
 // harthmereMat(), so a typo remains a compile error there.
 
 export const HARTHMERE_TOWN_BUILDINGS_VERSION =
-  "harthmere-town-buildings-v1" as const;
+  "harthmere-town-buildings-shell-polish-v2" as const;
+
+// HARTHMERE_TOWN_SHELL_REBUILD
+//
+// Editing this table is not enough to change a world that already exists.
+//
+// The shim seeds terrain additively: `terrainIdsToBuild` collects shards that
+// are MISSING, that fail the unsolid-surface probe, or that carry authored
+// water. Moving a building satisfies none of those — the shard is present and
+// the ground is still solid — so an ordinary deploy would leave the old shells
+// standing in `shard_seed` at their old coordinates. A moved building would
+// appear TWICE: the new shell, and the ghost of the old one, because additive
+// seeding creates and never erases.
+//
+// So the shell polish pass has to name the ground it changed and ask for a full
+// authored rebuild of those shards, exactly as HARTHMERE_AUTHORED_WATER does
+// for the Brell channel. The rebuild is a partial ECS update that rewrites only
+// the seed identity, so `shard_diff` and every other player overlay survives —
+// a player's own build on a moved street is not touched.
+//
+// Bump the version whenever a shell, a floor count, a door side or the street
+// network changes. It rides in the seed fingerprint, so the deploy that carries
+// the change is the deploy that repairs the ground, and the deploy after that
+// does nothing.
+export const HARTHMERE_TOWN_SHELL_REBUILD_VERSION =
+  "harthmere-town-shell-and-street-rebuild-v2" as const;
+
+/**
+ * Structures that moved OUTSIDE the town-core span and therefore need their own
+ * rebuild rectangle.
+ *
+ * The span below is derived from the town-core footprints, which is the right
+ * default and misses anything in the Wilds. These two came east across the old
+ * map's edge, and their new ground is on shards that already exist — the exact
+ * case additive seeding cannot see. Their OLD positions need no repair: they
+ * were west of the seam, where no shard was ever generated, so there is nothing
+ * out there to erase.
+ */
+const HARTHMERE_EXTRA_SHELL_REBUILD_RECTS: ReadonlyArray<{
+  x0: number;
+  x1: number;
+  z0: number;
+  z1: number;
+}> = [
+  { x0: 300, x1: 314, z0: -638, z1: -624 }, // northwest_ruined_watchtower
+  { x0: 296, x1: 320, z0: 159, z1: 183 }, // southwest_orchard_windmill + arms
+];
+
+/** Voxels above the ground plane that authored town structure can occupy. */
+export const HARTHMERE_TOWN_SHELL_MAX_REL_Y = 40;
+
+/**
+ * The authored span the shell polish pass rewrote, in authored coordinates.
+ *
+ * Derived from the town-core footprints rather than listed, so a future move
+ * cannot fall outside it. The margin covers balconies, exterior stair landings
+ * and the street network, all of which sit outside the footprints themselves.
+ */
+export function harthmereTownShellRebuildSpan(): {
+  x0: number;
+  x1: number;
+  z0: number;
+  z1: number;
+} {
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let z0 = Infinity;
+  let z1 = -Infinity;
+  for (const b of HARTHMERE_BUILDINGS) {
+    if (b.district.startsWith("Harthmere Wilds")) {
+      continue;
+    }
+    x0 = Math.min(x0, b.x0);
+    x1 = Math.max(x1, b.x1);
+    z0 = Math.min(z0, b.z0);
+    z1 = Math.max(z1, b.z1);
+  }
+  const margin = 16;
+  return { x0: x0 - margin, x1: x1 + margin, z0: z0 - margin, z1: z1 + margin };
+}
+
+/** Every rectangle whose ground the shell pass rewrote, in authored space. */
+export function harthmereShellRebuildRects(): ReadonlyArray<{
+  x0: number;
+  x1: number;
+  z0: number;
+  z1: number;
+}> {
+  const margin = 4;
+  return [
+    harthmereTownShellRebuildSpan(),
+    ...HARTHMERE_EXTRA_SHELL_REBUILD_RECTS.map((r) => ({
+      x0: r.x0 - margin,
+      x1: r.x1 + margin,
+      z0: r.z0 - margin,
+      z1: r.z1 + margin,
+    })),
+  ];
+}
 
 /**
  * Material keys. Must stay a subset of the shim's localDevMaterials() keys —
@@ -1143,8 +1241,16 @@ export const HARTHMERE_ADDITIONAL_SERVER_STRUCTURES: HarthmereBuilding[] = [
     name: "northwest_ruined_watchtower",
     district: "Harthmere Wilds - Northwest Watchtower Ridge",
     profile: "tower",
-    x0: 154,
-    x1: 168,
+    // MOVED +146 X (harthmere-extension-authored-content-band-v1): was
+    // x 154..168, which maps to world 1754..1768 — WEST of the old map's east
+    // edge at 1792. The additive seeder is fail-closed there by design, because
+    // generating those shards would overwrite imported production terrain, so
+    // Rusk's camp had no ground under it and was never written. Unlike the
+    // structures that only fell outside the Z band, this one cannot be fixed by
+    // widening: it has to come east of the seam. It stays on the same northwest
+    // ridge line, clear of the new west seam ridge (which ends at authored 280).
+    x0: 300,
+    x1: 314,
     z0: -638,
     z1: -624,
     wall: "stoneBrick",
@@ -1152,16 +1258,21 @@ export const HARTHMERE_ADDITIONAL_SERVER_STRUCTURES: HarthmereBuilding[] = [
     floor: "stonePolished",
     trim: "coal",
     doorSide: "south",
-    doorCenter: 161,
+    doorCenter: 307,
     floors: 3,
-    stairs: harthmereStairsFor(157, -634, "east"),
+    stairs: harthmereStairsFor(303, -634, "east"),
   },
   {
     name: "southwest_orchard_windmill",
     district: "Harthmere Wilds - Southwest Orchardwood",
     profile: "tower",
-    x0: 154,
-    x1: 170,
+    // MOVED +146 X (harthmere-extension-authored-content-band-v1): same reason
+    // as the watchtower — x 154..170 is world 1754..1770, west of the seam,
+    // where the seeder must not generate. The windmill's cross arms are
+    // authored separately in the shim and move by the same +146 so the sails
+    // stay on the tower instead of turning over empty ground.
+    x0: 300,
+    x1: 316,
     z0: 162,
     z1: 180,
     wall: "stoneBrick",
@@ -1169,9 +1280,9 @@ export const HARTHMERE_ADDITIONAL_SERVER_STRUCTURES: HarthmereBuilding[] = [
     floor: "stonePolished",
     trim: "oakLog",
     doorSide: "south",
-    doorCenter: 162,
+    doorCenter: 308,
     floors: 3,
-    stairs: harthmereStairsFor(158, 166, "east"),
+    stairs: harthmereStairsFor(304, 166, "east"),
   },
   {
     name: "greenmere_edge_cabin",

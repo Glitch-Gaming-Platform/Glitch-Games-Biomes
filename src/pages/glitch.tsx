@@ -1,16 +1,10 @@
-import { GetServerSideProps } from "next";
+import { buildGlitchInstallRedirectDestination } from "@/server/web/glitch_install_redirect";
+import type { GetServerSideProps } from "next";
 
 export const getServerSideProps: GetServerSideProps = async ({ query }) => {
-  const installId =
-    typeof query.install_id === "string"
-      ? query.install_id
-      : typeof query.glitch_install_id === "string"
-      ? query.glitch_install_id
-      : typeof query.installId === "string"
-      ? query.installId
-      : "";
+  const destination = buildGlitchInstallRedirectDestination(query);
 
-  if (!installId) {
+  if (!destination) {
     return {
       redirect: {
         destination: "/?glitch_error=missing_install_id",
@@ -19,14 +13,9 @@ export const getServerSideProps: GetServerSideProps = async ({ query }) => {
     };
   }
 
-  const params = new URLSearchParams({
-    install_id: installId,
-    glitch_auto_play: "1",
-  });
-
   return {
     redirect: {
-      destination: `/at?${params.toString()}`,
+      destination,
       permanent: false,
     },
   };

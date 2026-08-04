@@ -413,6 +413,11 @@ const HARTHMERE_MOBILE_RUNTIME_MAX_PLACEMENTS = 180;
 const HARTHMERE_MOBILE_RUNTIME_MAX_PROTOTYPES = 24;
 const HARTHMERE_MOBILE_RUNTIME_NEW_PROTOTYPES_PER_REFRESH = 4;
 const HARTHMERE_MOBILE_RUNTIME_REFRESH_SECONDS = 0.75;
+const HARTHMERE_DESKTOP_RUNTIME_RADIUS_METERS = 128;
+const HARTHMERE_DESKTOP_RUNTIME_MAX_PLACEMENTS = 360;
+const HARTHMERE_DESKTOP_RUNTIME_MAX_PROTOTYPES = 48;
+const HARTHMERE_DESKTOP_RUNTIME_NEW_PROTOTYPES_PER_REFRESH = 6;
+const HARTHMERE_PLAYER_BONE_ANCHOR_RESCAN_MS = 5_000;
 
 type HarthmereModelForwardAxis = HarthmereForwardAxis;
 
@@ -11244,7 +11249,9 @@ const HARTHMERE_NPC_HOME_ROOMS = [
     roomLabel: "Rusk Hallowhand room in Northwest Ruined Watchtower Camp",
     district: "Harthmere Wilds - Northwest Watchtower Ridge",
     floor: 1,
-    at: [157, 0.08, -635],
+    // MOVED +146 X with `northwest_ruined_watchtower`, which had to come east
+    // of the old map's edge to have any ground under it at all.
+    at: [303, 0.08, -635],
     furniture: ["bed", "nightstand", "personal_chest", "small_table", "candle"],
   },
   {
@@ -28276,8 +28283,11 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
   private harthmerePlayerSwordDrawAmount = 0;
   private harthmerePlayerSwordSwingUntil = 0;
   private harthmerePlayerSwordLastFrameAt = Date.now();
-  private harthmerePlayerSwordFrame?: number;
   private harthmereSwordVisualsInstalled = false;
+  private readonly harthmerePlayerBoneAnchorCache = new Map<
+    string,
+    { anchor?: THREE.Object3D; nextScanAtMs: number }
+  >();
   // harthmere-sword-animation-polish
   private harthmerePlayerSwordTrail?: THREE.Group;
   private harthmerePlayerSwordTrailUntil = 0;
@@ -28411,22 +28421,64 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         this.onMagicChargeVisualRequest
       );
     }
+    // HARTHMERE_COMBAT_VFX_ALWAYS_ON (2026-08-03 combat-visual audit).
+    //
+    // The projectile / magic-charge layer lives inside this renderer, but its
+    // only lifecycle hooks were behind `shouldRenderHarthmereRuntimeAssets()`.
+    // That gate is true on localhost and false everywhere else unless the
+    // `biomes.harthmereAssets` localStorage key is set, so in production:
+    //   - preloadAll() never ran, so no projectile GLB was ever fetched;
+    //   - loadAll() never ran, so `ready` stayed false;
+    //   - draw() early-returns on `!ready`, so `harthmereProjectileVisuals
+    //     .update(dt)` never ticked and `root` was never added to the scene.
+    // The window listeners below were registered unconditionally, so a cast
+    // genuinely spawned its charge object into a group that was never drawn and
+    // never advanced. That is exactly "projectile and magic charging animation
+    // not showing" in the shipped build.
+    //
+    // Combat VFX are not local-dev town scenery; they are core game feedback.
+    // Desktop eagerly caches them. Mobile keeps the same fallback-first spawn
+    // path but lazy-loads only the projectile actually used, avoiding 35 GLBs
+    // before the phone's first frame.
+    if (!this.mobileDevice) {
+      this.harthmereProjectileVisuals.preloadAll();
+    }
     if (shouldRenderHarthmereRuntimeAssets()) {
-      if (this.mobileDevice) {
-        this.prepareMobileRuntimePlacements();
-        // The root already contains its lightweight debug overlay. Marking the
-        // renderer ready lets draw() obtain the real player/camera origin and
-        // begin bounded streaming without an eager world decode first.
-        this.ready = true;
-      } else {
-        this.harthmereProjectileVisuals.preloadAll();
-        void this.loadAll();
-      }
+      // HARTHMERE_BOUNDED_RUNTIME_STREAMING. The former desktop branch eagerly
+      // fetched and decoded every town, Wilds, dungeon, and business-interior
+      // prototype before the first playable frame. Captured sessions spent a
+      // full CPU core in GLTF parse/clone work and were too busy to service even
+      // a screenshot or click. The already-proven mobile selector is equally
+      // appropriate on desktop: keep a larger desktop radius/budget, stream the
+      // nearby authored set in small batches, and let ECS keep owning all living
+      // actors. This also bounds steady-state scene traversal instead of keeping
+      // thousands of invisible far-away placements under one root.
+      this.prepareMobileRuntimePlacements();
+      // The root already contains its lightweight debug overlay. Marking the
+      // renderer ready lets draw() obtain the real player/camera origin and
+      // begin bounded streaming without an eager world decode first.
+      this.ready = true;
     }
   }
 
   draw(scenes: Scenes, dt: number) {
+    // Keep weapon animation on the renderer's one frame clock. The old
+    // constructor-installed requestAnimationFrame loop ran independently of
+    // rendering, duplicated scheduling/work during long frames, and was never
+    // cancelled. This path also runs while town assets are still loading, so
+    // the always-on production weapon/VFX contract remains intact.
+    this.updateHarthmerePlayerSwordVisual();
     if (!this.ready || this.root.children.length === 0) {
+      // HARTHMERE_COMBAT_VFX_ALWAYS_ON: the town may be unloaded (production,
+      // where the runtime-asset gate is off) or still loading, but projectiles,
+      // impacts, magic charges and the local player's equipped weapon must
+      // still animate and still be drawn. All of them are parented to `root`,
+      // so tick them and attach the root even when the town half of this
+      // renderer has nothing to contribute.
+      this.harthmereProjectileVisuals.update(dt);
+      if (this.hasHarthmereSceneAttachableContent()) {
+        scenes.three.add(this.root);
+      }
       return;
     }
     this.elapsed += Math.min(dt, 0.05);
@@ -28446,9 +28498,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     // to the camera, so passing a real camera here strictly adds a fallback.
     const camera: THREE.Camera | undefined =
       this.resources.get("/scene/camera")?.three;
-    if (this.mobileDevice) {
-      this.updateMobileRuntimeAssetStreaming(dt, camera);
-    }
+    this.updateMobileRuntimeAssetStreaming(dt, camera);
     this.updateHarthmerePlacementLod(dt, camera);
     // Cheap visibility + distance gate. Nearby actors animate every frame;
     // mid/far actors are intentionally throttled so dense towns no longer pin
@@ -32061,6 +32111,27 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     return sword;
   }
 
+  /**
+   * Is there anything under `root` that must reach the scene on a frame where
+   * the town half of this renderer is not ready?
+   *
+   * HARTHMERE_COMBAT_VFX_ALWAYS_ON. Two independent subsystems are parented to
+   * `root` but have nothing to do with the local-dev town:
+   *
+   *  - the projectile / impact / magic-charge VFX layer, and
+   *  - `harthmerePlayerSwordAnchorRig`, the local player's third-person weapon.
+   *
+   * The weapon rig is the subtler of the two. draw() updates it before the
+   * readiness gate, so production still computes its anchor transform, draw /
+   * sheathe blend and swing animation while town scenery is disabled.
+   */
+  private hasHarthmereSceneAttachableContent() {
+    return (
+      this.harthmereProjectileVisuals.hasActiveVisuals() ||
+      this.harthmerePlayerSwordAnchorRoot !== undefined
+    );
+  }
+
   private ensureHarthmerePlayerSwordAnchorRig() {
     if (this.harthmerePlayerSwordAnchorRoot) {
       return this.harthmerePlayerSwordAnchorRoot;
@@ -32484,13 +32555,6 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       );
       this.playHarthmerePlayerSwordAnimationForCurrentState("event");
     });
-
-    const animateSword = () => {
-      this.updateHarthmerePlayerSwordVisual();
-      this.harthmerePlayerSwordFrame =
-        window.requestAnimationFrame(animateSword);
-    };
-    animateSword();
   }
 
   private debugHarthmereSwordRendererEvent(
@@ -32756,7 +32820,25 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
   private resolveHarthmerePlayerBoneAnchor(candidates: readonly string[]) {
     const harthmereCombatPolishRejectSceneWideBoneAnchors = true;
     const wanted = candidates.map((candidate) => candidate.toLowerCase());
+    const cacheKey = wanted.join("|");
+    const nowMs =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
+    const cached = this.harthmerePlayerBoneAnchorCache.get(cacheKey);
+    if (cached) {
+      if (cached.anchor?.parent) {
+        return cached.anchor;
+      }
+      if (nowMs < cached.nextScanAtMs) {
+        return undefined;
+      }
+    }
     let match: THREE.Object3D | undefined;
+    // HARTHMERE_PLAYER_BONE_ANCHOR_CACHE. `root` contains the rebuilt town,
+    // not the native local-player mesh. The old code nevertheless traversed
+    // that entire scene twice per frame (hand and sheathe lookups), which made
+    // weapon animation one of the largest main-thread costs in dense towns.
+    // Cache both positive and negative lookups and only re-probe occasionally
+    // so a future local-player bone bridge can still attach without a reload.
     this.root.traverse((object) => {
       if (match) {
         return;
@@ -32781,6 +32863,10 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       if (wanted.some((candidate) => name.includes(candidate))) {
         match = object;
       }
+    });
+    this.harthmerePlayerBoneAnchorCache.set(cacheKey, {
+      anchor: match,
+      nextScanAtMs: nowMs + HARTHMERE_PLAYER_BONE_ANCHOR_RESCAN_MS,
     });
     return match;
   }
@@ -34927,13 +35013,28 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
   }
 
   private async refreshMobileRuntimeAssets(origin: readonly [number, number]) {
+    const streamingBudget = this.mobileDevice
+      ? {
+          radiusMeters: HARTHMERE_MOBILE_RUNTIME_RADIUS_METERS,
+          maxPlacements: HARTHMERE_MOBILE_RUNTIME_MAX_PLACEMENTS,
+          maxAssets: HARTHMERE_MOBILE_RUNTIME_MAX_PROTOTYPES,
+          newPrototypesPerRefresh:
+            HARTHMERE_MOBILE_RUNTIME_NEW_PROTOTYPES_PER_REFRESH,
+        }
+      : {
+          radiusMeters: HARTHMERE_DESKTOP_RUNTIME_RADIUS_METERS,
+          maxPlacements: HARTHMERE_DESKTOP_RUNTIME_MAX_PLACEMENTS,
+          maxAssets: HARTHMERE_DESKTOP_RUNTIME_MAX_PROTOTYPES,
+          newPrototypesPerRefresh:
+            HARTHMERE_DESKTOP_RUNTIME_NEW_PROTOTYPES_PER_REFRESH,
+        };
     const selection = selectHarthmereMobileRuntimePlacements(
       this.mobileRuntimeCandidates,
       origin,
       {
-        radiusMeters: HARTHMERE_MOBILE_RUNTIME_RADIUS_METERS,
-        maxPlacements: HARTHMERE_MOBILE_RUNTIME_MAX_PLACEMENTS,
-        maxAssets: HARTHMERE_MOBILE_RUNTIME_MAX_PROTOTYPES,
+        radiusMeters: streamingBudget.radiusMeters,
+        maxPlacements: streamingBudget.maxPlacements,
+        maxAssets: streamingBudget.maxAssets,
       }
     );
     const desiredIndexes = new Set(selection.indexes);
@@ -34950,10 +35051,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       (key) => !this.prototypes.has(key) && !this.failed.has(key)
     );
     await this.loadHarthmerePrototypeBatch(
-      missingAssets.slice(
-        0,
-        HARTHMERE_MOBILE_RUNTIME_NEW_PROTOTYPES_PER_REFRESH
-      ),
+      missingAssets.slice(0, streamingBudget.newPrototypesPerRefresh),
       2
     );
 
@@ -34983,19 +35081,19 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     const win = harthmereRendererDebugWindow();
     if (win) {
       win.__harthmereMobileRuntimeStreaming = {
-        version: "harthmere-mobile-nearby-runtime-assets-v1",
+        version: "harthmere-bounded-nearby-runtime-assets-v2",
+        profile: this.mobileDevice ? "mobile" : "desktop",
         origin,
-        radiusMeters: HARTHMERE_MOBILE_RUNTIME_RADIUS_METERS,
-        maxPlacements: HARTHMERE_MOBILE_RUNTIME_MAX_PLACEMENTS,
-        maxPrototypes: HARTHMERE_MOBILE_RUNTIME_MAX_PROTOTYPES,
+        radiusMeters: streamingBudget.radiusMeters,
+        maxPlacements: streamingBudget.maxPlacements,
+        maxPrototypes: streamingBudget.maxAssets,
         selectedPlacements: selection.indexes.length,
         selectedAssets: selection.assetKeys.length,
         loadedPlacements: this.mobilePlacementObjects.size,
         loadedPrototypes: this.prototypes.size,
         remainingPrototypeLoads: Math.max(
           0,
-          missingAssets.length -
-            HARTHMERE_MOBILE_RUNTIME_NEW_PROTOTYPES_PER_REFRESH
+          missingAssets.length - streamingBudget.newPrototypesPerRefresh
         ),
         failedPrototypes: this.failed.size,
         at: Date.now(),

@@ -9,8 +9,7 @@ import {
   parseHarthmereLiveModeSharedWorldState,
 } from "@/shared/harthmere/live_mode_backend";
 import {
-  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
-  HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
+  harthmereJobsBoardAutoSeedBoardIds,
   reduceHarthmereJobsBoardMutation,
 } from "@/shared/harthmere/mmo_jobs_board_authority";
 import { z } from "zod";
@@ -66,10 +65,7 @@ export async function readHarthmereLiveModeJobsBoardStateForActor(input: {
   state.updatedAtMs = input.nowMs;
   // Read-time job seeding is a snapshot projection only. Durable public-board
   // mutations belong to the live-mode reducer/transaction path, not GET reads.
-  for (const boardId of [
-    HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
-    HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
-  ]) {
+  for (const boardId of harthmereJobsBoardAutoSeedBoardIds(state.jobsBoard)) {
     const result = reduceHarthmereJobsBoardMutation(
       state.jobsBoard,
       {

@@ -22,6 +22,7 @@
 #   scripts/harthmere/t.sh promo          # promo still registry (~1 s)
 #   scripts/harthmere/t.sh visuals        # terrain + promo tests/types (~3 s warm)
 #   scripts/harthmere/t.sh perf           # FPS/polling/save/telemetry contracts
+#   scripts/harthmere/t.sh combat         # melee acquisition + projectile/charge VFX + speed
 #   scripts/harthmere/t.sh watch ch1      # re-run on save
 #   scripts/harthmere/t.sh types          # scoped typecheck     (~3 s)
 #   scripts/harthmere/t.sh types:stack    # focused stack wiring typecheck
@@ -242,7 +243,36 @@ PERF=(
   'src/client/components/challenges/Chapter1NativeObjectivePrompt.test.ts'
   'src/client/components/challenges/Chapter1PollingPerformance.test.ts'
   'src/shared/cutscene/test/ch1_projection_puppets.test.ts'
+  # 2026-08-03 captured-session frame-loop pass. The overlay script was the
+  # single largest per-frame cost in production (unbounded terrainMarch calls +
+  # unconditional React invalidation); the render-scale ladder never engaged
+  # without a GPU timer. Both are source/behaviour contracts, not benchmarks,
+  # so they belong in the fast lane.
+  'src/client/game/scripts/overlaysFrameBudget.test.ts'
+  'src/client/game/resources/dynamic_settings_updater.test.ts'
+  'src/client/game/resources/graphics_settings.test.ts'
 )
+
+# 2026-08-03 captured-session combat pass. The production capture proved 21
+# swing emotes and ZERO updateNpcHealthEvents in 374 s of play: melee acquisition
+# and combat VFX were both broken in the shipped build while every existing suite
+# stayed green. These are the contracts that would have caught it.
+COMBAT=(
+  'src/client/game/renderers/local_dev/harthmere_combat_vfx_always_on.test.ts'
+  'src/client/game/resources/melee_attack_region.test.ts'
+  'src/client/game/renderers/local_dev/harthmere_projectiles.test.ts'
+  'src/shared/harthmere/test/native_chase_live_browser_runner_contract.test.ts'
+  'src/shared/harthmere/test/native_player_attack_live_browser_runner_contract.test.ts'
+  'src/shared/harthmere/test/premium_projectile_wiring.test.ts'
+  'src/shared/npc/behavior/test/chase_attack_logic.test.ts'
+  'src/shared/npc/behavior/test/npc_locomotion_selection.test.ts'
+)
+# Deliberately NOT in COMBAT:
+#   src/client/game/interact/item_types/attack_destroy_delegate_item_spec.test.ts
+# It needs the Bikkie bootstrap `.mocharc.fast.json` drops (it builds real items
+# and resolves destruction hardness). Under the fast preset it reports 12 passing
+# / 5 failing; under the default bootstrap it passes 17/17. Run it with:
+#   node_modules/.bin/mocha --config .mocharc.json src/client/game/interact/item_types/attack_destroy_delegate_item_spec.test.ts
 
 run_scoped_types() {
   NODE_OPTIONS="--max-old-space-size=8192" \
@@ -320,6 +350,7 @@ case "$cmd" in
     ;;
   cutscene) "${FAST[@]}" "${CUTSCENE[@]}" ;;
   promo)    "${FAST[@]}" "${PROMO[@]}" ;;
+  combat)   "${FAST[@]}" "${COMBAT[@]}" ;;
   perf)
     "${FAST[@]}" "${PERF[@]}"
     node scripts/harthmere/check-harthmere-performance-response.cjs

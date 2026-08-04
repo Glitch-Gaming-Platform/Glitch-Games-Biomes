@@ -4,8 +4,8 @@
 // HARTHMERE_UI: tests for the subscriber mechanism that lets the
 // EscGameMenu (and any other React surface) react to "unlock-while-open"
 // panels — Jobs Board, Home Console, Business Interface, Crafting Station —
-// opening and closing. The fix prevents the "Return to Game" / "Give
-// Feedback" overlay from appearing on top of those panels.
+// opening and closing. The fix prevents the escape-menu overlay from
+// appearing on top of those panels.
 
 import assert from "assert";
 import {
@@ -120,8 +120,16 @@ describe("pointerLockModalPolicy unlock-while-open subscribers (V147)", () => {
     beginPointerLockUnlockWhileOpen();
     endPointerLockUnlockWhileOpen();
 
-    assert.equal(firstCalls, 1, "first subscriber should fire exactly once before self-unsubscribing");
-    assert.equal(secondCalls, 2, "second subscriber should fire on begin and end");
+    assert.equal(
+      firstCalls,
+      1,
+      "first subscriber should fire exactly once before self-unsubscribing"
+    );
+    assert.equal(
+      secondCalls,
+      2,
+      "second subscriber should fire on begin and end"
+    );
 
     unsubSecond();
   });
@@ -133,7 +141,9 @@ describe("pointerLockModalPolicy unlock-while-open subscribers (V147)", () => {
     });
 
     const manager = fakeManager(true);
-    const shouldReturn: PointerLockUnlockWhileOpenReturnRef = { current: false };
+    const shouldReturn: PointerLockUnlockWhileOpenReturnRef = {
+      current: false,
+    };
 
     openPointerLockUnlockWhileOpen(manager, shouldReturn);
     assert.equal(isPointerLockUnlockWhileOpenActive(), true);

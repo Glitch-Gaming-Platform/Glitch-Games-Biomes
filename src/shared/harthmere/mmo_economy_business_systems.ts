@@ -1285,9 +1285,31 @@ function closeBusinessBranch(state: BusinessSystemsEconomyState, request: Harthm
   shared.add(systemsSharedKey("empire_branch", branch.branchId));
 }
 
-function activeCustomerSessionForBusiness(systems: HarthmereEconomyBusinessSystemsState, businessId: string, nowMs: number) {
+function activeCustomerSessionForBusiness(
+  systems: HarthmereEconomyBusinessSystemsState,
+  businessId: string,
+  nowMs: number
+) {
   return Object.values(systems.customerSessions).find(
-    (session) => session.businessId === businessId && session.status === "active" && session.expiresAtMs > nowMs,
+    (session) =>
+      session.businessId === businessId &&
+      session.status === "active" &&
+      session.expiresAtMs > nowMs,
+  );
+}
+
+function activeCustomerSessionForActorBusiness(
+  systems: HarthmereEconomyBusinessSystemsState,
+  businessId: string,
+  actorId: string,
+  nowMs: number
+) {
+  return Object.values(systems.customerSessions).find(
+    (session) =>
+      session.businessId === businessId &&
+      session.actorId === actorId &&
+      session.status === "active" &&
+      session.expiresAtMs > nowMs
   );
 }
 
@@ -1309,10 +1331,18 @@ function closeBusinessCustomerSessionQueue(
   if (!session.notes.includes(note)) session.notes.push(note);
 }
 
-function expireCustomerSessionsForBusiness(systems: HarthmereEconomyBusinessSystemsState, businessId: string, nowMs: number) {
+function expireCustomerSessionsForBusiness(
+  systems: HarthmereEconomyBusinessSystemsState,
+  businessId: string,
+  nowMs: number
+) {
   const expired: HarthmereBusinessCustomerSession[] = [];
   for (const session of Object.values(systems.customerSessions)) {
-    if (session.businessId === businessId && session.status === "active" && session.expiresAtMs <= nowMs) {
+    if (
+      session.businessId === businessId &&
+      session.status === "active" &&
+      session.expiresAtMs <= nowMs
+    ) {
       closeBusinessCustomerSessionQueue(
         session,
         "expired",
@@ -1494,7 +1524,11 @@ function runBusinessEmployeeTask(state: BusinessSystemsEconomyState, request: Ha
   const automationRole = isBusinessAutomationRole(role) ? role as HarthmereBusinessEmployeeAutomationRole : undefined;
   const taskRunId = str(request.taskRunId, "") || `business_employee_task_${systems.nextEmployeeTaskRunNumber++}`;
   if (systems.employeeTaskRuns[taskRunId]) return reject(warnings, touched, "economy_rejected:business_employee_task_id_exists");
-  const activeSession = activeCustomerSessionForBusiness(systems, b.businessId, request.nowMs);
+  const activeSession = activeCustomerSessionForBusiness(
+    systems,
+    b.businessId,
+    request.nowMs
+  );
   const activeTicket = activeHarthmereBusinessCustomerTicket(activeSession);
   const run = simulateHarthmereBusinessEmployeeTaskRun({
     taskRunId,
@@ -1628,8 +1662,16 @@ function startBusinessCustomerSession(state: BusinessSystemsEconomyState, reques
   const definition = getHarthmereBusinessMiniGameDefinition(b.typeId);
   if (!definition) return reject(warnings, touched, `economy_rejected:business_customer_minigame_missing:${b.typeId}`);
   const systems = state.businessSystems!;
-  const expired = expireCustomerSessionsForBusiness(systems, b.businessId, request.nowMs);
-  const existing = activeCustomerSessionForBusiness(systems, b.businessId, request.nowMs);
+  const expired = expireCustomerSessionsForBusiness(
+    systems,
+    b.businessId,
+    request.nowMs
+  );
+  const existing = activeCustomerSessionForBusiness(
+    systems,
+    b.businessId,
+    request.nowMs
+  );
   if (existing) return reject(warnings, touched, "economy_rejected:business_customer_session_already_active");
   const stats = statsForCustomerBusiness(systems, b.businessId);
   const tier = harthmereBusinessCustomerTierForStats(stats);
@@ -1701,8 +1743,20 @@ function serveBusinessCustomer(state: BusinessSystemsEconomyState, request: Hart
   const sessionId = str(request.sessionId, "");
   const session = sessionId
     ? systems.customerSessions[sessionId]
-    : activeCustomerSessionForBusiness(systems, b.businessId, request.nowMs);
+    : activeCustomerSessionForActorBusiness(
+        systems,
+        b.businessId,
+        request.actorId,
+        request.nowMs
+      );
   if (!session || session.businessId !== b.businessId) return reject(warnings, touched, "economy_rejected:active_business_customer_session_not_found");
+  if (session.actorId !== request.actorId) {
+    return reject(
+      warnings,
+      touched,
+      "economy_rejected:business_customer_session_not_owned"
+    );
+  }
   if (session.status !== "active") return reject(warnings, touched, "economy_rejected:business_customer_session_not_active");
   if (session.expiresAtMs <= request.nowMs) {
     closeBusinessCustomerSessionQueue(
@@ -1898,8 +1952,20 @@ function tickBusinessCustomerSession(
   const sessionId = str(request.sessionId, "");
   const session = sessionId
     ? systems.customerSessions[sessionId]
-    : activeCustomerSessionForBusiness(systems, b.businessId, request.nowMs);
+    : activeCustomerSessionForActorBusiness(
+        systems,
+        b.businessId,
+        request.actorId,
+        request.nowMs
+      );
   if (!session || session.businessId !== b.businessId) return;
+  if (session.actorId !== request.actorId) {
+    return reject(
+      warnings,
+      touched,
+      "economy_rejected:business_customer_session_not_owned"
+    );
+  }
   if (session.status === "active") {
     if (session.expiresAtMs <= request.nowMs) {
       closeBusinessCustomerSessionQueue(
@@ -1935,12 +2001,24 @@ function endBusinessCustomerSession(
   const sessionId = str(request.sessionId, "");
   const session = sessionId
     ? systems.customerSessions[sessionId]
-    : activeCustomerSessionForBusiness(systems, b.businessId, request.nowMs);
+    : activeCustomerSessionForActorBusiness(
+        systems,
+        b.businessId,
+        request.actorId,
+        request.nowMs
+      );
   if (!session || session.businessId !== b.businessId) {
     return reject(
       warnings,
       touched,
       "economy_rejected:active_business_customer_session_not_found"
+    );
+  }
+  if (session.actorId !== request.actorId) {
+    return reject(
+      warnings,
+      touched,
+      "economy_rejected:business_customer_session_not_owned"
     );
   }
   if (session.status !== "active") return;

@@ -4,6 +4,7 @@
   "theme_color": "#42A0C3",
   "background_color": "#000000",
   "display": "fullscreen",
+  "orientation": "any",
   "description": "Biomes is a massively multiplayer game that invites you to join the community shaping a new world",
   "scope": "/",
   "start_url": "/at/",

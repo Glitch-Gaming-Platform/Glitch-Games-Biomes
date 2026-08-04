@@ -117,6 +117,7 @@ describe("native ECS business customer E2E matrix", function () {
         worldApi,
         state: backend,
         nowSeconds: NOW_MS / 1000,
+        actorId: String(ACTOR_ID),
         actorPosition: {
           x: record.deskWorldPivot[0],
           y: record.deskWorldPivot[1],
@@ -200,6 +201,7 @@ describe("native ECS business customer E2E matrix", function () {
         worldApi,
         state: backend,
         nowSeconds: NOW_MS / 1000 + 1,
+        actorId: String(ACTOR_ID),
         actorPosition: {
           x: record.deskWorldPivot[0],
           y: record.deskWorldPivot[1],

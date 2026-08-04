@@ -24,6 +24,7 @@ import {
 import { determineTakePattern } from "@/shared/game/inventory";
 import type { ItemBag } from "@/shared/game/types";
 import type { BiomesId } from "@/shared/ids";
+import { isHarthmereRequestBoardEntityId } from "@/shared/harthmere/native_request_boards";
 import { log } from "@/shared/logging";
 import { fireAndForget } from "@/shared/util/async";
 import { jsonPost } from "@/shared/util/fetch_helpers";
@@ -43,8 +44,20 @@ export const TalkDialogModal: React.FunctionComponent<
     focusCamera?: boolean;
     extraClassNames?: string;
   }>
-> = ({ entityId, focusCamera = true, extraClassNames, children }) => {
+> = ({
+  entityId,
+  focusCamera: requestedFocusCamera = true,
+  extraClassNames,
+  children,
+}) => {
   const { resources } = useClientContext();
+  // Request boards are dialogue/quest authorities, not camera targets. Their
+  // dedicated renderer suppresses the original NPC body, and the Harthmere
+  // quay board intentionally has no subscribed ECS body. Preserve the native
+  // talk modal while keeping the gameplay camera on the player for every
+  // request-board entry path.
+  const focusCamera =
+    requestedFocusCamera && !isHarthmereRequestBoardEntityId(entityId);
   useEffect(() => {
     resources.update("/scene/local_player", (localPlayer) => {
       localPlayer.talkingToNpc = entityId;
@@ -233,7 +246,7 @@ export const TalkToNpcQuestView: React.FunctionComponent<{
   };
   const dialogText = voiceQuerying
     ? "<text>[listens closely...]</text>"
-    : voiceDialogText ?? stepBundle.dialogText;
+    : (voiceDialogText ?? stepBundle.dialogText);
 
   if (stepBundle.rewardsList?.length) {
     return (

@@ -1,6 +1,9 @@
 import * as React from "react";
 
-import type { HarthmereBusinessInterfaceAdapter } from "./businessInterfaceLiveAdapter";
+import {
+  formatHarthmereBusinessPlayerWarning,
+  type HarthmereBusinessInterfaceAdapter,
+} from "./businessInterfaceLiveAdapter";
 
 // Dependency-light dashboard control. Keep this separate from the spatial HUD:
 // rendered panel tests should not have to bundle ClientContext, THREE, NPC
@@ -26,7 +29,11 @@ export function HarthmereBusinessShiftControlPane({
       await adapter.startCustomerSession(businessId);
       onShiftStarted?.();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(
+        formatHarthmereBusinessPlayerWarning(
+          cause instanceof Error ? cause.message : String(cause)
+        )
+      );
     } finally {
       setPending(false);
     }
@@ -71,7 +78,7 @@ export function HarthmereBusinessShiftControlPane({
           disabled={pending}
           onClick={() => void startShift()}
         >
-          {pending ? "Starting shift…" : "Start shift at counter"}
+          {pending ? "Starting shift…" : "Start customer shift"}
         </button>
       )}
       {error ? (

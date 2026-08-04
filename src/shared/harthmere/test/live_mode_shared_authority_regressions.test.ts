@@ -201,6 +201,39 @@ describe("Harthmere shared-world authority regressions", () => {
     );
   });
 
+  it("uses server-projected native tool capabilities for gathering", () => {
+    const node = harthmereGatheringAuthorityNode("harthmere_orchard_softwood")!;
+    const actor = defaultHarthmereLiveModeBackendState(
+      "native_axe_gatherer",
+      NOW
+    );
+    actor.inventory.equipment.main_hand = "b:1534621126189595";
+    const result = reduceHarthmereLiveModeBackendState(
+      actor,
+      {
+        ...envelope(
+          "native_axe_gatherer",
+          "request_farming_action",
+          { operation: "gather_node", nodeId: node.id },
+          { x: node.position[0], y: node.position[1], z: node.position[2] }
+        ),
+        serverActorItemIds: [1534621126189595 as any],
+        serverActorEquippedItemKeys: ["b:1534621126189595", "woodcutters_axe"],
+      },
+      NOW
+    );
+    assert.ok(
+      result.summary.nativeEcsMaterializationPlans?.some(
+        (plan) => plan.kind === "drop"
+      )
+    );
+    assert.ok(
+      !result.summary.warnings.some((warning) =>
+        warning.startsWith("gathering_rejected:")
+      )
+    );
+  });
+
   it("prevents cross-actor plot claims through the shared owner ledger", () => {
     const plot = buildingSystemPlotById("grove_crossroads_shop_lot")!;
     const firstActor = defaultHarthmereLiveModeBackendState("builder_a", NOW);

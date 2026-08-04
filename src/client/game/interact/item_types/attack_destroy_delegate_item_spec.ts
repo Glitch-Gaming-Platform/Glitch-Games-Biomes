@@ -46,6 +46,7 @@ import {
   groupHardnessClass,
 } from "@/shared/game/damage";
 import { anItem } from "@/shared/game/item";
+import { getAabbForEntity } from "@/shared/game/entity_sizes";
 import { harthmereNativeItemIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
 import {
   getHarthmerePremiumWeapon,
@@ -69,6 +70,7 @@ import { allowPlaceableDestruction } from "@/shared/game/placeables";
 import { hitExistingTerrain } from "@/shared/game/spatial";
 import type { BiomesId } from "@/shared/ids";
 import type { ReadonlyVec3 } from "@/shared/math/types";
+import { distSqToAABB } from "@/shared/math/linear";
 import type { TimeWindow } from "@/shared/util/throttling";
 import { ok } from "assert";
 import { HARTHMERE_BODY_WEAPON_TIMING_PROFILES } from "@/client/game/util/player_animations";
@@ -111,6 +113,38 @@ export type AttackDestroyDelegateDeps = ClientContextSubset<
 > & {
   actionThrottler: TimeWindow<ActionType>;
 };
+
+/**
+ * Resolve the target set at the authored contact frame.
+ *
+ * Every attack retains the entity identity selected on button-down, then
+ * refreshes that same entity from ECS at contact. Re-reading the live cursor at
+ * contact made ordinary camera motion during melee wind-up erase a valid hit.
+ * The authoritative health handler still rejects targets that died, became
+ * protected, or moved beyond the selected weapon's current reach.
+ */
+export function harthmereAttackImpactCandidates(
+  _timingClass: HarthmerePlayerAttackTimingClass,
+  initial: readonly ReadonlyEntity[],
+  current: readonly ReadonlyEntity[]
+): ReadonlyEntity[] {
+  const initialIds = new Set(initial.map(({ id }) => id));
+  return current.filter(({ id }) => initialIds.has(id));
+}
+
+export function harthmereMeleeImpactTargetInReach(
+  playerPosition: ReadonlyVec3,
+  target: ReadonlyEntity,
+  reach: number
+): boolean {
+  const targetAabb = getAabbForEntity(target);
+  return Boolean(
+    targetAabb &&
+      Number.isFinite(reach) &&
+      reach >= 0 &&
+      distSqToAABB(playerPosition, targetAabb) <= reach * reach
+  );
+}
 
 export function harthmereMagicWeaponCharge(input: Item | undefined):
   | {
@@ -616,13 +650,35 @@ export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
         return;
       }
       this.pendingImpactAttack = undefined;
-      const melee = timingClass === "basic" || timingClass === "heavy";
-      const impactCandidates = melee
-        ? this.cursor.attackableEntities
-        : attackedEntities;
-      const refreshedEntities = impactCandidates.map(
-        (entity) => this.deps.resources.get("/ecs/entity", entity.id) ?? entity
+      const currentAttackedEntities = attackedEntities.map(
+        (entity) =>
+          this.deps.resources.get("/ecs/entity", entity.id) ?? entity
       );
+      const melee = timingClass === "basic" || timingClass === "heavy";
+      const reach =
+        (harthmereNativeItemCombatProfile(itemInfo.item)?.reach ??
+          this.deps.resources.get("/tweaks").combat.meleeAttackRegion.far) +
+        this.deps.resources.get("/player/modifiers").reach.increase;
+      const playerPosition = this.deps.resources.get(
+        "/scene/local_player"
+      ).player.position;
+      const refreshedEntities = harthmereAttackImpactCandidates(
+        timingClass,
+        attackedEntities,
+        currentAttackedEntities
+      )
+        .filter(
+          (entity) =>
+            Boolean(entity.position) &&
+            (!entity.health || entity.health.hp > 0) &&
+            !entity.protection &&
+            (!melee ||
+              harthmereMeleeImpactTargetInReach(
+                playerPosition,
+                entity,
+                reach
+              ))
+        );
       resolveAttackInteraction(this.deps, {
         ...interaction,
         attackedEntities: refreshedEntities,

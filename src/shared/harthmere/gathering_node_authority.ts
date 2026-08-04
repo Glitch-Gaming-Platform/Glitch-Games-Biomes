@@ -20,8 +20,70 @@ import type { BiomesId } from "@/shared/ids";
 import { hasFishingRodIdentity } from "@/shared/harthmere/fishing_rods";
 
 export const HARTHMERE_GATHERING_NODE_AUTHORITY_VERSION =
-  "harthmere-gathering-node-authority-2026-08-03" as const;
+  "harthmere-gathering-node-authority-2026-08-04" as const;
 export const HARTHMERE_GATHERING_NODE_INTERACTION_RADIUS = 5;
+
+export interface HarthmereEquippedGatheringToolIdentity {
+  id?: BiomesId;
+  semanticItemId?: string;
+  isAxe?: boolean;
+  isPickaxe?: boolean;
+  action?: string;
+}
+
+const HARTHMERE_GATHERING_TOOL_LABELS: Readonly<Record<string, string>> = {
+  rusty_pickaxe: "pickaxe",
+  woodcutters_axe: "axe",
+  herbalist_sickle: "herbalist sickle",
+  simple_fishing_rod: "fishing rod",
+  scavenger_hook: "scavenger hook",
+  clay_shovel: "clay shovel",
+  arcane_extractor: "arcane extractor",
+  skinning_knife: "skinning knife",
+};
+
+export function harthmereGatheringToolLabel(requiredTool: string) {
+  return (
+    HARTHMERE_GATHERING_TOOL_LABELS[requiredTool] ??
+    requiredTool.replaceAll("_", " ")
+  );
+}
+
+/**
+ * Project one authoritative equipped ECS item into every gathering requirement
+ * it satisfies. Exact specialist tools keep their semantic identity, while
+ * standard native axes, pickaxes, and fishing rods satisfy the corresponding
+ * profession requirement regardless of which authored tier/variant is held.
+ */
+export function harthmereGatheringRequirementKeysForEquippedTool(
+  input: HarthmereEquippedGatheringToolIdentity
+) {
+  const keys = new Set<string>();
+  const semanticItemId = input.semanticItemId?.trim().toLowerCase();
+  if (semanticItemId) {
+    keys.add(semanticItemId);
+  }
+
+  const semanticAxe =
+    Boolean(semanticItemId?.match(/(?:^|_)axe$/)) &&
+    !semanticItemId?.endsWith("pickaxe");
+  if (input.isAxe || semanticAxe) {
+    keys.add("woodcutters_axe");
+  }
+  if (input.isPickaxe || semanticItemId?.endsWith("pickaxe")) {
+    keys.add("rusty_pickaxe");
+  }
+  if (
+    input.action === "fish" ||
+    hasFishingRodIdentity({
+      itemIds: semanticItemId ? [semanticItemId] : undefined,
+      biomesItemIds: input.id === undefined ? undefined : [input.id],
+    })
+  ) {
+    keys.add("simple_fishing_rod");
+  }
+  return [...keys];
+}
 
 export interface HarthmereGatheringAuthorityNode {
   id: string;
@@ -1019,8 +1081,9 @@ function runtimeGatheringNodePosition(
   if (terrainFrame === "original_hilly") {
     return harthmereOriginalHillyGatheringNodePosition(node.id)!;
   }
-  const additiveOverride =
-    harthmereAdditiveTownGatheringNodePositionOverride(node.id);
+  const additiveOverride = harthmereAdditiveTownGatheringNodePositionOverride(
+    node.id
+  );
   if (additiveOverride) {
     return additiveOverride;
   }
@@ -1123,9 +1186,16 @@ export function resolveHarthmereGatheringAuthorityAttempt(input: {
           biomesItemIds: input.equippedBiomesItemIds,
         })
       : input.equippedItemIds.includes(node.requiredTool) ||
-        input.equippedBiomesItemIds?.includes(
-          harthmereNativeBiomesIdForItemId(node.requiredTool)!
-        ));
+        (() => {
+          const nativeRequiredToolId = harthmereNativeBiomesIdForItemId(
+            node.requiredTool
+          );
+          return (
+            nativeRequiredToolId !== undefined &&
+            (input.equippedBiomesItemIds?.includes(nativeRequiredToolId) ??
+              false)
+          );
+        })());
   if (!hasRequiredTool) {
     return { ok: false, reason: "required_tool_missing:" + node.requiredTool };
   }

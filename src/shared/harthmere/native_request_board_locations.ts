@@ -5,6 +5,7 @@ import type {
 import {
   HARTHMERE_DOCK_FISHING_BOARD,
   HARTHMERE_REQUEST_BOARDS,
+  harthmereRequestBoardPhysicalPosition,
   type HarthmereBoardCategory,
 } from "@/shared/harthmere/native_request_boards";
 import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
@@ -94,21 +95,23 @@ export interface HarthmereRequestBoardPhysicalPromptRecord {
  * renderer and the high-priority F dispatcher. Keeping one shared list stops
  * the visible board, prompt radius and native quest target from drifting.
  */
-export function harthmereRequestBoardPhysicalPromptRecords():
-  HarthmereRequestBoardPhysicalPromptRecord[] {
+export function harthmereRequestBoardPhysicalPromptRecords(): HarthmereRequestBoardPhysicalPromptRecord[] {
   const records: HarthmereRequestBoardPhysicalPromptRecord[] =
-    HARTHMERE_REQUEST_BOARDS.map((board) => ({
-      boardId: harthmereRequestBoardJobsBoardId(board.id),
-      boardEntityId: Number(board.entityId),
-      displayName: board.label,
-      category: board.category,
-      position: {
-        x: board.snapshotPosition[0],
-        y: board.snapshotPosition[1],
-        z: board.snapshotPosition[2],
-      },
-      radius: HARTHMERE_REQUEST_BOARD_INTERACTION_RADIUS,
-    }));
+    HARTHMERE_REQUEST_BOARDS.map((board) => {
+      const position = harthmereRequestBoardPhysicalPosition(board);
+      return {
+        boardId: harthmereRequestBoardJobsBoardId(board.id),
+        boardEntityId: Number(board.entityId),
+        displayName: board.label,
+        category: board.category,
+        position: {
+          x: position[0],
+          y: position[1],
+          z: position[2],
+        },
+        radius: HARTHMERE_REQUEST_BOARD_INTERACTION_RADIUS,
+      };
+    });
 
   const [quayX, quayZ] = HARTHMERE_DOCK_FISHING_BOARD.authoredPosition;
   const quayWorld = shiftHarthmereAuthoredPositionToWorld([
@@ -117,9 +120,7 @@ export function harthmereRequestBoardPhysicalPromptRecords():
     quayZ,
   ]);
   records.push({
-    boardId: harthmereRequestBoardJobsBoardId(
-      HARTHMERE_DOCK_FISHING_BOARD.id
-    ),
+    boardId: harthmereRequestBoardJobsBoardId(HARTHMERE_DOCK_FISHING_BOARD.id),
     boardEntityId: Number(HARTHMERE_DOCK_FISHING_BOARD.entityId),
     displayName: HARTHMERE_DOCK_FISHING_BOARD.label,
     category: HARTHMERE_DOCK_FISHING_BOARD.category,
@@ -130,14 +131,10 @@ export function harthmereRequestBoardPhysicalPromptRecords():
 }
 
 export function nearestHarthmereRequestBoardPhysicalPrompt(
-  playerPosition:
-    | { x: number; y?: number; z: number }
-    | undefined
+  playerPosition: { x: number; y?: number; z: number } | undefined
 ) {
   if (!playerPosition) return undefined;
-  let best:
-    | HarthmereRequestBoardPhysicalPromptRecord
-    | undefined;
+  let best: HarthmereRequestBoardPhysicalPromptRecord | undefined;
   let bestDistance = Infinity;
   for (const board of harthmereRequestBoardPhysicalPromptRecords()) {
     const distance = Math.hypot(
@@ -160,6 +157,7 @@ export function harthmereRequestBoardJobsBoardLocations(): Record<
 
   for (const board of HARTHMERE_REQUEST_BOARDS) {
     const boardId = harthmereRequestBoardJobsBoardId(board.id);
+    const position = harthmereRequestBoardPhysicalPosition(board);
     records[boardId] = {
       boardId,
       displayName: board.label,
@@ -169,9 +167,9 @@ export function harthmereRequestBoardJobsBoardLocations(): Record<
       regionId: `${board.id}_region`,
       markerId: boardId,
       location: {
-        x: board.snapshotPosition[0],
-        y: board.snapshotPosition[1],
-        z: board.snapshotPosition[2],
+        x: position[0],
+        y: position[1],
+        z: position[2],
         radius: HARTHMERE_REQUEST_BOARD_INTERACTION_RADIUS,
         district: CATEGORY_DISTRICT[board.category],
         landmarkId: boardId,

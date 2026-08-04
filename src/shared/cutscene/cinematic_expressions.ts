@@ -114,7 +114,21 @@ export function harthmereCinematicExpressionRepeat(
     case "hold":
       return { kind: "once", clampWhenFinished: true };
     case "once":
-      return { kind: "once" };
+      // Clamp rather than release.
+      //
+      // Every authored clip is shorter than the `durationSeconds` its catalog
+      // entry declares — by a median factor of 2.7, and for `sadness` by 4.1
+      // (a 0.58 s clip declared as 2.40 s). Without clamping, the animation
+      // system drops a finished one-shot out of the accumulation as soon as the
+      // *clip* ends, so the NPC performed a half-second gesture and snapped back
+      // to neutral idle while its dialogue line still had ~1.8 s to run.
+      //
+      // Holding the final pose keeps the character in the emotion for as long
+      // as the beat it belongs to, and the expression then eases out when the
+      // emote actually expires. That is both what the catalog durations imply
+      // and how a gesture reads in conversation: you settle into it, you do not
+      // reset to neutral mid-sentence.
+      return { kind: "once", clampWhenFinished: true };
   }
 }
 

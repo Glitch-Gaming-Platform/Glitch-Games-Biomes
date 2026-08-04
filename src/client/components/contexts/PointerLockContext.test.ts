@@ -1,7 +1,11 @@
 /// <reference types="mocha" />
 
 import assert from "assert";
-import { PointerLockManager, shouldUsePointerLock } from "./PointerLockContext";
+import {
+  isTerminalPointerLockErrorForTest,
+  PointerLockManager,
+  shouldUsePointerLock,
+} from "./PointerLockContext";
 
 function withDocument<T>(
   documentValue: {
@@ -74,6 +78,30 @@ function withWindowAndNavigator<T>(
 }
 
 describe("PointerLockManager HUD input recovery", () => {
+  it("classifies Chromium's unrecoverable UnknownError without swallowing transient cooldowns", () => {
+    assert.equal(
+      isTerminalPointerLockErrorForTest({
+        name: "UnknownError",
+        message: "If you see this error we have a bug in Chromium.",
+      }),
+      true
+    );
+    assert.equal(
+      isTerminalPointerLockErrorForTest({
+        name: "SecurityError",
+        message: "The user has exited the lock before this request completed.",
+      }),
+      false
+    );
+    assert.equal(
+      isTerminalPointerLockErrorForTest({
+        name: "NotAllowedError",
+        message: "A user gesture is required.",
+      }),
+      false
+    );
+  });
+
   it("never requires Pointer Lock on a touch device", () => {
     withDocument(
       {

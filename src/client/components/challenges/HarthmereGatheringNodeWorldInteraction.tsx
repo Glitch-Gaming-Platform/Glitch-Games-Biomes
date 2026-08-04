@@ -16,6 +16,7 @@ import {
   nearestHarthmereGatheringNodePrompt,
   type HarthmereGatheringNodePrompt,
 } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
+import { harthmereGatheringToolLabel } from "@/shared/harthmere/gathering_node_authority";
 import { hasNativeInspectableWorldTarget } from "@/client/components/challenges/worldInteractionPriority";
 import {
   useWorldInteractionCandidate,
@@ -32,7 +33,7 @@ function requirementLabel(prompt: HarthmereGatheringNodePrompt): string {
     return `Equip any fishing rod · fishing ${prompt.requiredSkill}`;
   }
   const tool = prompt.requiredTool
-    ? prompt.requiredTool.replaceAll("_", " ")
+    ? harthmereGatheringToolLabel(prompt.requiredTool)
     : "no tool";
   const profession = prompt.profession.replaceAll("_", " ");
   return `Needs ${tool} · ${profession} ${prompt.requiredSkill}`;

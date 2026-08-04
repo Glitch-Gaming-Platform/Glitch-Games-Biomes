@@ -1,6 +1,7 @@
 import assert from "assert";
 import {
   HARTHMERE_BUSINESS_INTERIORS,
+  HARTHMERE_BUSINESS_CUSTOMER_COUNTER_CLEARANCE_METERS,
   createHarthmereBusinessCustomerSpatialIntent,
   harthmereBusinessCustomerDeparturePoint,
   harthmereBusinessCustomerQueueTarget,
@@ -35,8 +36,16 @@ describe("Harthmere business interior runtime matrix", () => {
         record.shellOrigin[2] + record.interactionPoints.staff[1],
       ]);
       assert.ok(points.customer[2] < points.staff[2]);
+      const counter = record.collisionBoxes.find(
+        (box) => box.role === "service_counter"
+      );
+      assert.ok(counter);
+      const customerFace =
+        record.assetWorldAnchor[2] + counter!.center[1] - counter!.size[1] / 2;
       assert.ok(
-        record.collisionBoxes.some((box) => box.role === "service_counter")
+        customerFace - points.customer[2] >=
+          HARTHMERE_BUSINESS_CUSTOMER_COUNTER_CLEARANCE_METERS - 0.001,
+        `${record.outpostId} customer point intersects the furniture boundary`
       );
       assert.equal(record.lodPolicy.lod0MaxDistanceMeters, 16);
       assert.equal(record.lodPolicy.lod1MaxDistanceMeters, 28);
@@ -50,7 +59,11 @@ describe("Harthmere business interior runtime matrix", () => {
       const points = harthmereBusinessInteriorInteractionPoints(record);
       const spawn = harthmereBusinessCustomerSpawnPoint(record, 0);
       const departure = harthmereBusinessCustomerDeparturePoint(record, 0);
-      assert.ok(spawn[2] < points.entrance[2], record.outpostId);
+      assert.deepEqual(
+        spawn,
+        points.entrance,
+        `${record.outpostId} lead customer must materialize at the audited door`
+      );
       assert.ok(departure[2] < points.entrance[2], record.outpostId);
       const targets = Array.from({ length: 12 }, (_, index) =>
         harthmereBusinessCustomerQueueTarget(record, index)

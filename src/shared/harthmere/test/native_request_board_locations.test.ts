@@ -13,8 +13,10 @@ import {
   nearestHarthmereRequestBoardPhysicalPrompt,
 } from "@/shared/harthmere/native_request_board_locations";
 import {
+  HARTHMERE_COLLECTIVE_RESEARCH_BOARD_PHYSICAL_POSITION,
   HARTHMERE_DOCK_FISHING_BOARD,
   HARTHMERE_REQUEST_BOARDS,
+  harthmereRequestBoardPhysicalPosition,
 } from "@/shared/harthmere/native_request_boards";
 import { HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X } from "@/shared/harthmere/world_extension";
 import { harthmereRiverContains } from "@/shared/harthmere/harthmere_river";
@@ -73,11 +75,14 @@ describe("request boards in the jobs-board registry", () => {
         `${record.displayName} accepts ${record.acceptedKinds.length} kinds`
       );
     }
-    const research = records[
-      harthmereRequestBoardJobsBoardId("collective_research_board")
-    ];
+    const research =
+      records[harthmereRequestBoardJobsBoardId("collective_research_board")];
     assert.deepEqual(research.acceptedKinds, ["delivery"]);
-    for (const id of ["fishing_board", "farming_bounties_board", "industrial_job_board"]) {
+    for (const id of [
+      "fishing_board",
+      "farming_bounties_board",
+      "industrial_job_board",
+    ]) {
       assert.deepEqual(
         records[harthmereRequestBoardJobsBoardId(id)].acceptedKinds,
         ["gather"]
@@ -144,20 +149,32 @@ describe("request boards in the jobs-board registry", () => {
     }
   });
 
-  it("keeps the snapshot boards on the original map", () => {
+  it("keeps snapshot identities while applying the reviewed Collective relocation", () => {
     for (const board of HARTHMERE_REQUEST_BOARDS) {
       const record = records[harthmereRequestBoardJobsBoardId(board.id)];
       assert.deepEqual(
         [record.location.x, record.location.y, record.location.z],
-        [...board.snapshotPosition],
-        `${board.label} drifted from its snapshot position`
+        [...harthmereRequestBoardPhysicalPosition(board)],
+        `${board.label} drifted from its physical position`
       );
     }
+    assert.deepEqual(
+      [...HARTHMERE_COLLECTIVE_RESEARCH_BOARD_PHYSICAL_POSITION],
+      [478, 70, -148]
+    );
+    assert.notDeepEqual(
+      HARTHMERE_REQUEST_BOARDS.find(
+        (board) => board.id === "collective_research_board"
+      )?.snapshotPosition,
+      HARTHMERE_COLLECTIVE_RESEARCH_BOARD_PHYSICAL_POSITION
+    );
   });
 
   it("shifts the quay board into Harthmere world space", () => {
     const record =
-      records[harthmereRequestBoardJobsBoardId(HARTHMERE_DOCK_FISHING_BOARD.id)];
+      records[
+        harthmereRequestBoardJobsBoardId(HARTHMERE_DOCK_FISHING_BOARD.id)
+      ];
     // Authored X 613 without the additive shift would land on the old map.
     assert.ok(
       record.location.x > HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
@@ -178,6 +195,9 @@ describe("request boards in the jobs-board registry", () => {
         }
       }
     }
-    assert.ok(nearest <= 8, `the quay board is ${nearest.toFixed(1)} from water`);
+    assert.ok(
+      nearest <= 8,
+      `the quay board is ${nearest.toFixed(1)} from water`
+    );
   });
 });

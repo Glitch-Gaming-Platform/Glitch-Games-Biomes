@@ -89,7 +89,7 @@ describe("Harthmere request-board Blender markers", () => {
     assert.equal(lightCount, 0);
   });
 
-  it("replaces only the legacy visual while F opens native quest dialogue", () => {
+  it("replaces only the legacy visual while F opens the native-authority request panel", () => {
     const rendererRegistry = fs.readFileSync(
       path.resolve("src/client/game/renderers/renderers.ts"),
       "utf8"
@@ -108,6 +108,24 @@ describe("Harthmere request-board Blender markers", () => {
       ),
       "utf8"
     );
+    const talkModal = fs.readFileSync(
+      path.resolve("src/client/components/challenges/TalkDialogModal.tsx"),
+      "utf8"
+    );
+    const camera = fs.readFileSync(
+      path.resolve("src/client/game/scripts/camera.ts"),
+      "utf8"
+    );
+    const talkScreen = fs.readFileSync(
+      path.resolve("src/client/components/challenges/TalkToNPCScreen.tsx"),
+      "utf8"
+    );
+    const requestPanel = fs.readFileSync(
+      path.resolve(
+        "src/client/components/harthmere_request_board/HarthmereRequestBoardLiveContainer.tsx"
+      ),
+      "utf8"
+    );
     const mount = fs.readFileSync(
       path.resolve("src/client/components/biomes_ui/BiomesUIMount.tsx"),
       "utf8"
@@ -120,12 +138,20 @@ describe("Harthmere request-board Blender markers", () => {
     assert.ok(placeables.includes("isHarthmereRequestBoardEntityId"));
     assert.ok(npcs.includes("isHarthmereRequestBoardEntityId(rawEntity.id)"));
     assert.ok(interaction.includes('kind: "talk_to_npc"'));
+    assert.ok(interaction.includes("player.talkingToNpcCameraDisabled = true"));
+    assert.ok(talkModal.includes("isHarthmereRequestBoardEntityId(entityId)"));
+    assert.ok(camera.includes("if (!npcPos || !entity || !size)"));
+    assert.ok(talkScreen.includes("isHarthmereRequestBoardEntityId"));
+    assert.ok(talkScreen.includes("HarthmereRequestBoardLiveContainer"));
+    assert.ok(requestPanel.includes("nativeRequestBoardSnapshot"));
+    assert.ok(requestPanel.includes("progressQuestAtEntity"));
+    assert.ok(
+      requestPanel.includes('data-testid="harthmere-request-board-panel"')
+    );
     assert.ok(interaction.includes("WORLD_INTERACTION_PRIORITY.jobsBoard"));
     assert.ok(interaction.includes('keyCodes: ["KeyF", "KeyE"]'));
     assert.ok(
-      interaction.includes(
-        'data-testid="harthmere-request-board-world-prompt"'
-      )
+      interaction.includes('data-testid="harthmere-request-board-world-prompt"')
     );
     assert.ok(mount.includes("<HarthmereRequestBoardWorldInteraction"));
     assert.match(HARTHMERE_REQUEST_BOARD_MARKER_VERSION, /blender-lod/);

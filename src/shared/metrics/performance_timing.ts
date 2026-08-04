@@ -82,6 +82,11 @@ export function timeSyncCodeSampled<T>(
 }
 const sampledTimerMap = new Map<string, { ticks: number; sum: number }>();
 
+// See HARTHMERE_TIMER_GAUGE_SAMPLING on PerformanceTimer.stop. 16 is roughly a
+// quarter-second of publishes at 60 FPS for a once-per-frame timer, which is far
+// faster than any consumer of these gauges refreshes.
+const GAUGE_WRITE_SAMPLE_INTERVAL = 16;
+
 export async function timeAsyncCode<T = any>(
   label: string,
   func: () => Promise<T>
@@ -130,6 +135,7 @@ export class PerformanceTimer {
       return aggregateStatsCval;
     }
 
+    let sampleCount = 0;
     const stats = {
       gauge: createGauge({
         name: `performanceTiming:${this.label}`,
@@ -140,7 +146,16 @@ export class PerformanceTimer {
       push: (x: number) => {
         stats.latest = x;
         stats.smoothedAvg.push(x);
-        stats.gauge.set(stats.smoothedAvg.get());
+        // See HARTHMERE_TIMER_GAUGE_SAMPLING on PerformanceTimer.stop.
+        sampleCount += 1;
+        // Publish the first sample immediately so low-frequency timers still
+        // register a cval path, then sample the genuinely hot timers.
+        if (
+          sampleCount === 1 ||
+          sampleCount % GAUGE_WRITE_SAMPLE_INTERVAL === 0
+        ) {
+          stats.gauge.set(stats.smoothedAvg.get());
+        }
       },
     };
 
@@ -166,6 +181,22 @@ export class PerformanceTimer {
     const duration = this.duration()!;
     this.aggregateStats.push(duration);
   }
+
+  /**
+   * HARTHMERE_TIMER_GAUGE_SAMPLING (2026-08-03 render perf audit, finding 12).
+   *
+   * `timeCode` wraps every renderer, every script, `draw`, `render +
+   * postprocessing`, the React invalidate and `resources:collect`, and nests
+   * inside terrain resource generation -- on the order of 40-200 stops per
+   * frame. Each stop did a string-keyed Map lookup, an exponential-average push
+   * and a metrics gauge write.
+   *
+   * The gauge is a smoothed average read by a debug HUD and by cval logging;
+   * nothing reads it per frame. Writing it on a fraction of stops keeps every
+   * number it reports meaningful while removing the majority of the metric
+   * writes from the frame loop. The average itself is still fed every sample,
+   * so accuracy is unchanged -- only the publish rate drops.
+   */
 
   duration() {
     if (!this.stopTime) {

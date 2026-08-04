@@ -10,7 +10,7 @@ export const ClientContextReactContext = createContext({
   setClientContext: (_context: ClientContext) => {},
 });
 
-export function useClientContext(): ClientContext {
+export function useOptionalClientContext(): ClientContext | null {
   const invalidate = useInvalidate();
   const context = useContext(ClientContextReactContext).clientContext;
   if (!context?.clientConfig?.skipBikkieReactInvalidate) {
@@ -33,7 +33,11 @@ export function useClientContext(): ClientContext {
     );
   }
 
-  return context!;
+  return context;
+}
+
+export function useClientContext(): ClientContext {
+  return useOptionalClientContext()!;
 }
 
 export function hasClientContext(): boolean {

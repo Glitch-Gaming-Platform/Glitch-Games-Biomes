@@ -2234,6 +2234,47 @@ function wallCandidates(
   return candidates;
 }
 
+/**
+ * Secondary placement grid for a fixture that cannot use a coarse wall slot.
+ *
+ * The primary candidates intentionally use 2.25 m spacing so a room reads as
+ * authored wall furniture instead of a packed warehouse. That grid is not a
+ * completeness proof, though: minified production SSR exposed a Mail Post
+ * layout where the coarse samples exhausted even though collision-safe floor
+ * space remained between them. Catalogue construction happens at import time,
+ * so throwing there turned the whole game page into HTTP 500.
+ *
+ * Keep the readable wall pass first. Only after it fails, scan the same room at
+ * half-step density and test every candidate with the exact door, stair,
+ * partition, circulation, shell, and occupied-AABB rules. The selected slot is
+ * therefore still safe and deterministic; this is not an overlap waiver or a
+ * missing-fixture fallback.
+ */
+function denseInteriorCandidates(
+  building: HarthmereBuilding,
+  preferred?: HarthmereTownInteriorWall
+): Candidate[] {
+  const walls: HarthmereTownInteriorWall[] = preferred
+    ? [
+        preferred,
+        ...(["north", "east", "south", "west"] as const).filter(
+          (wall) => wall !== preferred
+        ),
+      ]
+    : ["north", "east", "south", "west"];
+  const margin = 1.45;
+  const step = 1.125;
+  const candidates: Candidate[] = [];
+  for (const wall of walls) {
+    for (let z = building.z0 + margin; z <= building.z1 - margin; z += step) {
+      for (let x = building.x0 + margin; x <= building.x1 - margin; x += step) {
+        candidates.push({ x, z, wall, yaw: wallYaw(wall) });
+      }
+    }
+  }
+  return candidates;
+}
+
 function doorLaneContains(
   building: HarthmereBuilding,
   floor: number,
@@ -2371,7 +2412,8 @@ function fixtureFits(input: {
 
 function placePlan(
   building: HarthmereBuilding,
-  plan: HarthmereTownInteriorPlan
+  plan: HarthmereTownInteriorPlan,
+  options: { forceDenseCandidates?: boolean } = {}
 ): HarthmereTownInteriorFixture[] {
   const fixtures: HarthmereTownInteriorFixture[] = [];
   const occupiedByFloor = new Map<
@@ -2390,7 +2432,13 @@ function placePlan(
     let selected:
       | { candidate: Candidate; size: readonly [number, number, number] }
       | undefined;
-    for (const candidate of wallCandidates(building, blueprint.preferredWall)) {
+    const primaryCandidates = options.forceDenseCandidates
+      ? []
+      : wallCandidates(building, blueprint.preferredWall);
+    for (const candidate of [
+      ...primaryCandidates,
+      ...denseInteriorCandidates(building, blueprint.preferredWall),
+    ]) {
       const size = rotatedSize(baseSize, candidate.yaw);
       if (
         fixtureFits({
@@ -2456,6 +2504,14 @@ function placePlan(
     });
   }
   return fixtures;
+}
+
+export function placeHarthmereAdditiveTownInteriorPlanForTest(
+  building: HarthmereBuilding,
+  plan: HarthmereTownInteriorPlan,
+  forceDenseCandidates = false
+) {
+  return placePlan(building, plan, { forceDenseCandidates });
 }
 
 export const HARTHMERE_ADDITIVE_TOWN_INTERIOR_FIXTURES: readonly HarthmereTownInteriorFixture[] =

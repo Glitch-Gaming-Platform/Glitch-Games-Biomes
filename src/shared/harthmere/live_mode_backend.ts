@@ -125,6 +125,7 @@ import {
   HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION,
   createHarthmereJobsBoardClientSnapshotAtTime,
   defaultHarthmereJobsBoardState,
+  harthmereJobsBoardAutoSeedBoardIds,
   normalizeHarthmereJobsBoardState,
   reduceHarthmereJobsBoardMutation,
   type HarthmereEscortCompanion,
@@ -354,6 +355,7 @@ import {
   HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
   HARTHMERE_NPC_CHASE_SPEED_STEP_UP_20,
   HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30,
+  HARTHMERE_NPC_SPEED_STEP_DOWN_30,
   isHarthmereCivilianNpcName,
 } from "@/shared/npc/behavior/chase_attack";
 
@@ -365,7 +367,11 @@ export const HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS = 4;
 export const HARTHMERE_LIVE_ENTITY_CHASE_STEP_CAP_METERS =
   HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS *
   HARTHMERE_NPC_CHASE_SPEED_STEP_UP_20 *
-  HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30;
+  HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30 *
+  HARTHMERE_NPC_SPEED_STEP_DOWN_30;
+export const HARTHMERE_LIVE_ENTITY_MONSTER_STEP_CAP_METERS =
+  HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS *
+  HARTHMERE_NPC_SPEED_STEP_DOWN_30;
 
 import {
   buildingSystemBlueprintById,
@@ -436,7 +442,10 @@ import {
   harthmereBusinessOutpostBusinessId,
   isPointInsideHarthmereBusinessSafeSite,
 } from "./business_customer_simulator";
-import { HARTHMERE_BUSINESS_INTERIORS } from "./business_interior_runtime";
+import {
+  HARTHMERE_BUSINESS_INTERIORS,
+  harthmereBusinessInteriorInteractionPoints,
+} from "./business_interior_runtime";
 import { harthmereBusinessPointIsStaffSide } from "./business_aisle_keep_out";
 import { CH1_WORLD_BUILDING_PLANS } from "./ch1_world_buildings";
 
@@ -6294,6 +6303,16 @@ function economyBusinessInteractionPositions(
     const position = outpostBusinessInteractionPosition(outpostBuilding);
     if (position) positions.push(position);
   }
+  const businessInterior = HARTHMERE_BUSINESS_INTERIORS.find(
+    (record) =>
+      harthmereBusinessOutpostBusinessId(record.outpostId) === businessId
+  );
+  if (businessInterior) {
+    const staff = harthmereBusinessInteriorInteractionPoints(
+      businessInterior
+    ).staff;
+    positions.push({ x: staff[0], y: staff[1], z: staff[2] });
+  }
   const requestedMarkerId = payloadString(
     envelope,
     "businessInteractionMarkerId"
@@ -6365,6 +6384,16 @@ function rejectEconomyMutationOutsideBusiness(input: {
   if (!businessId) return false;
   const business = input.state.economy.production.businesses[businessId];
   if (!business) return false;
+  const businessOperation =
+    payloadString(input.envelope, "operation") ?? "";
+  // Ending an actor-owned customer shift is always safe. In particular, the
+  // client must be able to close the shift after detecting that the player
+  // crossed the shop boundary; requiring counter proximity here would make
+  // the leave-to-end lifecycle impossible by definition. The economy reducer
+  // still verifies that the selected session belongs to this actor.
+  if (businessOperation === "end_business_customer_session") {
+    return false;
+  }
   const actorPosition = actorWorldPositionFromAuthority(input.envelope);
   if (!actorPosition) {
     input.warnings.push("economy_rejected:business_proximity_unverified");
@@ -6394,7 +6423,7 @@ function rejectEconomyMutationOutsideBusiness(input: {
     "serve_business_customer",
     "tick_business_customer_session",
     "end_business_customer_session",
-  ].includes(payloadString(input.envelope, "operation") ?? "");
+  ].includes(businessOperation);
   const radius = customerCounterOperation
     ? 4.25
     : Math.max(
@@ -6411,16 +6440,25 @@ function rejectEconomyMutationOutsideBusiness(input: {
     return true;
   }
   // HARTHMERE_BUSINESS_STAFF_SIDE
-  // Running a shift is a mini-game played from behind the counter. Proximity
-  // alone is satisfied just as well from the customer side of the counter, so a
-  // player could start and run a whole shift standing in the queue's own lane —
-  // facing the wrong way and physically blocking the customers they are meant
-  // to be serving.
+  // The physical business board is the authored place where a player starts a
+  // shift. After that first action, the mini-game is played from behind the
+  // counter. Requiring the start request itself to come from the staff point
+  // made the board's Start Shift button impossible to use: all 19 boards are
+  // deliberately mounted beside the counter, about 5.4 m from the audited
+  // staff point and on the customer side of the counter boundary.
+  //
+  // Serving and ticking remain staff-side operations. Proximity alone is
+  // satisfied just as well from the queue lane, so those actions must still
+  // reject a player who is facing the wrong way or blocking customers. Ending
+  // after leaving was handled above and remains actor-owned in the reducer.
   //
   // Only the counter operations are gated. Ordinary business management
   // (ledgers, storefront, licences) is deliberately still reachable from
   // anywhere near the building.
-  if (customerCounterOperation) {
+  if (
+    customerCounterOperation &&
+    businessOperation !== "start_business_customer_session"
+  ) {
     const record = HARTHMERE_BUSINESS_INTERIORS.find(
       (candidate) =>
         harthmereBusinessOutpostBusinessId(candidate.outpostId) === businessId
@@ -10800,13 +10838,28 @@ export function reduceHarthmereLiveModeBackendState(
       (input.kind === "mux" ||
         input.kind === "hex" ||
         isEligibleUnownedCombatAnimal);
+    const receivesMonsterSlowdown =
+      !isHarthmereCivilianNpcName(
+        `${input.entityId} ${input.target.species ?? ""}`
+      ) &&
+      (input.kind === "mux" ||
+        input.kind === "hex" ||
+        input.kind === "monster" ||
+        input.kind === "undead" ||
+        isEligibleUnownedCombatAnimal);
     const baseSpeed = liveEntityDefaultMovementSpeed(input.kind, input.target);
     const speed = receivesFightSpeedBoost
       ? Math.min(
           baseSpeed * HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
           HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND
         )
-      : baseSpeed;
+      : // 2026-08-03 "monsters 30% slower": the boosted branch inherits the
+        // step-down through HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER. The unboosted
+        // branch also carries escorts, followers and townsfolk, so the reduction
+        // is applied only to genuinely hostile kinds -- a slowed shopkeeper is
+        // not what "make the monsters slower" asked for.
+        baseSpeed *
+        (receivesMonsterSlowdown ? HARTHMERE_NPC_SPEED_STEP_DOWN_30 : 1);
     // Production combat AI normally ticks every two seconds. Integrate the
     // authored speed across that interval, then cap the server step. Only a
     // boosted fighter gets the raised ceiling; everything else (escorts,
@@ -10817,7 +10870,9 @@ export function reduceHarthmereLiveModeBackendState(
     );
     const stepCap = receivesFightSpeedBoost
       ? HARTHMERE_LIVE_ENTITY_CHASE_STEP_CAP_METERS
-      : HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS;
+      : receivesMonsterSlowdown
+        ? HARTHMERE_LIVE_ENTITY_MONSTER_STEP_CAP_METERS
+        : HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS;
     const maxStep = Math.max(0.05, Math.min(stepCap, speed * movementSeconds));
     if (shouldChase && targetPosition) {
       const dx = targetPosition.x - current.x;
@@ -13824,35 +13879,46 @@ export function reduceHarthmereLiveModeBackendState(
         requestedJobId &&
         !next.jobsBoard.postings[requestedJobId]
       ) {
-        const seedResult = reduceHarthmereJobsBoardMutation(
-          next.jobsBoard,
-          {
-            requestId: `${envelope.requestId}:accept_seed:${boardId}`,
-            actorId: envelope.actorId,
-            nowMs,
-            operation: "economy_auto_seed_jobs",
-            boardId,
-          } as any,
-          {
-            actorGold: next.inventory.gold,
-            actorInventoryItems: authoritativeInventoryItems,
-            actorEntityId: envelope.serverActorEntityId,
-            actorMaterialStorageItems: nativeBiomesEcsAuthorityEnabled()
-              ? undefined
-              : next.banking.materialStorage,
-            actorCollectibles: next.collections.discovered,
-            actorGuildId: next.guild.memberGuildId,
-            actorPosition,
-            authoritativeEquippedToolActions,
-            nearbyBoardId,
-            economy: next.economy.production,
-          }
-        );
-        next.jobsBoard = seedResult.jobsBoard;
-        if (seedResult.economy) next.economy.production = seedResult.economy;
-        for (const warning of seedResult.warnings) warnings.push(warning);
-        for (const model of seedResult.touchedModels) touchedModels.add(model);
-        for (const key of seedResult.sharedStateKeys) sharedStateKeys.add(key);
+        // Recreate the same canonical read-projection prefix that produced the
+        // clicked job id. Seeding only the target board can allocate different
+        // ids because earlier boards share the durable nextJobNumber counter.
+        for (const seedBoardId of harthmereJobsBoardAutoSeedBoardIds(
+          next.jobsBoard
+        )) {
+          const seedResult = reduceHarthmereJobsBoardMutation(
+            next.jobsBoard,
+            {
+              requestId: `${envelope.requestId}:accept_seed:${seedBoardId}`,
+              actorId: envelope.actorId,
+              nowMs,
+              operation: "economy_auto_seed_jobs",
+              boardId: seedBoardId,
+            } as any,
+            {
+              actorGold: next.inventory.gold,
+              actorInventoryItems: authoritativeInventoryItems,
+              actorEntityId: envelope.serverActorEntityId,
+              actorMaterialStorageItems: nativeBiomesEcsAuthorityEnabled()
+                ? undefined
+                : next.banking.materialStorage,
+              actorCollectibles: next.collections.discovered,
+              actorGuildId: next.guild.memberGuildId,
+              actorPosition,
+              authoritativeEquippedToolActions,
+              nearbyBoardId:
+                seedBoardId === boardId ? nearbyBoardId : undefined,
+              economy: next.economy.production,
+            }
+          );
+          next.jobsBoard = seedResult.jobsBoard;
+          if (seedResult.economy) next.economy.production = seedResult.economy;
+          for (const warning of seedResult.warnings) warnings.push(warning);
+          for (const model of seedResult.touchedModels)
+            touchedModels.add(model);
+          for (const key of seedResult.sharedStateKeys)
+            sharedStateKeys.add(key);
+          if (seedBoardId === boardId) break;
+        }
       }
       const result = reduceHarthmereJobsBoardMutation(
         next.jobsBoard,
@@ -18688,7 +18754,12 @@ export function reduceHarthmereLiveModeBackendState(
           const authorityAttempt = resolveHarthmereGatheringAuthorityAttempt({
             nodeId,
             actorPosition: actorWorldPositionFromAuthority(envelope),
-            equippedItemIds: Object.values(next.inventory.equipment),
+            equippedItemIds: [
+              ...new Set([
+                ...Object.values(next.inventory.equipment),
+                ...(envelope.serverActorEquippedItemKeys ?? []),
+              ]),
+            ],
             equippedBiomesItemIds: envelope.serverActorItemIds,
             professionLevel:
               (gatheringNode &&

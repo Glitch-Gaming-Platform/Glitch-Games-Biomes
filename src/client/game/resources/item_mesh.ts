@@ -16,6 +16,7 @@ import {
   makeBlockBufferGeometryFromBase64,
   makeFloraBufferGeometryFromBase64,
 } from "@/client/game/util/meshes";
+import { decodeBase64ArrayBuffer } from "@/client/game/util/mobile_atlas_decode";
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
 import type {
   BlockItemMeshData,
@@ -339,7 +340,13 @@ async function resolveGaloisItemMesh(
         switch (mesh.data.kind) {
           case "GLB":
             return gltfToItemMesh(
-              Buffer.from(mesh.data.data, "base64").buffer,
+              // HARTHMERE_ATLAS_BASE64_DECODE (2026-08-04 mobile audit,
+              // item 6). Was `Buffer.from(mesh.data.data, "base64").buffer`,
+              // which hands the GLB parser the whole backing ArrayBuffer and
+              // discards the offset -- so outside the browser it would be
+              // parsing from the wrong byte entirely. See
+              // `mobile_atlas_decode.ts`.
+              decodeBase64ArrayBuffer(mesh.data.data),
               handAttachmentTransform,
               !!item.mesh
             );

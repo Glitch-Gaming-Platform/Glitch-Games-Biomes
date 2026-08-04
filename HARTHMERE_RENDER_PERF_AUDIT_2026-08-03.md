@@ -3,12 +3,27 @@
 **Scope:** three.js renderer & pass graph, WebGL resource usage, native ECS + client sim loop,
 Gaia, Anima, Galois.
 
-> **Status: partially remediated (same day).** Findings 1, 2, 3, 6, 11a, 12, 14 and the
+> **Status: partially remediated (same day).** Findings 1, 2, 3, 6, 11a, 12, 13, 14, 18 and the
 > `TerrainRenderer` / `npcs` allocation items were fixed in the pass described in
 > [§ Remediation log](#remediation-log) at the bottom of this document. Findings 4, 5, 7, 9 (WASM
-> sharder), 10, 11b, 13 and 15 remain open. Every remaining item is annotated **OPEN** or **FIXED**
+> sharder), 10 and 11b, 15 remain open. Every remaining item is annotated **OPEN** or **FIXED**
 > in the table below. The deployed Glitch GPU-classification defect identified after the original
 > audit is recorded as finding 17 and is now **FIXED**.
+>
+> **Update — 2026-08-03 (evening), captured-session pass.** A second HAR + console capture from
+> production (`www.glitch.fun`, Apple M1 Max, GPU benchmark **556 FPS**, tier 3) showed a sustained
+> **2–14 FPS** with an unbroken run of `[Violation] 'requestAnimationFrame' handler took <N>ms`.
+> That capture surfaced **finding 18**, which the original audit missed entirely because it only
+> examined `renderers/`, not the per-frame *scripts*. Finding 18 is the dominant cost in that
+> capture. Findings 12 and 13 were also closed in the same pass. See
+> [§ 2026-08-03 (evening) — captured-session frame-loop pass](#2026-08-03-evening--captured-session-frame-loop-pass).
+>
+> **Finding 19 — the "true on localhost, false in production" class.** Fixing the combat-VFX gate
+> prompted a full sweep of every environment gate in `src/client` and `src/shared`. Three more
+> subsystems were shipping dead: the player's third-person weapon rig (animated every frame into a
+> group that never reached a scene), the terrain shard pre-warm ring, and the VFX layer itself. One
+> more — the seven `NODE_ENV === "production"` early exits in the avatar pipeline — is **recorded
+> but not changed** and needs a product decision. See [§ A.1](#a1--true-on-localhost-false-in-production-finding-19).
 
 **Stack observed:** three `0.185.1`, WebGL2 required, custom multi-pass deferred-ish composer
 (`RenderPassComposer`), voxel terrain meshed in WASM (`voxeloo`), Harthmere content rendered by a
@@ -34,12 +49,136 @@ good design* rather than redesigns — several are one-line fixes with double-di
 | 9 | Per-frame WASM + JS allocation in `TerrainRenderer.draw` | CPU/GC | Med | Low | ⚠️ **PARTIAL** — limiter + destruction uniforms hoisted; WASM `VisibilitySharder` still per-frame |
 | 10 | String-keyed spatial hash + column cache → ~15k string allocs/frame in NPC collision | CPU/GC | Med | Low | ⚠️ **PARTIAL** — obstacle grid now integer-keyed; grounded-column cache still string-keyed |
 | 11 | `debug.checkShaderErrors = true` unconditionally; dynamic `PointLight` count forces shader recompiles | Hitching | Med | Low | ⚠️ **PARTIAL** — shader-error check gated; light pooling still open |
-| 12 | Always-on `timeCode()` instrumentation allocates a timer per renderer per script per frame | CPU | Low–Med | Low | 🔲 OPEN |
-| 13 | Dynamic render scale silently disabled when `EXT_disjoint_timer_query_webgl2` is missing | Adaptivity | Med | Low | 🔲 OPEN |
+| 12 | Always-on `timeCode()` instrumentation allocates a timer per renderer per script per frame | CPU | Low–Med | Low | ✅ **FIXED** — gauge writes sampled 1-in-16 |
+| 13 | Dynamic render scale silently disabled when `EXT_disjoint_timer_query_webgl2` is missing | Adaptivity | Med | Low | ✅ **FIXED** — CPU-share bottleneck inference |
 | 14 | Shared depth texture allocated at pixelRatio² on first frame | VRAM spike | Low | Trivial | ✅ **FIXED** |
 | 15 | 15 MB uncompressed `.gltf` assets; KTX2/meshopt wired but zero `.ktx2` files shipped | Load/VRAM | Med | Med | 🔲 OPEN |
 | 16 | `npcs.ts` hidden-puppet removal was O(n²) | CPU | Low | Trivial | ✅ **FIXED** |
 | 17 | Glitch/local-assets builds bypass GPU detection and pin every client to tier 1 | Adaptivity/quality | **High** | Low | ✅ **FIXED** — complete same-origin `detect-gpu` dataset |
+| 18 | `OverlayScript.tick` runs an unbounded number of voxel raycasts and invalidates React every frame | CPU | **Very high** | Low | ✅ **FIXED** — see § A.0 |
+| 19 | Production-only dead code behind the localhost `harthmereAssets` gate | Correctness/CPU | **High** | Low | ✅ **FIXED** — see § A.1 |
+
+---
+
+## A.1 — "True on localhost, false in production" (finding 19)
+
+*Added 2026-08-03 evening, after the combat-VFX fix, from an explicit sweep of every
+environment gate in `src/client` and `src/shared`.*
+
+`shouldRenderHarthmereRuntimeAssets()` returns true on `localhost`/`127.0.0.1` or when the
+`biomes.harthmereAssets` localStorage key is `"1"`, and false otherwise. That is correct for the
+local-dev town it was written for. The bug class is everything that *borrowed* that flag, or that
+lives under `HarthmereRuntimeAssets.root` without being part of the town — all of which worked
+perfectly on every developer machine and never once ran for a real player.
+
+**The sweep.** `grep` for `hostname === "localhost"`, `localStorage.getItem(...) === "1"`,
+`NODE_ENV`, and `NEXT_PUBLIC_*` across `src/client` and `src/shared`. Results:
+
+| Gate | Verdict |
+|---|---|
+| `biomes.harthmereAssets` (`harthmere_runtime_mode.ts`) | the master switch — 4 things wrongly behind it, below |
+| `biomes.localDev.harthmere.{combatDebug,combatDiagnostics,npcCollisionVerbose,rendererVerbose,suppressStaticLifeForEcs}` | ✅ correct — diagnostics, default off everywhere |
+| `roles.ts` localhost super-roles | ✅ intentional dev affordance |
+| `harthmere_library.ts` local cutscene-video save | ✅ intentional, writes to a dev-only endpoint |
+| `harthmereBuilderAuditEnabled` / WakeUpScreen audit effect | ✅ already correctly gated off in prod *for perf reasons* |
+| `player_mesh.ts` `addLocalDev*` / `addHarthmerePlayer*Polish` (7 sites) | ⚠️ **left alone — needs a product decision, see below** |
+| `mobileDevice` renderer gates | ✅ intentional asset-streaming difference |
+
+**Fixed — things that were never local-dev features:**
+
+1. **Combat VFX** (projectiles, impacts, magic charges). Covered in the main remediation log.
+   Parented to `root`, ticked from `draw()`, both behind the gate; listeners registered
+   unconditionally. Casts spawned into a group that was never advanced or drawn.
+
+2. **The local player's third-person weapon rig.** `installHarthmerePlayerSwordVisuals()` starts its
+   **own `requestAnimationFrame` loop in the constructor**, which is *not* gated on `ready`. In
+   production it faithfully computed the weapon anchor transform, the draw/sheathe blend and the
+   swing animation on every single frame — into `harthmerePlayerSwordAnchorRoot`, which is parented
+   to `root` and never reached a scene. So the player held nothing visible while the client paid for
+   the animation anyway. This is simultaneously a missing feature and a wasted per-frame cost.
+   `draw()` now attaches `root` when `hasHarthmereSceneAttachableContent()` is true, which covers
+   both the VFX layer and the weapon rig.
+
+3. **Terrain shard pre-warm.** `TerrainRenderer.updateHarthmereTerrainPrewarm` early-returned on
+   `!shouldRenderHarthmereRuntimeAssets()`. Nothing in it touches Harthmere runtime assets — it
+   reads `/ecs/terrain` and warms `/terrain/occluder` + `/terrain/combined_mesh`, all native terrain
+   resources present in every build. It borrowed the flag only because its tuning constants happen
+   to live in `town_production_polish.ts`. The result: the ring whose entire job is to hide the
+   whitespace-pop and hitch after spawn and after a long fast-travel move ran for developers and
+   never for players — and was therefore invisible in every local test of the thing it exists to
+   fix. `docs/harthmere/PERFORMANCE_AND_PLACEMENT.md` already documented it as a shipped guardrail;
+   the code disagreed. It is safe everywhere: ≤144 probes per plan, replanned at most once per
+   second and only after 64 m of movement, ≤2 fetches in flight, and it skips already-cached shards.
+
+**Deliberately not changed — flagged for a product decision:**
+
+`src/client/game/resources/player_mesh.ts` has seven `if (process.env.NODE_ENV === "production")
+return;` early exits covering `addHarthmerePlayerUniqueEnhancementDetails`,
+`addHarthmerePlayerBoneAttachedEquipmentPolish`, `addHarthmerePlayerAvatarFullPolishDetails`,
+`installHarthmerePlayerSwordSheathVisibilityBridge`, the voxel body shell, and the bolt-head face
+shells. Line 537 also loads `loadHarthmerePlayerAppearanceConfig(id)` only outside production.
+
+These are named `local-dev-*` throughout, so they may well be an intentional alternative to the
+native Biomes wearables pipeline. But `WakeUpScreen` writes real player face/body/clothing choices
+to `harthmerePlayerFaceStorageKey` / `...BodyStorageKey` / `...ClothingStorageKey`, and this is the
+code that reads them. **Worth confirming that a character created in the builder actually looks
+different in production**; if it does not, this is the same bug class at avatar scale. Turning seven
+visual passes on in production is not a safe unilateral change, so it is recorded rather than done.
+
+---
+
+## A.0 — The overlay script is the frame loop's largest per-frame cost (finding 18)
+
+*Added 2026-08-03 evening, from the captured production session. This finding was outside the
+original audit's scope: it lives in `scripts/`, not `renderers/`.*
+
+`src/client/game/scripts/overlays.ts` — `OverlayScript.tick()` runs **every frame** and rebuilds the
+entire overlay map from scratch. Two costs scale with world density:
+
+**1. Unbounded voxel raycasts.** `isOccluded(pos, camera)` runs a full `terrainMarch` through the
+WASM voxel grid, from the camera to the overlay point, up to **50 m**. It is called once per overlay
+from six sites (`:864` navigation aids, `:942` player names, `:1201` NPC names, `:1268` minigame
+elements, `:1401` world objects, `:2111` quest targets). The captured session's own cval dump reports
+the table contents:
+
+```
+position_selector: 2932   label_selector: 834    placeable_selector: 548
+npc_metadata_selector: 159   named_quest_giver_selector: 107   minigame_elements_selector: 82
+collideable_selector: 1217
+```
+
+Every one of those within its overlay radius paid for its own 50 m WASM march, **every frame**. This
+is hundreds of raycasts per frame, and it is why an M1 Max whose own benchmark reports 556 FPS was
+delivering 2–14.
+
+**2. Unconditional React invalidation.** The tail of `tick()` called
+`resources.update("/overlays/projection", ...)` with no change check. That is a React resource, so
+every frame invalidated every subscribed component — the projected overlay components and,
+transitively, the HUD — forcing a full React reconciliation at frame rate even when the player and
+the world were completely still. (The sibling `/overlays` map was already change-gated by `isEqual`;
+the projection map was not.)
+
+**Fix applied:**
+
+- Occlusion results are memoised in an `occlusionCache` keyed on the metre-quantised **(target,
+  camera)** pair with a 100 ms TTL. Sub-metre motion of either endpoint cannot change a nameplate's
+  occlusion boolean perceptibly, and the camera is part of the key so a moving camera still
+  refreshes.
+- A hard per-frame ceiling of `MAX_OCCLUSION_MARCHES_PER_FRAME = 24`. Over budget, the previous
+  answer is reused and refreshes on a later frame — so the worst case is constant regardless of how
+  dense the district gets, instead of linear in entity count.
+- `occlusionMarchesThisFrame` resets at the top of every `tick()`; a 5 s sweep expires entries for
+  points no longer drawn so the cache cannot grow with the world.
+- The projection map is published only when `projectionsEqual` reports a real change. That
+  comparison is a hand-written allocation-free walk with a 0.5 px / 0.01 proximity epsilon rather
+  than `lodash.isEqual`, which was itself a measurable per-frame cost at these entity counts.
+
+Contract tests: `src/client/game/scripts/overlaysFrameBudget.test.ts`.
+
+**Still worth doing (not done):** split the overlay *content* rebuild (which only needs to run at ~10
+Hz) from the *projection* update (which wants to run per frame so nameplates don't jitter). Today
+both run per frame; only their publication is gated. That split is a larger refactor of
+`applyAllOverlays` and was deliberately left out of a same-day fix.
 
 ---
 
@@ -414,23 +553,20 @@ React application. The Biomes client now performs real hardware classification i
 Do not force tier 3 globally: the captured 14 FPS session was already running at tier 1, so its
 primary bottleneck was not the amount of GPU quality enabled by the tier selection.
 
-**Do first — hours, not days, and independently verifiable:**
+**Done (findings 1, 2, 3-partial, 6, 11a, 12, 13, 14, 16, 17, 18).** The remaining ranked work:
 
-1. Fix the NPC throttle camera (`harthmere_assets.ts:28353`) — expect the largest single CPU delta.
-2. `generateMipmaps = false` on the bloom threshold target (`bloom.ts:47`).
-3. Sort `waterMeshes[]` by distance before adding (`terrain.ts:414`), since `renderOrder` is inert.
-4. Gate `checkShaderErrors` behind `!isProd` (`pass_renderer.ts:89`).
-5. Fix the double-`pixelRatio` depth texture (`composer.ts:167`).
-6. Try `LinearMipmapLinearFilter` on the block atlas (`textures.ts:62`) and compare.
+**Do next — days:**
 
-**Then — days:**
-
-7. Hoist per-frame allocations out of `TerrainRenderer.draw`; compute `destructionUniforms` once.
-8. Integer-key the NPC obstacle grid and grounded-column cache.
-9. Memoize scene classification / material dependencies (close the `scenes.ts:70` TODO).
-10. Pool point lights so the count never changes at runtime.
-11. Ship atlases as binary + worker decode.
-12. Run the assets through `gltfpack` with KTX2 output.
+1. Hoist the remaining per-frame allocations out of `TerrainRenderer.draw` — the WASM
+   `VisibilitySharder` is still constructed every frame (finding 9).
+2. Integer-key the remaining string-keyed grounded-column cache (finding 10). Note this lives in
+   `harthmere_assets.ts`, which does **not** render in production, so it is a localhost-only win.
+3. Memoize scene classification / material dependencies (close the `scenes.ts:70` TODO, finding 8).
+4. Pool point lights so the count never changes at runtime (finding 11b) — this is the combat
+   hitching path.
+5. Split overlay content rebuild (10 Hz) from projection update (per frame). See § A.0.
+6. Ship atlases as binary + worker decode (finding 5).
+7. Run the assets through `gltfpack` with KTX2 output (finding 15).
 
 **Then — a project:**
 
@@ -511,3 +647,118 @@ Focused verification after the change:
 - The repository-wide TypeScript check reports unrelated existing errors in business-customer,
   camera, interaction, overlay, and Harthmere test files; it reports no errors in the files changed
   for this remediation.
+
+### 2026-08-03 (evening) — captured-session frame-loop pass
+
+Input: a HAR + console capture of a real production session
+(`www.glitch.fun-1785805197173.har` / `.log`, 374 s of play, Apple M1 Max, Chrome 151).
+
+What the capture established, as fact rather than inference:
+
+| Signal | Value |
+|---|---|
+| `GPU Tier Info` | `{"fps":556,"gpu":"apple m1 max","tier":3,"type":"BENCHMARK"}` |
+| `Aegis Engine Report [warning]: Low FPS Detected` | 48 reports, range **0–14**, median 10 |
+| `[Violation] 'requestAnimationFrame' handler took <N>ms` | continuous, hundreds of lines |
+| Client table size (from `/api/cval_logging`) | 2932 positioned entities, 1217 collideable, 834 labelled, 548 placeables, 159 NPCs |
+| `game.events` for the whole session | `moveEvent: 6369`, `emoteEvent: 21`, `updatePlayerHealthEvent: 2`, **`updateNpcHealthEvent` absent** |
+
+Tier 3 was correctly detected, so finding 17 was genuinely fixed and the frame rate problem is CPU
+work on the main thread, not GPU classification.
+
+**Changes:**
+
+1. **Finding 18 — overlay occlusion budget + projection change-gate.**
+   `src/client/game/scripts/overlays.ts`. Described in full in § A.0. This is the headline change.
+
+2. **Finding 13 — dynamic render scale no longer requires a GPU timer.**
+   `src/client/game/resources/graphics_settings.ts`,
+   `src/client/game/resources/dynamic_settings_updater.ts`.
+
+   `computeRenderScale` used to demand `EXT_disjoint_timer_query_webgl2` and otherwise pin a **fixed**
+   render scale for the entire session — `[3840, 2160]` on `high`, i.e. a 4K internal resolution that
+   could never back off. That extension is routinely unavailable in exactly the environments this
+   game ships into: embedded iframes (which is how `glitch.fun` hosts it), hardened Chrome policies,
+   VMs and several Linux/ANGLE configurations.
+
+   `{ kind: "dynamic" }` is now always selected. `bottleneck()` previously returned `"cpu"`
+   unconditionally when `gpuTimeMs === undefined`, which made the render-scale *reduction* branch
+   unreachable — a struggling client had no lever at all. It now infers from the two signals that are
+   always present: if the frame is over budget **and** our own CPU work accounts for less than half
+   of it (`UNMEASURED_GPU_BOUND_CPU_SHARE = 0.5`), the missing time went to the GPU, compositing or
+   presentation, none of which get cheaper by drawing fewer entities — so it is treated as GPU-bound
+   and render scale is allowed to drop. A vsync-limited 60 FPS frame with 2 ms of CPU work is
+   explicitly *not* treated as pressure, so a healthy client never degrades itself.
+
+   Tests: `src/client/game/resources/dynamic_settings_updater.test.ts`.
+
+3. **Finding 12 — sampled timer gauge writes.**
+   `src/shared/metrics/performance_timing.ts`. `timeCode` wraps every renderer, every script, `draw`,
+   `render + postprocessing`, the React invalidate and `resources:collect`, and nests inside terrain
+   resource generation — 40–200 stops per frame, each doing a string-keyed `Map.get`, an
+   `Averager.push` and a metrics gauge write. The exponential average is still fed by every sample
+   (accuracy unchanged); only the gauge *publish* is sampled 1-in-16. Nothing reads these gauges per
+   frame — they back a debug HUD and cval logging.
+
+**Also fixed in the same pass (gameplay, not rendering, but found in the same capture):**
+
+- **Attacks never registered.** The cval `events` map proves it: 21 `emoteEvent`s (swings played) and
+  zero `updateNpcHealthEvent`s across the whole session. Under `nativeBiomesEcsAuthorityEnabled()`
+  the crosshair ray against the authoritative ECS AABB is the *only* melee acquisition path, and the
+  drawn body is latency-smoothed away from that AABB — so on a slow frame, or against a moving
+  creature, every swing passed through the visible target. Added a deliberately narrow aim-assist
+  fallback in `scripts/cursor.ts` (ray-miss only, inside melee reach, 14° cone, single best target,
+  never through terrain, same `canAttackFilter`). Two adjacent gates were also failing closed:
+  `selectedCanAttack` treated a native item with an unresolvable combat profile as unarmed, and
+  `resolveAttackInteraction` dropped health-backed live creatures that lack `npc_metadata` even
+  though `canAttackFilter` accepts them. Tests:
+  `src/client/game/scripts/cursorNativeMeleeAimAssist.test.ts`.
+
+- **Projectile and magic-charge VFX never drew in production.** `HarthmereProjectileVisualRuntime` is
+  parented to `HarthmereRuntimeAssets.root` and ticked from its `draw()`, but both `preloadAll()` and
+  the `ready` flag sat behind `shouldRenderHarthmereRuntimeAssets()` — true only on localhost or with
+  the `biomes.harthmereAssets` localStorage key. The event listeners were registered
+  *unconditionally*, so a cast really did spawn its charge object, into a group that was never
+  advanced and never added to a scene. The VFX layer is now preloaded and ticked regardless of the
+  town-asset gate, and the root is attached whenever `hasActiveVisuals()` is true. Tests:
+  `src/client/game/renderers/local_dev/harthmere_combat_vfx_always_on.test.ts`.
+
+**Verification:**
+
+- `chase_attack_logic` (39), `npc_locomotion_selection`, `src/shared/npc/**` (243), client
+  `resources`/`metrics` (43+4), and the three new contract suites (15) all pass.
+- Full `src/client/game/**` run: 402 passing, 4 failing — all four pre-existing and unrelated
+  (three easing-math assertions in `util/test/animation_system.test.ts`, one browser-flow test that
+  needs a platform-native `esbuild` binary).
+
+**Not yet measured.** Every claim above is a code-path argument plus the captured evidence; none of
+it has been re-measured against a fresh capture. The next capture should show
+`performanceTiming:scripts:overlay` falling sharply and `renderer.<name>.threejs.info` unchanged — if
+`scripts:overlay` is still dominant, the content/projection split in § A.0 is the next move.
+
+### 2026-08-03 (evening, follow-up) — environment-gate sweep
+
+Prompted by the question "is anything else true on localhost and false in production?" after the
+combat-VFX fix. The full sweep, verdicts and reasoning are in
+[§ A.1](#a1--true-on-localhost-false-in-production-finding-19). Summary of code changes:
+
+- `src/client/game/renderers/local_dev/harthmere_assets.ts` — `draw()`'s not-ready path now attaches
+  `root` via `hasHarthmereSceneAttachableContent()`, which covers the VFX layer **and** the local
+  player's weapon rig. The rig's own constructor-installed `requestAnimationFrame` loop was already
+  running in production; only its output was unreachable.
+- `src/client/game/renderers/terrain.ts` — `updateHarthmereTerrainPrewarm` no longer early-returns
+  on `!shouldRenderHarthmereRuntimeAssets()`. The `harthmere_runtime_mode` import is gone from this
+  file entirely, which is the honest signal that terrain streaming does not depend on the local-dev
+  town.
+
+**How to spot the next one.** The pattern has a shape worth naming: *a listener, timer or rAF loop
+registered unconditionally, whose output is only consumed behind a gate.* Registration and
+consumption were split across the constructor and `draw()` in every instance here, which is why each
+one looked correct when read in isolation. When adding anything to
+`HarthmereRuntimeAssetsRenderer`, the question to ask is not "is this gated?" but "is this the local
+dev town?" — and if the answer is no, it does not belong under `root` without an attach path that
+survives `ready === false`.
+
+**Verification:** `t.sh combat` 92 passing, `t.sh perf` 39 passing, `src/client/game/**` 422 passing
+with the same 4 pre-existing unrelated failures. `terrain.ts` and `harthmere_assets.ts` both
+typecheck clean.

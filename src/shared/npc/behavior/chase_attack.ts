@@ -110,14 +110,30 @@ export const NIGHT_MUCKER_HEX_ATTACK_INTERVAL_MULTIPLIER = 0.55;
 export const HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER = 1.35;
 export const HARTHMERE_NPC_CHASE_SPEED_STEP_UP_20 = 1.2;
 export const HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30 = 1.3;
+/**
+ * 2026-08-03 playtest: monsters are 30% slower.
+ *
+ * Applied as its own cumulative step rather than by editing the numbers above,
+ * so the tuning history stays readable and a later change can reason about what
+ * the pursuit speed was before this pass.
+ */
+export const HARTHMERE_NPC_SPEED_STEP_DOWN_30 = 0.7;
 export const HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER =
   HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER *
   HARTHMERE_NPC_CHASE_SPEED_STEP_UP_20 *
-  HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30;
+  HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30 *
+  HARTHMERE_NPC_SPEED_STEP_DOWN_30;
 // Normal player sprint animation transitions at 8 m/s. Keep Harthmere pursuit
 // urgent without allowing an NPC to outrun a sprinting player on open ground.
-export const HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND = 7.6;
-export const HARTHMERE_NPC_CHASE_MIN_EFFECTIVE_METERS_PER_SECOND = 2.25;
+//
+// The ceiling and the floor scale with the step-down too. A cap left at its old
+// value would silently absorb the reduction for exactly the fast creatures the
+// change is aimed at, and a floor left at its old value would put every slow
+// creature back at its previous speed.
+export const HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND =
+  7.6 * HARTHMERE_NPC_SPEED_STEP_DOWN_30;
+export const HARTHMERE_NPC_CHASE_MIN_EFFECTIVE_METERS_PER_SECOND =
+  2.25 * HARTHMERE_NPC_SPEED_STEP_DOWN_30;
 const CHASE_STUCK_DIRECT_PURSUIT_SECONDS = 1.0;
 const LINE_OF_SIGHT_SAMPLE_STEP_METERS = 0.45;
 const LINE_OF_SIGHT_SAMPLE_BOX_METERS = 0.18;
@@ -433,6 +449,25 @@ export function isHarthmereFightSpeedBoostName(
   );
 }
 
+/** Hostile creature labels whose authored movement receives the 30% slowdown. */
+export function isHarthmereMonsterSpeedName(name: string | undefined): boolean {
+  const text = String(name ?? "").toLowerCase();
+  if (
+    /\b(pet|companion|tamed|owned|mount|prisoner)\b|robot|bot|sentinel|sentential|sentiental|shield|beacon|board|voucher|ration|matter|ward/.test(
+      text
+    ) ||
+    isHarthmereCivilianNpcName(text)
+  ) {
+    return false;
+  }
+  return (
+    isHarthmereFightSpeedBoostName(text) ||
+    /\b(bandit|outlaw|thief|brigand|rogue|ambusher|trapper|bruiser|undead|zombie|corpse|drowned|monster|creature|boss|wyrm|stalker|gilded bull|ninth winter)\b/.test(
+      text
+    )
+  );
+}
+
 export function isHarthmereFightSpeedBoostEligible(input: {
   name: string | undefined;
   isPlayerOwned: boolean;
@@ -457,7 +492,9 @@ export function boundedHarthmereChaseSpeedForName(
         requestedSpeed * HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
         HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND
       )
-    : requestedSpeed;
+    : isHarthmereMonsterSpeedName(name)
+      ? requestedSpeed * HARTHMERE_NPC_SPEED_STEP_DOWN_30
+      : requestedSpeed;
 }
 
 export function shouldDropHarthmereChaseTargetForLineOfSight(
@@ -589,16 +626,23 @@ export function boundedHarthmereNpcChaseSpeed(
   // high-level creature can never exceed the tuned pursuit ceiling.
   requestedSpeed = requestedSpeed * creatureLevelSpeedMultiplier(npc);
   const name = harthmereNpcCombatName(npc).toLowerCase();
+  // The two authored boss overrides below bypass boundedHarthmereChaseSpeedForName
+  // entirely, so they apply the 30% step-down (and scale their own bespoke caps)
+  // themselves. Without this the bosses would be the only monsters unaffected.
+  const slower = HARTHMERE_NPC_SPEED_STEP_DOWN_30;
   if (name.includes("gilded bull")) {
     const horned =
       (npc.state.chapter1Encounter?.brokenPartIds?.length ?? 0) < 2;
     return horned
-      ? Math.min(requestedSpeed * 1.55, 8.2)
-      : Math.max(0, requestedSpeed * 0.58);
+      ? Math.min(requestedSpeed * 1.55 * slower, 8.2 * slower)
+      : Math.max(0, requestedSpeed * 0.58 * slower);
   }
   if (name.includes("ninth winter")) {
     const breaking = npc.health.maxHp > 0 && npc.hp / npc.health.maxHp <= 0.3;
-    return Math.min(requestedSpeed * (breaking ? 1.35 : 1.08), 7.8);
+    return Math.min(
+      requestedSpeed * (breaking ? 1.35 : 1.08) * slower,
+      7.8 * slower
+    );
   }
   return boundedHarthmereChaseSpeedForName(name, requestedSpeed);
 }

@@ -34,7 +34,7 @@ import { SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE } from "@/shared/harthmere/snapshot_g
 // muckers 9451-9550; robots 9401+; Grove NPCs 9301+).
 
 export const HARTHMERE_BUSINESS_CUSTOMER_NPC_SEED_VERSION =
-  "harthmere-business-customer-npc-seed" as const;
+  "harthmere-business-customer-npc-seed-v2" as const;
 
 export const HARTHMERE_BUSINESS_CUSTOMER_NPC_ID_OFFSET_BASE = 9701;
 
@@ -53,6 +53,7 @@ export interface HarthmereBusinessCustomerNpcSeed {
   idOffset: number;
   entityId: BiomesId;
   position: Vec3;
+  waypoints: Vec3[];
   orientation: Vec2;
   description: string;
 }
@@ -83,7 +84,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Cael's pocket-dimension home is starving — its anchor runs on Exotic Matter cells, and the refined fuel keeps getting scarcer and dearer as the Muck spreads.",
       line: "Two stabilized cells for my Biome anchor. My whole home flickers when the charge runs low.",
-      extra: "Last week the gravity in my study went sideways for an hour. A home shouldn't do that.",
+      extra:
+        "Last week the gravity in my study went sideways for an hour. A home shouldn't do that.",
     },
     {
       name: "Dov Hessel",
@@ -93,7 +95,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Dov works the cold line and is here off-shift because the last batch came out as hazardous slag instead of clean fuel — and nobody upstairs will say why.",
       line: "Our batch turned to slag again. Yours holding clean? I need to know it's not just us.",
-      extra: "Exotic Matter's been unstable all season. The bosses blame the workers. It isn't the workers.",
+      extra:
+        "Exotic Matter's been unstable all season. The bosses blame the workers. It isn't the workers.",
     },
     {
       name: "Prospector Iva Renn",
@@ -103,7 +106,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Iva pulls raw antimatter components from abandoned Biomes at the Muck's edge and sells them to the refinery, one risky haul at a time.",
       line: "Got raw components out of a dead Biome near the Muck. Refinery-grade. What'll you give?",
-      extra: "The Muck always pools thickest around the broken homes. Like it's drawn to the holes we left.",
+      extra:
+        "The Muck always pools thickest around the broken homes. Like it's drawn to the holes we left.",
     },
   ],
   // 2. Biome maintenance & repair
@@ -116,7 +120,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Sera's anchor is decaying — her garden Biome leaks winter into the hallway and a tool she dropped last week came back rusted to nothing.",
       line: "My anchor's drifting. Snow in my hall, and a wrench I dropped came back fifty years old. Fix it.",
-      extra: "The maintenance guild keeps saying 'anchor decay.' Nobody says why every anchor's decaying at once.",
+      extra:
+        "The maintenance guild keeps saying 'anchor decay.' Nobody says why every anchor's decaying at once.",
     },
     {
       name: "Apprentice Rolf Kade",
@@ -126,7 +131,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Rolf is learning to chase gravity drift and weather leaks, and is quietly terrified by how many Biomes are failing faster than the guild can patch them.",
       line: "Need calibration rods — the heavy set. I'm on three failing anchors before sundown.",
-      extra: "We used to fix one home a week. Now it's three a day. We're losing, and nobody says it.",
+      extra:
+        "We used to fix one home a week. Now it's three a day. We're losing, and nobody says it.",
     },
     {
       name: "Hadwin Sole",
@@ -136,7 +142,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Hadwin walked into his damaged Biome for seven minutes and came out twelve hours later; he's here to have the anchor pulled before it takes more than time from him.",
       line: "Pull the anchor out of my home. I lost twelve hours in there. I won't lose more.",
-      extra: "I heard a language inside it. Dead a thousand years. It knew my name. Just... take it out.",
+      extra:
+        "I heard a language inside it. Dead a thousand years. It knew my name. Just... take it out.",
     },
   ],
   // 3. Biome design studio
@@ -149,7 +156,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Lune commissions ever-grander private paradises to outshine her neighbors, and refuses to believe the designer who warned that more anchors mean more cracks.",
       line: "Design me a coast inside a winter inside a garden. Three climates, one home. Spare nothing.",
-      extra: "My architect babbled about 'pressure on reality.' I had him replaced. I want beauty, not sermons.",
+      extra:
+        "My architect babbled about 'pressure on reality.' I had him replaced. I want beauty, not sermons.",
     },
     {
       name: "Mara Tinsley",
@@ -159,7 +167,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Mara's family Biome collapsed overnight; she's saving to rebuild something small and safe, and asks for a habitat with the simplest, steadiest anchor that exists.",
       line: "Nothing grand. The simplest habitat you can anchor. Mine fell in overnight. I won't risk grand.",
-      extra: "We got out with what we carried. A home shouldn't be able to just... fold up around you.",
+      extra:
+        "We got out with what we carried. A home shouldn't be able to just... fold up around you.",
     },
     {
       name: "Sketch Nilo",
@@ -169,7 +178,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Nilo keeps designing landscapes he's never visited, and has only just realized half the Grove's young designers are drawing the same valley — a side-effect of the dreams the Muck pushes ahead of itself.",
       line: "Can you anchor a place that doesn't exist? I keep drawing this valley. So does everyone lately.",
-      extra: "Same valley, same broken tower in it. We've never been there. Why do we all dream the same place?",
+      extra:
+        "Same valley, same broken tower in it. We've never been there. Why do we all dream the same place?",
     },
   ],
   // 4. Security & defense contractor
@@ -182,7 +192,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Bren's climate-farm sits near a widening Muck pocket; he hires guns because Muckers have been coming over the fence line and the local robots are running low on Exotic Matter.",
       line: "Four guards for my farm. Muckers are over the fence and the patrol-bot's nearly out of charge.",
-      extra: "When the robots run dry, there's nothing between my crop and the Muck but hired steel.",
+      extra:
+        "When the robots run dry, there's nothing between my crop and the Muck but hired steel.",
     },
     {
       name: "Tace Hollin",
@@ -192,7 +203,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Tace lost a home to a Biome failure and wants contractor work — guarding refineries and farms is the only steady pay left for someone with nothing but nerve.",
       line: "I'll take the routes nobody wants. Muck-edge patrols, night farm watch — name it, I'll guard it.",
-      extra: "No home, no Biome, no anchor. Just me. Pay me and I'm the most loyal gun you'll ever hire.",
+      extra:
+        "No home, no Biome, no anchor. Just me. Pay me and I'm the most loyal gun you'll ever hire.",
     },
     {
       name: "Factor Ruel Mast",
@@ -202,7 +214,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Ruel hires defense for an Exotic Matter convoy; with Harthmere's raiders eyeing the fuel and Helixes drawn to the cargo's hum, the route is worth more than the guards.",
       line: "Convoy escort. Exotic Matter cargo. Expect raiders from Harthmere's side and worse from the Muck.",
-      extra: "Anti-Biome zealots want the fuel destroyed. The Helixes just want to be near it. Pick your poison.",
+      extra:
+        "Anti-Biome zealots want the fuel destroyed. The Helixes just want to be near it. Pick your poison.",
     },
   ],
   // 5. Portal transit company
@@ -215,7 +228,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Jax pays for a clean jump to beat a rival to the next settlement — and to skip the muck-choked overland roads where couriers keep vanishing.",
       line: "One clean jump east, full charge. The roads aren't safe and the bonus goes to whoever's first.",
-      extra: "Three couriers gone on the overland route this month. The portal costs more. It's worth it.",
+      extra:
+        "Three couriers gone on the overland route this month. The portal costs more. It's worth it.",
     },
     {
       name: "Corin Vael",
@@ -225,7 +239,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Corin's district is destabilizing — weather from a broken neighbor-Biome is bleeding into the streets — and buys a one-way jump anywhere the ground still holds still.",
       line: "One jump out. Anywhere stable. My whole district's raining someone else's weather.",
-      extra: "A storm that isn't ours, falling on streets that aren't safe. I'm not waiting to find out why.",
+      extra:
+        "A storm that isn't ours, falling on streets that aren't safe. I'm not waiting to find out why.",
     },
     {
       name: "Operator Wynn Sable",
@@ -235,7 +250,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Wynn runs a small private portal that's developed link drift — exits are landing minutes and meters off — and wants a stable relay before someone arrives inside a wall.",
       line: "My link's drifting. Exits land short, sometimes late. I need a stable relay before it kills someone.",
-      extra: "Yesterday a parcel arrived ten minutes before I sent it. The drift isn't just spatial anymore.",
+      extra:
+        "Yesterday a parcel arrived ten minutes before I sent it. The drift isn't just spatial anymore.",
     },
   ],
   // 6. Biome farming & rare foods
@@ -248,7 +264,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Maven buys rare crops grown in impossible climate-farms for the Lanternrest Inn, determined that travelers and Biome-refugees eat one good meal whatever else fails.",
       line: "Your sun-pears and the bittergreen. The inn's full of refugees; they deserve one good plate.",
-      extra: "Grown in a farm that's summer year-round. Funny — we can fake a season but can't fix the Muck.",
+      extra:
+        "Grown in a farm that's summer year-round. Funny — we can fake a season but can't fix the Muck.",
     },
     {
       name: "Healer Briony Sage",
@@ -258,7 +275,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Briony needs medicinal plants only the climate-farms can grow, to treat the memory-sickness creeping through the Grove from too much time near broken space.",
       line: "Palethistle and fenroot, all you have. The memory-sickness is spreading faster than the clinic admits.",
-      extra: "They forget their own kids' names, then their own. It tracks the Muck. The doctor calls it 'nerves.'",
+      extra:
+        "They forget their own kids' names, then their own. It tracks the Muck. The doctor calls it 'nerves.'",
     },
     {
       name: "Homesick Garr",
@@ -268,7 +286,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Garr's home-Biome collapsed and took his whole coastal climate with it; he overpays for a southern fruit that tastes like the world he lost.",
       line: "You got moonmelon? Real southern stock? I'll pay anything. Just... one taste of the place I lost.",
-      extra: "My whole coast folded into nothing one morning. You can't anchor a memory. I've tried.",
+      extra:
+        "My whole coast folded into nothing one morning. You can't anchor a memory. I've tried.",
     },
   ],
   // 7. Weapons & tools
@@ -281,7 +300,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Roe needs his Exotic-Matter blade re-cored before the next patrol; the Muckers hit harder since the Helixes started leading them.",
       line: "Re-core this blade, full charge. The Muck-things don't drop like they used to since the Helixes came.",
-      extra: "We lost two on the muck-line last week. Don't repeat that. Just make it cut.",
+      extra:
+        "We lost two on the muck-line last week. Don't repeat that. Just make it cut.",
     },
     {
       name: "Plowman Ude Fent",
@@ -291,7 +311,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Ude saves for a muck-cutter to clear the corruption eating into his climate-farm one furrow at a time, faster than the maintenance guild can re-anchor the soil.",
       line: "A muck-cutter, the cheapest that still bites. The rot's past my fence and the anchor won't hold it.",
-      extra: "Every season the Muck takes another row. Every season the lease costs the same. You do the math.",
+      extra:
+        "Every season the Muck takes another row. Every season the lease costs the same. You do the math.",
     },
     {
       name: "Quiet Sable",
@@ -301,7 +322,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Sable runs for Harthmere sympathizers who buy old-fashioned steel and powder — weapons with no Exotic Matter in them — and asks no questions, expecting none in return.",
       line: "Three blades. Cold steel, no cores. Harthmere folk don't touch your Exotic toys. No marks, no ledger.",
-      extra: "Your fancy fuel is killing the world. We'll fight it with iron, like people are meant to. Coin's down.",
+      extra:
+        "Your fancy fuel is killing the world. We'll fight it with iron, like people are meant to. Coin's down.",
     },
   ],
   // 8. Magic goods -> Exotic-Matter anomaly wards / charms
@@ -314,7 +336,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Tamsin buys an anomaly-ward for her son, who's caught early memory-sickness from a Muck pocket near their home and keeps describing a valley he's never seen.",
       line: "A ward against the memory-sickness. For my boy. He talks of a valley, a broken tower. He's seven.",
-      extra: "Every child on our lane describes the same valley now. Tell me that's normal. Please tell me.",
+      extra:
+        "Every child on our lane describes the same valley now. Tell me that's normal. Please tell me.",
     },
     {
       name: "Scholar Quen Mire",
@@ -324,7 +347,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Quen tests Moonstall's anomaly-wards to debunk them as superstition, and is privately unnerved that the calibrated Exotic-Matter charms genuinely steady a fracturing space.",
       line: "I'll meter your ward before I buy. Most 'charms' are dead crystal and confidence.",
-      extra: "Though... the air stops rippling when I carry yours. The readings hold. I dislike not understanding why.",
+      extra:
+        "Though... the air stops rippling when I carry yours. The readings hold. I dislike not understanding why.",
     },
     {
       name: "Tech Fenn Doral",
@@ -334,7 +358,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Fenn restocks anomaly-wards for the refinery by the dozen; the plant burns through them keeping the unstable Exotic-Matter vats from bending the air around the workers.",
       line: "A dozen wards, the strong charge. The refinery vats eat them faster every week.",
-      extra: "Without the wards the air over the vats goes wrong — you see last week through it. Nobody likes that.",
+      extra:
+        "Without the wards the air over the vats goes wrong — you see last week through it. Nobody likes that.",
     },
   ],
   // 9. Exploration guide
@@ -347,7 +372,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Pip wants a safe route to scavenge a fortune from abandoned Biomes, and hasn't learned that every road out of the Grove now runs past the Muck.",
       line: "The safe route to the dead Biomes! There's salvage out there. I'm going to make my fortune.",
-      extra: "Muckers? How bad can they be? ...Oh. That bad. Mark me the long way round, then. Please.",
+      extra:
+        "Muckers? How bad can they be? ...Oh. That bad. Mark me the long way round, then. Please.",
     },
     {
       name: "Cartographer Nesh Vale",
@@ -357,7 +383,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Nesh trades route maps and has stopped trusting them — the Muck has crept past where last season's surveys swore it could reach, and some roads now loop in on themselves.",
       line: "I'll trade a fresh chart for your route notes. The old maps lie — the Muck's moved, and so have the roads.",
-      extra: "Walked a straight road last week and came back to where I started. Space doesn't sit still out there.",
+      extra:
+        "Walked a straight road last week and came back to where I started. Space doesn't sit still out there.",
     },
     {
       name: "Tracker Brael Stoke",
@@ -367,7 +394,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Brael scouts the Muck edges for the guides, mapping where Muckers and Helixes den so honest crews can route around them.",
       line: "Pay for my edge-survey? I know where the Muck-things den. That's worth coin to anyone heading out.",
-      extra: "They're drifting toward the settlements. Slow. Steady. Like something out there is calling them in.",
+      extra:
+        "They're drifting toward the settlements. Slow. Steady. Like something out there is calling them in.",
     },
   ],
   // 10. Custom home / property development (Biome plots)
@@ -380,7 +408,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Doll buys a starter Biome plot for a young couple who want a home of their own before the Muck and the coming war close the maps for good.",
       line: "A small starter plot for a new couple. Dry, sunny, anchor-stable — and well clear of the Muck.",
-      extra: "They just want one little world that's theirs. Hard to fault them. Get it anchored before the war.",
+      extra:
+        "They just want one little world that's theirs. Hard to fault them. Get it anchored before the war.",
     },
     {
       name: "Elder Wat Munn",
@@ -390,7 +419,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Wat carries the combined coin of three families burned out of failing Biomes, hoping to buy one solid plot of real ground that can't fold up in the night.",
       line: "Three families, one plot. Solid old-fashioned ground — no pocket dimension. We've all lost one of those.",
-      extra: "Real soil. Real sky. After three collapses, we're done living inside something that can vanish.",
+      extra:
+        "Real soil. Real sky. After three collapses, we're done living inside something that can vanish.",
     },
     {
       name: "Speculator Ovis Grain",
@@ -400,7 +430,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Ovis buys cheap Muck-adjacent plots for a song, betting the refineries will 'cleanse' the corruption someday and the worthless land will boom.",
       line: "The cheap lots. The Muck-edge ones nobody wants. I'll take the lot of them, today, cash.",
-      extra: "Everyone fears the Muck, so it's a discount. Someday they clear it, and I own the new frontier. Simple.",
+      extra:
+        "Everyone fears the Muck, so it's a discount. Someday they clear it, and I own the new frontier. Simple.",
     },
   ],
   // 11. General trader
@@ -413,7 +444,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Pera stretches a shrinking household budget across a market where every shortage — fuel, food, parts — traces back to the Muck and the failing supply lines.",
       line: "Salt, thread, a half-measure of lamp-oil. And don't round up — I'll know if you do.",
-      extra: "Prices climb, wages don't. Every shortage starts at the Muck. Funny how it reaches my kitchen.",
+      extra:
+        "Prices climb, wages don't. Every shortage starts at the Muck. Funny how it reaches my kitchen.",
     },
     {
       name: "Peddler Lon Carrow",
@@ -423,7 +455,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Lon restocks oddments to sell on the road and trades the one thing worth more than goods now — fresh news of which settlements still stand and which roads the Muck has eaten.",
       line: "Restocking the cart — buttons, fuses, ration-tabs. I'll trade you road-news for a discount.",
-      extra: "Two settlements gone dark since spring. Not war. Not yet. Just... the Muck, and then quiet.",
+      extra:
+        "Two settlements gone dark since spring. Not war. Not yet. Just... the Muck, and then quiet.",
     },
     {
       name: "Quartermaster Bel Hask",
@@ -433,7 +466,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Bel bulk-buys rope, cells and rations for the defense yard, supplying a settlement that's quietly arming itself against the Muck on one side and Harthmere on the other.",
       line: "Bulk rope, charge-cells, hard rations. The yard's short on everything except things to guard against.",
-      extra: "Muck to the west, anti-Biome raiders to the east. We light the perimeter all night now. So do they.",
+      extra:
+        "Muck to the west, anti-Biome raiders to the east. We light the perimeter all night now. So do they.",
     },
   ],
   // 12. Hunter / wild meat (creature parts from dangerous regions)
@@ -446,7 +480,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Cass buys game for a wealthy Biome estate where the owners dine well and toast the Muck as a distant rumor they pay other people to keep distant.",
       line: "Two haunches of ridge-deer. The estate dines tonight whatever's happening past the anchor field.",
-      extra: "Inside the Biome it's eternal spring and good wine. Outside, the Muck. They prefer not to look out.",
+      extra:
+        "Inside the Biome it's eternal spring and good wine. Outside, the Muck. They prefer not to look out.",
     },
     {
       name: "Widow Anse Crell",
@@ -456,7 +491,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Anse lost her Biome and her partner to a collapse; she buys whatever scraps she can afford to feed two children through a winter the failing climate-farms can't soften.",
       line: "Whatever's cheap. Bones for broth. Anything. I've two little ones and one collapsed home behind us.",
-      extra: "Bless you for the extra. Not many spare a thought for the burned-out. We were Biome folk once too.",
+      extra:
+        "Bless you for the extra. Not many spare a thought for the burned-out. We were Biome folk once too.",
     },
     {
       name: "Hunter Drake Veil",
@@ -466,7 +502,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Drake sells a Muck-twisted beast he downed at the tree-line — the larder buys the meat and the rare Helix-touched parts, and asks the careful questions that mean real fear.",
       line: "Downed a muck-twisted boar at the old wood — Helix-marked. Meat AND parts. Name your best price.",
-      extra: "They're changing out there. Bigger. Cleverer. Like the Muck started thinking and they're its hands.",
+      extra:
+        "They're changing out there. Bigger. Cleverer. Like the Muck started thinking and they're its hands.",
     },
   ],
   // 13. Medical / doctor (broken-space illness, memory sickness)
@@ -479,7 +516,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Mott crushed his arm loading an Exotic-Matter convoy and can't miss a shift — the cargo runs are the only work paying enough to outrun a Biome lease.",
       line: "Cargo crate took my arm. Set it fast, doc — I'm on the convoy at dawn or I lose the home I'm renting.",
-      extra: "Hauling Exotic Matter all day. Pays well because nobody sane wants near it. My arm agrees.",
+      extra:
+        "Hauling Exotic Matter all day. Pays well because nobody sane wants near it. My arm agrees.",
     },
     {
       name: "Goodwife Liss Vane",
@@ -489,7 +527,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Liss brings a child burning with memory-sickness after the family Biome's anchor cracked; the girl dreams aloud of a valley and forgets her mother's face between fevers.",
       line: "She won't wake right. She forgets my face, then talks of a valley she's never seen. What's wrong with her?",
-      extra: "Don't tell me it's nerves. Half the lane's children dream the SAME valley. That's not nerves.",
+      extra:
+        "Don't tell me it's nerves. Half the lane's children dream the SAME valley. That's not nerves.",
     },
     {
       name: "Veteran Hob Carrick",
@@ -499,7 +538,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Hob worked salvage in broken Biomes too long; the ache is old wounds, but the gaps in his memory are new, and he half-suspects he's left more of himself in those time-leaks than time.",
       line: "The old leg again, doc. And... I keep losing minutes. Patch the leg. The minutes I'll learn to live with.",
-      extra: "Worked the dead Biomes ten years. You don't come out the same. Some of me's still in there, I think.",
+      extra:
+        "Worked the dead Biomes ten years. You don't come out the same. Some of me's still in there, I think.",
     },
   ],
   // 14. Teleport owner
@@ -512,7 +552,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Ren binds a return-anchor home so the time-fractures buckling the routes can't strand him a week from his family while the Muck closes another road.",
       line: "Bind my return to here. The routes warp without warning now — I won't be stranded a week from home.",
-      extra: "Set out two days ago, arrived before I left, by the pad's own clock. The roads don't trust time anymore.",
+      extra:
+        "Set out two days ago, arrived before I left, by the pad's own clock. The roads don't trust time anymore.",
     },
     {
       name: "Anxious Teo Brack",
@@ -522,7 +563,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Teo rushes a teleport home to a parent failing from memory-sickness, terrified the Muck-slowed overland roads will cost him the hours he doesn't have.",
       line: "Get me home, fast. My mother's slipping — she's forgetting us. The roads are too slow. Please, the pad.",
-      extra: "If the pad drifts even a little... no. Just send me true. I can't afford to land late.",
+      extra:
+        "If the pad drifts even a little... no. Just send me true. I can't afford to land late.",
     },
     {
       name: "Operator Wynn Pell",
@@ -532,7 +574,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Wynn's private pad has developed drift — riders arrive minutes off and a hand's-width sideways — and wants a clean re-anchor before someone lands inside the wall.",
       line: "My pad's drifting. Riders land late, and off-mark. Re-anchor it before it puts someone in a wall.",
-      extra: "A parcel arrived rusted last week. Same parcel I'm about to send. The drift's gone past space now.",
+      extra:
+        "A parcel arrived rusted last week. Same parcel I'm about to send. The drift's gone past space now.",
     },
   ],
   // 15. Waste / sanitation / cleanup (Muck contamination, refinery waste)
@@ -545,7 +588,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Mab hires cleanup before the safety-warden shuts her down — a Muck seep has gotten into her cellar and the air down there shows you yesterday if you stand too long.",
       line: "Muck's seeped into my cellar. Clear it before the warden does and fines me blind. And it's... wrong down there.",
-      extra: "Stood in it too long and saw the room as it was a year back. I poured myself a drink and left.",
+      extra:
+        "Stood in it too long and saw the room as it was a year back. I poured myself a drink and left.",
     },
     {
       name: "Elder Greb Sump",
@@ -555,7 +599,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Greb begs cleanup for the refugee ward built on cheap land where a Muck pocket and a leaking refinery drain now run together through the gutters.",
       line: "The ward's drowning in Muck and refinery runoff together. We've signed, we've begged. Will you come?",
-      extra: "The Biome estates smell clean air they paid for. We smell the runoff they paid to send our way.",
+      extra:
+        "The Biome estates smell clean air they paid for. We smell the runoff they paid to send our way.",
     },
     {
       name: "Inspector Wick Talley",
@@ -565,7 +610,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Wick flags a hazardous Exotic-Matter waste pond the refinery 'forgot' to declare — it's drawing Helixes, and the cleanup can't wait for the paperwork.",
       line: "Hazardous waste pond behind the refinery, undeclared. It's pulling Helixes in. Get a crew on it now.",
-      extra: "Don't ask what we scooped out of the last one. I'm still not sleeping. Just clear it, today.",
+      extra:
+        "Don't ask what we scooped out of the last one. I'm still not sleeping. Just clear it, today.",
     },
   ],
   // 16. Repair / maintenance person
@@ -578,7 +624,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Nel keeps an old-fashioned house running on thrift while the Biome-folk pay for miracles; she brings the small daily breakages a settlement still needs fixed by hand.",
       line: "Cabinet hinge, snapped clean. Fix it cheap. A house runs on the small things still working.",
-      extra: "Doors gone crooked all over the lane this month. The anchor-folk say the ground's 'settling.' Settling into what?",
+      extra:
+        "Doors gone crooked all over the lane this month. The anchor-folk say the ground's 'settling.' Settling into what?",
     },
     {
       name: "Apprentice Cob Fenny",
@@ -588,7 +635,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Cob lugs a failed coolant rig from the refinery, hoping to fix it before his foreman docks his pay — coolant failures near Exotic Matter are how the bad batches start.",
       line: "Refinery coolant-rig's seized. Mend it before the foreman's back? A warm vat is how the bad batches happen.",
-      extra: "I'll owe you. I'm always owing somebody. The whole Grove runs on what it owes the refinery.",
+      extra:
+        "I'll owe you. I'm always owing somebody. The whole Grove runs on what it owes the refinery.",
     },
     {
       name: "Host Imel Cray",
@@ -598,7 +646,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Imel fixes the Lanternrest Inn's failing fixtures, which have been jamming and groaning since the ground started rolling from a Muck-driven anchor failure nearby.",
       line: "The inn's front door-servo keeps jamming. Started when the ground began to shake. Travelers say it's haunted.",
-      extra: "Whole inn creaks now, settling crooked. Or being unsettled. The maintenance guild won't say which.",
+      extra:
+        "Whole inn creaks now, settling crooked. Or being unsettled. The maintenance guild won't say which.",
     },
   ],
   // 17. Food service / restaurant
@@ -611,7 +660,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Ade walked in starving off the muck-road with one collapsed Biome behind and no anchor ahead, with just enough coin for one hot bowl and a hundred rumors to trade.",
       line: "Whatever's in the pot, biggest bowl my coin buys. I've walked since my home folded into nothing.",
-      extra: "Road-folk say the Grove's the last settlement still cooking hot meals. I had to come see. It's true.",
+      extra:
+        "Road-folk say the Grove's the last settlement still cooking hot meals. I had to come see. It's true.",
     },
     {
       name: "Convoy Crew Three",
@@ -621,7 +671,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "A trio off an Exotic-Matter convoy spends thin wages on a hot meal between runs — the one warm hour in a long day of hauling fuel nobody else will touch.",
       line: "Three bowls, three ales, don't water the ale. We hauled live Exotic Matter all day — we've earned it.",
-      extra: "Work's steady at least. The fuel always needs moving. Best not to think too hard about where, or why.",
+      extra:
+        "Work's steady at least. The fuel always needs moving. Best not to think too hard about where, or why.",
     },
     {
       name: "Widower Sael Munn",
@@ -631,7 +682,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Sael eats here nightly since memory-sickness took his wife's mind and then her; he comes for the noise of living people, because the quiet at home has started showing him things.",
       line: "The usual corner, the usual stew. The company's the real meal — the house has gotten too quiet to bear.",
-      extra: "When it's quiet, the rooms show me her, younger, before she forgot me. The Muck does that. I'd rather the noise.",
+      extra:
+        "When it's quiet, the rooms show me her, younger, before she forgot me. The Muck does that. I'd rather the noise.",
     },
   ],
   // 18. Courier
@@ -644,7 +696,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Bly sends a letter to a sweetheart whose family fled to a stabler settlement when the Muck neared, counting coin against the days a reply might take to cross the failing roads.",
       line: "One letter, handle it gentle — took me all week to find the words. Fastest route you've got, please.",
-      extra: "Her folk left when the Muck got close. Said the Grove's no place for the young now. Maybe they're right.",
+      extra:
+        "Her folk left when the Muck got close. Said the Grove's no place for the young now. Maybe they're right.",
     },
     {
       name: "Clerk Ott Reedle",
@@ -654,7 +707,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Ott ships the refinery's records out of the Grove ahead of an inquiry into the hazardous batches — on orders he was told never to write down, never to read.",
       line: "These records, out of the Grove, tonight. No copy. No log of the sending. Refinery business, that's all.",
-      extra: "I haven't read them. I won't. Whatever the bad batches really are, it's above my pay to know.",
+      extra:
+        "I haven't read them. I won't. Whatever the bad batches really are, it's above my pay to know.",
     },
     {
       name: "Debtor Hul Crannock",
@@ -664,7 +718,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Hul posts coin he can't spare to a Biome-lease holder he can't escape — fall behind on the anchor payments and they cut your home's power, and a powered-down Biome doesn't just go dark.",
       line: "Send this pouch to the lease-holder. All of it. Yes — all of it. Miss a payment and they cut my anchor.",
-      extra: "A Biome with no power doesn't just go dark — it starts to fold. I've seen it. I send the coin. Always.",
+      extra:
+        "A Biome with no power doesn't just go dark — it starts to fold. I've seen it. I send the coin. Always.",
     },
   ],
   // 19. Hospitality / inn / shelter (displaced families after Biome collapse)
@@ -677,7 +732,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Esa shelters her family at the inn after their Biome collapsed overnight; she studies the other guests' faces for the memory-sickness she's learned to spot a town too late.",
       line: "Two rooms and a quiet corner. Our home folded in the night — we got out with the clothes and each other.",
-      extra: "I've seen this dreaming look in two settlements now. Both lost their Biomes after. I pray the Grove's the last.",
+      extra:
+        "I've seen this dreaming look in two settlements now. Both lost their Biomes after. I pray the Grove's the last.",
     },
     {
       name: "Bard Cinta Vey",
@@ -687,7 +743,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "Cinta sings for her supper and finds the Grove a goldmine of grim songs — though she's careful never to sing the one about the scientist who warned the world and was laughed out of it.",
       line: "A room and a corner to play, and I'll fill your common-room. Folk pay well to forget the week they're having.",
-      extra: "Won't sing the Exile's song, though — the scientist who warned us. Room goes silent. Bad for tips. Worse for sleep.",
+      extra:
+        "Won't sing the Exile's song, though — the scientist who warned us. Room goes silent. Bad for tips. Worse for sleep.",
     },
     {
       name: "Quiet Mr. Vahn",
@@ -697,7 +754,8 @@ const HARTHMERE_BUSINESS_CUSTOMER_COPY: Readonly<
       background:
         "A guest who signs a false name and pays in advance — a Harthmere agent watching the Grove's refineries and portals, gathering what the anti-Exotic-Matter kingdom will need when the war for the antimatter finally comes.",
       line: "A room. Paid up front. Back stairs, road side, if you have it. I keep to myself and notice little.",
-      extra: "You've a lot of Exotic Matter moving through this Grove, host. Someone ought to be watching where it goes.",
+      extra:
+        "You've a lot of Exotic Matter moving through this Grove, host. Someone ought to be watching where it goes.",
     },
   ],
 };
@@ -718,14 +776,44 @@ function customerPositionForSite(
 ): Vec3 {
   const cx = (site.footprint.xMin + site.footprint.xMax) / 2;
   const cz = (site.footprint.zMin + site.footprint.zMax) / 2;
-  const halfW = Math.max(1, (site.footprint.xMax - site.footprint.xMin) / 2 - 2);
-  const halfD = Math.max(1, (site.footprint.zMax - site.footprint.zMin) / 2 - 2);
+  const halfW = Math.max(
+    1,
+    (site.footprint.xMax - site.footprint.xMin) / 2 - 2
+  );
+  const halfD = Math.max(
+    1,
+    (site.footprint.zMax - site.footprint.zMin) / 2 - 2
+  );
   const angle = (index / Math.max(1, count)) * Math.PI * 2 + Math.PI / 5;
   return [
     Number((cx + Math.cos(angle) * halfW * 0.7).toFixed(3)),
     site.groundY,
     Number((cz + Math.sin(angle) * halfD * 0.7).toFixed(3)),
   ];
+}
+
+function customerWaypointsForSite(
+  site: {
+    groundY: number;
+    footprint: { xMin: number; xMax: number; zMin: number; zMax: number };
+  },
+  index: number
+): Vec3[] {
+  const inset = 3;
+  const x0 = site.footprint.xMin + inset;
+  const x1 = site.footprint.xMax - inset;
+  const z0 = site.footprint.zMin + inset;
+  const z1 = site.footprint.zMax - inset;
+  const corners: Vec3[] = [
+    [x0, site.groundY, z0],
+    [x1, site.groundY, z0],
+    [x1, site.groundY, z1],
+    [x0, site.groundY, z1],
+  ];
+  return Array.from(
+    { length: corners.length },
+    (_, step) => corners[(index + step) % corners.length]
+  );
 }
 
 function slugify(name: string): string {
@@ -747,7 +835,10 @@ export const HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS: readonly HarthmereBusinessCu
       if (!site || !copies) {
         continue;
       }
-      copies.forEach((copy, index) => {
+      // There are exactly 57 reserved ids and 19 businesses: three persistent
+      // patrons per business. Extra copy authored for procedural/session use is
+      // intentionally not assigned a persistent ECS id here.
+      copies.slice(0, 3).forEach((copy, index) => {
         const idOffset = offset++;
         seeds.push({
           customerNpcId: `customer_${outpost.outpostId}_${slugify(copy.name)}`,
@@ -763,7 +854,8 @@ export const HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS: readonly HarthmereBusinessCu
           extraLines: [copy.extra],
           idOffset,
           entityId: entityIdFromOffset(idOffset),
-          position: customerPositionForSite(site, index, copies.length),
+          position: customerPositionForSite(site, index, 3),
+          waypoints: customerWaypointsForSite(site, index),
           orientation: [0, Number(outpost.position.rot) || 0] as Vec2,
           description: `${copy.name}, ${copy.role} (${copy.faction}). ${copy.look}. ${copy.background}`,
         });
@@ -811,7 +903,11 @@ export function validateHarthmereBusinessCustomerNpcSeeds(): string[] {
       errors.push(`${seed.customerNpcId}:duplicate_customer_id`);
     }
     customerIds.add(seed.customerNpcId);
-    if (!seed.displayName.trim() || !seed.line.trim() || !seed.background.trim()) {
+    if (
+      !seed.displayName.trim() ||
+      !seed.line.trim() ||
+      !seed.background.trim()
+    ) {
       errors.push(`${seed.customerNpcId}:missing_copy`);
     }
     if (!seed.position.every((value) => Number.isFinite(value))) {
@@ -823,8 +919,8 @@ export function validateHarthmereBusinessCustomerNpcSeeds(): string[] {
     perOutpost.set(seed.outpostId, (perOutpost.get(seed.outpostId) ?? 0) + 1);
   }
   for (const [outpostId, count] of perOutpost) {
-    if (count < 2 || count > 5) {
-      errors.push(`${outpostId}:customer_count_out_of_range_${count}`);
+    if (count !== 3) {
+      errors.push(`${outpostId}:customer_count_not_three_${count}`);
     }
   }
   return errors;

@@ -23,7 +23,6 @@ describe("BiomesUIMount world-object interaction surfaces", () => {
       "HarthmereJobsBoardWorldInteraction",
       "HarthmereRequestBoardWorldInteraction",
       "HarthmereWantedBoardWorldInteraction",
-      "HarthmereBusinessWorldInteraction",
       "HarthmerePropertyForSaleWorldInteraction",
       "HarthmereGatheringNodeWorldInteraction",
     ]) {
@@ -33,6 +32,10 @@ describe("BiomesUIMount world-object interaction surfaces", () => {
         `${component} should still be mounted`
       );
     }
+  });
+
+  it("does not mount a duplicate business runtime beside the Unified HUD", () => {
+    assert.doesNotMatch(source, /<HarthmereBusinessWorldInteraction\b/);
   });
 
   it("closes native Recipes before opening a locate-on-map request", () => {

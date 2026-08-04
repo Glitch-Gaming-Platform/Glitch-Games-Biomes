@@ -91,7 +91,7 @@ export function HarthmereJobsBoardPanel({
   const [tab, setTab] = React.useState<TabId>("available");
   const panelRef = React.useRef<HTMLElement | null>(null);
   const tabRefs = React.useRef<Partial<Record<TabId, HTMLButtonElement | null>>>({});
-  const tabs = getHarthmereJobsBoardTabs(snapshot);
+  const tabs = getHarthmereJobsBoardTabs(snapshot, boardId);
   const board = snapshot.boards[boardId];
   const boardDisplayName = displayNameForHarthmereJobsBoard(board);
   const actionSelector = "[data-harthmere-jobs-board-action='true']:not(:disabled)";
@@ -433,8 +433,8 @@ export function HarthmereJobsBoardPanel({
     );
   }
   const available = getHarthmereAvailableJobsPanel(snapshot, boardId);
-  const accepted = getHarthmereMyJobsPanel(snapshot);
-  const posted = getHarthmerePostedJobsPanel(snapshot);
+  const accepted = getHarthmereMyJobsPanel(snapshot, Date.now(), boardId);
+  const posted = getHarthmerePostedJobsPanel(snapshot, boardId);
   const safety = getHarthmereJobsBoardSafetyPanel(snapshot);
 
   return (

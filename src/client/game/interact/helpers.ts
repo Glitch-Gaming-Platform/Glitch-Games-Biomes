@@ -513,6 +513,8 @@ export function resolveAttackInteraction(
     // Cursor attack candidates can briefly contain entities that are not valid
     // damage targets during first-load/name-entry churn. Do not let a stale or
     // non-positional candidate throw during render and freeze the client.
+    // Native NPC health authority requires npc_metadata. Do not publish a hit
+    // for a presentation-only, health-backed object the server cannot resolve.
     if (!entity.position || (!entity.player_status && !entity.npc_metadata)) {
       continue;
     }

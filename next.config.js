@@ -1,6 +1,9 @@
 const nextBuildId = require("next-build-id");
 const fs = require("fs/promises");
 const path = require("path");
+const {
+  shouldCompressHttpResponses,
+} = require("./config/http_compression.cjs");
 
 const withBundleAnalyzer = process.env.ANALYZE
   ? require("@next/bundle-analyzer")({
@@ -39,7 +42,10 @@ module.exports = withBundleAnalyzer(
 
     reactStrictMode: false,
     poweredByHeader: false,
-    compress: !isProd,
+    // HARTHMERE_ASSET_TRANSPORT_COMPRESSION: see config/http_compression.cjs.
+    // Was `!isProd`, which disabled gzip on the one deployment that has no
+    // compressing proxy in front of it.
+    compress: shouldCompressHttpResponses(process.env),
     outputFileTracingRoot: __dirname,
 
     async redirects() {

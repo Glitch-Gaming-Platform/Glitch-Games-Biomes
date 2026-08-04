@@ -65,6 +65,7 @@ import {
   Wearing,
 } from "@/shared/ecs/gen/components";
 import { BikkieIds } from "@/shared/bikkie/ids";
+import { attribs } from "@/shared/bikkie/schema/attributes";
 import { countOf, createBag } from "@/shared/game/items";
 import {
   harthmereNativeQuestId,
@@ -1086,6 +1087,42 @@ describe("live_mode API Redis persistence", () => {
     assert.deepEqual(context.killedEntityAtMs, {
       "8810000000019512": 1_800_000_000_123,
     });
+  });
+
+  it("projects a legacy selected axe into the logging requirement", async () => {
+    const legacyAxeId = 1_534_621_126_189_595 as any;
+    const inventory = Inventory.create({
+      hotbar: [
+        countOf(
+          legacyAxeId,
+          {
+            [attribs.isTool.id]: true,
+            [attribs.isAxe.id]: true,
+          },
+          1n
+        ),
+      ],
+      selected: { kind: "hotbar", idx: 0 },
+    });
+    const context = await readServerActorNativeContextForLiveMode(
+      {
+        get: async () => ({
+          position: () => ({ v: [2068, 53, -118] }),
+          inventory: () => inventory,
+        }),
+      } as any,
+      1 as any,
+      true
+    );
+
+    assert.deepEqual(context.itemIds, [legacyAxeId]);
+    assert.deepEqual(context.equipment, {
+      main_hand: `b:${legacyAxeId}`,
+    });
+    assert.deepEqual(
+      new Set(context.equippedItemKeys),
+      new Set([`b:${legacyAxeId}`, "woodcutters_axe"])
+    );
   });
 
   it("keeps jobs-board mutation snapshots slim without cutting building snapshots from building actions", () => {

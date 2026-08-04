@@ -1,5 +1,7 @@
 import type { ClientContext } from "@/client/game/context";
 
+import type { MobileGraphicsClamps } from "@/client/game/util/mobile_device_profile";
+import { clampToRange } from "@/client/game/util/mobile_device_profile";
 import type {
   ClientResourceDeps,
   ClientResources,
@@ -150,21 +152,30 @@ function genGraphicsSettingsResolved(
     forcedQuality: context.clientConfig.forceGraphicsQuality,
     storedQuality: literal.quality,
   });
-  const hasDynamicRenderScale =
-    context.rendererController.profiler()?.supportsGpuTime() ?? false;
+  // Dynamic render scale no longer requires a GPU timer -- see
+  // HARTHMERE_DYNAMIC_RENDER_SCALE_WITHOUT_GPU_TIMER in computeRenderScale. The
+  // old `{ kind: "resolution", res: [3840, 2160] }` fallback on `high` was
+  // especially damaging: a client with no timer extension rendered at a fixed 4K
+  // internal resolution for the entire session with no way to back off.
   const gpuTier = context.clientConfig.gpuTier;
 
   // Easy presets
   if (quality === "low") {
     return {
       quality: "low",
-      renderScale: hasDynamicRenderScale
-        ? { kind: "dynamic" }
-        : { kind: "resolution", res: [1280, 720] },
+      renderScale: { kind: "dynamic" },
       entityDrawLimit: "low",
-      drawDistance: lowQualityDrawDistanceForDevice(
-        context.clientConfig.mobileDevice
-      ),
+      // HARTHMERE_MOBILE_DYNAMIC_LADDER (2026-08-04 mobile audit, item 3).
+      //
+      // Desktop `low` keeps its fixed 96m: it is an explicit user choice and
+      // must stay predictable. Phones instead go `dynamic` so the adaptive
+      // ladder can move draw distance between the clamps in
+      // `mobileGraphicsClamps`. The starting value is still 64m (see
+      // `defaultDynamicDrawDistance` / `startDrawDistance`), so a phone begins
+      // exactly where the old fixed `veryLow` tier put it.
+      drawDistance: mobileDynamicDrawDistanceEnabled(context)
+        ? "dynamic"
+        : lowQualityDrawDistanceForDevice(context.clientConfig.mobileDevice),
       floraQuality: "low",
       postprocesses: {
         bloom: false,
@@ -179,9 +190,7 @@ function genGraphicsSettingsResolved(
   if (quality === "high") {
     return {
       quality: "high",
-      renderScale: hasDynamicRenderScale
-        ? { kind: "dynamic" }
-        : { kind: "resolution", res: [3840, 2160] },
+      renderScale: { kind: "dynamic" },
       entityDrawLimit: "high",
       drawDistance: "high",
       floraQuality: "high",
@@ -245,6 +254,22 @@ function genGraphicsSettingsResolved(
   return customQuality;
 }
 
+/**
+ * HARTHMERE_MOBILE_DYNAMIC_LADDER (2026-08-04 mobile audit, item 3).
+ *
+ * True only for a phone that carries a device profile. Kept as one predicate
+ * so every site that has to distinguish "phone with clamps" from "desktop"
+ * cannot drift apart. `safeMode` deliberately does not qualify: it is the
+ * explicit escape hatch and must stay fixed and cheap.
+ */
+function mobileDynamicDrawDistanceEnabled(context: ClientContext) {
+  return (
+    context.clientConfig.mobileDevice &&
+    context.clientConfig.mobileGraphicsClamps !== undefined &&
+    context.clientConfig.forceDrawDistance === undefined
+  );
+}
+
 export function lowQualityDrawDistanceForDevice(
   mobileDevice: boolean
 ): DrawDistance {
@@ -302,14 +327,22 @@ function computeRenderScale(
   }
 
   if (resolved.renderScale.kind === "dynamic") {
-    if (rendererController.profiler()?.supportsGpuTime() ?? false) {
-      return { kind: "dynamic" };
-    } else {
-      return {
-        kind: "scale",
-        scale: initialDynamicRenderScaleForGpuTier(clientConfig.gpuTier),
-      };
-    }
+    // HARTHMERE_DYNAMIC_RENDER_SCALE_WITHOUT_GPU_TIMER (2026-08-03 render perf
+    // audit, finding 13).
+    //
+    // This used to require EXT_disjoint_timer_query_webgl2 and otherwise pin a
+    // FIXED render scale for the whole session. That extension is routinely
+    // unavailable in exactly the environments this game ships into -- embedded
+    // iframes, hardened Chrome policies, VMs, many Linux/ANGLE configs -- so the
+    // adaptive ladder never engaged for those players and a struggling client
+    // stayed struggling for the entire session.
+    //
+    // `DynamicSettingsUpdater` already tolerates `gpuTimeMs === undefined`, and
+    // `bottleneck()` now infers GPU pressure from render interval vs CPU time
+    // when the timer is missing. So dynamic is always safe to select; it simply
+    // adapts on a coarser signal. The tier-derived value below is still used as
+    // the STARTING point via `genGraphicsSettingsDynamic`.
+    return { kind: "dynamic" };
   } else if (resolved.renderScale.kind === "retina") {
     return { kind: "scale", scale: window.devicePixelRatio };
   } else if (resolved.renderScale.kind === "native") {
@@ -418,12 +451,27 @@ function genGraphicsSettingsDynamic(
 ): DynamicGraphicsSettings {
   const computedSettings = deps.get("/settings/graphics/computed");
   const gpuTier = context.clientConfig.gpuTier;
+  // HARTHMERE_MOBILE_DYNAMIC_LADDER: undefined on desktop, so every clamp
+  // below is a no-op there.
+  const mobileClamps = context.clientConfig.mobileGraphicsClamps;
 
-  const renderScale =
+  const rawRenderScale =
     computedSettings.renderScale.kind === "scale"
       ? computedSettings.renderScale.scale
       : (deps.get("/settings/graphics/dynamic_render_scale").value ??
+        // On a phone the starting point comes from the device profile rather
+        // than the desktop GPU-tier table, because the phone constraint is
+        // process memory as much as GPU throughput.
+        mobileClamps?.startRenderScale ??
         initialDynamicRenderScaleForGpuTier(gpuTier));
+  const renderScale = applyMobileRenderScaleClamps(
+    rawRenderScale,
+    // An explicit diagnostic override must be honoured verbatim, including
+    // values outside the profile range.
+    context.clientConfig.forceRenderScale !== undefined
+      ? undefined
+      : mobileClamps
+  );
 
   const isDynamicDrawDistance = computedSettings.drawDistance === "dynamic";
   const dynamicDrawDistance = isDynamicDrawDistance
@@ -433,22 +481,70 @@ function genGraphicsSettingsDynamic(
         ).value;
         return typeof value === "number"
           ? value
-          : defaultDynamicDrawDistance(context.clientConfig.lowMemory);
+          : (mobileClamps?.startDrawDistance ??
+              defaultDynamicDrawDistance(context.clientConfig.lowMemory));
       })()
     : typeof computedSettings.drawDistance === "number"
       ? computedSettings.drawDistance
       : DRAW_DISTANCES.low;
-  const drawDistance = applyDrawDistanceFloors(dynamicDrawDistance, {
+  const flooredDrawDistance = applyDrawDistanceFloors(dynamicDrawDistance, {
     hardMinDrawDistance: context.clientConfig.minDrawDistance,
     dynamicMinDrawDistance: context.clientConfig.dynamicMinDrawDistance,
     isDynamicDrawDistance,
   });
+  // The mobile ceiling is applied last and deliberately wins over the
+  // `dynamicMinDrawDistance` floor: draw distance drives retained terrain
+  // meshes, and the physical-iPhone jetsam sessions were all running the
+  // longer radius. `forceDrawDistance`/`minDrawDistance` remain the explicit
+  // escape hatches and are checked before the clamps are ever populated.
+  const drawDistance = applyMobileDrawDistanceClamps(
+    flooredDrawDistance,
+    context.clientConfig.forceDrawDistance !== undefined
+      ? undefined
+      : mobileClamps
+  );
 
   return {
     ...computedSettings,
     renderScale,
     drawDistance,
   };
+}
+
+/**
+ * Clamp render scale into the phone's profile range. A `undefined` clamp set
+ * (desktop, or an explicit URL override) returns the value untouched.
+ */
+export function applyMobileRenderScaleClamps(
+  renderScale: number,
+  clamps: MobileGraphicsClamps | undefined
+) {
+  if (!clamps) {
+    return renderScale;
+  }
+  return clampToRange(
+    renderScale,
+    clamps.minRenderScale,
+    clamps.maxRenderScale
+  );
+}
+
+/**
+ * Clamp draw distance into the phone's profile range. A `undefined` clamp set
+ * (desktop, or an explicit URL override) returns the value untouched.
+ */
+export function applyMobileDrawDistanceClamps(
+  drawDistance: number,
+  clamps: MobileGraphicsClamps | undefined
+) {
+  if (!clamps) {
+    return drawDistance;
+  }
+  return clampToRange(
+    drawDistance,
+    clamps.minDrawDistance,
+    clamps.maxDrawDistance
+  );
 }
 
 export function addGraphicsSettingsResources(

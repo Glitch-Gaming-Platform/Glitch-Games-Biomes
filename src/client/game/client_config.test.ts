@@ -6,6 +6,7 @@ import {
   isMobileDeviceDescription,
   lowMemoryScaleForDevice,
   resolveGlitchLocalSyncBaseUrl,
+  shouldResolveGlitchLocalSyncBaseUrl,
   shouldShowVirtualJoystick,
 } from "@/client/game/client_config";
 import assert from "assert";
@@ -69,6 +70,23 @@ describe("GPU tier detection", () => {
 });
 
 describe("Glitch runtime sync URL resolution", () => {
+  it("enables resolution for focused native-ECS tests in a production bundle", () => {
+    assert.equal(
+      shouldResolveGlitchLocalSyncBaseUrl({
+        isGlitchLocalRuntime: false,
+        nativeEcsE2E: true,
+      }),
+      true
+    );
+    assert.equal(
+      shouldResolveGlitchLocalSyncBaseUrl({
+        isGlitchLocalRuntime: false,
+        nativeEcsE2E: false,
+      }),
+      false
+    );
+  });
+
   it("lets a trusted focused-E2E query override a stale production build URL", () => {
     assert.deepEqual(
       resolveGlitchLocalSyncBaseUrl({

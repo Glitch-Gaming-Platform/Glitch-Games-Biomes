@@ -17,6 +17,9 @@ export const HARTHMERE_ADDITIVE_TOWN_INTERIOR_RENDER_VERSION =
   "harthmere-additive-town-interiors-instanced-lod-v1" as const;
 export const HARTHMERE_ADDITIVE_TOWN_INTERIOR_LOD0_METERS = 16;
 export const HARTHMERE_ADDITIVE_TOWN_INTERIOR_LOD1_METERS = 28;
+export const HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_PREFETCH_METERS = 12;
+export const HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_MAX_LOADED_ASSETS = 8;
+export const HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_MAX_CONCURRENT_LOADS = 2;
 
 type VisualFixture = HarthmereTownInteriorFixture & {
   visualAsset: string;
@@ -35,6 +38,11 @@ interface InstancedAssetBatch {
   readonly fixtures: readonly VisualFixture[];
   readonly worldMatrices: readonly THREE.Matrix4[];
   readonly primitives: readonly InstancedPrimitive[];
+}
+
+interface LoadedInteriorAsset {
+  readonly batches: readonly InstancedAssetBatch[];
+  readonly sourceRoots: readonly THREE.Object3D[];
 }
 
 function visualAssetForFixture(
@@ -78,6 +86,55 @@ function fixturesByAsset() {
     grouped.set(fixture.visualAsset, list);
   }
   return grouped;
+}
+
+export function harthmereMobileAdditiveTownInteriorAssets(
+  position: THREE.Vector3
+): readonly string[] {
+  const maxDistance =
+    HARTHMERE_ADDITIVE_TOWN_INTERIOR_LOD1_METERS +
+    HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_PREFETCH_METERS;
+  const maxDistanceSq = maxDistance * maxDistance;
+  const nearestDistanceSqByAsset = new Map<string, number>();
+  for (const fixture of HARTHMERE_ADDITIVE_TOWN_INTERIOR_VISUAL_FIXTURES) {
+    const dx = position.x - fixture.worldPosition[0];
+    const dz = position.z - fixture.worldPosition[2];
+    const distanceSq = dx * dx + dz * dz;
+    if (distanceSq > maxDistanceSq) continue;
+    nearestDistanceSqByAsset.set(
+      fixture.visualAsset,
+      Math.min(
+        nearestDistanceSqByAsset.get(fixture.visualAsset) ?? Infinity,
+        distanceSq
+      )
+    );
+  }
+  return [...nearestDistanceSqByAsset]
+    .sort((left, right) => left[1] - right[1])
+    .slice(0, HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_MAX_LOADED_ASSETS)
+    .map(([asset]) => asset);
+}
+
+function disposeInteriorAssetRoot(root: THREE.Object3D) {
+  const geometries = new Set<THREE.BufferGeometry>();
+  const materials = new Set<THREE.Material>();
+  const textures = new Set<THREE.Texture>();
+  root.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return;
+    geometries.add(child.geometry);
+    const childMaterials = Array.isArray(child.material)
+      ? child.material
+      : [child.material];
+    for (const material of childMaterials) {
+      materials.add(material);
+      for (const value of Object.values(material)) {
+        if (value instanceof THREE.Texture) textures.add(value);
+      }
+    }
+  });
+  for (const texture of textures) texture.dispose();
+  for (const material of materials) material.dispose();
+  for (const geometry of geometries) geometry.dispose();
 }
 
 export function validateHarthmereAdditiveTownInteriorVisualAssets() {
@@ -139,63 +196,127 @@ export class HarthmereAdditiveTownInteriorsRenderer implements Renderer {
   private readonly root = new THREE.Group();
   private readonly batches: InstancedAssetBatch[] = [];
   private readonly sourceRoots: THREE.Object3D[] = [];
+  private readonly groupedFixtures = fixturesByAsset();
+  private readonly loadedAssets = new Map<string, LoadedInteriorAsset>();
+  private readonly loadingAssets = new Map<string, Promise<void>>();
+  private desiredMobileAssets = new Set<string>();
+  private mobileRefreshSeconds = 0;
   private refreshSeconds = 0;
   private readyPromise: Promise<void>;
 
   constructor(
     private readonly resources: ClientResources,
-    private readonly load: (url: string) => Promise<GLTF> = loadGltf
+    private readonly load: (url: string) => Promise<GLTF> = loadGltf,
+    private readonly mobileDevice = false
   ) {
     this.root.name = `Harthmere additive town interiors ${HARTHMERE_ADDITIVE_TOWN_INTERIOR_RENDER_VERSION}`;
-    this.readyPromise = this.loadAll();
+    // The catalogue is 31 assets x two LODs. Loading all 62 GLBs at phone boot
+    // pinned Mobile Safari's main thread before its first frame even when the
+    // nearest additive-town fixture was over a kilometre away. Desktop keeps
+    // the existing eager path; mobile streams only nearby asset families.
+    this.readyPromise = mobileDevice ? Promise.resolve() : this.loadAll();
     this.publishDebugBridge();
   }
 
   private async loadAll() {
-    const grouped = fixturesByAsset();
     await Promise.all(
-      [...grouped.entries()].map(async ([asset, fixtures]) => {
-        const record =
-          HARTHMERE_BUSINESS_FURNITURE_ASSETS[
-            asset as keyof typeof HARTHMERE_BUSINESS_FURNITURE_ASSETS
-          ];
-        if (!record) {
-          log.error("Missing Harthmere additive-town interior asset", {
-            asset,
-          });
-          return;
-        }
-        try {
-          const [lod0, lod1] = await Promise.all([
-            this.load(record.lod0Url),
-            this.load(record.lod1Url),
-          ]);
-          this.sourceRoots.push(lod0.scene, lod1.scene);
-          this.batches.push(
-            prepareInstancedBatch({
-              asset,
-              lod: "lod0",
-              fixtures,
-              root: lod0.scene,
-              destination: this.root,
-            }),
-            prepareInstancedBatch({
-              asset,
-              lod: "lod1",
-              fixtures,
-              root: lod1.scene,
-              destination: this.root,
-            })
-          );
-        } catch (error) {
-          log.error("Failed to load Harthmere additive-town interior asset", {
-            asset,
-            error,
-          });
-        }
-      })
+      [...this.groupedFixtures.entries()].map(([asset, fixtures]) =>
+        this.loadAsset(asset, fixtures)
+      )
     );
     this.refreshSeconds = 0;
+  }
+
+  private async loadAsset(asset: string, fixtures: readonly VisualFixture[]) {
+    const record =
+      HARTHMERE_BUSINESS_FURNITURE_ASSETS[
+        asset as keyof typeof HARTHMERE_BUSINESS_FURNITURE_ASSETS
+      ];
+    if (!record) {
+      log.error("Missing Harthmere additive-town interior asset", { asset });
+      return;
+    }
+    try {
+      const [lod0, lod1] = await Promise.all([
+        this.load(record.lod0Url),
+        this.load(record.lod1Url),
+      ]);
+      if (this.mobileDevice && !this.desiredMobileAssets.has(asset)) {
+        disposeInteriorAssetRoot(lod0.scene);
+        disposeInteriorAssetRoot(lod1.scene);
+        return;
+      }
+      const batches = [
+        prepareInstancedBatch({
+          asset,
+          lod: "lod0",
+          fixtures,
+          root: lod0.scene,
+          destination: this.root,
+        }),
+        prepareInstancedBatch({
+          asset,
+          lod: "lod1",
+          fixtures,
+          root: lod1.scene,
+          destination: this.root,
+        }),
+      ];
+      const sourceRoots = [lod0.scene, lod1.scene];
+      this.sourceRoots.push(...sourceRoots);
+      this.batches.push(...batches);
+      this.loadedAssets.set(asset, { batches, sourceRoots });
+    } catch (error) {
+      log.error("Failed to load Harthmere additive-town interior asset", {
+        asset,
+        error,
+      });
+    }
+  }
+
+  private unloadAsset(asset: string) {
+    const loaded = this.loadedAssets.get(asset);
+    if (!loaded) return;
+    for (const batch of loaded.batches) {
+      for (const primitive of batch.primitives) {
+        primitive.mesh.removeFromParent();
+      }
+      const batchIndex = this.batches.indexOf(batch);
+      if (batchIndex >= 0) this.batches.splice(batchIndex, 1);
+    }
+    for (const sourceRoot of loaded.sourceRoots) {
+      const sourceIndex = this.sourceRoots.indexOf(sourceRoot);
+      if (sourceIndex >= 0) this.sourceRoots.splice(sourceIndex, 1);
+      disposeInteriorAssetRoot(sourceRoot);
+    }
+    this.loadedAssets.delete(asset);
+  }
+
+  private syncMobileAssets(position: THREE.Vector3) {
+    this.desiredMobileAssets = new Set(
+      harthmereMobileAdditiveTownInteriorAssets(position)
+    );
+    for (const asset of this.loadedAssets.keys()) {
+      if (!this.desiredMobileAssets.has(asset)) this.unloadAsset(asset);
+    }
+    let availableLoads = Math.max(
+      0,
+      HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_MAX_CONCURRENT_LOADS -
+        this.loadingAssets.size
+    );
+    for (const asset of this.desiredMobileAssets) {
+      if (availableLoads <= 0) break;
+      if (this.loadedAssets.has(asset) || this.loadingAssets.has(asset)) {
+        continue;
+      }
+      const fixtures = this.groupedFixtures.get(asset);
+      if (!fixtures) continue;
+      availableLoads -= 1;
+      const pending = this.loadAsset(asset, fixtures).finally(() => {
+        this.loadingAssets.delete(asset);
+      });
+      this.loadingAssets.set(asset, pending);
+    }
   }
 
   private refreshVisibleInstances(camera: THREE.Camera) {
@@ -231,10 +352,18 @@ export class HarthmereAdditiveTownInteriorsRenderer implements Renderer {
   }
 
   draw(scenes: Scenes, dt: number) {
+    const camera = this.resources.get("/scene/camera").three;
+    if (this.mobileDevice) {
+      this.mobileRefreshSeconds -= Math.min(dt, 0.5);
+      if (this.mobileRefreshSeconds <= 0) {
+        this.mobileRefreshSeconds = 0.25;
+        this.syncMobileAssets(camera.position);
+      }
+    }
     this.refreshSeconds -= Math.min(dt, 0.5);
     if (this.refreshSeconds <= 0) {
       this.refreshSeconds = 0.2;
-      this.refreshVisibleInstances(this.resources.get("/scene/camera").three);
+      this.refreshVisibleInstances(camera);
     }
     scenes.three.add(this.root);
   }
@@ -244,10 +373,16 @@ export class HarthmereAdditiveTownInteriorsRenderer implements Renderer {
     (window as any).__harthmereAdditiveTownInteriors = {
       version: HARTHMERE_ADDITIVE_TOWN_INTERIOR_RENDER_VERSION,
       layoutVersion: HARTHMERE_ADDITIVE_TOWN_INTERIORS_VERSION,
+      mobileDevice: this.mobileDevice,
       fixtureCount: HARTHMERE_ADDITIVE_TOWN_INTERIOR_FIXTURES.length,
       visualFixtureCount:
         HARTHMERE_ADDITIVE_TOWN_INTERIOR_VISUAL_FIXTURES.length,
-      ready: () => this.readyPromise,
+      ready: () =>
+        Promise.all([this.readyPromise, ...this.loadingAssets.values()]).then(
+          () => undefined
+        ),
+      loadedAssetCount: () => this.loadedAssets.size,
+      loadingAssetCount: () => this.loadingAssets.size,
       batchCount: () => this.batches.length,
       drawPrimitiveCount: () =>
         this.batches.reduce((sum, batch) => sum + batch.primitives.length, 0),
@@ -266,7 +401,12 @@ export class HarthmereAdditiveTownInteriorsRenderer implements Renderer {
 }
 
 export function makeHarthmereAdditiveTownInteriorsRenderer(
-  resources: ClientResources
+  resources: ClientResources,
+  mobileDevice = false
 ) {
-  return new HarthmereAdditiveTownInteriorsRenderer(resources);
+  return new HarthmereAdditiveTownInteriorsRenderer(
+    resources,
+    loadGltf,
+    mobileDevice
+  );
 }

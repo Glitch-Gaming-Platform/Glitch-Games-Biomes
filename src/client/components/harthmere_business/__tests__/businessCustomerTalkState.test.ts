@@ -11,6 +11,7 @@ import { readFileSync } from "fs";
 import path from "path";
 
 describe("business customer talk routing", () => {
+  const owner = "routing-test";
   afterEach(() => resetHarthmereBusinessCustomerTalkStateForTest());
 
   it("exposes only the active session customer by exact native entity id", () => {
@@ -29,15 +30,21 @@ describe("business customer talk routing", () => {
       ready: true,
       offers: [],
     };
-    publishHarthmereBusinessCustomerTalkTarget(target);
-    assert.equal(harthmereBusinessCustomerTalkTargetForEntity(123 as any), target);
+    publishHarthmereBusinessCustomerTalkTarget(owner, target);
+    assert.equal(
+      harthmereBusinessCustomerTalkTargetForEntity(123 as any),
+      target
+    );
     assert.equal(
       harthmereBusinessCustomerTalkTargetForEntity(124 as any),
       undefined
     );
-    clearHarthmereBusinessCustomerTalkTarget(124 as any);
-    assert.equal(harthmereBusinessCustomerTalkTargetForEntity(123 as any), target);
-    clearHarthmereBusinessCustomerTalkTarget(123 as any);
+    clearHarthmereBusinessCustomerTalkTarget(owner, 124 as any);
+    assert.equal(
+      harthmereBusinessCustomerTalkTargetForEntity(123 as any),
+      target
+    );
+    clearHarthmereBusinessCustomerTalkTarget(owner, 123 as any);
     assert.equal(
       harthmereBusinessCustomerTalkTargetForEntity(123 as any),
       undefined
@@ -62,6 +69,15 @@ describe("business customer talk routing", () => {
       screen.includes("<HarthmereBusinessCustomerTalkDialog"),
       "active customer must render the service-choice dialog"
     );
+    assert.ok(
+      screen.includes('nativeBusinessCustomer.phase !== "patron_wandering"'),
+      "a foreign session customer must not fall through to ordinary NPC dialogue"
+    );
+    assert.ok(
+      screen.includes(
+        "This customer is already part of an active business shift"
+      )
+    );
   });
 
   it("keeps service choices out of the always-visible spatial status card", () => {
@@ -84,10 +100,82 @@ describe("business customer talk routing", () => {
     assert.ok(dialog.includes("additionalActions={serviceActions}"));
     assert.equal(dialog.includes('name: "Chit Chat"'), false);
     assert.equal(dialog.includes('name: "Ask about this place"'), false);
+    assert.ok(
+      dialog.includes("`${target.askLine}{break}${status}{break}Stay behind"),
+      "the customer request must remain visible while they approach the counter"
+    );
+  });
+
+  it("formats backend codes before any business error reaches player UI", () => {
+    for (const file of [
+      "HarthmereBusinessCustomerTalkDialog.tsx",
+      "HarthmereBusinessShiftControlPane.tsx",
+      "HarthmereBusinessShiftHUD.tsx",
+      "HarthmereBusinessLiveContainer.tsx",
+      "HarthmereBusinessInterfacePanel.tsx",
+    ]) {
+      const source = readFileSync(
+        path.join(
+          process.cwd(),
+          "src/client/components/harthmere_business",
+          file
+        ),
+        "utf8"
+      );
+      assert.ok(
+        source.includes("formatHarthmereBusinessPlayerWarning"),
+        `${file} can display an unformatted backend code`
+      );
+      assert.equal(
+        source.includes(
+          "setError(cause instanceof Error ? cause.message : String(cause))"
+        ),
+        false,
+        `${file} still displays Error.message verbatim`
+      );
+    }
+    const panel = readFileSync(
+      path.join(
+        process.cwd(),
+        "src/client/components/harthmere_business/HarthmereBusinessInterfacePanel.tsx"
+      ),
+      "utf8"
+    );
+    assert.ok(panel.includes('data-business-backend-error="true"'));
+    assert.ok(panel.includes("void request.catch(() => undefined)"));
+    const liveContainer = readFileSync(
+      path.join(
+        process.cwd(),
+        "src/client/components/harthmere_business/HarthmereBusinessLiveContainer.tsx"
+      ),
+      "utf8"
+    );
+    assert.ok(
+      liveContainer.includes('data-harthmere-business-load-error="true"')
+    );
+
+    const rootBoundary = readFileSync(
+      path.join(process.cwd(), "src/client/components/RootErrorBoundary.tsx"),
+      "utf8"
+    );
+    assert.ok(rootBoundary.includes("paused to protect your session"));
+    assert.equal(rootBoundary.includes("messageFromError"), false);
+    assert.equal(rootBoundary.includes("<MaybeError"), false);
+
+    const modalController = readFileSync(
+      path.join(process.cwd(), "src/client/components/GameModalController.tsx"),
+      "utf8"
+    );
+    assert.ok(
+      modalController.includes(
+        "`death:${gameModalVersion}:${playerHealth?.lastDamageTime ?? 0}`"
+      )
+    );
   });
 });
 
 describe("business customer talk registry covers the whole queue", () => {
+  const owner = "queue-test";
   afterEach(() => resetHarthmereBusinessCustomerTalkStateForTest());
 
   const target = (entityId: number, ticketId: string, ready: boolean) => ({
@@ -111,7 +199,7 @@ describe("business customer talk registry covers the whole queue", () => {
     // attached, so talking to anyone else in the queue fell through to the
     // ordinary "Chit Chat / Ask about this place" NPC dialogue from a person
     // standing in a shop queue holding a service request.
-    publishHarthmereBusinessCustomerTalkTargets([
+    publishHarthmereBusinessCustomerTalkTargets(owner, [
       target(101, "ticket-1", true),
       target(102, "ticket-2", false),
       target(103, "ticket-3", false),
@@ -128,7 +216,7 @@ describe("business customer talk registry covers the whole queue", () => {
   it("offers service only for the customer at the counter", () => {
     // A queued customer is real and talkable, but presenting offers for them
     // would let the player serve out of order and break the spatial queue.
-    publishHarthmereBusinessCustomerTalkTargets([
+    publishHarthmereBusinessCustomerTalkTargets(owner, [
       target(201, "ticket-1", true),
       target(202, "ticket-2", false),
     ]);
@@ -142,14 +230,34 @@ describe("business customer talk registry covers the whole queue", () => {
     );
   });
 
+  it("does not downgrade native serving readiness during an economy refresh", () => {
+    publishHarthmereBusinessCustomerTalkTarget(
+      owner,
+      target(251, "ticket-1", true)
+    );
+    publishHarthmereBusinessCustomerTalkTargets(owner, [
+      target(251, "ticket-1", false),
+    ]);
+    assert.equal(
+      harthmereBusinessCustomerTalkTargetForEntity(251 as any)?.ready,
+      true
+    );
+    assert.equal(
+      harthmereBusinessCustomerTalkTargetForEntity(251 as any)?.phase,
+      "serving"
+    );
+  });
+
   it("drops served and departed customers on the next publish", () => {
     // A stale entry is worse than none: it would offer service to a customer
     // who has already walked out of the shop.
-    publishHarthmereBusinessCustomerTalkTargets([
+    publishHarthmereBusinessCustomerTalkTargets(owner, [
       target(301, "ticket-1", true),
       target(302, "ticket-2", false),
     ]);
-    publishHarthmereBusinessCustomerTalkTargets([target(302, "ticket-2", true)]);
+    publishHarthmereBusinessCustomerTalkTargets(owner, [
+      target(302, "ticket-2", true),
+    ]);
     assert.equal(
       harthmereBusinessCustomerTalkTargetForEntity(301 as any),
       undefined
@@ -162,12 +270,27 @@ describe("business customer talk registry covers the whole queue", () => {
   });
 
   it("clears the whole registry when the shift ends", () => {
-    publishHarthmereBusinessCustomerTalkTargets([
+    publishHarthmereBusinessCustomerTalkTargets(owner, [
       target(401, "ticket-1", true),
       target(402, "ticket-2", false),
     ]);
-    clearHarthmereBusinessCustomerTalkTarget();
+    clearHarthmereBusinessCustomerTalkTarget(owner);
     assert.equal(harthmereBusinessCustomerTalkTargetCount(), 0);
+  });
+
+  it("does not let an inactive duplicate surface clear the active shift", () => {
+    publishHarthmereBusinessCustomerTalkTargets("active-surface", [
+      target(501, "ticket-1", true),
+    ]);
+    publishHarthmereBusinessCustomerTalkTargets("inactive-surface", [
+      target(502, "ticket-2", false),
+    ]);
+    clearHarthmereBusinessCustomerTalkTarget("inactive-surface");
+    assert.equal(
+      harthmereBusinessCustomerTalkTargetForEntity(501 as any)?.ticketId,
+      "ticket-1"
+    );
+    assert.equal(harthmereBusinessCustomerTalkTargetCount(), 1);
   });
 
   it("keeps the shift HUD publishing the queue, not a single target", () => {
@@ -190,6 +313,75 @@ describe("business customer talk registry covers the whole queue", () => {
         source
       ),
       "the per-card effect must not deregister the current customer"
+    );
+  });
+
+  it("hides the spatial card when the native customer is missing or off-screen", () => {
+    const source = readFileSync(
+      path.join(
+        process.cwd(),
+        "src/client/components/harthmere_business/HarthmereBusinessShiftHUD.tsx"
+      ),
+      "utf8"
+    );
+    assert.match(source, /if \(!entity \|\| !screen\.visible\) return null/);
+    assert.equal(source.includes('{ left: "50%", top: 150 }'), false);
+  });
+
+  it("ends the actor-owned shift after the player remains outside the business", () => {
+    const source = readFileSync(
+      path.join(
+        process.cwd(),
+        "src/client/components/harthmere_business/HarthmereBusinessShiftHUD.tsx"
+      ),
+      "utf8"
+    );
+    assert.ok(source.includes("previousInsideBusiness"));
+    assert.ok(
+      source.includes("endCustomerSession(businessId, session.sessionId)")
+    );
+    assert.ok(source.includes("}, 1000)"));
+  });
+
+  it("keeps one authoritative business runtime selected after the board closes", () => {
+    const unified = readFileSync(
+      path.join(
+        process.cwd(),
+        "src/client/components/challenges/HarthmereUnifiedHUD.tsx"
+      ),
+      "utf8"
+    );
+    const biomesMount = readFileSync(
+      path.join(
+        process.cwd(),
+        "src/client/components/biomes_ui/BiomesUIMount.tsx"
+      ),
+      "utf8"
+    );
+    assert.ok(unified.includes("selectedBusinessId ?? containingBusinessId"));
+    assert.ok(unified.includes("setSelectedBusinessId(containingBusinessId)"));
+    assert.ok(unified.includes("closeAndKeepSelection"));
+    assert.ok(
+      unified.includes(
+        'data-harthmere-business-board-world-prompt={\n        projectedPrompt ? "projected" : "bottom"'
+      )
+    );
+    assert.ok(
+      unified.includes(
+        "priority: WORLD_INTERACTION_PRIORITY.jobsBoard - prompt.distance"
+      )
+    );
+    const businessPromptSource = unified.slice(
+      unified.indexOf("function HarthmereBusinessBoardWorldPrompt"),
+      unified.indexOf("function HarthmereJobsBoardWorldPrompt")
+    );
+    assert.equal(
+      businessPromptSource.includes("prompt && projectedPrompt\n        ? {"),
+      false
+    );
+    assert.equal(
+      biomesMount.includes("<HarthmereBusinessWorldInteraction"),
+      false
     );
   });
 });

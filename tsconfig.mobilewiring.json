@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "incremental": true, "tsBuildInfoFile": "tmp/mobilewiring.tsbuildinfo" },
+  "include": [
+    "src/client/game/resources/graphics_settings.ts",
+    "src/client/game/resources/graphics_settings.test.ts",
+    "src/client/game/resources/dynamic_settings_updater.ts",
+    "src/client/game/resources/dynamic_settings_updater.test.ts",
+    "src/client/game/client_config.ts",
+    "src/client/game/client_config.test.ts",
+    "modules.d.ts"
+  ]
+}

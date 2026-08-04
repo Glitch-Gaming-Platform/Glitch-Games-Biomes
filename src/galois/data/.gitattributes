@@ -3,6 +3,7 @@
 # Keep the Chapter 1 animation and generated combat source assets out of LFS
 # while the repository's LFS budget is exhausted.
 animations/character-animations.blend -text -filter -merge -diff
+animations/character-animations_expressions.blend -text -filter -merge -diff
 npcs/indisworm.blend -text -filter -merge -diff
 npcs/indisworm_palette.blend -text -filter -merge -diff
 npcs/*_animations.blend -text -filter -merge -diff

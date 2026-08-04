@@ -25,9 +25,6 @@ const {
   HARTHMERE_RETIRED_GENERIC_TOWNSPERSON_IDS,
 } = require("../../src/shared/harthmere/harthmere_npc_population_policy");
 const {
-  HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS,
-} = require("../../src/shared/harthmere/business_customer_npc_seed");
-const {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
   HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
   HARTHMERE_EXTENSION_GROUND_Y,
@@ -261,18 +258,9 @@ async function auditNpcRetirements(redis) {
   const genericKeys = HARTHMERE_RETIRED_GENERIC_TOWNSPERSON_IDS.map(
     (id) => `b:${Number(id)}`
   );
-  const customerKeys = HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS.map(
-    (seed) => `b:${Number(seed.entityId)}`
-  );
-  const [genericValues, customerValues] = await Promise.all([
-    redis.mgetBuffer(genericKeys),
-    redis.mgetBuffer(customerKeys),
-  ]);
+  const genericValues = await redis.mgetBuffer(genericKeys);
   const remainingGenericIds = genericValues
     .map((value, index) => (value ? genericKeys[index].slice(2) : undefined))
-    .filter(Boolean);
-  const remainingCustomerIds = customerValues
-    .map((value, index) => (value ? customerKeys[index].slice(2) : undefined))
     .filter(Boolean);
 
   const genericLabelKeys = [];
@@ -308,11 +296,6 @@ async function auditNpcRetirements(redis) {
     `Audited generic townspeople remain: ${remainingGenericIds.join(",")}`
   );
   assert.deepStrictEqual(
-    remainingCustomerIds,
-    [],
-    `Session-only business customers remain persisted: ${remainingCustomerIds.join(",")}`
-  );
-  assert.deepStrictEqual(
     genericLabelKeys,
     [],
     `Generic local-dev townsperson labels remain in Redis: ${genericLabelKeys.join(",")}`
@@ -320,7 +303,7 @@ async function auditNpcRetirements(redis) {
   return {
     scanned,
     auditedGenericIds: genericKeys.length,
-    retiredCustomerIds: customerKeys.length,
+    persistentBusinessCustomersAreAllowed: true,
   };
 }
 

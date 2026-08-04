@@ -27,19 +27,33 @@ import {
 } from "@/shared/harthmere/harthmere_town_horizon";
 
 describe("Harthmere additive edge horizon", () => {
-  it("covers the exact production void shard without making it playable", () => {
+  it("moves with the widened playable band and covers its current edge shard", () => {
     assert.equal(
       harthmereExtensionEdgeHorizonRegionAt(
         2048.3907584325657,
         -600.4049621545007
       ),
+      undefined,
+      "the former production void shard is now inside the widened playable terrain band"
+    );
+    const currentSouthProbeZ =
+      HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ - 0.4049621545007;
+    assert.equal(
+      harthmereExtensionEdgeHorizonRegionAt(
+        2048.3907584325657,
+        currentSouthProbeZ
+      ),
       "south"
     );
+    const currentSouthShardZ = Math.floor(currentSouthProbeZ / 32);
     assert.ok(
       harthmereExtensionEdgeHorizonShardSpecs().some(
-        (spec) => spec.shardX === 64 && spec.shardY === 0 && spec.shardZ === -19
+        (spec) =>
+          spec.shardX === 64 &&
+          spec.shardY === 0 &&
+          spec.shardZ === currentSouthShardZ
       ),
-      "the captured [64,0,-19] shard must receive visual terrain"
+      `the current [64,0,${currentSouthShardZ}] edge shard must receive visual terrain`
     );
   });
 
@@ -66,8 +80,8 @@ describe("Harthmere additive edge horizon", () => {
 
   it("puts solid strata below the fake surface and sky above it", () => {
     for (const [x, z] of [
-      [1900, -640],
-      [2200, 260],
+      [1900, HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ - 64],
+      [2200, HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ + 64],
     ] as const) {
       const surface = harthmereExtensionEdgeHorizonSurfaceY(x, z)!;
       assert.ok(harthmereExtensionEdgeHorizonBlockAt(x, surface, z));
@@ -93,7 +107,7 @@ describe("Harthmere additive edge horizon", () => {
     assert.equal(
       harthmereExtensionEdgeHorizonRegionAt(
         HARTHMERE_EXTENSION_WORLD_BOUNDS.minX - 1,
-        -640
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ - 64
       ),
       undefined
     );
@@ -102,12 +116,28 @@ describe("Harthmere additive edge horizon", () => {
   it("keeps every fake-land sample behind the hard collision region", () => {
     const [southVoid, northVoid] = harthmereExtensionVoidCollisionBoxes();
     for (const [x, z, barrier] of [
-      [1792, -577, southVoid],
-      [2048, -640, southVoid],
-      [2559, -703, southVoid],
-      [1792, 192, northVoid],
-      [2048, 256, northVoid],
-      [2559, 319, northVoid],
+      [
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.minX,
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ - 1,
+        southVoid,
+      ],
+      [2048, HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ - 64, southVoid],
+      [
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX - 1,
+        HARTHMERE_EXTENSION_EDGE_HORIZON_BOUNDS.southMinZ + 1,
+        southVoid,
+      ],
+      [
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.minX,
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ,
+        northVoid,
+      ],
+      [2048, HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ + 64, northVoid],
+      [
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX - 1,
+        HARTHMERE_EXTENSION_EDGE_HORIZON_BOUNDS.northMaxZ - 1,
+        northVoid,
+      ],
     ] as const) {
       assert.ok(harthmereExtensionEdgeHorizonRegionAt(x, z));
       assert.ok(x >= barrier[0][0] && x <= barrier[1][0]);
@@ -148,7 +178,10 @@ describe("Harthmere additive edge horizon", () => {
     );
 
     assert.equal(
-      harthmereExtensionEdgeHorizonRegionAt(1791, -640),
+      harthmereExtensionEdgeHorizonRegionAt(
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.minX - 1,
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ - 64
+      ),
       undefined,
       "west of the extension remains the loaded imported map, not fake terrain"
     );

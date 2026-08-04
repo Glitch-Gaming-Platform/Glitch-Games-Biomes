@@ -2,6 +2,7 @@ import assert from "assert";
 import { describe, it } from "mocha";
 import { BUILDING_SYSTEM_PLOTS } from "@/shared/harthmere/building_system";
 import {
+  HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY,
   harthmereNativeNpcCombatProfileForSeed,
   harthmereNativeNpcTypeKeyForSeed,
 } from "@/shared/harthmere/harthmere_native_combat";
@@ -33,14 +34,14 @@ function distanceToPlot(
     position[0] < plot.bounds.xMin
       ? plot.bounds.xMin - position[0]
       : position[0] > plot.bounds.xMax
-      ? position[0] - plot.bounds.xMax
-      : 0;
+        ? position[0] - plot.bounds.xMax
+        : 0;
   const dz =
     position[2] < plot.bounds.zMin
       ? plot.bounds.zMin - position[2]
       : position[2] > plot.bounds.zMax
-      ? position[2] - plot.bounds.zMax
-      : 0;
+        ? position[2] - plot.bounds.zMax
+        : 0;
   return Math.hypot(dx, dz);
 }
 
@@ -190,9 +191,30 @@ describe("remote corner apex bosses", () => {
       assert.equal(base.isBoss, true);
       assert.equal(base.behaviorKind, "hostile");
       assert.equal(base.level, HARTHMERE_REMOTE_CORNER_BOSS_PROGRESSION_LEVEL);
-      assert.deepEqual(base.aggroTrigger, { kind: "proximity", distance: 48 });
-      assert.equal(base.disengageDistance, 96);
-      assert.ok(base.runSpeed >= 5.5);
+      assert.deepEqual(base.aggroTrigger, {
+        kind: "proximity",
+        distance: HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY.aggroDistance,
+      });
+      assert.equal(
+        base.disengageDistance,
+        HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY.disengageDistance
+      );
+      assert.equal(
+        base.walkSpeed,
+        HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY.walkSpeed
+      );
+      assert.equal(
+        base.runSpeed,
+        HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY.runSpeed
+      );
+      assert.equal(
+        base.rotateSpeed,
+        HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY.rotateSpeed
+      );
+      assert.equal(
+        base.attackFovDeg,
+        HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY.attackFovDeg
+      );
 
       const concrete = harthmereNativeNpcCombatProfileForEntity({
         entityId: seed.entityId,
@@ -207,9 +229,20 @@ describe("remote corner apex bosses", () => {
       );
       assert.deepEqual(concrete!.aggroTrigger, {
         kind: "proximity",
-        distance: 48,
+        distance: HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY.aggroDistance,
       });
-      assert.equal(concrete!.disengageDistance, 96);
+      assert.equal(
+        concrete!.disengageDistance,
+        HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY.disengageDistance
+      );
+      assert.equal(
+        concrete!.runSpeed,
+        HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY.runSpeed
+      );
+      assert.equal(
+        concrete!.attackFovDeg,
+        HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY.attackFovDeg
+      );
       assert.equal(concrete!.rangedAttacks?.length, 5);
     }
   });

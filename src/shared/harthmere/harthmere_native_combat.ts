@@ -51,6 +51,22 @@ export const HARTHMERE_HEX_BOSS_RANGED_RANGE = 18;
 export const HARTHMERE_INDISWORM_POISON_SPIT_RANGE = 12.5;
 export const HARTHMERE_INDISWORM_POISON_SPIT_MINIMUM_RANGE = 3.25;
 export const HARTHMERE_INDISWORM_POISON_SPIT_COOLDOWN_SECS = 8.5;
+export const HARTHMERE_INDISWORM_HOSTILITY = {
+  aggroDistance: 48,
+  disengageDistance: 128,
+  walkSpeed: 2.8,
+  runSpeed: 6.2,
+  rotateSpeed: 360,
+  attackFovDeg: 360,
+} as const;
+export const HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY = {
+  aggroDistance: 96,
+  disengageDistance: 256,
+  walkSpeed: 3.4,
+  runSpeed: 7.5,
+  rotateSpeed: 360,
+  attackFovDeg: 360,
+} as const;
 
 export interface HarthmereNativeCombatSeedLike {
   seedId: string;
@@ -457,11 +473,13 @@ export function harthmereNativeNpcCombatProfileForSeed(
                     ? HARTHMERE_ENEMY_MELEE_PACING.heavy.strikeSecs
                     : HARTHMERE_ENEMY_MELEE_PACING.ordinary.strikeSecs,
     attackFovDeg: remoteCornerApex
-      ? 240
+      ? HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY.attackFovDeg
       : boss || banditRole === "captain"
         ? 170
         : bandit || indisworm
-          ? 145
+          ? indisworm
+            ? HARTHMERE_INDISWORM_HOSTILITY.attackFovDeg
+            : 145
           : 125,
     aggroTrigger:
       sentinel || livestock || tutorialRetaliationOnly || thaedryn || prisoner
@@ -469,7 +487,7 @@ export function harthmereNativeNpcCombatProfileForSeed(
         : {
             kind: "proximity",
             distance: remoteCornerApex
-              ? 48
+              ? HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY.aggroDistance
               : boss
                 ? 18
                 : bandit
@@ -477,11 +495,11 @@ export function harthmereNativeNpcCombatProfileForSeed(
                   : hex
                     ? 12
                     : indisworm
-                      ? 11.5
+                      ? HARTHMERE_INDISWORM_HOSTILITY.aggroDistance
                       : 10.5,
           },
     disengageDistance: remoteCornerApex
-      ? 96
+      ? HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY.disengageDistance
       : boss
         ? 42
         : prisoner
@@ -491,10 +509,10 @@ export function harthmereNativeNpcCombatProfileForSeed(
             : bandit
               ? 32
               : indisworm
-                ? 28
+                ? HARTHMERE_INDISWORM_HOSTILITY.disengageDistance
                 : 34,
     walkSpeed: remoteCornerApex
-      ? 2.7
+      ? HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY.walkSpeed
       : sentinel || thaedryn || prisoner
         ? 0
         : bandit
@@ -510,12 +528,12 @@ export function harthmereNativeNpcCombatProfileForSeed(
                 ? 1.65
                 : 1.4
             : indisworm
-              ? 1.75
+              ? HARTHMERE_INDISWORM_HOSTILITY.walkSpeed
               : hex
                 ? 2.5
                 : 2.2,
     runSpeed: remoteCornerApex
-      ? 5.5
+      ? HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY.runSpeed
       : sentinel || thaedryn || prisoner
         ? 0
         : bandit
@@ -533,12 +551,12 @@ export function harthmereNativeNpcCombatProfileForSeed(
                 ? 3.5
                 : 3.1
             : indisworm
-              ? 3.8
+              ? HARTHMERE_INDISWORM_HOSTILITY.runSpeed
               : hex
                 ? 4.8
                 : 4.4,
     rotateSpeed: remoteCornerApex
-      ? 300
+      ? HARTHMERE_REMOTE_CORNER_APEX_HOSTILITY.rotateSpeed
       : sentinel || prisoner
         ? 0
         : boss
@@ -546,7 +564,7 @@ export function harthmereNativeNpcCombatProfileForSeed(
           : bandit
             ? 250
             : indisworm
-              ? 190
+              ? HARTHMERE_INDISWORM_HOSTILITY.rotateSpeed
               : 220,
     behaviorKind: sentinel
       ? "sentinel"

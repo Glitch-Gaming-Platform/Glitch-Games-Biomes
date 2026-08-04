@@ -96,6 +96,12 @@ function BiomesCanvas({}: {}) {
             "[data-biomes-mobile-controls]",
             "[data-biomes-mobile-action]",
             "[data-biomes-mobile-interact]",
+            // HARTHMERE_MOBILE_ACTION_CONTROLS (2026-08-04 mobile audit, items
+            // 1 and 14). A thumb held on mine/attack/place must not also be
+            // read as the camera look-drag, otherwise holding to mine would
+            // spin the view.
+            "[data-biomes-mobile-actions]",
+            "[data-biomes-mobile-action-button]",
             ".biomes-ui-overlay",
             ".biomes-ui-panel",
             ".biomes-ui-hotbar-hud",

@@ -8,12 +8,14 @@ import type { BiomesId } from "@/shared/ids";
 import type { Vec2, Vec3 } from "@/shared/math/types";
 
 export const HARTHMERE_BUSINESS_INTERIOR_COLLISION_SEED_VERSION =
-  "harthmere-business-interior-collision-seed-v1" as const;
+  "harthmere-business-interior-collision-seed-v2" as const;
 
 // Keep this deterministic band outside the currently allocated Harthmere seed
-// ranges. The manifest currently contains 178 proxies, so 11_200..11_377 are
-// occupied by this family.
+// ranges. The manifest contains 178 furniture proxies and one floor slab for
+// each of 19 businesses, so 11_200..11_396 are occupied by this family. Floors
+// are appended after every v1 proxy so all previously deployed ids stay stable.
 export const HARTHMERE_BUSINESS_INTERIOR_COLLISION_ID_OFFSET_BASE = 11_200;
+export const HARTHMERE_BUSINESS_INTERIOR_FLOOR_THICKNESS_METERS = 0.5;
 
 type CollisionBox =
   HarthmereBusinessInteriorManifestRecord["collisionBoxes"][number];
@@ -25,11 +27,44 @@ export interface HarthmereBusinessInteriorCollisionSeed {
   outpostId: string;
   businessType: string;
   label: string;
-  role: CollisionBox["role"];
-  sourceCollisionIndex: number;
+  role: CollisionBox["role"] | "floor";
+  sourceCollisionIndex: number | undefined;
   position: Vec3;
   size: Vec3;
   orientation: Vec2;
+}
+
+function collisionSeedForFloor(input: {
+  record: HarthmereBusinessInteriorManifestRecord;
+  globalCollisionIndex: number;
+}): HarthmereBusinessInteriorCollisionSeed {
+  const idOffset =
+    HARTHMERE_BUSINESS_INTERIOR_COLLISION_ID_OFFSET_BASE +
+    input.globalCollisionIndex;
+  const thickness = HARTHMERE_BUSINESS_INTERIOR_FLOOR_THICKNESS_METERS;
+  return {
+    collisionSeedId: `business_interior_collision:${input.record.outpostId}:floor`,
+    entityId: collisionEntityIdFromOffset(idOffset),
+    idOffset,
+    outpostId: input.record.outpostId,
+    businessType: input.record.businessType,
+    label: `${input.record.displayName} floor`,
+    role: "floor",
+    sourceCollisionIndex: undefined,
+    // ECS Position is the bottom-center. The slab's top is exactly the
+    // manifest anchor, which is also the authored standing height.
+    position: [
+      input.record.assetWorldAnchor[0] + input.record.footprint.width / 2,
+      input.record.assetWorldAnchor[1] - thickness,
+      input.record.assetWorldAnchor[2] + input.record.footprint.depth / 2,
+    ],
+    size: [
+      input.record.footprint.width,
+      thickness,
+      input.record.footprint.depth,
+    ],
+    orientation: [0, 0],
+  };
 }
 
 function collisionEntityIdFromOffset(idOffset: number): BiomesId {
@@ -56,8 +91,7 @@ function collisionSeedForBox(input: {
     worldCenter[1] - size[1] / 2,
     worldCenter[2],
   ];
-  const rotationRadians =
-    (Number(input.box.rotationDegrees) * Math.PI) / 180;
+  const rotationRadians = (Number(input.box.rotationDegrees) * Math.PI) / 180;
   const idOffset =
     HARTHMERE_BUSINESS_INTERIOR_COLLISION_ID_OFFSET_BASE +
     input.globalCollisionIndex;
@@ -91,6 +125,14 @@ export const HARTHMERE_BUSINESS_INTERIOR_COLLISION_SEEDS: readonly HarthmereBusi
         );
       });
     }
+    for (const record of HARTHMERE_BUSINESS_INTERIORS) {
+      seeds.push(
+        collisionSeedForFloor({
+          record,
+          globalCollisionIndex: seeds.length,
+        })
+      );
+    }
     return seeds;
   })();
 
@@ -119,7 +161,7 @@ export function validateHarthmereBusinessInteriorCollisionSeeds(): string[] {
   const errors: string[] = [];
   const expectedCount = HARTHMERE_BUSINESS_INTERIORS.reduce(
     (sum, record) => sum + record.collisionBoxes.length,
-    0
+    HARTHMERE_BUSINESS_INTERIORS.length
   );
   if (HARTHMERE_BUSINESS_INTERIOR_COLLISION_SEEDS.length !== expectedCount) {
     errors.push(

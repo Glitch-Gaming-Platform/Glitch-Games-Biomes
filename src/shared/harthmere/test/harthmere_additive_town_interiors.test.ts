@@ -10,6 +10,7 @@ import {
   harthmereAdditiveTownInteriorWorldPosition,
   harthmereAdditiveTownInteriorFixtureClearanceSize,
   harthmereAdditiveTownInteriorFixturesForBuilding,
+  placeHarthmereAdditiveTownInteriorPlanForTest,
   validateHarthmereAdditiveTownInteriors,
 } from "../harthmere_additive_town_interiors";
 import { HARTHMERE_BUILDINGS } from "../harthmere_town_buildings";
@@ -56,6 +57,49 @@ describe("Harthmere additive-town interior manifest", () => {
       new Set(HARTHMERE_ADDITIVE_TOWN_INTERIOR_NPC_ANCHORS.map((a) => a.offset))
         .size,
       HARTHMERE_ADDITIVE_TOWN_INTERIOR_NPC_ANCHORS.length
+    );
+  });
+
+  it("keeps the relocated Mail Post fully furnishable during server startup", () => {
+    const mailPost = HARTHMERE_BUILDINGS.find(
+      (building) => building.name === "mail_post_house"
+    );
+    assert.ok(mailPost, "missing Mail Post shell");
+    assert.deepEqual(
+      [mailPost!.x0, mailPost!.x1, mailPost!.z0, mailPost!.z1],
+      [516, 530, -219, -205]
+    );
+
+    const fixtures =
+      harthmereAdditiveTownInteriorFixturesForBuilding("mail_post_house");
+    assert.equal(fixtures.length, 12);
+    const bench = fixtures.find(
+      (fixture) => fixture.fixtureId === "mail_post_house:mail_bench"
+    );
+    assert.ok(bench, "Mail Post courier bench was not safely placed");
+    assert.equal(bench!.floor, 0);
+    assert.ok(bench!.position[0] > mailPost!.x0);
+    assert.ok(bench!.position[0] < mailPost!.x1);
+    assert.ok(bench!.position[2] > mailPost!.z0);
+    assert.ok(bench!.position[2] < mailPost!.z1);
+
+    const plan = HARTHMERE_ADDITIVE_TOWN_INTERIOR_PLANS.find(
+      (candidate) => candidate.buildingName === "mail_post_house"
+    );
+    assert.ok(plan, "missing Mail Post interior plan");
+    const denseOnly = placeHarthmereAdditiveTownInteriorPlanForTest(
+      mailPost!,
+      plan!,
+      true
+    );
+    assert.equal(
+      denseOnly.length,
+      plan!.fixtures.length,
+      "production fallback must place every Mail Post fixture without a coarse wall slot"
+    );
+    assert.equal(
+      new Set(denseOnly.map((fixture) => fixture.fixtureId)).size,
+      plan!.fixtures.length
     );
   });
 

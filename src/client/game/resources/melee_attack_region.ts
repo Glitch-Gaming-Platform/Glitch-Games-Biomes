@@ -74,10 +74,10 @@ function isAttackableLiveEntityWithoutNpcMetadata(x: ReadonlyEntity): boolean {
   }
   return Boolean(
     x.health &&
-      (record.robot_component ||
-        /muck|mucker|muckling|mux|hex|hexer|animal|livestock|wolf|bear|boar|deer|snake|rat|fox|horse|cow|goat|sheep|pig|chicken|undead|zombie|corpse|monster|creature|boss/.test(
-          label
-        ))
+    (record.robot_component ||
+      /muck|mucker|muckling|mux|hex|hexer|animal|livestock|wolf|bear|boar|deer|snake|rat|fox|horse|cow|goat|sheep|pig|chicken|undead|zombie|corpse|monster|creature|boss/.test(
+        label
+      ))
   );
 }
 
@@ -133,6 +133,49 @@ export function canAttackFilter(
     : harthmereLiveAttackable;
 }
 
+/**
+ * Native damage events can only name a real player or a real ECS NPC.
+ *
+ * Legacy/local presentation can still classify a health-backed creature label
+ * as attackable, but the native `UpdateNpcHealthEvent` handler requires
+ * `npc_metadata`. Keeping this distinction explicit prevents the cursor from
+ * promising a hit that the authoritative server can never accept.
+ */
+export function isNativeEcsAttackTarget(x: ReadonlyEntity): boolean {
+  return Boolean(x.player_status || x.npc_metadata);
+}
+
+/**
+ * Shared cursor eligibility without conflating the two native-NPC passes.
+ *
+ * Native NPCs are intentionally excluded from the generic collideable trace so
+ * they are hit-tested at their latency-smoothed rendered position. They must
+ * remain eligible for that dedicated metadata trace; applying the generic
+ * exclusion to both passes makes every visible native creature unhittable.
+ */
+export function canTraceCursorEntity(input: {
+  entity: ReadonlyEntity;
+  playerId: BiomesId;
+  nativeEcsAuthority: boolean;
+  pass: "generic" | "native_npc_metadata";
+}): boolean {
+  const { entity, playerId, nativeEcsAuthority, pass } = input;
+  if (
+    entity.gremlin ||
+    entity.id === playerId ||
+    (entity.health && entity.health.hp <= 0) ||
+    entity.protection ||
+    entity.blueprint_component
+  ) {
+    return false;
+  }
+  return !(
+    pass === "generic" &&
+    nativeEcsAuthority &&
+    Boolean(entity.npc_metadata)
+  );
+}
+
 // HARTHMERE_VOXEL_REACH_ATTACK:
 // Pure decision for whether the entity currently under the crosshair should be
 // added to the melee attack set. The narrow melee cone
@@ -171,6 +214,9 @@ export function traceNpcMetadataCursorHits(
     maxDistance: number;
     entityFilter?: (entity: ReadonlyEntity) => boolean;
     excludeIds?: ReadonlySet<BiomesId>;
+    aabbForEntity?: (
+      entity: ReadonlyEntity
+    ) => ReturnType<typeof getAabbForEntity>;
   }
 ): EntityHit[] {
   const entityHits: EntityHit[] = [];
@@ -189,7 +235,7 @@ export function traceNpcMetadataCursorHits(
     if (params.entityFilter && !params.entityFilter(entity)) {
       continue;
     }
-    const aabb = getAabbForEntity(entity);
+    const aabb = params.aabbForEntity?.(entity) ?? getAabbForEntity(entity);
     if (!aabb) {
       continue;
     }

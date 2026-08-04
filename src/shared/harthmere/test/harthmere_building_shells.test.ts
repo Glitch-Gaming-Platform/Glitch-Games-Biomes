@@ -32,14 +32,25 @@ import {
   type HarthmereBuilding,
 } from "../harthmere_town_buildings";
 import {
+  HARTHMERE_TOWN_ROAD_HEADS,
   harthmereDoorStep,
   harthmereDoorToStreetDistance,
   harthmereIsTownCoreBuilding,
+  harthmereRoadHeadToStreetDistance,
   harthmereTownStreetCellCount,
   harthmereTownStreetRects,
   harthmereTownStreetSurfaceAt,
   harthmereValidateTownStreets,
 } from "../harthmere_town_streets";
+import {
+  HARTHMERE_WEST_SEAM_RIDGE_BOUNDS,
+  harthmereValidateWestSeamRidge,
+  harthmereWestSeamRidgeSurfaceY,
+} from "../harthmere_west_seam_ridge";
+import {
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+  HARTHMERE_EXTENSION_WORLD_BOUNDS,
+} from "../world_extension";
 
 type Rect = readonly [number, number, number, number];
 
@@ -80,8 +91,20 @@ function overlapArea(a: Rect, b: Rect): number {
 
 const floorsOf = (b: HarthmereBuilding) =>
   Math.max(1, b.floors ?? (b.upper ? 2 : 1));
-const storyHeightOf = (b: HarthmereBuilding) =>
-  b.profile === "gatehouse" || b.profile === "tower" ? 6 : 5;
+/**
+ * The SHELL generator's storey height, from `harthmereStoryHeight()` in the
+ * shim. That function is the one that actually stacks the floor slabs, so it is
+ * the authority here.
+ *
+ * Note that it disagrees with `harthmereStoryHeightOf()` in
+ * `harthmere_building_interiors.ts` and `harthmere_additive_town_interiors.ts`,
+ * which both return 6 for gatehouses and towers and 5 for everything else —
+ * including slums. Three modules, two answers. See the shell audit's open items:
+ * the interiors modules place upper-floor content one voxel per storey away
+ * from the floor the shell actually built, which on a five-storey Mudden stack
+ * is four voxels of drift by the top landing.
+ */
+const storyHeightOf = (b: HarthmereBuilding) => (b.profile === "slum" ? 4 : 5);
 
 /** The shim's door lane: +/-2 laterally, +/-3 through the wall. */
 function doorLane(b: HarthmereBuilding): Rect {
@@ -191,7 +214,12 @@ describe("harthmere shells - every front door can be walked through", () => {
             continue;
           }
           for (const volume of volumes(other)) {
-            if (x >= volume[0] && x <= volume[1] && z >= volume[2] && z <= volume[3]) {
+            if (
+              x >= volume[0] &&
+              x <= volume[1] &&
+              z >= volume[2] &&
+              z <= volume[3]
+            ) {
               blocked.push(
                 `${b.name} door ${b.doorSide}@${b.doorCenter} blocked at (${x},${z}) by ${other.name}`
               );
@@ -381,5 +409,92 @@ describe("harthmere streets - the town has roads, and they reach the doors", () 
     const first = JSON.stringify(harthmereTownStreetRects());
     const second = JSON.stringify(harthmereTownStreetRects());
     assert.equal(first, second);
+  });
+
+  it("keeps the seam ridge off the town and off the paving", () => {
+    // The ridge is authored in world coordinates west of the town; the streets
+    // are authored coordinates inside it. If those two bands ever met, the
+    // ridge would bury a street under a hillside.
+    const streetWorldMinX = Math.min(
+      ...harthmereTownStreetRects().map((r) => r.x0)
+    );
+    assert.ok(
+      HARTHMERE_WEST_SEAM_RIDGE_BOUNDS.maxX <
+        streetWorldMinX + HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+      `ridge reaches x=${HARTHMERE_WEST_SEAM_RIDGE_BOUNDS.maxX}, paving starts at ` +
+        `${streetWorldMinX + HARTHMERE_ADDITIVE_TOWN_OFFSET_X}`
+    );
+    // No structure is buried. `charcoal_burners_camp` genuinely stands inside
+    // the ridge's band — it was authored out in the wilds near the seam — so
+    // the ridge yields around it rather than the camp having to move.
+    for (const b of HARTHMERE_BUILDINGS) {
+      for (let x = b.x0 - 1; x <= b.x1 + 1; x += 1) {
+        for (let z = b.z0 - 1; z <= b.z1 + 1; z += 1) {
+          const raised = harthmereWestSeamRidgeSurfaceY(
+            x + HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+            z
+          );
+          assert.equal(
+            raised,
+            undefined,
+            `${b.name}: seam ridge raises ground to Y=${raised} at (${x},${z})`
+          );
+        }
+      }
+    }
+  });
+
+  it("seeds terrain under every authored structure", () => {
+    // Five structures used to fail this. The additive seeder generates shards
+    // only inside `HARTHMERE_EXTENSION_WORLD_BOUNDS`, and that band was sized
+    // for the West Muck Breach rather than for the authored content, so
+    // `charcoal_burners_camp`, `deep_old_wood_glade_lodge`,
+    // `grave_tender_caretaker_house`, `northwest_ruined_watchtower` and
+    // `southwest_orchard_windmill` had no ground beneath them and were never
+    // written at all in the shifted production frame. They rendered correctly
+    // in an unshifted authored world, which is how it survived.
+    //
+    // Three were fixed by widening the band to the authored content. The other
+    // two mapped WEST of the old map's edge, where the seeder is fail-closed by
+    // design because generating there would overwrite imported production
+    // terrain, so those had to move east instead.
+    const stranded: string[] = [];
+    for (const b of HARTHMERE_BUILDINGS) {
+      const x0 = b.x0 + HARTHMERE_ADDITIVE_TOWN_OFFSET_X;
+      const x1 = b.x1 + HARTHMERE_ADDITIVE_TOWN_OFFSET_X;
+      if (
+        x0 < HARTHMERE_EXTENSION_WORLD_BOUNDS.minX ||
+        x1 > HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX ||
+        b.z0 < HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ ||
+        b.z1 > HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ
+      ) {
+        stranded.push(
+          `${b.name} at world x[${x0},${x1}] z[${b.z0},${b.z1}] has no seeded ground`
+        );
+      }
+    }
+    assert.deepEqual(stranded, []);
+  });
+
+  it("leaves the road pass through the seam ridge open at the plain", () => {
+    assert.deepEqual(harthmereValidateWestSeamRidge(), []);
+  });
+
+  it("meets every wilds road where it reaches the town", () => {
+    // The town's paving used to be an island. Every front door reached it, but
+    // the network itself began 16 to 42 voxels inside the gates, so a player
+    // walking the gravel road in from the old-map seam crossed open grass
+    // before finding a street. This is the seam that matters most: it is the
+    // one every arriving player walks.
+    const stranded: string[] = [];
+    for (const head of HARTHMERE_TOWN_ROAD_HEADS) {
+      const walk = harthmereRoadHeadToStreetDistance(head.at);
+      if (walk === undefined) {
+        stranded.push(`${head.name}: never meets the paving`);
+      } else if (walk > 4) {
+        stranded.push(`${head.name}: ${walk} voxels of bare ground first`);
+      }
+    }
+    assert.deepEqual(stranded, []);
   });
 });

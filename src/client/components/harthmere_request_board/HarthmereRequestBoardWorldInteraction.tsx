@@ -57,6 +57,12 @@ export function HarthmereRequestBoardWorldInteraction({
       const boardEntityId = prompt.boardEntityId as BiomesId;
       reactResources.update("/scene/local_player", (player) => {
         player.talkingToNpc = boardEntityId;
+        // Request boards keep their native quest-giver identity, but their
+        // legacy ECS body is suppressed by the dedicated board renderer. The
+        // quay board is synthetic and has no subscribed NPC body at all. Set
+        // this before opening the modal so the camera cannot race React and
+        // try to track a missing entity on the next frame.
+        player.talkingToNpcCameraDisabled = true;
       });
       reactResources.set("/game_modal", {
         kind: "talk_to_npc",

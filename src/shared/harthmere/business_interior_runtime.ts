@@ -6,6 +6,12 @@ import type { Vec3 } from "../math/types";
 export const HARTHMERE_BUSINESS_INTERIOR_RUNTIME_VERSION =
   "harthmere-business-interior-runtime-v1" as const;
 
+// Keep the routed body clear of the service-counter proxy, including voxel
+// centre snapping and the NPC's physical half-width. The original manifest
+// point was only 0.8 m from the counter face, which let a customer oscillate
+// against the furniture boundary instead of settling into `serving`.
+export const HARTHMERE_BUSINESS_CUSTOMER_COUNTER_CLEARANCE_METERS = 1.25;
+
 export type HarthmereBusinessInteriorManifestRecord =
   (typeof businessInteriorManifest.businesses)[number];
 
@@ -124,6 +130,26 @@ export function harthmereBusinessInteriorLocalToWorld(
 export function harthmereBusinessInteriorInteractionPoints(
   record: HarthmereBusinessInteriorManifestRecord
 ) {
+  const counter = record.collisionBoxes.find(
+    (box) => box.role === "service_counter"
+  );
+  const rawCustomer = record.interactionPoints.customer as [
+    number,
+    number,
+    number,
+  ];
+  const customerLocal = counter
+    ? ([
+        rawCustomer[0],
+        Math.min(
+          rawCustomer[1],
+          counter.center[1] -
+            counter.size[1] / 2 -
+            HARTHMERE_BUSINESS_CUSTOMER_COUNTER_CLEARANCE_METERS
+        ),
+        rawCustomer[2],
+      ] as [number, number, number])
+    : rawCustomer;
   return {
     entrance: harthmereBusinessInteriorLocalToWorld(
       record,
@@ -133,10 +159,7 @@ export function harthmereBusinessInteriorInteractionPoints(
       record,
       record.interactionPoints.queueStart as [number, number, number]
     ),
-    customer: harthmereBusinessInteriorLocalToWorld(
-      record,
-      record.interactionPoints.customer as [number, number, number]
-    ),
+    customer: harthmereBusinessInteriorLocalToWorld(record, customerLocal),
     staff: harthmereBusinessInteriorLocalToWorld(
       record,
       record.interactionPoints.staff as [number, number, number]
@@ -174,15 +197,14 @@ export function harthmereBusinessCustomerQueueTarget(
 
 export function harthmereBusinessCustomerSpawnPoint(
   record: HarthmereBusinessInteriorManifestRecord,
-  queueIndex: number
+  _queueIndex: number
 ): Vec3 {
   const { entrance } = harthmereBusinessInteriorInteractionPoints(record);
-  const side = queueIndex % 2 === 0 ? -1 : 1;
-  return [
-    entrance[0] + side * (2.6 + (queueIndex % 3) * 0.55),
-    entrance[1],
-    entrance[2] - 9.5 - Math.floor(queueIndex / 2) * 1.4,
-  ];
+  // Session materialization creates only the lead customer. Spawn that one
+  // at the audited doorway instead of on uncontrolled exterior terrain ten
+  // metres away. The customer is visible entering the shop, but can no longer
+  // begin embedded in a curb, hill, or neighbouring shell collision.
+  return cloneVec3(entrance);
 }
 
 export function harthmereBusinessCustomerDeparturePoint(
@@ -298,7 +320,18 @@ export function validateHarthmereBusinessInteriorRuntimeContract() {
     const counter = record.collisionBoxes.find(
       (box) => box.role === "service_counter"
     );
-    if (!counter) errors.push(`${record.outpostId}:counter_collision_missing`);
+    if (!counter) {
+      errors.push(`${record.outpostId}:counter_collision_missing`);
+    } else {
+      const customerSideFace =
+        record.assetWorldAnchor[2] + counter.center[1] - counter.size[1] / 2;
+      if (
+        customerSideFace - points.customer[2] <
+        HARTHMERE_BUSINESS_CUSTOMER_COUNTER_CLEARANCE_METERS - 0.001
+      ) {
+        errors.push(`${record.outpostId}:customer_counter_clearance_invalid`);
+      }
+    }
   }
   return errors;
 }

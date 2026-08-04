@@ -366,14 +366,19 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(config.includes("MOBILE_VOXELOO_MEMORY_SCALE = 0.125"));
   });
 
-  it("keeps missing-entity navigation aid cleanup phone-only", () => {
+  it("removes stale missing-entity navigation aids on every device", () => {
     const mapManager = read("src/client/game/context_managers/map_manager.ts");
-    assert.ok(mapManager.includes("private mobileDevice: boolean"));
-    assert.ok(mapManager.includes("if (this.mobileDevice)"));
     assert.ok(
-      mapManager.includes('log.prodError("No entity found for navigation aid"')
+      mapManager.includes(
+        'log.warn("Removing navigation aid for missing entity"'
+      )
     );
-    assert.ok(mapManager.includes("clientConfig.mobileDevice"));
+    assert.equal(
+      mapManager.includes('log.prodError("No entity found for navigation aid"'),
+      false
+    );
+    assert.ok(mapManager.includes("this.removeNavigationAid(id!)"));
+    assert.equal(mapManager.includes("private mobileDevice"), false);
   });
 
   it("keeps phone layout changes scoped away from pointerless desktop", () => {

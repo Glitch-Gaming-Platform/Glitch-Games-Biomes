@@ -7,6 +7,15 @@ import {
   probeWebGpuSupport,
   type WebGpuProbeResult,
 } from "@/client/renderer/webgpu_probe";
+import type {
+  MobileDeviceClass,
+  MobileGraphicsClamps,
+} from "@/client/game/util/mobile_device_profile";
+import {
+  classifyMobileDevice,
+  mobileGraphicsClampsForClass,
+  readMobileDeviceSignals,
+} from "@/client/game/util/mobile_device_profile";
 import type { GraphicsQuality } from "@/client/util/typed_local_storage";
 import { zGraphicsQuality } from "@/client/util/typed_local_storage";
 import type { Vec2f } from "@/shared/ecs/gen/types";
@@ -99,6 +108,12 @@ const BASE_CLIENT_CONFIG = {
   forceRenderScale: undefined as number | undefined,
   forceGraphicsQuality: undefined as GraphicsQuality | undefined,
   allowSoftwareWebGL: false,
+  // HARTHMERE_MOBILE_DEVICE_PROFILE (2026-08-04 mobile audit, items 3 and 9).
+  // Populated only when `mobileDevice` is true. `undefined` everywhere else,
+  // and every consumer treats `undefined` as "no clamping" -- so desktop
+  // render scale and draw distance behave exactly as they did before.
+  mobileDeviceClass: undefined as MobileDeviceClass | undefined,
+  mobileGraphicsClamps: undefined as MobileGraphicsClamps | undefined,
 };
 
 function adjustConfigForLowMemory(clientConfig: ClientConfig) {
@@ -292,12 +307,36 @@ export function doBrowserOverrides(ret: ClientConfig) {
   if (mobileDevice) {
     log.info("Mobile device detected, forcing low memory config.");
     ret.lowMemory = true;
-    // The phone WebContent process shares its per-process budget with JS,
-    // WASM, decoded assets, render targets, and iframe/media overhead. Start
-    // phones at half-resolution immediately instead of letting a high GPU tier
-    // allocate full-size targets before dynamic quality has enough samples to
-    // react. A URL forceRenderScale override still wins below for diagnostics.
-    ret.forceRenderScale = 0.5;
+
+    // HARTHMERE_MOBILE_DEVICE_PROFILE (2026-08-04 mobile audit, items 3 and 9).
+    //
+    // This used to be a flat `ret.forceRenderScale = 0.5`. That kept phones at
+    // half resolution from the first frame, which was the right instinct --
+    // the phone WebContent process shares its budget with JS, WASM, decoded
+    // assets, render targets and iframe/media overhead, so it must not
+    // allocate full-size targets before dynamic quality has samples. But
+    // `forceRenderScale` short-circuits `computeRenderScale` *before* the
+    // `dynamic` branch, so it also disabled the entire adaptive ladder on
+    // phones: a struggling device could never reach 0.3, and a fast device
+    // could never climb.
+    //
+    // Now the phone is classified once and the ladder is handed a clamped
+    // range. The `standard` class starts at exactly 0.5 / 64m -- the profile
+    // validated on the physical iPhone 12 mini -- so nothing starts anywhere
+    // new. An explicit `forceRenderScale` URL parameter still wins below,
+    // because `doURLOverrides` runs after this and diagnostics must stay
+    // authoritative.
+    const deviceClass = classifyMobileDevice(
+      readMobileDeviceSignals(ret.gpuTier)
+    );
+    ret.mobileDeviceClass = deviceClass;
+    ret.mobileGraphicsClamps = mobileGraphicsClampsForClass(deviceClass);
+    log.info(
+      `Mobile graphics profile: ${JSON.stringify({
+        deviceClass,
+        clamps: ret.mobileGraphicsClamps,
+      })}`
+    );
 
     // The 128m Harthmere landmark floor is useful on desktop, but it prevents
     // dynamic graphics from reaching its 64m emergency target on iOS/Android.
@@ -538,6 +577,13 @@ export function resolveGlitchLocalSyncBaseUrl(input: {
   };
 }
 
+export function shouldResolveGlitchLocalSyncBaseUrl(input: {
+  isGlitchLocalRuntime: boolean;
+  nativeEcsE2E: boolean;
+}): boolean {
+  return input.isGlitchLocalRuntime || input.nativeEcsE2E;
+}
+
 export async function initializeClientConfig(
   options?: InitConfigOptions
 ): Promise<ClientConfig> {
@@ -593,7 +639,13 @@ export async function initializeClientConfig(
     process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
     installIdInUrl;
 
-  if (isGlitchLocalRuntime && typeof window !== "undefined") {
+  if (
+    shouldResolveGlitchLocalSyncBaseUrl({
+      isGlitchLocalRuntime,
+      nativeEcsE2E,
+    }) &&
+    typeof window !== "undefined"
+  ) {
     // Harthmere is an open, landmark-driven world. Let dynamic graphics reduce
     // resolution/render scale under load, but keep auto terrain + sync distance
     // from collapsing to the 64m "short headlight" view seen in production logs.

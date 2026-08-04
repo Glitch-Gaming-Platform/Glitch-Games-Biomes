@@ -116,7 +116,10 @@ export async function buildRenderers(loader: RegistryLoader<ClientContext>) {
     // The fixed 57-building additive town uses one compact, instanced Blender
     // catalogue with 16m/28m LOD switching. Native invisible collision proxies
     // and placeables own physics/interactions; these meshes are visual only.
-    makeHarthmereAdditiveTownInteriorsRenderer(resources),
+    makeHarthmereAdditiveTownInteriorsRenderer(
+      resources,
+      clientConfig.mobileDevice
+    ),
     makeHarthmereBusinessOutpostBuildingsRenderer(clientConfig.mobileDevice),
     makeHarthmereBusinessBoardMarkerRenderer(clientConfig.mobileDevice),
     // Optimized Blender-authored landmark jobs boards with distance LOD and a

@@ -6,6 +6,7 @@ import {
 } from "@/server/shared/auth/cookies";
 import type { WebServerServerSidePropsContext } from "@/server/web/context";
 import { findByUID } from "@/server/web/db/users_fetch";
+import { buildGlitchInstallRedirectDestination } from "@/server/web/glitch_install_redirect";
 import Head from "next/head";
 import homeBg from "/public/splash/home-bg.png";
 
@@ -43,7 +44,28 @@ export const BiomesHeadTag: React.FunctionComponent<BiomesHeadTagProps> = (
     <Head>
       {/* Boilerplate */}
       <meta charSet="utf-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      {/*
+        HARTHMERE_MOBILE_VIEWPORT_FIT (2026-08-04 mobile audit, item 2).
+
+        `viewport-fit=cover` is what makes iOS Safari report real values for
+        `env(safe-area-inset-*)`. Without it those functions resolve to `0px`,
+        and every phone HUD rule that relies on them silently collapses to its
+        literal fallback -- e.g. `hud.css` `padding-left: max(24px,
+        env(safe-area-inset-left))` gives 24px in landscape where a notched
+        iPhone needs ~44px, so the movement cluster sits under the sensor
+        housing. Portrait at 390x844 looks fine, which is why the smoke missed
+        it.
+
+        This only changes layout on devices that HAVE safe-area insets (phones
+        and tablets); on desktop every `env(safe-area-inset-*)` is 0 either
+        way, so the `max(...)` fallbacks are unchanged. Pinch zoom is
+        deliberately still allowed (no `maximum-scale`/`user-scalable=no`) --
+        the iOS focus-zoom problem was already solved by using 16px inputs.
+      */}
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+      />
       <link rel="manifest" href={manifestHref} />
       {/* General */}
       <title>{title}</title>
@@ -76,30 +98,14 @@ export default function Index() {
 }
 
 function glitchInstallRedirect(ctx: any) {
-  const q = ctx?.query ?? {};
-  const installId =
-    typeof q.install_id === "string"
-      ? q.install_id
-      : typeof q.glitch_install_id === "string"
-      ? q.glitch_install_id
-      : typeof q.installId === "string"
-      ? q.installId
-      : typeof q.game_install_id === "string"
-      ? q.game_install_id
-      : "";
-
-  if (!installId) {
+  const destination = buildGlitchInstallRedirectDestination(ctx?.query ?? {});
+  if (!destination) {
     return undefined;
   }
 
-  const params = new URLSearchParams({
-    install_id: installId,
-    glitch_auto_play: "1",
-  });
-
   return {
     redirect: {
-      destination: `/at?${params.toString()}`,
+      destination,
       permanent: false,
     },
   };
@@ -137,7 +143,6 @@ async function __biomesGetServerSideProps(
   };
 }
 
-
 export async function getServerSideProps(ctx: any) {
   const glitchRedirect = glitchInstallRedirect(ctx);
   if (glitchRedirect) {
@@ -146,4 +151,3 @@ export async function getServerSideProps(ctx: any) {
 
   return __biomesGetServerSideProps(ctx);
 }
-

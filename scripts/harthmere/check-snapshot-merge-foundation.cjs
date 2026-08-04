@@ -140,9 +140,12 @@ ok(
 ok(
   seedIfMissingBody.includes("ensureHarthmereAdditiveWorldBoundary") &&
     seedIfMissingBody.includes("seedMissingChapter1TerrainIntoExistingWorld") &&
+    seedIfMissingBody.indexOf(
+      "// Elsewhen is a detached, portal-only region"
+    ) < seedIfMissingBody.indexOf("seedMissingChapter1TerrainIntoExistingWorld") &&
     seedIfMissingBody.indexOf("seedMissingChapter1TerrainIntoExistingWorld") <
       seedIfMissingBody.indexOf("reconcileLocalDevPlayerLikeNpcCosmetics"),
-  "terrain-disabled snapshot boots preserve the ordinary boundary and create detached Elsewhen shards"
+  "terrain-disabled snapshot boots create detached Elsewhen shards outside the optional additive-town gate"
 );
 const chapter1TerrainSyncBody = fnBody(
   shim,

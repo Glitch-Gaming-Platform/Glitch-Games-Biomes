@@ -39,6 +39,7 @@ const defaults = parseArgs([]);
 ok(
   defaults.app === "biomes-prod-smoke-app" &&
     defaults.redis === "biomes-prod-smoke-redis" &&
+    defaults.image === undefined &&
     defaults.build === "none",
   "warm refresh defaults to the retained local smoke app/Redis without rebuilding"
 );
@@ -48,6 +49,9 @@ const parsed = parseArgs([
   "warm-app",
   "--redis",
   "warm-redis",
+  "--image",
+  "registry.example/biomes:new-base",
+  "--allow-post-push-deploy",
   "--build",
   "all",
   "--build-id",
@@ -57,6 +61,8 @@ const parsed = parseArgs([
 ok(
   parsed.app === "warm-app" &&
     parsed.redis === "warm-redis" &&
+    parsed.image === "registry.example/biomes:new-base" &&
+    parsed.allowPostPushDeploy === true &&
     parsed.build === "all" &&
     parsed.buildId === "warm-contract" &&
     parsed.keepPrevious,
@@ -159,6 +165,7 @@ const source = {
   ],
 };
 const image = {
+  Id: "sha256:reviewed-new-base-image",
   Config: {
     Entrypoint: null,
     Cmd: ["./scripts/glitch/run-glitch-local-game-stack.sh"],
@@ -180,8 +187,8 @@ ok(
     createText.includes("--network-alias warm-app") &&
     createText.includes("127.0.0.1:3017:3000") &&
     createText.includes("127.0.0.1:4907:4900") &&
-    create.args.at(-1) === source.Image,
-  "replacement is created first on the same network, ports, and immutable image"
+    create.args.at(-1) === image.Id,
+  "replacement is created first on the same network and ports using the reviewed immutable image"
 );
 ok(
   ARTIFACT_MOUNTS.every(([relative, target]) =>

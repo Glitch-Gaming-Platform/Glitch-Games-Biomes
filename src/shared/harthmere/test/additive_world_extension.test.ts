@@ -168,10 +168,23 @@ describe("Harthmere additive world extension", () => {
     const keys = new Set(
       specs.map(({ shardX, shardY, shardZ }) => `${shardX}:${shardY}:${shardZ}`)
     );
-    assert.equal(specs.length, 2304);
+    const minShardZ = Math.floor(HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ / 32);
+    const maxShardZ = Math.ceil(HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ / 32) - 1;
+    const expectedCount =
+      (HARTHMERE_EXTENSION_TERRAIN_ID_GRID.maxShardX -
+        HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardX +
+        1) *
+      (maxShardZ - minShardZ + 1) *
+      4;
+    assert.equal(specs.length, expectedCount);
+    assert.equal(specs.length, 2976);
     assert.equal(keys.size, specs.length);
-    for (let shardX = 56; shardX <= 79; shardX += 1) {
-      for (let shardZ = -18; shardZ <= 5; shardZ += 1) {
+    for (
+      let shardX = HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardX;
+      shardX <= HARTHMERE_EXTENSION_TERRAIN_ID_GRID.maxShardX;
+      shardX += 1
+    ) {
+      for (let shardZ = minShardZ; shardZ <= maxShardZ; shardZ += 1) {
         for (let shardY = -2; shardY <= 1; shardY += 1) {
           assert.ok(keys.has(`${shardX}:${shardY}:${shardZ}`));
         }
@@ -188,7 +201,14 @@ describe("Harthmere additive world extension", () => {
 
   it("normalizes only additive outdoor actors to the flat terrain contract", () => {
     assert.deepEqual(
-      normalizeHarthmereExtensionOutdoorFeetPosition([1780, 99, -600], 1.5),
+      normalizeHarthmereExtensionOutdoorFeetPosition(
+        [
+          HARTHMERE_EXTENSION_WORLD_BOUNDS.minX - 12,
+          99,
+          HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ - 24,
+        ],
+        1.5
+      ),
       [
         HARTHMERE_EXTENSION_WORLD_BOUNDS.minX + 1.5,
         HARTHMERE_EXTENSION_FEET_Y,
@@ -230,8 +250,8 @@ describe("Harthmere additive world extension", () => {
     CollisionHelper.intersectWorldBounds(
       metadata,
       [
-        [2048, 52, -576.2],
-        [2049, 54, -575.2],
+        [2048, 52, HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ - 0.2],
+        [2049, 54, HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ + 0.8],
       ],
       (hit) => {
         edgeHits.push(hit);
@@ -260,8 +280,16 @@ describe("Harthmere additive world extension", () => {
     CollisionHelper.intersectWorldBounds(
       metadata,
       [
-        [1791.7, 32, -724.6],
-        [1792.5, 34, -723.8],
+        [
+          HARTHMERE_EXTENSION_WORLD_BOUNDS.minX - 0.3,
+          32,
+          HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ - 20.6,
+        ],
+        [
+          HARTHMERE_EXTENSION_WORLD_BOUNDS.minX + 0.5,
+          34,
+          HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ - 19.8,
+        ],
       ],
       (hit) => {
         capturedSeamCrossingHits.push(hit);
@@ -277,8 +305,16 @@ describe("Harthmere additive world extension", () => {
     CollisionHelper.intersectWorldBounds(
       metadata,
       [
-        [1791.7, 52, 191.6],
-        [1792.5, 54, 192.4],
+        [
+          HARTHMERE_EXTENSION_WORLD_BOUNDS.minX - 0.3,
+          52,
+          HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ - 0.4,
+        ],
+        [
+          HARTHMERE_EXTENSION_WORLD_BOUNDS.minX + 0.5,
+          54,
+          HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ + 0.4,
+        ],
       ],
       (hit) => {
         northSeamCrossingHits.push(hit);
@@ -394,11 +430,19 @@ describe("Harthmere additive world extension", () => {
     );
     assert.deepEqual(
       harthmereExtensionEdgeRescuePosition(
-        [2048.3907584325657, 22.964666666666666, -600.4049621545007],
+        [
+          2048.3907584325657,
+          22.964666666666666,
+          HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ - 0.4049621545007,
+        ],
         36,
         playableEastBoundary
       ),
-      [2048.3907584325657, HARTHMERE_EXTENSION_FEET_Y, -540]
+      [
+        2048.3907584325657,
+        HARTHMERE_EXTENSION_FEET_Y,
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ + 36,
+      ]
     );
     assert.equal(
       harthmereExtensionEdgeRescuePosition([1700, 22, -600], 36),

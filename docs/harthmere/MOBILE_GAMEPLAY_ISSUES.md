@@ -217,3 +217,148 @@ Verification completed for these source changes:
 The twelve fixes above require another deployment before their final physical
 phone acceptance pass. The currently deployed build was the evidence source
 for the defects, not the build containing these newest corrections.
+
+## 2026-08-04 source audit and mobile optimization batch
+
+A source audit was run against the state described above, looking for what was
+still missing rather than re-deriving what had already been fixed. Full
+findings and file:line evidence: `HARTHMERE_MOBILE_OPTIMIZATION_AUDIT_2026-08-04.md`.
+
+The memory work from 2026-08-02/03 was verified as genuinely present in
+source (Voxeloo 128 MB, ⅛ resource capacity, shared module across remounts,
+audio prefetch skip, bounded prototype streaming, phone `low` quality, 64 m
+tier). The remaining gaps were reachability and adaptivity, not more trimming.
+
+Fixed in this batch. Every item is gated on `clientConfig.mobileDevice` or on a
+clamp set that is `undefined` on desktop, so no desktop behaviour changes.
+
+1. **Critical — a phone could not mine, place, or fight.** `primary`,
+   `primary_hold`, `secondary`, and `secondary_hold` are bound through
+   `bindMouseClick` and driven by `mousedown`/`mouseup`, so no touch path
+   reached them. The only route in was tapping a hotbar slot, which pulses
+   `primary_hold` for a fixed 350 ms — so a block that takes longer than 350 ms
+   to mine could not be mined, and `secondary` had no mobile invocation at all.
+   Separately, the Harthmere combat verbs (draw/sheathe, cycle target, basic,
+   heavy, spark) are dispatched from a `keydown` handler keyed on
+   `HARTHMERE_COMBAT_KEY_BINDINGS`, so all five were unreachable without a
+   keyboard.
+
+   Phones now render a right-thumb action cluster: a **hold-capable** Primary
+   (labelled from the selected item — Mine/Attack/Place/Cast/Use), a
+   hold-capable Secondary, and Draw, Target, Heavy and Spark. Hold means
+   press→`setSyntheticMotion(…, 1)` and release→`0`, which is what makes mining
+   a slow block work; it is deliberately not `pulseMotion`. The combat buttons
+   call the existing combat entry points (`toggleHarthmereWeaponDrawn`,
+   `cycleHarthmereCombatTarget`, `performHarthmereKeyedAttack`) rather than
+   reimplementing them, so a phone press and a keyboard press produce the same
+   animation, the same `UpdateNpcHealthEvent`, the same server range/item
+   validation, and the same Anima retaliation. Combat controls appear only in
+   native ECS authority mode, and Target/Heavy/Spark only once the weapon is
+   drawn, matching the keyboard flow. Blocked reasons come verbatim from
+   `getHarthmereMultiplayerAttackDisabledReason`, so the phone HUD cannot drift
+   from the desktop rules. Primary and secondary are never disabled by combat
+   state — the rules that block an attack do not block chopping a tree.
+   The cluster is a separate component mounted only for `mobileDevice`, so its
+   combat/hotbar subscriptions do not exist on a touch-capable desktop, and it
+   is excluded from the camera look-drag capture so holding to mine cannot
+   also spin the view.
+
+2. **High — `viewport-fit=cover` was missing, so every safe-area inset was 0.**
+   The game page shipped `width=device-width, initial-scale=1.0`. Without
+   `viewport-fit=cover` iOS reports `env(safe-area-inset-*)` as `0px`, so every
+   phone HUD rule relying on them collapsed to its literal fallback — landscape
+   left padding was 24 px where a notched iPhone needs ~44 px, putting the
+   movement cluster under the sensor housing. Portrait at 390x844 looked fine,
+   which is why the earlier smoke missed it. Pinch zoom is still allowed; the
+   iOS focus-zoom problem remains solved by the 16 px inputs.
+
+3. **High — phones had no dynamic quality adaptation at all.**
+   `forceRenderScale = 0.5` short-circuits `computeRenderScale` before its
+   `dynamic` branch, and `low` quality hard-coded a fixed 64 m draw distance —
+   so the whole `DynamicSettingsUpdater` ladder was bypassed on phones. This is
+   the same failure finding 13 of the 2026-08-03 render audit fixed for desktop
+   ("a struggling client had no lever at all"), reintroduced for the device
+   class that needs it most: a phone over budget at 0.5 could not fall to 0.3,
+   and a fast phone could never climb.
+
+   Phones are now classified once at boot from `detect-gpu` tier plus
+   `navigator.deviceMemory` / `hardwareConcurrency`, and the ladder is handed a
+   clamped range instead of a hard pin. RAM/core signals may only *downgrade* a
+   device, because `deviceMemory` is absent on iOS and a missing signal must
+   never read as "weak". The `standard` class starts at exactly 0.5 / 64 m —
+   the profile validated on the physical iPhone 12 mini — so nothing starts
+   anywhere new. No class may exceed 96 m, the radius the jetsam sessions were
+   running. Clamping is applied both where the value is generated and where the
+   ladder proposes it, so a proposal that clamps back onto the current value is
+   dropped instead of burning a pacing interval.
+
+4. **High — the frame loop was uncapped.** `Loop.tick` rendered on every
+   `requestAnimationFrame`. Phones now render at a 30 FPS target. Only
+   rendering is paced: ECS flush, clock, the fixed-rate simulation ticker and
+   event publishing still run every animation frame, so input latency, physics
+   and networking are unchanged. This halves per-frame CPU on the bottleneck
+   every prior investigation identified, and reduces the sustained thermal load
+   behind the 124–191% CPU readings.
+
+5. **High — WebGL context loss was fatal with no restore path.**
+   `preventDefault()` was called on `webglcontextlost` — the browser's contract
+   for "this application will restore the context" — but nothing anywhere
+   listened for `webglcontextrestored`, so the game stayed dead until a page
+   reload. iOS discards GL contexts under exactly the memory pressure this game
+   operates near, and Safari drops them after a backgrounded tab, so "came back
+   to a black screen" was indistinguishable from a crash. Phones now stop the
+   frame loop on loss (rendering into a lost context throws, which `Loop.tick`
+   escalates to `log.fatal` and a cancelled animation frame — turning a
+   recoverable event into an unrecoverable one) and rebuild via the existing
+   `reattach()` on restore. The loss report is downgraded from fatal to a
+   warning only on the path that can actually recover. Desktop keeps the
+   original fatal report.
+
+6. **Medium — 2.65 MB of base64-in-JSON atlases decoded on the main thread.**
+   Phones now release each ~1 MB payload string as it is consumed, so peak boot
+   footprint is one payload instead of all three. **Partial:** the real remedy
+   is to stop shipping base64-in-JSON (raw `.bin` plus a shape sidecar,
+   expanded in a worker or pre-expanded in Galois); that is an asset-pipeline
+   change and remains open.
+
+   Writing the test for this uncovered a **latent bug affecting all platforms**,
+   fixed in the same pass and *not* mobile-gated. Five call sites used
+   `new Uint8Array(Buffer.from(data, "base64").buffer)`, which discards
+   `byteOffset`/`byteLength`. Node pools sub-4 KiB `Buffer` allocations, so
+   that expression returns a view over the whole 8 KiB pool from byte 0 —
+   neighbouring bytes, not the payload. It was correct in the shipped browser
+   client only because the browserify polyfill happens to allocate exactly.
+   All five now route through one `decodeBase64Bytes` that prefers native
+   `atob` and honours offset/length in the `Buffer` fallback, so both branches
+   agree. Two of the five were outside the atlases: the breaking/shaping
+   animation in `materials.ts`, and the **GLB** path in `item_mesh.ts`, which
+   handed the parser the whole backing buffer with the offset discarded — a GLB
+   parser reads a magic header at byte 0, so outside the browser it was parsing
+   from the wrong byte entirely. This is a no-op for the shipped browser client
+   and a correctness fix everywhere else.
+
+7. **Low — PWA manifest declared no orientation.** Now `"orientation": "any"`,
+   consistent with portrait being a supported requirement.
+
+Deliberately not attempted in this batch, and still open:
+
+- **KTX2 / gltfpack over the NPC assets.** `find public -name "*.ktx2"` is
+  still 0 files, and `big_mucker.….gltf` is still 15.5 MB of JSON. The
+  decoder infrastructure and the `assets:install-gltfpack` script exist; this
+  is an asset rebuild, not a client change.
+- **`useWorker: false`.** The worker still uses the non-SIMD build with a
+  16 MB heap and offloads only `toBlockGeometry`. Enabling it on phones needs
+  the SIMD artifact and buffer transfer first, and a measurement.
+- **Binary atlas format** (see item 6 above).
+
+Verification for this batch:
+
+- 57 focused tests pass: `mobile_device_profile`, `mobile_frame_pacing`,
+  `mobile_action_controls`, `mobile_atlas_decode`, plus the existing
+  `graphics_settings`, `dynamic_settings_updater` and `client_config` suites.
+  The decode suite asserts both the native and `Buffer` branches produce
+  identical bytes, that neither ever returns a view over a larger backing
+  buffer, and covers payloads on both sides of Node's 4 KiB pooling boundary.
+- Physical-device acceptance has **not** been performed. Every item above is a
+  code-path argument plus unit coverage; none of it has been measured on the
+  connected iPhone, and none of it is deployed.

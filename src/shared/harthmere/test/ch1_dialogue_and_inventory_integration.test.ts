@@ -49,7 +49,7 @@ describe("Chapter 1 existing-system integration", () => {
     assert.match(css, /font-size: clamp\(18px, 1\.6vw, 24px\)/);
   });
 
-  it("reconciles Chapter 1 NPC content without touching terrain or colliding with NPC type ids", () => {
+  it("reconciles Chapter 1 content without colliding with NPC type ids", () => {
     const shim = read("src/server/shim/main.ts");
     assert.match(
       shim,
@@ -63,8 +63,25 @@ describe("Chapter 1 existing-system integration", () => {
       shim,
       /LOCAL_DEV_RUNTIME_CONTENT_MARKER_ID = 8_810_000_000_020_001/
     );
+    const branchStart = shim.indexOf("if (!shouldSeedLocalDevTerrain())");
+    const branchEnd = shim.indexOf(
+      "\n    return;\n  }\n\n  const firstExtensionTerrainId",
+      branchStart
+    );
+    assert.ok(branchStart >= 0 && branchEnd > branchStart);
+    const terrainDisabledBranch = shim.slice(branchStart, branchEnd);
+    const additiveTownBlockEnd = terrainDisabledBranch.indexOf(
+      "// Elsewhen is a detached, portal-only region"
+    );
+    assert.ok(additiveTownBlockEnd >= 0, "missing detached Elsewhen seed boundary");
+    assert.ok(
+      terrainDisabledBranch.indexOf(
+        "seedMissingChapter1TerrainIntoExistingWorld(service, worldApi);"
+      ) > additiveTownBlockEnd,
+      "Elsewhen terrain repair must run after and outside the optional additive-town block"
+    );
     assert.match(
-      shim,
+      terrainDisabledBranch,
       /seedMissingChapter1TerrainIntoExistingWorld\(service, worldApi\);[\s\S]*reconcileLocalDevRuntimeContent\(service, worldApi\);[\s\S]*reconcileLocalDevPlayerLikeNpcCosmetics/
     );
   });

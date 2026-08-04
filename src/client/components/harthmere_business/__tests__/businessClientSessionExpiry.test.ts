@@ -45,6 +45,7 @@ function clinicSnapshot(
     sessionId: "session_1",
     businessId,
     typeId: BUSINESS_TYPE,
+    actorId: "clinic_actor",
     status: "active",
     startedAtMs: NOW_MS - 10,
     expiresAtMs: NOW_MS + 1_000,
@@ -76,6 +77,7 @@ function clinicSnapshot(
     ...sessionOverrides,
   };
   return {
+    actorId: "clinic_actor",
     businesses: {
       [businessId]: { businessId, typeId: BUSINESS_TYPE, status: "open" },
     },
@@ -97,6 +99,44 @@ describe("harthmere business client session expiry guard", function () {
       NOW_MS
     );
     assert.ok(active, "live session should be active");
+  });
+
+  it("ignores another player's active session at the same business", () => {
+    const state = clinicSnapshot();
+    const own = Object.values(
+      state.businessSystems.customerSessions ?? {}
+    )[0] as any;
+    state.businessSystems.customerSessions = {
+      foreign_session: {
+        ...own,
+        sessionId: "foreign_session",
+        actorId: "another_player",
+      },
+      [own.sessionId]: own,
+    };
+    assert.equal(
+      activeHarthmereBusinessClientCustomerSession(
+        state,
+        "biz_clinic",
+        NOW_MS
+      )?.sessionId,
+      "session_1"
+    );
+    state.businessSystems.customerSessions = {
+      foreign_session: {
+        ...own,
+        sessionId: "foreign_session",
+        actorId: "another_player",
+      },
+    };
+    assert.equal(
+      activeHarthmereBusinessClientCustomerSession(
+        state,
+        "biz_clinic",
+        NOW_MS
+      ),
+      undefined
+    );
   });
 
   it("filters a stale session whose expiresAtMs has elapsed even if status is still active", () => {
@@ -143,7 +183,7 @@ describe("harthmere business client session expiry guard", function () {
     );
 
     assert.ok(html.includes("In-world customer shift"));
-    assert.ok(html.includes("Start shift at counter"));
+    assert.ok(html.includes("Start customer shift"));
     assert.equal(html.includes("Help please"), false);
     assert.equal(html.includes("Shift live:"), false);
   });
@@ -265,6 +305,30 @@ describe("harthmere business client session expiry guard", function () {
         (persistedSession!.expiresAtMs ?? NOW_MS) + 1
       ),
       undefined
+    );
+  });
+
+  it("SSR boundary: projects only the requesting player's sessions", () => {
+    const state = defaultHarthmereProductionEconomyState();
+    (state.businessSystems as any).customerSessions = {
+      mine: {
+        ...(clinicSnapshot().businessSystems.customerSessions as any).session_1,
+        sessionId: "mine",
+        actorId: "snapshot_actor",
+      },
+      theirs: {
+        ...(clinicSnapshot().businessSystems.customerSessions as any).session_1,
+        sessionId: "theirs",
+        actorId: "another_actor",
+      },
+    };
+    const snapshot = createHarthmereProductionEconomyClientSnapshot(
+      state,
+      "snapshot_actor"
+    );
+    assert.deepEqual(
+      Object.keys(snapshot.businessSystems.customerSessions),
+      ["mine"]
     );
   });
 });

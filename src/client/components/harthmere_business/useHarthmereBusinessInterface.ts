@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   createHarthmereBusinessInterfaceAdapter,
   fetchHarthmereBusinessEconomyState,
+  formatHarthmereBusinessPlayerWarning,
   submitHarthmereBusinessEconomyMutation,
   type HarthmereBusinessEconomySnapshot,
   type HarthmereBusinessInterfaceAdapter,
@@ -38,7 +39,13 @@ export function useHarthmereBusinessInterfaceAdapter(
       setHydrated(true);
       setError(undefined);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)));
+      setError(
+        new Error(
+          formatHarthmereBusinessPlayerWarning(
+            err instanceof Error ? err.message : String(err)
+          )
+        )
+      );
       setHydrated(false);
     } finally {
       refreshInFlight.current = false;

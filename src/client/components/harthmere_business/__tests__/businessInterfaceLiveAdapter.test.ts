@@ -2,7 +2,7 @@
 /// <reference types="node" />
 import assert from "assert";
 import { build } from "esbuild";
-import { existsSync, statSync } from "fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "fs";
 import { mkdtemp, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import path from "path";
@@ -95,6 +95,31 @@ function visibleTextFromStaticMarkup(html: string) {
     .replace(/&quot;/g, '"')
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function literalBusinessBackendMessages() {
+  const messages = new Set<string>();
+  const roots = [
+    path.join(process.cwd(), "src/shared/harthmere"),
+    path.join(process.cwd(), "src/pages/api/harthmere"),
+    path.join(process.cwd(), "src/server/harthmere"),
+  ];
+  const visit = (entry: string) => {
+    const stat = statSync(entry);
+    if (stat.isDirectory()) {
+      for (const child of readdirSync(entry)) visit(path.join(entry, child));
+      return;
+    }
+    if (!/\.(?:ts|tsx)$/.test(entry)) return;
+    const source = readFileSync(entry, "utf8");
+    for (const match of source.matchAll(
+      /(?:economy_(?:rejected|warning)|jobs_board_rejected|native_ecs_materialization_deferred):[A-Za-z0-9_:.-]+/g
+    )) {
+      messages.add(match[0]);
+    }
+  };
+  for (const root of roots) visit(root);
+  return [...messages].sort();
 }
 
 function businessType(typeId: HarthmereBusinessTypeId) {
@@ -472,7 +497,7 @@ describe("Harthmere in-world business interface live adapter", () => {
           { businessId: "business_food", itemId: "worker_meal", count: 1 },
           { fetchImpl, requestId: "fixed" }
         ),
-      /business_permission_required/
+      /You do not have permission to manage that part of the business\./
     );
   });
 
@@ -499,7 +524,7 @@ describe("Harthmere in-world business interface live adapter", () => {
           },
           { fetchImpl, requestId: "failed_native_tool_purchase" }
         ),
-      /native_ecs_authority_required/
+      /The world is still synchronizing this business\./
     );
   });
 
@@ -1609,7 +1634,7 @@ describe("Harthmere in-world business interface current screens", () => {
     );
     assert.ok(html.includes("In-World Shift"));
     assert.ok(html.includes("In-world customer shift"));
-    assert.ok(html.includes("Start shift at counter"));
+    assert.ok(html.includes("Start customer shift"));
     assert.ok(html.includes('data-business-mode="customer"'));
   });
 
@@ -1649,7 +1674,7 @@ describe("Harthmere in-world business interface current screens", () => {
         `${typeId} should render the spatial shift control`
       );
       assert.ok(
-        html.includes("Start shift at counter"),
+        html.includes("Start customer shift"),
         `${typeId} should render a start control`
       );
       assert.equal(html.includes('data-business-minigame-arena="true"'), false);
@@ -2404,7 +2429,7 @@ describe("Harthmere in-world business interface current screens", () => {
       await page.goto("https://business-panel.test/");
       await page.addScriptTag({ content: await readFile(bundlePath, "utf8") });
       const startShiftButton = page.getByRole("button", {
-        name: /start shift/i,
+        name: /start customer shift/i,
       });
       try {
         await startShiftButton.waitFor({
@@ -2535,6 +2560,70 @@ describe("Harthmere in-world business interface current screens", () => {
       ),
       "This branch has no open automation slots. Remove an automation or unlock another slot."
     );
+    assert.equal(
+      formatHarthmereBusinessPlayerWarning(
+        "economy_rejected:business_staff_side_required"
+      ),
+      "Stand behind the service counter before helping the next customer."
+    );
+    assert.equal(
+      formatHarthmereBusinessPlayerWarning(
+        "economy_rejected:business_customer_session_not_active"
+      ),
+      "That customer shift has ended. Start a new shift from the business board."
+    );
+    assert.equal(
+      formatHarthmereBusinessPlayerWarning(
+        "economy_rejected:business_customer_session_not_owned"
+      ),
+      "That customer shift belongs to another player. Start your own shift from the business board."
+    );
+    assert.equal(
+      formatHarthmereBusinessPlayerWarning(
+        "economy_rejected:business_customer_session_already_active"
+      ),
+      "A customer shift is already running at this business. Wait for it to finish before starting yours."
+    );
+    assert.equal(
+      formatHarthmereBusinessPlayerWarning(
+        "business_economy_mutation_http_503"
+      ),
+      "The business service could not be reached. Try again in a moment."
+    );
+    const readable =
+      "The business service could not be reached. Try again in a moment.";
+    assert.equal(formatHarthmereBusinessPlayerWarning(readable), readable);
+  });
+
+  it("formats every literal business backend message as player-readable copy", () => {
+    const backendMessages = literalBusinessBackendMessages();
+    assert.ok(backendMessages.length > 150);
+    for (const raw of backendMessages) {
+      const message = formatHarthmereBusinessPlayerWarning(raw);
+      assert.equal(
+        /economy_(?:rejected|warning)|jobs_board_rejected|native_ecs_materialization_deferred/.test(
+          message
+        ),
+        false,
+        `${raw} leaked its backend prefix as ${message}`
+      );
+      assert.equal(
+        /[a-z0-9]+_[a-z0-9]+/.test(message),
+        false,
+        `${raw} leaked snake case as ${message}`
+      );
+      assert.equal(
+        /:[a-z]/.test(message),
+        false,
+        `${raw} leaked a backend segment as ${message}`
+      );
+      assert.equal(
+        /[a-z][A-Z][a-z]/.test(message),
+        false,
+        `${raw} leaked camel case as ${message}`
+      );
+      assert.match(message, /[.!?]$/u, `${raw} is not a complete sentence`);
+    }
   });
 
   it("derives owner dashboard, shopfront, contract board, finance, staff, and compliance panels from backend data", () => {

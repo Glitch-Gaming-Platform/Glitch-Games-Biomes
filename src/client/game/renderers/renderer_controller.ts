@@ -89,6 +89,11 @@ export class RendererController {
   val: number;
   renderingEnabled = true;
   onContextLost: (event: Event) => void;
+  // HARTHMERE_MOBILE_CONTEXT_RESTORE (2026-08-04 mobile audit, item 5).
+  // Mobile-only handler; left undefined on desktop so no extra listener is
+  // registered and desktop behaviour is byte-for-byte unchanged.
+  onContextRestored?: (event: Event) => void;
+  private contextLost = false;
   framerateBottleneck: "cpu" | "gpu" | undefined;
   #profiler?: PerformanceProfiler;
   private dynamicSettingsUpdater?: DynamicSettingsUpdater;
@@ -113,8 +118,57 @@ export class RendererController {
     this.lastSeenTweaksVersion = -1;
     this.val = Math.random();
 
+    // HARTHMERE_MOBILE_CONTEXT_RESTORE (2026-08-04 mobile audit, item 5).
+    //
+    // `preventDefault()` on `webglcontextlost` is the browser's contract for
+    // "this application will restore the context". Nothing listened for
+    // `webglcontextrestored` anywhere in the client, so on every device the
+    // promise was broken and the game stayed dead until a page reload.
+    //
+    // That is a desktop curiosity and a mobile crash. iOS discards GL contexts
+    // under exactly the memory pressure this game operates near, and Safari
+    // also drops them after a tab has been backgrounded -- so a plain
+    // "backgrounded for a minute, came back to a black screen" looked
+    // identical to a hard crash to the player.
+    //
+    // Recovery is gated on `mobileDevice`. Desktop keeps its previous
+    // behaviour (the `log.fatal` in `PassRenderer.onContextLost`), because a
+    // desktop context loss usually means a driver/tab-crash we genuinely want
+    // reported loudly rather than papered over.
     this.onContextLost = (event: Event) => {
       event.preventDefault();
+      if (!this.clientConfig.mobileDevice) {
+        return;
+      }
+      this.contextLost = true;
+      // Stop the frame loop immediately. Rendering into a lost context throws
+      // out of `renderFrame`, which `Loop.tick` escalates to `log.fatal` and a
+      // cancelled animation frame -- turning a recoverable event into the
+      // unrecoverable one we are trying to avoid.
+      this.renderingEnabled = false;
+      log.warn(
+        "Lost the WebGL context on a mobile device; waiting for the browser to restore it."
+      );
+    };
+
+    this.onContextRestored = (_event: Event) => {
+      if (!this.clientConfig.mobileDevice || !this.contextLost) {
+        return;
+      }
+      this.contextLost = false;
+      log.info("Mobile WebGL context restored; rebuilding the renderer.");
+      try {
+        // `reattach()` is the existing detach/attach pair, which disposes the
+        // pass renderer, scenes, passes and profiler and builds fresh ones
+        // against the restored context. Textures and geometry are re-uploaded
+        // lazily by the normal resource paths on the next frames.
+        this.reattach();
+        this.renderingEnabled = true;
+      } catch (error: any) {
+        log.error(`Failed to rebuild the renderer after context restore.`, {
+          error,
+        });
+      }
     };
   }
 
@@ -183,12 +237,19 @@ export class RendererController {
     this.passRenderer = new PassRenderer("game", this.scenePasses, {
       canvas,
       allowSoftwareWebGL: this.clientConfig.allowSoftwareWebGL,
+      // HARTHMERE_MOBILE_CONTEXT_RESTORE: only the mobile path installs a
+      // `webglcontextrestored` rebuild, so only it may downgrade the loss
+      // report from fatal to a warning.
+      recoverableContextLoss: this.clientConfig.mobileDevice,
     });
     this.#profiler = new PerformanceProfiler(this.passRenderer.context(), {
       enableGpuTimer: tweaks.enableGpuTimer,
     });
     this.dynamicSettingsUpdater = new DynamicSettingsUpdater(
-      this.#profiler.asReadonly()
+      this.#profiler.asReadonly(),
+      // HARTHMERE_MOBILE_DYNAMIC_LADDER (2026-08-04 mobile audit, item 3).
+      // Undefined on desktop, so the ladder is unclamped exactly as before.
+      this.clientConfig.mobileGraphicsClamps
     );
 
     makeCvalHook({
@@ -225,6 +286,23 @@ export class RendererController {
     this.threeClock = new THREE.Clock();
 
     canvas.addEventListener("webglcontextlost", this.onContextLost, false);
+    // HARTHMERE_MOBILE_CONTEXT_RESTORE: mobile only -- see the constructor.
+    //
+    // The restore handler calls `reattach()`, which is `detach()` + `attach()`
+    // on the same canvas. Both listeners are therefore registered for cleanup
+    // here so a rebuild cannot stack a second copy of either one on the canvas
+    // (`webglcontextlost` was previously added on every attach and never
+    // removed; that only becomes reachable now that anything reattaches, so
+    // the cleanup is registered on the mobile path alone and desktop attach /
+    // detach behaviour is left exactly as it was).
+    if (this.clientConfig.mobileDevice && this.onContextRestored) {
+      const onContextRestored = this.onContextRestored;
+      canvas.addEventListener("webglcontextrestored", onContextRestored, false);
+      this.cleanups.push(() => {
+        canvas.removeEventListener("webglcontextrestored", onContextRestored);
+        canvas.removeEventListener("webglcontextlost", this.onContextLost);
+      });
+    }
   }
 
   renderFrame() {

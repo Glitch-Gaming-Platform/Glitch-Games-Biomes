@@ -253,7 +253,7 @@ describe("Player Animations", () => {
     const d = 0;
     const s = getSmoothedWeight(e, d, 0.1);
 
-    assert.equal(s, 0.6);
+    assert.ok(Math.abs(s - Math.exp(-0.1 / 0.25)) < 1e-12);
   });
   it("smoothed weights near zero are rounded to zero", () => {
     const e = 0.0000001;
@@ -267,14 +267,21 @@ describe("Player Animations", () => {
     const d = 1;
     const s = getSmoothedWeight(e, d, 0.1, 0.5);
 
-    assert.equal(s, 0.2);
+    assert.ok(Math.abs(s - (1 - Math.exp(-0.1 / 0.5))) < 1e-12);
   });
   it("smoothed weights with custom ease in does not affect ease out", () => {
     const e = 1;
     const d = 0;
     const s = getSmoothedWeight(e, d, 0.1, 0.5);
 
-    assert.equal(s, 0.6);
+    assert.ok(Math.abs(s - Math.exp(-0.1 / 0.25)) < 1e-12);
+  });
+
+  it("produces the same blend after equal wall time at different frame rates", () => {
+    const oneFrame = getSmoothedWeight(0, 1, 0.1, 0.5);
+    const firstHalf = getSmoothedWeight(0, 1, 0.05, 0.5);
+    const twoFrames = getSmoothedWeight(firstHalf, 1, 0.05, 0.5);
+    assert.ok(Math.abs(oneFrame - twoFrames) < 1e-12);
   });
 
   it("keeps animation tracks for Blender dotted bone names", () => {

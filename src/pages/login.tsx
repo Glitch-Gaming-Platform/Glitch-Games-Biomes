@@ -7,6 +7,7 @@ import {
 } from "@/server/shared/auth/cookies";
 import type { WebServerServerSidePropsContext } from "@/server/web/context";
 import { findByUID } from "@/server/web/db/users_fetch";
+import { buildGlitchInstallRedirectDestination } from "@/server/web/glitch_install_redirect";
 import { reportFunnelStage } from "@/shared/funnel";
 import type { BiomesId } from "@/shared/ids";
 import dynamic from "next/dynamic";
@@ -119,30 +120,14 @@ export default function Login({
 }
 
 function glitchInstallRedirect(ctx: any) {
-  const q = ctx?.query ?? {};
-  const installId =
-    typeof q.install_id === "string"
-      ? q.install_id
-      : typeof q.glitch_install_id === "string"
-      ? q.glitch_install_id
-      : typeof q.installId === "string"
-      ? q.installId
-      : typeof q.game_install_id === "string"
-      ? q.game_install_id
-      : "";
-
-  if (!installId) {
+  const destination = buildGlitchInstallRedirectDestination(ctx?.query ?? {});
+  if (!destination) {
     return undefined;
   }
 
-  const params = new URLSearchParams({
-    install_id: installId,
-    glitch_auto_play: "1",
-  });
-
   return {
     redirect: {
-      destination: `/at?${params.toString()}`,
+      destination,
       permanent: false,
     },
   };
@@ -163,7 +148,8 @@ async function __biomesGetServerSideProps(
         redirect: {
           permanent: false,
           destination:
-            context.query?.redirect && typeof context.query.redirect === "string"
+            context.query?.redirect &&
+            typeof context.query.redirect === "string"
               ? context.query.redirect
               : DEFAULT_LOGIN_REDIRECT,
         },
@@ -182,7 +168,6 @@ async function __biomesGetServerSideProps(
   };
 }
 
-
 export async function getServerSideProps(ctx: any) {
   const glitchRedirect = glitchInstallRedirect(ctx);
   if (glitchRedirect) {
@@ -191,4 +176,3 @@ export async function getServerSideProps(ctx: any) {
 
   return __biomesGetServerSideProps(ctx);
 }
-

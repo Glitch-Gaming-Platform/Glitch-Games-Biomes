@@ -559,6 +559,23 @@ function nativeFishingToolAttributes(definition: HarthmereItemDefinition) {
   };
 }
 
+function nativeGatheringToolClassAttributes(
+  definition: HarthmereItemDefinition,
+  premiumWeapon: HarthmerePremiumWeaponDefinition | undefined
+) {
+  const semanticItemId = definition.itemId.toLowerCase();
+  const isAxe =
+    premiumWeapon?.family === "axe" ||
+    (/(?:^|_)axe$/.test(semanticItemId) && !semanticItemId.endsWith("pickaxe"));
+  if (isAxe) {
+    return { isAxe: true as const };
+  }
+  if (semanticItemId.endsWith("pickaxe")) {
+    return { isPickaxe: true as const };
+  }
+  return undefined;
+}
+
 function nativeFishAttributes(definition: HarthmereItemDefinition) {
   if (definition.itemId !== "river_trout") {
     return undefined;
@@ -718,6 +735,10 @@ export function harthmereBiscuitForItemDefinition(
   );
   const farmingToolAttributes = nativeFarmingToolAttributes(definition);
   const fishingToolAttributes = nativeFishingToolAttributes(definition);
+  const gatheringToolClassAttributes = nativeGatheringToolClassAttributes(
+    definition,
+    premiumWeapon
+  );
   const fishAttributes = nativeFishAttributes(definition);
   const cropBlockId = seedDefinition
     ? (safeParseBiomesId(seedDefinition.cropItemId) ??
@@ -827,6 +848,7 @@ export function harthmereBiscuitForItemDefinition(
     // that reaches logic authoritative.
     ...farmingToolAttributes,
     ...fishingToolAttributes,
+    ...gatheringToolClassAttributes,
     ...fishAttributes,
     ...wearableAttributes(definition),
   } as Biscuit;

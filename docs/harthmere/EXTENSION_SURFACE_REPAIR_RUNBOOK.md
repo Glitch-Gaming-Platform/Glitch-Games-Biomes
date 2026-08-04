@@ -8,11 +8,11 @@ They are **missing surface terrain shards**, not caves.
 
 The additive extension is seeded as four stacked shard layers per column:
 
-| Shard Y | World Y | Contents |
-| ------- | ------- | -------- |
-| −2, −1, 0 | −64 … 31 | plain foundation stone |
-| **1** | **32 … 63** | **the flat cap at Y=52, six voxels of soil under it, and the wilds forest on top of it** |
-| 2 | 64 … 95 | roofs, gate towers, tall landmarks (sparse) |
+| Shard Y   | World Y     | Contents                                                                                 |
+| --------- | ----------- | ---------------------------------------------------------------------------------------- |
+| −2, −1, 0 | −64 … 31    | plain foundation stone                                                                   |
+| **1**     | **32 … 63** | **the flat cap at Y=52, six voxels of soil under it, and the wilds forest on top of it** |
+| 2         | 64 … 95     | roofs, gate towers, tall landmarks (sparse)                                              |
 
 When the shardY=1 record is absent or holed, the column's topmost solid voxel
 falls from Y=52 to the foundation top at **Y=31**. The player sees a 32×32,
@@ -32,7 +32,7 @@ shard(63,-9)  shard(63,-2)  shard(64,-6) shard(64,-5)
 ```
 
 (world X = shardX × 32, world Z = shardZ × 32; authored X = world X − 1600.)
-That list is only where this player walked — treat the full 576-shard sweep as
+That list is only where this player walked — treat the full 744-shard sweep as
 the source of truth.
 
 ## Are they caves?
@@ -57,7 +57,7 @@ Both halves are idempotent. Run from the in-VNet host.
 
 ```bash
 # 0. Confirm the damage. Reports missing / invalid / emptyFoundation /
-#    surfaceHoles across all 2,304 foundation and 576 surface shards.
+#    surfaceHoles across all 2,976 foundation and 744 surface shards.
 REDIS_HOST=10.0.0.12 node scripts/harthmere/audit-production-extension-terrain.cjs
 
 # 1. Dry run the repair. Prints the plan; writes nothing.

@@ -57,6 +57,10 @@ import {
   HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION,
   harthmereBusinessOutpostBusinessId,
 } from "../business_customer_simulator";
+import {
+  HARTHMERE_BUSINESS_INTERIORS,
+  harthmereBusinessInteriorInteractionPoints,
+} from "../business_interior_runtime";
 import { CH1_WORLD_BUILDING_PLANS } from "../ch1_world_buildings";
 import {
   registerHarthmereAbility,
@@ -323,12 +327,12 @@ function applyOne(
     resolvedOverrides.serverActorPosition = dropPosition
       ? { ...dropPosition }
       : marker
-      ? {
-          x: marker.position[0],
-          y: marker.position[1],
-          z: marker.position[2],
-        }
-      : undefined;
+        ? {
+            x: marker.position[0],
+            y: marker.position[1],
+            z: marker.position[2],
+          }
+        : undefined;
   }
   const env = makeEnvelope(actionKind, payload, resolvedOverrides);
   return reduceHarthmereLiveModeBackendState(state, env, NOW_MS);
@@ -1323,6 +1327,139 @@ describe("parseHarthmereLiveModeBackendState", function () {
     );
   });
 
+  it("starts a business shift at its physical board, then requires staff-side play", function () {
+    const state = freshState();
+    const outpost =
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS.outpost_clinic_greenlamp;
+    const businessId = harthmereBusinessOutpostBusinessId(outpost.outpostId);
+    const board = outpost.dashboardAccessPoint.position;
+    const started = applyOne(
+      state,
+      "request_economy_mutation",
+      {
+        operation: "start_business_customer_session",
+        businessId,
+        interactionBusinessId: businessId,
+        targetBusinessId: businessId,
+        outpostId: outpost.outpostId,
+        businessInteractionMarkerId: outpost.dashboardAccessPoint.markerId,
+        businessInteractionPosition: board,
+        count: 1,
+      },
+      {
+        subsystem: "economy",
+        serverActorPosition: board,
+      }
+    );
+    assert.equal(
+      started.summary.warnings.includes(
+        "economy_rejected:business_staff_side_required"
+      ),
+      false
+    );
+    const session = Object.values(
+      started.state.economy.production.businessSystems.customerSessions ?? {}
+    ).find((candidate) => candidate.businessId === businessId);
+    assert.ok(session, "the board action must create the customer shift");
+
+    const tickedFromBoard = applyOne(
+      started.state,
+      "request_economy_mutation",
+      {
+        operation: "tick_business_customer_session",
+        businessId,
+        sessionId: session.sessionId,
+        interactionBusinessId: businessId,
+        targetBusinessId: businessId,
+        outpostId: outpost.outpostId,
+        businessInteractionMarkerId: outpost.dashboardAccessPoint.markerId,
+        businessInteractionPosition: board,
+      },
+      {
+        subsystem: "economy",
+        serverActorPosition: board,
+      }
+    );
+    assert.ok(
+      tickedFromBoard.summary.warnings.includes(
+        "economy_rejected:business_staff_side_required"
+      )
+    );
+
+    const interior = HARTHMERE_BUSINESS_INTERIORS.find(
+      (record) => record.outpostId === outpost.outpostId
+    );
+    assert.ok(interior);
+    const staff = harthmereBusinessInteriorInteractionPoints(interior).staff;
+    assert.ok(
+      Math.hypot(board.x - staff[0], board.z - staff[2]) > 4.25,
+      "the board fixture must remain distinct from the staff station"
+    );
+
+    const tickedFromStaff = applyOne(
+      started.state,
+      "request_economy_mutation",
+      {
+        operation: "tick_business_customer_session",
+        businessId,
+        sessionId: session.sessionId,
+        interactionBusinessId: businessId,
+        targetBusinessId: businessId,
+        outpostId: outpost.outpostId,
+        businessInteractionMarkerId: outpost.dashboardAccessPoint.markerId,
+        businessInteractionPosition: board,
+      },
+      {
+        subsystem: "economy",
+        serverActorPosition: {
+          x: staff[0],
+          y: staff[1],
+          z: staff[2],
+        },
+      }
+    );
+    assert.equal(
+      tickedFromStaff.summary.warnings.some(
+        (warning) =>
+          warning.includes("business_proximity") ||
+          warning.includes("business_staff_side_required")
+      ),
+      false,
+      "the authoritative behind-counter station must support shift play"
+    );
+
+    const endedOutside = applyOne(
+      started.state,
+      "request_economy_mutation",
+      {
+        operation: "end_business_customer_session",
+        businessId,
+        sessionId: session.sessionId,
+      },
+      {
+        subsystem: "economy",
+        serverActorPosition: {
+          x: board.x + 40,
+          y: board.y,
+          z: board.z + 40,
+        },
+      }
+    );
+    assert.equal(
+      endedOutside.summary.warnings.some((warning) =>
+        warning.includes("business_proximity")
+      ),
+      false,
+      "leaving the business must be able to end the actor-owned shift"
+    );
+    assert.equal(
+      endedOutside.state.economy.production.businessSystems.customerSessions[
+        session.sessionId
+      ]?.status,
+      "aborted"
+    );
+  });
+
   it("proximity-gates customer contracts through interaction business ids", function () {
     const nearState = freshState();
     nearState.inventory.gold = 1_000;
@@ -1466,7 +1603,7 @@ describe("live-mode readiness contracts", function () {
     ] as Array<
       [
         HarthmereLiveModeAuthorityEnvelope["subsystem"],
-        HarthmereLiveModeActionKind
+        HarthmereLiveModeActionKind,
       ]
     >) {
       const plan = buildHarthmereLiveModePersistenceMutationPlan(
@@ -3741,7 +3878,7 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     assert.equal(HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS, 4);
     assert.equal(
       HARTHMERE_LIVE_ENTITY_CHASE_STEP_CAP_METERS,
-      HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS * 1.2 * 1.3
+      HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS * 1.2 * 1.3 * 0.7
     );
     assert.ok(
       Math.abs(
@@ -10185,10 +10322,9 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     ));
     const todo = Object.values(s.jobsBoard.todos)[0];
     assert.ok(todo, "accepting the delivery should create a todo");
-    const clinicLockbox =
-      harthmereJobsBoardQuestMarkerRuntimePositionForId(
-        "clinic_lockbox_marker"
-      )!;
+    const clinicLockbox = harthmereJobsBoardQuestMarkerRuntimePositionForId(
+      "clinic_lockbox_marker"
+    )!;
     s.careLoops.worldInteractions.clinic_lockbox = {
       objectId: "clinic_lockbox",
       kind: "use",
@@ -10307,10 +10443,9 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     ));
     const todo = Object.values(s.jobsBoard.todos)[0];
     assert.ok(todo, "accepting the delivery should create a todo");
-    const clinicSupply =
-      harthmereJobsBoardQuestMarkerRuntimePositionForId(
-        "clinic_supply_marker"
-      )!;
+    const clinicSupply = harthmereJobsBoardQuestMarkerRuntimePositionForId(
+      "clinic_supply_marker"
+    )!;
     s.careLoops.worldInteractions.clinic_supply_shelf = {
       objectId: "clinic_supply_shelf",
       kind: "use",
@@ -10728,14 +10863,15 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       label: "Public Marker",
       createdAtMs: NOW_MS,
     };
-    s.building.inWorldMarkers["bible_quest:harthmere_sq_001_the_gate_ledger"] = {
-      markerId: "bible_quest:harthmere_sq_001_the_gate_ledger",
-      plotId: "harthmere",
-      kind: "npc_map_marker",
-      position: [2076, 53, -212],
-      label: "The Gate Ledger",
-      createdAtMs: NOW_MS,
-    };
+    s.building.inWorldMarkers["bible_quest:harthmere_sq_001_the_gate_ledger"] =
+      {
+        markerId: "bible_quest:harthmere_sq_001_the_gate_ledger",
+        plotId: "harthmere",
+        kind: "npc_map_marker",
+        position: [2076, 53, -212],
+        label: "The Gate Ledger",
+        createdAtMs: NOW_MS,
+      };
 
     const shared = createHarthmereLiveModeSharedWorldState(s, NOW_MS);
     assert.equal(

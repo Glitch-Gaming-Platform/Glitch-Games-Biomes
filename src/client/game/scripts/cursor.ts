@@ -7,13 +7,16 @@ import { occupancyAt } from "@/client/game/helpers/occupancy";
 import { makeInitialCursor, type Cursor } from "@/client/game/resources/cursor";
 import {
   attackableEntitiesInAttackRegion,
+  canTraceCursorEntity,
   canAttackFilter,
+  isNativeEcsAttackTarget,
   shouldAddCrosshairMeleeTarget,
   traceNpcMetadataCursorHits,
 } from "@/client/game/resources/melee_attack_region";
 import type { ClientResources } from "@/client/game/resources/types";
 import type { Script } from "@/client/game/scripts/script_controller";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
+import { getAabbForEntity } from "@/shared/game/entity_sizes";
 import type { TerrainHit } from "@/shared/game/spatial";
 import { traceEntities } from "@/shared/game/spatial";
 import { TerrainHelper } from "@/shared/game/terrain_helper";
@@ -53,14 +56,16 @@ export class CursorScript implements Script {
       return makeInitialCursor();
     }
     const maxDistance = MAX_CURSOR_DISTANCE;
+    const nativeEcsAuthority = nativeBiomesEcsAuthorityEnabled();
     // Check entities hit by the ray.
 
     const cursorEntityFilter = (e: ReadonlyEntity) =>
-      !e.gremlin &&
-      e.id !== this.userId &&
-      (!e.health || e.health.hp > 0) &&
-      !e.protection && // TODO: Add an "interactable" component to entities the user can interact with.
-      !e.blueprint_component;
+      canTraceCursorEntity({
+        entity: e,
+        playerId: this.userId,
+        nativeEcsAuthority,
+        pass: "generic",
+      });
     const entityHits = traceEntities(this.table, source, direction, {
       maxDistance,
       entityFilter: cursorEntityFilter,
@@ -77,8 +82,18 @@ export class CursorScript implements Script {
       direction,
       {
         maxDistance,
-        entityFilter: cursorEntityFilter,
+        // This pass exists because native NPCs were deliberately excluded from
+        // the generic trace above. Reusing that filter here rejects every native
+        // target before its rendered body can be ray-tested.
+        entityFilter: (entity) =>
+          canTraceCursorEntity({
+            entity,
+            playerId: this.userId,
+            nativeEcsAuthority,
+            pass: "native_npc_metadata",
+          }),
         excludeIds: new Set(entityHits.map((hit) => hit.entity.id)),
+        aabbForEntity: (entity) => this.visibleNpcAabb(entity),
       }
     );
     let entityHit = last(
@@ -163,7 +178,6 @@ export class CursorScript implements Script {
     // Check attackable entities in the region.
 
     const player = this.resources.get("/scene/local_player");
-    const nativeEcsAuthority = nativeBiomesEcsAuthorityEnabled();
     // The original melee region is a broad local cone. Native Harthmere combat
     // uses the authoritative crosshair ray so a block throw/swing cannot hit a
     // nearby or occluded NPC and accidentally trigger retaliation.
@@ -184,6 +198,10 @@ export class CursorScript implements Script {
         selectedItem?.id
       );
       const nativeItemProfile = harthmereNativeItemCombatProfile(selectedItem);
+      // Mirror the authoritative health handler: a native definition without a
+      // combat profile is a placeable/tool, not a weapon. Treating that case as
+      // attackable made the crosshair promise hits the server correctly rejects
+      // (the Muck Buster placeable is the common example).
       const selectedCanAttack = nativeItemDefinition
         ? (nativeItemProfile?.damagePerHit ?? 0) > 0
         : true;
@@ -198,7 +216,9 @@ export class CursorScript implements Script {
         "pvp",
         target.position?.v ?? entityHit.pos
       );
-      const canAttack = canAttackFilter(ruleSet, aclAllowsPlayers, me, target);
+      const canAttack =
+        canAttackFilter(ruleSet, aclAllowsPlayers, me, target) &&
+        (!nativeEcsAuthority || isNativeEcsAttackTarget(target));
       if (
         selectedCanAttack &&
         (!nativeEcsAuthority || hit === entityHit) &&
@@ -225,6 +245,18 @@ export class CursorScript implements Script {
       hit,
       attackableEntities,
     };
+  }
+
+  private visibleNpcAabb(entity: ReadonlyEntity) {
+    const visiblePosition = this.resources
+      .cached("/scene/npc/render_state", entity.id)
+      ?.smoothedPosition();
+    return getAabbForEntity(
+      entity,
+      visiblePosition
+        ? { motionOverrides: { position: [...visiblePosition] } }
+        : undefined
+    );
   }
 
   tick(_dt: number) {
