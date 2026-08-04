@@ -151,25 +151,28 @@ async function main() {
     let state;
     while (Date.now() < deadline) {
       try {
-        state = await page.evaluate(() => {
-          const el = document.getElementById("biomes-promo-capture-output");
-          if (!el || !el.textContent) return undefined;
+        const text = await page
+          .locator("#biomes-promo-capture-output")
+          .textContent({ timeout: 1_000 });
+        if (text) {
           try {
-            return JSON.parse(el.textContent);
+            state = JSON.parse(text);
           } catch {
-            return undefined;
+            state = undefined;
           }
-        });
+        }
       } catch (error) {
         const message = String(error);
         if (
-          /execution context was destroyed|cannot find context with specified id|most likely because of a navigation/i.test(
+          /execution context was destroyed|cannot find context with specified id|most likely because of a navigation|timeout 1000ms exceeded/i.test(
             message
           )
         ) {
           // The visual-auth bridge intentionally replaces its document while
           // redirecting to the observer route. That navigation is progress,
-          // not a failed capture; resume polling in the new page context.
+          // not a failed capture. A saturated WebGL frame can also delay a DOM
+          // read, so every poll is bounded and the overall deadline remains
+          // authoritative instead of hanging forever inside page.evaluate.
           await new Promise((r) => setTimeout(r, 250));
           continue;
         }

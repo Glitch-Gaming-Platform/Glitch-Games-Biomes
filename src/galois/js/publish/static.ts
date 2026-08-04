@@ -129,6 +129,15 @@ async function publishAssets(
       }
     })
   );
+
+  if (renamedByHashMigration > 0) {
+    console.log(
+      `Byte-exact content hashing applied to ${renamedByHashMigration} binary ` +
+        `object(s). Objects whose bytes are unchanged keep their previous name ` +
+        `only if that name was already byte-derived; see ` +
+        `src/galois/js/publish/content_hash.ts.`
+    );
+  }
 }
 
 export async function publishStaticAssetsAndIndex(
