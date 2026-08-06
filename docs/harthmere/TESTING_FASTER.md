@@ -445,8 +445,12 @@ July 29 robot-story follow-up added four more concrete traps:
 - **A standalone Anima process needs its own explicit ready signal.** The app
   lifecycle gate can be green while a separate Anima container is still loading
   its replica. After a server-bundle hotfix, require the new build ID in Anima's
-  logs and wait for `anima now running`; increasing `Loaded ... entities`
-  messages are still bootstrap, not combat-test readiness.
+  logs, require host/app/Anima `dist/anima.js` SHA-256 equality, and wait for
+  both `anima now running` and `HFC Bootstrap complete`; increasing
+  `Loaded ... entities` messages are still bootstrap, not test readiness. A
+  retained worker with no `/app/dist` bind can answer from the right Redis and
+  still run stale movement code from its base image, producing a false product
+  failure at an old collision boundary.
 
 - **Quiesce browser pages that survived a stack restart before launching a new
   E2E context.** A live `/at` page can reconnect the moment Sync becomes ready
@@ -458,12 +462,26 @@ July 29 robot-story follow-up added four more concrete traps:
   the lifecycle gate: every service can correctly report `UP` while a surviving
   browser client is still making the test lane non-quiescent.
 
-- **Respect the native-ECS browser lock.** The runner owns
-  `/tmp/biomes-harthmere-native-ecs-browser.lock` because two heavy synchronized
-  browser contexts invalidate timing and can OOM the shared stack. If the owner
-  PID is alive, inspect its report/process and wait; never delete the lock or
-  kill another valid lane just to start yours. Multiplayer combat should open a
-  second client only inside its bounded scenario and close it during cleanup.
+- **Respect the runtime-scoped browser lease.** Production-shaped runners use
+  `scripts/harthmere/browser-runtime-lease.cjs`. One lease-owning process may
+  open multiple Chromium instances or contexts for multiplayer. Acquisitions
+  are reference-counted in that process, so closing one browser keeps the lane
+  reserved until its final sibling closes. All Harthmere `chromium.launch`
+  scripts are statically required to use the lease directly or through
+  `leasePlaywright` / `resolvePlaywright`.
+
+  A second process targeting the same web/Sync endpoints waits on the same
+  atomic lane directory; optional container-name omissions therefore cannot
+  split one runtime into two locks. Truly isolated stacks receive different
+  hashed lanes and may run concurrently; set
+  `HARTHMERE_E2E_BROWSER_RUNTIME_LANE` manually only when the runtime really is
+  isolated. A manual lane label does not override endpoint collision
+  detection: two labels that still point at the same web/Sync endpoints
+  serialize. Never delete a live lease or kill its owner to start yours. During
+  migration the lease also waits for the old
+  `/tmp/biomes-harthmere-native-ecs-browser.lock`. Multiplayer combat should
+  open its second client inside the same lease-owning process and close it
+  during cleanup.
 
 - **Classify media cancellation only in a lane that does not test that media.**
   Chromium may cancel the current ambient `.webm` or authored ambient `.mp3`
@@ -996,6 +1014,22 @@ Jobs Board catalog follow-up on July 29 added two more mandatory preflights:
   the server-reported live equipment snapshot once live authority is active,
   preventing stale local equipment after a real equip or unequip. Do not weaken
   the server gate or count the local projection itself as completion evidence.
+- **A visible job tool is not acceptance evidence by itself.** Protected-region
+  ACLs may block a tool action, but they must not erase the selected Muck Rake or
+  Repair Mallet from the player's hands. After any held-tool rendering fix, run
+  the cleanup and repair jobs together with
+  `HARTHMERE_E2E_ONLY_JOB_TEMPLATE_IDS=town_repair_fence,town_cleanup_muck_patch`
+  with `HARTHMERE_E2E_REAL_JOB_TOOL_PURCHASE=1` and
+  `HARTHMERE_E2E_JOBS_KEEP_GOING=1`. Start each row without its required tool;
+  require the accepted job to mark the exact vendor, buy the tool through the
+  real Shopfront, require the map marker to return to the field objective, move
+  the purchased backpack item into Hotbar 1 through the real Inventory UI, and
+  only then require the exact tool in native `selected_item`, a non-empty held
+  mesh, the visible field `F` prompt, a server-owned world-interaction receipt,
+  the todo becoming completed, the active destination moving back to the Jobs
+  Board, successful turn-in, and native-wallet reward. Do not sign off from an
+  inventory icon, donor-id unit test, local equipment projection, attached mesh,
+  or direct fixture grant alone.
 - **Aim at a procedural prop's body, not the terrain beneath it.** The security
   watch post is a narrow, tall prop. The browser harness faced its authored
   anchor at `Y - 0.25`, so the cursor ray hit the ground before the post and
@@ -2030,6 +2064,102 @@ Run the static safety contract after changing the helper:
 ```bash
 node scripts/glitch/test-refresh-warm-local-stack.cjs .
 ```
+
+#### No-image mutable code hotfixes
+
+Once a production image contains the mutable-hotfix watcher and browser
+bootstrap, later application-code repairs do not need another Docker, Next, or
+server-Webpack rebuild. The active manifest is stored in Redis, every web and
+simulation replica polls it, and each replica applies only a manifest matching
+its current build id and role.
+
+Use the two payload surfaces deliberately:
+
+- Backend and Next-server repairs use `writeFile`, `replace`, `deleteFile`, or
+  `mkdir` against the files already in the container. File operations are
+  atomic and roll back in reverse order if a later operation fails. Set
+  `restart.exitProcess: true`; the watcher exits, the stack supervisor fails the
+  container, and the platform restarts that replica. Startup reapplies the
+  persisted patch before launching services, records the applied hash, and does
+  not enter a restart loop.
+- Browser repairs use `client.script` / `client.scriptBase64` and optional
+  `client.style` / `client.styleBase64`. A no-store script runs before the
+  immutable Next application, then the live client polls the public descriptor
+  and loads a new hash-addressed script when the manifest changes. This avoids
+  overwriting a `/_next/static` URL that the browser is allowed to cache for a
+  year. A client patch can register cleanup with
+  `window.__biomesGlitchMutableHotfix.registerCleanup(fn)`.
+
+Every production manifest should include:
+
+- `compatibleBuildIds`: normally the exact current `.next/BUILD_ID`;
+- `targetRoles`: `web`, `simulation`, or both, never an accidental global
+  default for a role-specific backend file;
+- `expiresAt`: a short UTC expiry;
+- `expectCount` and preferably `expectedPreviousSha256` / `expectedSha256` for
+  compiled-file replacements; and
+- a reviewed rollback manifest containing the original bytes. Clearing Redis
+  stops future/client application but cannot reconstruct a backend file that
+  was already changed.
+
+Example combined web/backend repair:
+
+```json
+{
+  "version": "combat-hotfix-2026-08-06-v1",
+  "createdAt": "2026-08-06T18:00:00Z",
+  "expiresAt": "2026-08-07T18:00:00Z",
+  "compatibleBuildIds": ["<exact-build-id>"],
+  "targetRoles": ["web"],
+  "operations": [
+    {
+      "type": "replace",
+      "path": "dist/web.js",
+      "search": "<exact-old-compiled-text>",
+      "replace": "<reviewed-new-compiled-text>",
+      "expectCount": 1,
+      "expectedPreviousSha256": "<old-file-sha256>",
+      "expectedSha256": "<new-file-sha256>"
+    }
+  ],
+  "client": {
+    "script": "window.__combatEmergencyGuard = true;",
+    "style": ".broken-control { pointer-events: none; }",
+    "reload": "on-change"
+  },
+  "restart": { "exitProcess": true, "delayMs": 1000 }
+}
+```
+
+Apply and persist through `/api/admin/mutable_hotfix` with the existing hotfix
+token and `action: "apply_and_persist"`. The API now applies successfully
+before activating the Redis manifest, so a failed replacement is not left as a
+poisoned startup patch. Role-mismatched replicas skip the local operation but
+still observe the activated manifest; matching replica watchers apply it and
+restart themselves. A client-only manifest normally uses `operations: []` and
+omits `restart`.
+
+Run only the focused source checks while authoring this lane; do not rebuild
+`.next`, `dist`, or the image:
+
+```bash
+PATH="$HOME/.nvm/versions/node/v$(cat .nvmrc)/bin:$PATH" \
+NODE_OPTIONS=--no-experimental-strip-types \
+  node scripts/glitch/test-mutable-hotfix-layer.cjs
+
+PATH="$HOME/.nvm/versions/node/v$(cat .nvmrc)/bin:$PATH" \
+NODE_OPTIONS=--max-old-space-size=8192 \
+  node_modules/.bin/tsc -p tsconfig.mutablehotfix.json --pretty false
+
+bash -n scripts/glitch/run-glitch-local-game-stack.sh
+```
+
+The executable contract covers atomic rollback, build compatibility, apply-
+before-persist ordering, browser script/style replacement and cleanup, startup
+restart suppression, and the per-replica watcher wiring. Live verification
+must additionally show one applied-version/hash log per matching replica, the
+unchanged base build id, healthy lifecycle endpoints after backend restarts,
+and the expected `biomes:mutable-hotfix-applied` browser event.
 
 A create-only full-topology reconciliation can also be CPU-bound for more than
 ten minutes under AMD64/Rosetta before lifecycle services start. Constant CPU,
@@ -4877,7 +5007,7 @@ gate:
   Apple M1 Max run measured 27.78 median FPS with 26.5 ms CPU and 4.535 ms GPU
   time while the effective Harthmere radius remained pinned at 192 m. That is a
   CPU-distance failure, not a reason to lower render scale. The corrected
-  desktop auto floor is 128 m; explicit Low/Safe modes and the mobile emergency
+  desktop auto floor is 96 m; explicit Low/Safe modes and the mobile emergency
   ladder remain separate contracts.
 - Do not use a baseline FPS assertion that throws before the selected rows.
   Append the performance failure to the report, capture the baseline
@@ -4925,20 +5055,21 @@ contract. Do not validate these from constants or animation names alone:
 
 - Hits 1–4 share one budget across light and heavy input. Each hit must expose a
   different packaged `HarthmereBodyWeaponBasic_VariationN_24` or matching Heavy
-  variation, link only after the current contact, and preserve that contact
-  exactly once. A fifth press is retained but must not start until the fourth
-  hit's full commitment plus the three-second combo cooldown.
+  variation, link only after the current gameplay contact (250 ms light,
+  417 ms heavy), and preserve that contact exactly once. A fifth press is
+  retained but must not start until the fourth hit's full commitment plus the
+  three-second combo cooldown.
 - Ranged and magic releases do not enter the four directional-swing budget.
   Their own launch/cast clocks remain authoritative and must not acquire a
   melee `combatCombo` merely because they have an attackable target.
 - Buffer the next real press before taking a screenshot. A synchronous headed
-  capture can consume most of the 160 ms contact link; placing screenshots
+  capture can consume most of the 250 ms light contact link; placing screenshots
   between hit starts manufactures a false recovery pause in an otherwise valid
   chain. Capture the chain after all four follow-up inputs are committed.
 - Holding primary for at least 220 ms promotes that one press to Heavy. Require
   `damageMultiplier: 1.5`, the matching Heavy variation, a runtime clock exactly
-  1.3 times the authored 0.720 s contact / 1.640 s full clock, and no extra Basic
-  hit when the button is released.
+  matching the authored frame-10 0.417 s contact / frame-26 1.083 s full clock,
+  and no extra Basic hit when the button is released.
 - Combo state belongs to the player instance. Cow A dying, despawning, or
   leaving range may not swallow a valid buffered Cow B press; another player's
   variation history may not affect the local chain. Death, respawn, warp, and
@@ -6266,6 +6397,38 @@ machine as the React controller, and stop propagation only for an accepted
 unmodified `Tab`. A green React-hook unit test is insufficient if a real canvas
 `Tab` never publishes `window.__harthmereCombatLockOnDebug`.
 
+The August 6 lock/fight capture (`www.glitch.fun-1786021341741`) added four
+specific acceptance rules:
+
+- Do not feed the camera raw 10-12.5 Hz ECS target steps. Reset the smoothed
+  target only on a new lock, then filter same-target movement every rendered
+  frame and bound yaw/pitch angular velocity. Sample camera yaw while holding
+  A/D around one stationary Mucker; reject direction reversals or single-frame
+  turns above the configured rate.
+- While lock-on owns orientation, free-look input must not write an orientation
+  first and then be corrected by lock-on in the same frame. Confirm free look
+  resumes immediately after the second real `Tab` releases the lock.
+- Circle behind a Mucker/Hex during its visible windup and record player HP,
+  the committed cast yaw, and the eventual receipt result. A rear whiff is not
+  proven by animation alone; authoritative HP must remain unchanged. Repeat at
+  night, where an old 175-degree override used to make flank/rear avoidance
+  impractical.
+- Creature ease-of-hit is a horizontal combat AABB allowance, not a collision
+  resize or extra weapon reach. Test the same just-outside edge against a
+  native creature and a player-like NPC: the creature receives the 0.18 m
+  allowance on both client selection and server validation, while the
+  player-like body remains exact. Floor/ceiling separation must remain
+  unchanged.
+
+For FPS, record the effective dynamic draw distance rather than only the chosen
+quality label. This capture stayed at 128 m and render scale 1 while reporting
+210 low-FPS samples (median 12), 1,337 long RAF handlers, 1,098-1,178 live block
+meshes, roughly 204 MB of flora vertex buffers, and 1.5-1.6 GB JS heap. The
+desktop emergency floor is now 96 m; validate that sustained sub-24 FPS can
+reach it and compare retained terrain/heap after stabilization. A green HAR
+status table is not performance evidence—the capture had only two failed
+requests, both unrelated advertising beacons.
+
 ### Fast business-result hotfix lane (August 5–6)
 
 For correct/incorrect business feedback changes, do not rerun 190 customer
@@ -6324,3 +6487,141 @@ evidence, not permission to weaken movement assertions or repeat the same run.
   from the same completed refresh. A chunk-400 loader stall during that window
   is setup evidence, not a Grove/Jobs Board product regression and not a reason
   to launch another rebuild or clear retained Redis state.
+
+### Grove Chapter 1 completion and supplier hotfix lessons (August 6)
+
+The `www.glitch.fun-1786020403994.har` capture and the 07:40–07:52 Grove
+screenshots exposed one connected failure family. Keep these checks together:
+
+- A successful fallback-world `F` response is not an item grant. Garden Edge
+  Berries must produce one actor-bound native `inventory_exchange`, refresh the
+  returned live inventory snapshot, keep the Road Rations todo active at the
+  source, and move its map destination back to the Jobs Board only after six
+  berries exist. Never call `complete_job_quest` from the berry source.
+- Tool ownership in live mode comes from the latest server inventory and
+  equipment snapshot. Reading only the local fallback bag leaves “Buy Muck
+  Rake” pinned after a successful purchase. Test both the owned and removed
+  snapshots; the map must advance and regress respectively.
+- The Chapter 1 board is a separate three-job lane. While `take_jobs` is
+  active, render only the three exact auto-posted Grove templates, even when
+  the player has reached the ordinary accepted-job cap. A fourth Chapter 1
+  accept must show a human message instead of `chapter1_active_job_limit`.
+- `meet_the_suppliers` delegates completion to the real vendor transaction,
+  but the stock NPC modal must still show one explicit Chapter 1 “Trade with
+  <name>” action. Do not let tutorial quests, helper work, generated chatter,
+  or ambient dialogue obscure what counts. Route Rin, Fern, Gus, Carlo, Mel,
+  and Luis from the authoritative next-missing transaction and require the map
+  target to advance after each purchase or sale.
+- The native trigger marker is only a generic anchor for a multi-person route.
+  During `meet_the_suppliers`, `collect_testimonies`, and `the_three_answers`,
+  publish the authenticated current route stop as a distinct active pin owned
+  by the same quest and step. The ordinary auto-destination effect must preserve
+  that exact pin rather than rewriting it to “Meet the Suppliers” or another
+  generic step anchor. Browser acceptance must match the NPC label, X/Z target,
+  world-map pin, and minimap marker at every stop.
+- A direct cast name follows the per-player staged body. Generic Jackie/Doc
+  targets must not resolve to an old static landmark after staging moves the
+  visible actor. Step-specific authored posts still win for cinematic beats.
+- Deduplicate helper quest projections by objective kind, not giver entity.
+  Two NPCs offering the same Muck Breach Boss objective should produce one
+  journal row while distinct food/water, exotic-matter, and boss objectives
+  remain separate.
+- A visible interaction needs a visible object. The Garden Edge resource must
+  be a broad, waist-high berry thicket above the flower bed; four ground-level
+  stones are not acceptable visual evidence. Likewise, both the shop icon and
+  the equipped first/third-person Muck Rake must use a readable long-handled
+  rake/hoe presentation. Changing only the icon is insufficient: the native
+  Bikkie presentation donor must be the authored Wooden Hoe, never the squat
+  robot-like Muck Buster.
+- Protected-region ACLs may forbid a cleanup/repair action, but they must not
+  remove the selected Muck Rake or Repair Mallet from the held-item renderer.
+  Test visibility and usability separately: require a non-empty attached mesh,
+  then use the exact tool at its marked field prop and require the native server
+  receipt, completed todo, board-return pin, turn-in, and wallet reward.
+- Custom Grove/Jobs Board completions need the same feedback quality as native
+  level-up/quest stingers. Queue a four-second celebration, show the quest
+  title and human-readable rewards, and deduplicate only the same completion
+  id so simultaneous legitimate completions play serially.
+- Reward copy may contain semantic ids internally, but the banner, journal,
+  HUD, dialogue, errors, buttons, and tooltips may not expose `item_`, `ch1_`,
+  raw numeric/Bikkie ids, or rejection tokens.
+
+Run the source gate as one non-fail-fast batch. If it reports a short failure
+list, retain all passing rows and rerun only those exact tests:
+
+```bash
+scripts/harthmere/t.sh quests
+scripts/harthmere/t.sh ui
+scripts/harthmere/t.sh icons
+scripts/harthmere/t.sh ch1
+
+NODE_OPTIONS=--max-old-space-size=8192 \
+  node_modules/.bin/tsc -p tsconfig.ch1interactions.json --pretty false
+NODE_OPTIONS=--max-old-space-size=8192 \
+  node_modules/.bin/tsc -p tsconfig.ch1check.json --pretty false
+NODE_OPTIONS=--max-old-space-size=8192 \
+  node_modules/.bin/tsc -p tsconfig.ch1renderer.json --pretty false
+```
+
+This batch changes client/Next API code and immutable public assets only. Use
+one exact-public-env `refresh-warm-local-stack.cjs --build next`, retain Redis
+and Anima, and do not build an image or reconcile terrain. Live acceptance is
+one warm, non-fail-fast context covering the three jobs, all six suppliers,
+Doc/Jackie override controls, berry visibility/grant, tool purchase marker
+handoff, rejection toast, journal uniqueness, and completion celebration.
+For `meet_the_suppliers`, fixture-injected `vendorTransactions` are checkpoint
+setup only and are not acceptance evidence. The browser must open each real NPC
+dialogue, show `Trade with <name>`, open the vendor panel, complete a real buy
+or sale, and then prove the active world-map and minimap pin advances to the
+next supplier.
+
+### Business counter, stuck selection, and camera hotfix (August 6)
+
+The `www.glitch.fun-1786040259819.har` capture connected three apparently
+separate symptoms. Treat them as one business-interaction acceptance batch:
+
+- A customer's spatial phase does not prove where the player is standing. Do
+  not render “Stay behind the counter” from `entering` or
+  `approaching_counter`; report the customer's movement instead. The backend
+  remains the authority for an actual wrong-side service attempt.
+- The authoritative player position is the centre of a collision capsule, not
+  the visible feet. Counter-sidedness needs a small body/contact tolerance.
+  Keep the real customer point, queue slots, doorway, and far wall rejected for
+  every one of the 19 audited interiors.
+- A background `tick_business_customer_session` may not own the foreground
+  business-action queue. The capture had one tick blocked/unsent for roughly
+  30 seconds and the subsequent `serve_business_customer` blocked/unsent for
+  another roughly 30 seconds, leaving the button on “Working…”. Permit only one
+  tick in flight, put it on its own serial scope, abort it after 5 seconds, and
+  bound a foreground service attempt to 8 seconds. A timeout must clear the
+  pending button and show a human retry message.
+- A fixed service-counter conversation should not continuously retarget the
+  third-person NPC camera while ECS position updates arrive. Business question
+  and result dialogs opt out of NPC camera focus; ordinary NPC conversations
+  retain their existing camera behavior.
+- A served customer turns toward the first exit waypoint before translating.
+  The authored departure lies roughly twelve metres outside the door; after
+  the customer has visibly walked eight metres outside, snap the final
+  off-screen four-metre segment to the exact departure anchor. This prevents a
+  reduced far-NPC tick rate from leaving an active shift blocked on an
+  invisible departing body while preserving exact safe-despawn evidence.
+- A focused browser actor intentionally teleports across distant business
+  districts. Keep the product's recent missing-shard recovery marker armed for
+  that test tab, just as the native-ECS catalog runner does; otherwise the
+  player controller can erase the marker after one loaded district and hard
+  reload a healthy board interaction back to `/at` while the next terrain ring
+  catches up. A loader timeout after the real panel opened is setup evidence,
+  not a business-service failure.
+- Require the initial gameplay loader to clear before the first business row.
+  If both a retained interior position and a freshly created canonical-start
+  actor report `presentTerrain: undefined` and stall at `terrain_meshing`, the
+  retained world is not a valid browser fixture. Do not loop customer tests,
+  hide the loading wrapper, or misreport that as a business interaction
+  failure; repair or replace the terrain-bearing snapshot first.
+
+Run all affected files in one Mocha process and keep Mocha's default
+non-fail-fast behavior. The bootstrap-free lane cannot load the UI image shim
+for `businessInterfaceLiveAdapter.test.ts`; a `default-challenge-icon.png`
+module error means zero tests were collected and must be rerun under the normal
+bootstrapped config, not counted as a product failure or worked around by
+dropping that file.

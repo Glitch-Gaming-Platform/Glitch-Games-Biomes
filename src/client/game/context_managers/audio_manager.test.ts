@@ -3,6 +3,7 @@ import {
   MOBILE_BACKGROUND_MUSIC_PATHS,
   backgroundMusicTracksForDevice,
   isBackgroundMusicAutoplayBlocked,
+  resolvePathAudioEnvelope,
   resolvePathSpatialAudioOptions,
   shouldPrefetchAllAudioAssets,
 } from "@/client/game/context_managers/audio_manager";
@@ -91,6 +92,18 @@ describe("AudioManager generated positional paths", () => {
         rolloffFactor: 1,
       }
     );
+  });
+
+  it("fits projectile audio to its visual lifetime and fades at the end", () => {
+    const envelope = resolvePathAudioEnvelope(1, {
+      durationSeconds: 1.6,
+      fadeOutSeconds: 0.4,
+    });
+    assert.equal(envelope?.durationSeconds, 1.6);
+    assert.equal(envelope?.playbackRate, 0.625);
+    assert.equal(envelope?.fadeOutSeconds, 0.4);
+    assert.ok(Math.abs((envelope?.fadeStartSeconds ?? 0) - 1.2) < 1e-9);
+    assert.equal(resolvePathAudioEnvelope(1, {}), undefined);
   });
 
   it("remembers the requested background track before Web Audio is ready", () => {

@@ -105,11 +105,11 @@ export function promoCameraTerrainStatus(
   }
 
   const sightlines = promoCameraSightlineSamples(spec);
-  for (const { camera, distance, checkUntil } of sightlines) {
+  for (const { camera, target, distance, checkUntil } of sightlines) {
     for (let along = 0.5; along < checkUntil; along += 0.25) {
       const result = promoCameraTerrainVoxel(
         resources,
-        promoCameraLerp(camera, spec.target, along / distance)
+        promoCameraLerp(camera, target, along / distance)
       );
       const key = result.voxel.join(",");
       if (!result.loaded) {

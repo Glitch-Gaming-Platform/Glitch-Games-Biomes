@@ -1,5 +1,10 @@
 export const HARTHMERE_ATTACK_VARIATION_POLISH_VERSION =
-  "harthmere-attack-variation-polish";
+  "harthmere-attack-variation-polish-v3-distinct-trajectories";
+export const HARTHMERE_PLAYER_ANIMATION_RUNTIME_URL =
+  "/assets/harthmere/glb/animations/player_animations.glb" as const;
+
+export type HarthmereMeleeComboRole =
+  "opener" | "return" | "power" | "finisher";
 
 export type HarthmereAttackFamily =
   "basic" | "heavy" | "magic" | "rangedRelease" | "shieldBash" | "toolUse";
@@ -7,6 +12,8 @@ export type HarthmereAttackFamily =
 export type HarthmereAttackVariation = {
   id: string;
   family: HarthmereAttackFamily;
+  comboStep?: 1 | 2 | 3 | 4;
+  comboRole?: HarthmereMeleeComboRole;
   clip: string;
   frameCount: number;
   fps: 24;
@@ -35,10 +42,21 @@ export type HarthmereAttackVariation = {
 const make = (
   family: HarthmereAttackFamily,
   index: number,
-  data: Omit<HarthmereAttackVariation, "id" | "family" | "frameCount" | "fps">
+  data: Omit<
+    HarthmereAttackVariation,
+    "id" | "family" | "comboStep" | "comboRole" | "frameCount" | "fps"
+  >
 ): HarthmereAttackVariation => ({
   id: `${family}_${index}`,
   family,
+  ...(family === "basic" || family === "heavy"
+    ? {
+        comboStep: Math.min(4, Math.max(1, index)) as 1 | 2 | 3 | 4,
+        comboRole: (["opener", "return", "power", "finisher"] as const)[
+          Math.min(4, Math.max(1, index)) - 1
+        ],
+      }
+    : {}),
   frameCount: family === "heavy" ? 26 : family === "basic" ? 17 : 24,
   fps: 24,
   ...data,
@@ -52,30 +70,6 @@ export const HARTHMERE_ATTACK_VARIATIONS_POLISH: Record<
     make("basic", 1, {
       emoteType: "attack1Var1",
       clip: "HarthmereBodyWeaponBasic_Variation1_24",
-      windupFrame: 3,
-      impactFrame: 6,
-      recoveryFrame: 17,
-      stance: "open",
-      leadFoot: "left",
-      attackSide: "left",
-      arc: "horizontal_right_to_left",
-      torsoYawDeg: 34,
-      spineBendDeg: 8,
-      shoulderYawDeg: 42,
-      hipYawDeg: 20,
-      stepForwardMeters: 0.1,
-      stepLateralMeters: 0.02,
-      weaponTravelArcDeg: 128,
-      weightShift: "front",
-      locomotionAllowed: true,
-      airAllowed: false,
-      silhouetteTag: "wide_forehand",
-      notes:
-        "Right-side anticipation into a clean leftward horizontal cut, impact hold, overshoot, and planted recovery.",
-    }),
-    make("basic", 2, {
-      emoteType: "attack1Var2",
-      clip: "HarthmereBodyWeaponBasic_Variation2_24",
       windupFrame: 3,
       impactFrame: 6,
       recoveryFrame: 17,
@@ -93,9 +87,33 @@ export const HARTHMERE_ATTACK_VARIATIONS_POLISH: Record<
       weightShift: "right",
       locomotionAllowed: true,
       airAllowed: false,
-      silhouetteTag: "backhand_return",
+      silhouetteTag: "left_to_right_opener",
       notes:
-        "Cross-body anticipation into a mirrored rightward backhand with delayed wrist and weapon recovery.",
+        "Cross-body left-side anticipation into a clearly rightward horizontal opener with delayed wrist recovery.",
+    }),
+    make("basic", 2, {
+      emoteType: "attack1Var2",
+      clip: "HarthmereBodyWeaponBasic_Variation2_24",
+      windupFrame: 3,
+      impactFrame: 6,
+      recoveryFrame: 17,
+      stance: "open",
+      leadFoot: "left",
+      attackSide: "left",
+      arc: "horizontal_right_to_left",
+      torsoYawDeg: 34,
+      spineBendDeg: 8,
+      shoulderYawDeg: 42,
+      hipYawDeg: 20,
+      stepForwardMeters: 0.1,
+      stepLateralMeters: 0.02,
+      weaponTravelArcDeg: 128,
+      weightShift: "front",
+      locomotionAllowed: true,
+      airAllowed: false,
+      silhouetteTag: "right_to_left_return",
+      notes:
+        "Right-side anticipation into the opposite leftward horizontal return, with a planted hip turn and broad overshoot.",
     }),
     make("basic", 3, {
       emoteType: "attack1Var3",
@@ -106,20 +124,20 @@ export const HARTHMERE_ATTACK_VARIATIONS_POLISH: Record<
       stance: "high",
       leadFoot: "left",
       attackSide: "left",
-      arc: "high_right_to_low_left",
-      torsoYawDeg: 36,
+      arc: "vertical_overhead_to_low",
+      torsoYawDeg: 12,
       spineBendDeg: 18,
-      shoulderYawDeg: 48,
-      hipYawDeg: 20,
+      shoulderYawDeg: 52,
+      hipYawDeg: 10,
       stepForwardMeters: 0.11,
       stepLateralMeters: 0.03,
       weaponTravelArcDeg: 152,
       weightShift: "front",
       locomotionAllowed: true,
       airAllowed: false,
-      silhouetteTag: "descending_cleave",
+      silhouetteTag: "overhead_cleave",
       notes:
-        "High-right load into a low-left diagonal cut with a clearly descending blade path.",
+        "Sword rises over the head and travels nearly straight down through the target, clearly separated from both horizontal steps.",
     }),
     make("basic", 4, {
       emoteType: "attack1Var4",
@@ -130,7 +148,7 @@ export const HARTHMERE_ATTACK_VARIATIONS_POLISH: Record<
       stance: "low",
       leadFoot: "right",
       attackSide: "right",
-      arc: "low_left_to_high_right",
+      arc: "diagonal_low_left_to_high_right",
       torsoYawDeg: -36,
       spineBendDeg: 18,
       shoulderYawDeg: -48,
@@ -153,30 +171,6 @@ export const HARTHMERE_ATTACK_VARIATIONS_POLISH: Record<
       windupFrame: 6,
       impactFrame: 10,
       recoveryFrame: 26,
-      stance: "high",
-      leadFoot: "left",
-      attackSide: "left",
-      arc: "vertical_high_to_low",
-      torsoYawDeg: 44,
-      spineBendDeg: 12,
-      shoulderYawDeg: 54,
-      hipYawDeg: 28,
-      stepForwardMeters: 0.14,
-      stepLateralMeters: 0.03,
-      weaponTravelArcDeg: 168,
-      weightShift: "front",
-      locomotionAllowed: false,
-      airAllowed: false,
-      silhouetteTag: "overhead_cleave",
-      notes:
-        "High load into a frame-10 overhead contact, broad overshoot, and compact frame-26 recovery.",
-    }),
-    make("heavy", 2, {
-      emoteType: "attack2Var2",
-      clip: "HarthmereBodyWeaponHeavy_Variation2_24",
-      windupFrame: 6,
-      impactFrame: 10,
-      recoveryFrame: 26,
       stance: "closed",
       leadFoot: "right",
       attackSide: "right",
@@ -191,9 +185,33 @@ export const HARTHMERE_ATTACK_VARIATIONS_POLISH: Record<
       weightShift: "right",
       locomotionAllowed: false,
       airAllowed: false,
-      silhouetteTag: "broad_side_sweep",
+      silhouetteTag: "left_to_right_power_sweep",
       notes:
-        "Mirrored heavy backhand with planted weight transfer and delayed weapon settle.",
+        "A committed left-to-right power sweep using the same trajectory family as combo step one, but with heavier anticipation and settle.",
+    }),
+    make("heavy", 2, {
+      emoteType: "attack2Var2",
+      clip: "HarthmereBodyWeaponHeavy_Variation2_24",
+      windupFrame: 6,
+      impactFrame: 10,
+      recoveryFrame: 26,
+      stance: "open",
+      leadFoot: "left",
+      attackSide: "left",
+      arc: "horizontal_right_to_left",
+      torsoYawDeg: 44,
+      spineBendDeg: 12,
+      shoulderYawDeg: 54,
+      hipYawDeg: 28,
+      stepForwardMeters: 0.14,
+      stepLateralMeters: 0.04,
+      weaponTravelArcDeg: 168,
+      weightShift: "front",
+      locomotionAllowed: false,
+      airAllowed: false,
+      silhouetteTag: "right_to_left_power_return",
+      notes:
+        "The shoulders, wrist, Tool roll, and hip turn reverse step one to drive a distinct right-to-left power return.",
     }),
     make("heavy", 3, {
       emoteType: "attack2Var3",
@@ -204,20 +222,20 @@ export const HARTHMERE_ATTACK_VARIATIONS_POLISH: Record<
       stance: "high",
       leadFoot: "left",
       attackSide: "left",
-      arc: "high_left_to_low_right",
-      torsoYawDeg: 46,
+      arc: "vertical_overhead_to_low",
+      torsoYawDeg: 14,
       spineBendDeg: 24,
       shoulderYawDeg: 60,
-      hipYawDeg: 30,
+      hipYawDeg: 12,
       stepForwardMeters: 0.15,
       stepLateralMeters: 0.04,
       weaponTravelArcDeg: 188,
       weightShift: "front",
       locomotionAllowed: false,
       airAllowed: false,
-      silhouetteTag: "backhand_crusher",
+      silhouetteTag: "overhead_crusher",
       notes:
-        "Committed high-right to low-left cleave with descending tip path and grounded follow-through.",
+        "A two-handed-looking overhead load into a near-vertical downward crusher with deep leg and torso commitment.",
     }),
     make("heavy", 4, {
       emoteType: "attack2Var4",
@@ -228,7 +246,7 @@ export const HARTHMERE_ATTACK_VARIATIONS_POLISH: Record<
       stance: "low",
       leadFoot: "right",
       attackSide: "right",
-      arc: "low_right_to_high_left",
+      arc: "diagonal_low_right_to_high_left",
       torsoYawDeg: -46,
       spineBendDeg: 24,
       shoulderYawDeg: -60,
@@ -657,4 +675,19 @@ export function getHarthmereAttackFamilyForAction(
   if (actionType === "shieldBash") return "shieldBash";
   if (actionType === "toolUse") return "toolUse";
   return "basic";
+}
+
+export function harthmereMeleeComboAnimation(
+  timingClass: "basic" | "heavy",
+  variation: 1 | 2 | 3 | 4
+): HarthmereAttackVariation & {
+  comboStep: 1 | 2 | 3 | 4;
+  comboRole: HarthmereMeleeComboRole;
+} {
+  return HARTHMERE_ATTACK_VARIATIONS_POLISH[timingClass][
+    variation - 1
+  ] as HarthmereAttackVariation & {
+    comboStep: 1 | 2 | 3 | 4;
+    comboRole: HarthmereMeleeComboRole;
+  };
 }

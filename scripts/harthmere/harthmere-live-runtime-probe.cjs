@@ -10,6 +10,87 @@
  */
 
 const path = require("path");
+const {
+  acquireBrowserRuntimeLease,
+} = require("./browser-runtime-lease.cjs");
+
+const LEASED_PLAYWRIGHT = Symbol("harthmereLeasedPlaywright");
+
+function firstConfiguredValue(...values) {
+  return values.find((value) => String(value || "").trim());
+}
+
+function browserRuntimeLeaseInput(input = {}) {
+  const configuredUrl = firstConfiguredValue(
+    input.baseUrl,
+    process.env.HARTHMERE_E2E_BASE_URL,
+    process.env.HARTHMERE_E2E_URL,
+    process.env.HARTHMERE_QUEST_MARKER_VISUAL_BASE_URL,
+    process.env.HARTHMERE_GROVE_NPC_VISUAL_BASE_URL,
+    process.env.BUILDING_SYSTEM_BROWSER_URL,
+    process.env.HARTHMERE_BASE_URL,
+    "http://127.0.0.1:3017"
+  );
+  let baseUrl = configuredUrl;
+  let querySyncBaseUrl;
+  try {
+    const parsed = new URL(configuredUrl);
+    baseUrl = parsed.origin;
+    querySyncBaseUrl = parsed.searchParams.get("syncBaseUrl");
+  } catch {}
+  return {
+    runner: input.runner || path.basename(process.argv[1] || "browser-e2e"),
+    runId: input.runId,
+    leaseRoot: input.leaseRoot,
+    legacyLockPath: input.legacyLockPath,
+    waitTimeoutMs: input.waitTimeoutMs,
+    pollMs: input.pollMs,
+    baseUrl,
+    syncBaseUrl: firstConfiguredValue(
+      input.syncBaseUrl,
+      process.env.HARTHMERE_E2E_SYNC_BASE_URL,
+      querySyncBaseUrl,
+      "http://127.0.0.1:4907"
+    ),
+  };
+}
+
+function leasePlaywright(playwright, input = {}) {
+  if (!playwright?.chromium || playwright[LEASED_PLAYWRIGHT]) {
+    return playwright;
+  }
+  const originalLaunch = playwright.chromium.launch.bind(playwright.chromium);
+  const chromium = Object.create(playwright.chromium);
+  chromium.launch = async (...args) => {
+    const lease = acquireBrowserRuntimeLease(
+      browserRuntimeLeaseInput(input)
+    );
+    let browser;
+    try {
+      browser = await originalLaunch(...args);
+    } catch (error) {
+      lease.release();
+      throw error;
+    }
+    const originalClose = browser.close.bind(browser);
+    let closed = false;
+    browser.close = async (...closeArgs) => {
+      try {
+        return await originalClose(...closeArgs);
+      } finally {
+        if (!closed) {
+          closed = true;
+          lease.release();
+        }
+      }
+    };
+    return browser;
+  };
+  return Object.assign(Object.create(playwright), playwright, {
+    chromium,
+    [LEASED_PLAYWRIGHT]: true,
+  });
+}
 
 function resolvePlaywright(root) {
   const candidates = [
@@ -21,7 +102,7 @@ function resolvePlaywright(root) {
   for (const candidate of candidates) {
     try {
       const mod = require(candidate);
-      if (mod.chromium) return mod;
+      if (mod.chromium) return leasePlaywright(mod);
     } catch (_) {}
   }
   return null;
@@ -202,6 +283,8 @@ function movementReportProvesActualMovement(result) {
 }
 
 module.exports = {
+  browserRuntimeLeaseInput,
+  leasePlaywright,
   resolvePlaywright,
   fixtureMovementCases,
   fixtureOverlayViewpoints,

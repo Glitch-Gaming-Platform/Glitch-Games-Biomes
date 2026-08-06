@@ -19,6 +19,11 @@ import {
   clearHarthmereCinematicExpressionPose,
 } from "@/client/game/cutscene/expression_pose";
 import { BasePassMaterial } from "@/client/game/renderers/base_pass_material";
+import {
+  HarthmereMeleeHitSparkEffect,
+  harthmereMeleeHitSparkContactPosition,
+  shouldShowHarthmereMeleeHitSpark,
+} from "@/client/game/renderers/melee_hit_spark_effect";
 import { HarthmereNpcStaggerEffect } from "@/client/game/renderers/npc_stagger_effect";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
@@ -63,6 +68,12 @@ import type {
   AnimationDefinition,
 } from "@/client/game/util/animation_system";
 import { AnimationSystem } from "@/client/game/util/animation_system";
+import {
+  HARTHMERE_BOSS_ACTION_EASE_IN_SECS,
+  HARTHMERE_BOSS_ACTION_EASE_OUT_SECS,
+  HARTHMERE_BOSS_SPECIAL_EASE_OUT_SECS,
+  harthmereBossSpecialAnimationBlendWeight,
+} from "@/shared/harthmere/boss_animation_polish";
 import type { MixedMesh } from "@/client/game/util/animations";
 import { getVelocityBasedWeights } from "@/client/game/util/animations";
 import type { Spline } from "@/client/game/util/bezier";
@@ -124,8 +135,9 @@ import {
 } from "@/shared/harthmere/voxel_faces";
 import type { BiomesId } from "@/shared/ids";
 import {
-  HARTHMERE_NON_BOSS_STAGGER_VERSION,
+  HARTHMERE_NPC_STAGGER_VERSION,
   activeHarthmereNpcStaggerPresentation,
+  type HarthmereNpcStaggerKind,
   type HarthmereNpcStaggerWindow,
 } from "@/shared/npc/stagger";
 import { deserializeNpcCustomState } from "@/shared/npc/serde";
@@ -152,10 +164,15 @@ import {
 } from "@/shared/harthmere/magic_charge";
 import { harthmereBossMagicPresentation } from "@/shared/harthmere/boss_magic_presentation";
 import {
+  harthmereMeleeHitItem,
+  harthmereMeleeHitSoundIdForItem,
+} from "@/shared/harthmere/melee_hit_sound";
+import {
   dispatchHarthmereMagicCharge,
   harthmereMagicChargeId,
 } from "@/client/game/util/harthmere_magic_charge";
 import {
+  emitHarthmereSoundEffect,
   getHarthmereSoundEffect,
   HARTHMERE_GIANT_BOSS_STOMP_SOUND_ID,
   harthmereNpcSoundIdForIdentity,
@@ -189,6 +206,7 @@ import {
 import {
   HARTHMERE_MUCK_CREATURE_NPC_ASSET_VERSION,
   harthmereMuckCreatureAssetKeyForLabel,
+  harthmereMuckCreatureRuntimeAssetUrl,
 } from "@/shared/harthmere/muck_creature_assets";
 import {
   HARTHMERE_BOSS_VISUAL_ASSETS_VERSION,
@@ -361,6 +379,7 @@ const HARTHMERE_NPC_SOCIAL_ANIMATION_STATES = [
 ] as const;
 const HARTHMERE_NPC_BOSS_ANIMATION_STATES = [
   "telegraph",
+  "stagger",
   "phaseTransition",
   "areaAttack",
   "summon",
@@ -414,6 +433,30 @@ export const npcSystem = new AnimationSystem(
     creatureHit: {
       fileAnimationName: "HitReact",
       backupFileAnimationNames: ["Block", "Stunned"],
+    },
+    creatureStaggerLight: {
+      fileAnimationName: "StaggerLight",
+      backupFileAnimationNames: ["HitReact", "Block", "Stunned"],
+    },
+    creatureStaggerMedium: {
+      fileAnimationName: "StaggerMedium",
+      backupFileAnimationNames: ["HitReact", "Block", "Stunned"],
+    },
+    creatureStaggerHeavy: {
+      fileAnimationName: "StaggerHeavy",
+      backupFileAnimationNames: ["HitReact", "Stunned", "Block"],
+    },
+    bossStaggerLight: {
+      fileAnimationName: "BossStaggerLight",
+      backupFileAnimationNames: ["Stunned", "HitReact", "Block"],
+    },
+    bossStaggerMedium: {
+      fileAnimationName: "BossStaggerMedium",
+      backupFileAnimationNames: ["Stunned", "HitReact", "Block"],
+    },
+    bossStaggerHeavy: {
+      fileAnimationName: "BossStaggerHeavy",
+      backupFileAnimationNames: ["Stunned", "HitReact", "Block"],
     },
     creatureDeath: {
       fileAnimationName: "Death",
@@ -686,6 +729,8 @@ function getAttackAnimationAction(
           attackTime,
           secondsSinceEpoch
         ),
+        easeInTime: HARTHMERE_BOSS_ACTION_EASE_IN_SECS,
+        easeOutTime: HARTHMERE_BOSS_ACTION_EASE_OUT_SECS,
       },
       layers: {
         all: "apply",
@@ -718,6 +763,7 @@ function getMagicChargeAnimationAction(
         secondsSinceEpoch
       ),
       easeInTime: 0.08,
+      easeOutTime: HARTHMERE_BOSS_ACTION_EASE_OUT_SECS,
     },
     layers: { all: "apply" },
   };
@@ -809,6 +855,65 @@ function getOneShotNpcAnimationAction(
         ? { kind: "once", clampWhenFinished: true }
         : { kind: "once" },
       startTime: timelineMatcher.match(eventKey, eventTime, secondsSinceEpoch),
+      easeInTime: HARTHMERE_BOSS_ACTION_EASE_IN_SECS,
+      easeOutTime: HARTHMERE_BOSS_ACTION_EASE_OUT_SECS,
+    },
+    layers: { all: "apply" },
+  };
+}
+
+const HARTHMERE_CREATURE_STAGGER_EASE_IN_SECS = 0.04;
+const HARTHMERE_CREATURE_STAGGER_EASE_OUT_SECS = 0.1;
+const HARTHMERE_BOSS_STAGGER_EASE_IN_SECS = 0.08;
+const HARTHMERE_BOSS_STAGGER_EASE_OUT_SECS = 0.16;
+
+function npcStaggerAnimationForKind(
+  kind: HarthmereNpcStaggerKind,
+  isBoss: boolean
+) {
+  if (isBoss) {
+    switch (kind) {
+      case "heavy":
+        return "bossStaggerHeavy" as const;
+      case "medium":
+        return "bossStaggerMedium" as const;
+      default:
+        return "bossStaggerLight" as const;
+    }
+  }
+  switch (kind) {
+    case "heavy":
+      return "creatureStaggerHeavy" as const;
+    case "medium":
+      return "creatureStaggerMedium" as const;
+    default:
+      return "creatureStaggerLight" as const;
+  }
+}
+
+function getNpcStaggerAnimationAction(
+  stagger: HarthmereNpcStaggerWindow,
+  isBoss: boolean,
+  eventKey: string,
+  timelineMatcher: TimelineMatcher,
+  secondsSinceEpoch: number
+): NpcAnimationAction {
+  const animation = npcStaggerAnimationForKind(stagger.kind, isBoss);
+  return {
+    weights: npcSystem.singleAnimationWeight(animation, 1),
+    state: {
+      repeat: { kind: "once", clampWhenFinished: true },
+      startTime: timelineMatcher.match(
+        eventKey,
+        stagger.startTime,
+        secondsSinceEpoch
+      ),
+      easeInTime: isBoss
+        ? HARTHMERE_BOSS_STAGGER_EASE_IN_SECS
+        : HARTHMERE_CREATURE_STAGGER_EASE_IN_SECS,
+      easeOutTime: isBoss
+        ? HARTHMERE_BOSS_STAGGER_EASE_OUT_SECS
+        : HARTHMERE_CREATURE_STAGGER_EASE_OUT_SECS,
     },
     layers: { all: "apply" },
   };
@@ -1979,6 +2084,9 @@ export class NpcRenderState {
   private readonly harthmereNavigationState: HarthmereNpcNavigationState =
     createHarthmereNpcNavigationState();
   private onHitParticleEffect: ParticleSystem | undefined;
+  private harthmereMeleeHitSparkEffect:
+    HarthmereMeleeHitSparkEffect | undefined;
+  private lastHarthmereMeleeHitSparkDamageTime: number | undefined;
   private harthmereStaggerEffect: HarthmereNpcStaggerEffect | undefined;
   private lastHarthmereStaggerSequence: number | undefined;
   private soundChannels: {
@@ -2009,6 +2117,7 @@ export class NpcRenderState {
         attackTime: number;
         clipName: string;
         action: THREE.AnimationAction;
+        duration: number;
       }
     | undefined;
 
@@ -2020,7 +2129,7 @@ export class NpcRenderState {
     const { attackTime, clipName, secondsSinceEpoch } = input;
     const current = this.activeHarthmereBossSpecialAttack;
     if (attackTime === undefined || !clipName) {
-      current?.action.stop();
+      current?.action.fadeOut(HARTHMERE_BOSS_SPECIAL_EASE_OUT_SECS);
       this.activeHarthmereBossSpecialAttack = undefined;
       return false;
     }
@@ -2031,7 +2140,7 @@ export class NpcRenderState {
       active.attackTime !== attackTime ||
       active.clipName !== clipName
     ) {
-      active?.action.stop();
+      active?.action.fadeOut(HARTHMERE_BOSS_SPECIAL_EASE_OUT_SECS);
       const clip = this.mixedMesh.harthmereAnimationClips.get(clipName);
       if (!clip) {
         this.activeHarthmereBossSpecialAttack = undefined;
@@ -2042,7 +2151,7 @@ export class NpcRenderState {
       action.setLoop(THREE.LoopOnce, 1);
       action.clampWhenFinished = true;
       action.enabled = true;
-      action.setEffectiveWeight(1);
+      action.setEffectiveWeight(0);
       action.time = THREE.MathUtils.clamp(
         secondsSinceEpoch - attackTime,
         0,
@@ -2053,26 +2162,34 @@ export class NpcRenderState {
         attackTime,
         clipName,
         action,
+        duration: clip.duration,
       };
       this.activeHarthmereBossSpecialAttack = active;
     }
 
-    // The shared animation system remains the fallback, but while the bespoke
-    // boss clip is active it must not blend locomotion or a generic attack over
-    // the authored motion. These actions are restored by the normal accumulator
-    // on the next frame as soon as the one-shot finishes.
+    // Preserve the bespoke authored motion without snapping the entire skeleton
+    // between the shared locomotion state and the direct mixer action.
+    const elapsed = THREE.MathUtils.clamp(
+      secondsSinceEpoch - active.attackTime,
+      0,
+      active.duration
+    );
+    const specialWeight = harthmereBossSpecialAnimationBlendWeight({
+      elapsedSecs: elapsed,
+      durationSecs: active.duration,
+    });
     for (const layerActions of Object.values(
       this.mixedMesh.animationSystemState.actions
     ) as Array<Record<string, THREE.AnimationAction | undefined>>) {
       for (const action of Object.values(layerActions)) {
         if (!action) continue;
-        action.weight = 0;
-        action.enabled = false;
+        action.weight *= 1 - specialWeight;
+        action.enabled = action.weight > 0.001;
       }
     }
     active.action.enabled = true;
-    active.action.setEffectiveWeight(1);
-    return true;
+    active.action.setEffectiveWeight(specialWeight);
+    return specialWeight > 0;
   }
 
   private syncCinematicFacialExpression(
@@ -2898,13 +3015,12 @@ export class NpcRenderState {
     );
     this.mixedMesh.animationSystem.accumulateAction(
       activeStagger
-        ? getOneShotNpcAnimationAction(
-            "creatureHit",
+        ? getNpcStaggerAnimationAction(
+            activeStagger,
+            Boolean(this.mixedMesh.three.userData.harthmereBossVisualId),
             `stagger:${publicCombatState?.stagger_sequence ?? activeStagger.startTime}`,
-            activeStagger.startTime,
             this.mixedMesh.timelineMatcher,
-            secondsSinceEpoch,
-            true
+            secondsSinceEpoch
           )
         : undefined,
       animAccum
@@ -3053,6 +3169,7 @@ export class NpcRenderState {
       };
     }
     this.tickEffects(
+      resources,
       attackTime,
       secondsSinceEpoch,
       aabb,
@@ -3093,6 +3210,7 @@ export class NpcRenderState {
   }
 
   private tickEffects(
+    resources: ClientResources,
     attackTime: number | undefined,
     secondsSinceEpoch: number,
     aabb: AABB,
@@ -3106,6 +3224,7 @@ export class NpcRenderState {
     publicCombatState: ReadonlyNpcCombatState | undefined
   ) {
     this.tickOnHitEffects(
+      resources,
       secondsSinceEpoch,
       aabb,
       centerPosition,
@@ -3225,7 +3344,8 @@ export class NpcRenderState {
       };
       bridgeWindow.__harthmereNpcStaggerDebug ??= {};
       bridgeWindow.__harthmereNpcStaggerDebug[String(this.entity.id)] = {
-        version: HARTHMERE_NON_BOSS_STAGGER_VERSION,
+        version: HARTHMERE_NPC_STAGGER_VERSION,
+        bossVisualId: this.mixedMesh.three.userData.harthmereBossVisualId,
         active: Boolean(stagger),
         kind: stagger?.kind,
         startTime: stagger?.startTime,
@@ -3352,6 +3472,7 @@ export class NpcRenderState {
   }
 
   private tickOnHitEffects(
+    resources: ClientResources,
     secondsSinceEpoch: number,
     aabb: AABB,
     centerPosition: Vec3,
@@ -3367,6 +3488,12 @@ export class NpcRenderState {
       this.lastDamageAnimationTime(secondsSinceEpoch);
     const durationSinceLastHit =
       this.mixedMesh.timelineMatcher.animationNow() - lastDamageRenderTime;
+    this.tickHarthmereMeleeHitSparkEffect(
+      resources,
+      secondsSinceEpoch,
+      centerPosition,
+      aabb[1][1] - aabb[0][1]
+    );
     // Have the Npc's scale "bounce" when it's hit.
     const meshScale = (() => {
       const getScaleFromHitCurve = (
@@ -3503,10 +3630,86 @@ export class NpcRenderState {
     }
   }
 
+  private tickHarthmereMeleeHitSparkEffect(
+    resources: ClientResources,
+    nowSeconds: number,
+    centerPosition: Vec3,
+    bodyHeight: number
+  ) {
+    ok(this.entity);
+    const damageTime = this.entity.health.lastDamageTime;
+    if (
+      damageTime !== undefined &&
+      damageTime !== this.lastHarthmereMeleeHitSparkDamageTime
+    ) {
+      this.lastHarthmereMeleeHitSparkDamageTime = damageTime;
+      const damageSource = this.entity.health.lastDamageSource;
+      const attackerId =
+        damageSource?.kind === "attack" ? damageSource.attacker : undefined;
+      const attackerEmote =
+        attackerId === undefined
+          ? undefined
+          : resources.get("/ecs/c/emote", attackerId);
+      if (
+        shouldShowHarthmereMeleeHitSpark({
+          damageSource,
+          damageTime,
+          attackerIsPlayer:
+            attackerId !== undefined &&
+            Boolean(resources.get("/ecs/c/player_status", attackerId)),
+          attackerEmote,
+        })
+      ) {
+        this.harthmereMeleeHitSparkEffect?.dispose();
+        this.harthmereMeleeHitSparkEffect = new HarthmereMeleeHitSparkEffect(
+          nowSeconds,
+          bodyHeight
+        );
+        const contactPosition = harthmereMeleeHitSparkContactPosition({
+          center: centerPosition,
+          bodyHeight,
+          damageDirection:
+            damageSource?.kind === "attack" ? damageSource.dir : undefined,
+        });
+        emitHarthmereSoundEffect(
+          harthmereMeleeHitSoundIdForItem(
+            harthmereMeleeHitItem(
+              attackerEmote,
+              attackerId === undefined
+                ? undefined
+                : resources.get("/ecs/c/selected_item", attackerId)?.item?.item
+            )
+          ),
+          { position: contactPosition }
+        );
+      }
+    }
+
+    if (!this.harthmereMeleeHitSparkEffect) {
+      return;
+    }
+    const damageSource = this.entity.health.lastDamageSource;
+    this.harthmereMeleeHitSparkEffect.setContactPosition(
+      harthmereMeleeHitSparkContactPosition({
+        center: centerPosition,
+        bodyHeight,
+        damageDirection:
+          damageSource?.kind === "attack" ? damageSource.dir : undefined,
+      })
+    );
+    if (!this.harthmereMeleeHitSparkEffect.tick(nowSeconds)) {
+      this.harthmereMeleeHitSparkEffect.dispose();
+      this.harthmereMeleeHitSparkEffect = undefined;
+    }
+  }
+
   addToScene(scenes: Scenes, now: number) {
     addToScenes(scenes, this.mixedMesh.three);
     if (this.onHitParticleEffect) {
       addToScenes(scenes, this.onHitParticleEffect.three);
+    }
+    if (this.harthmereMeleeHitSparkEffect) {
+      addToScenes(scenes, this.harthmereMeleeHitSparkEffect.three);
     }
     if (this.harthmereStaggerEffect) {
       addToScenes(scenes, this.harthmereStaggerEffect.three);
@@ -3618,6 +3821,7 @@ export class NpcRenderState {
     this.cutsceneHeldItemNode.removeFromParent();
     this.mixedMesh.dispose();
     this.onHitParticleEffect?.materials.dispose();
+    this.harthmereMeleeHitSparkEffect?.dispose();
     this.harthmereStaggerEffect?.dispose();
   }
 }
@@ -6732,7 +6936,9 @@ async function makeHarthmereMuckCreatureNpcAssetMesh(
   if (!assetKey) {
     return undefined;
   }
-  const url = resolveAssetUrlUntyped(assetKey);
+  const url =
+    harthmereMuckCreatureRuntimeAssetUrl(assetKey) ??
+    resolveAssetUrlUntyped(assetKey);
   if (!url) {
     log.warn(
       "HARTHMERE_MUCK_CREATURE_NPC_ASSET missing asset url; falling back to npc type mesh",

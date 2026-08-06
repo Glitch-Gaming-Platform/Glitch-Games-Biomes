@@ -141,7 +141,7 @@ export function HarthmereBusinessCustomerTalkDialog({
         : "They are still entering through the real door.";
   const dialogText = target.ready
     ? `<text>${target.askLine} ${status}</text>`
-    : `${target.askLine}{break}${status}{break}Stay behind the counter and let them reach the service point.`;
+    : `${target.askLine}{break}${status}{break}They will be ready when they reach the service point.`;
 
   return (
     <div
@@ -165,6 +165,7 @@ export function HarthmereBusinessCustomerTalkDialog({
         <TalkToNpc
           key="business-customer-result"
           talkingToNpcId={talkingToNPCId}
+          focusCamera={false}
           id={`business-customer-result:${target.ticketId}`}
           dialogText={`<text>${feedback.message} Next customer in 3 seconds.</text>`}
           completeStep={onClose}
@@ -176,6 +177,7 @@ export function HarthmereBusinessCustomerTalkDialog({
         <TalkToNpc
           key="business-customer-question"
           talkingToNpcId={talkingToNPCId}
+          focusCamera={false}
           id={`business-customer:${target.ticketId}`}
           dialogText={dialogText}
           completeStep={onClose}

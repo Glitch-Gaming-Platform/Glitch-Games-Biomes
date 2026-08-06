@@ -20,6 +20,9 @@ const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
 const { chromium } = require("playwright");
+const {
+  acquireBrowserRuntimeLease,
+} = require("./browser-runtime-lease.cjs");
 const { z } = require("zod");
 const { GameEvent } = require("../../src/server/shared/api/game_event");
 const {
@@ -148,10 +151,7 @@ const artifactsDir = path.resolve(
     path.join(root, "artifacts/snapshot-minigames-live-browser")
 );
 const reportPath = path.join(artifactsDir, `${runId}-report.json`);
-const browserLockPath =
-  process.env.HARTHMERE_E2E_BROWSER_LOCK_PATH ||
-  "/tmp/biomes-harthmere-native-ecs-browser.lock";
-let browserLockOwned = false;
+let browserRuntimeLease;
 
 const report = {
   version: "snapshot-minigames-live-browser-v1",
@@ -342,50 +342,6 @@ function assertLifecyclePreflight() {
     env: readyEnv,
   });
   report.preflight = { dbsize, requiredKeys: requiredKeys.length };
-}
-
-function acquireBrowserLock() {
-  try {
-    const fd = fs.openSync(browserLockPath, "wx");
-    fs.writeFileSync(fd, JSON.stringify({ pid: process.pid, runId }));
-    fs.closeSync(fd);
-    browserLockOwned = true;
-  } catch (error) {
-    if (error?.code !== "EEXIST") throw error;
-    let owner;
-    try {
-      owner = JSON.parse(fs.readFileSync(browserLockPath, "utf8"));
-    } catch {
-      owner = undefined;
-    }
-    const ownerPid = Number(owner?.pid);
-    let alive = Number.isInteger(ownerPid) && ownerPid > 0;
-    if (alive) {
-      try {
-        process.kill(ownerPid, 0);
-      } catch {
-        alive = false;
-      }
-    }
-    if (alive) {
-      throw new Error(
-        `Another native browser E2E owns ${browserLockPath} (pid ${ownerPid})`
-      );
-    }
-    fs.unlinkSync(browserLockPath);
-    acquireBrowserLock();
-  }
-}
-
-function releaseBrowserLock() {
-  if (!browserLockOwned) return;
-  browserLockOwned = false;
-  try {
-    const owner = JSON.parse(fs.readFileSync(browserLockPath, "utf8"));
-    if (Number(owner?.pid) === process.pid) fs.unlinkSync(browserLockPath);
-  } catch (error) {
-    if (error?.code !== "ENOENT") throw error;
-  }
 }
 
 function gameUrl() {
@@ -1370,7 +1326,15 @@ async function runDeathmatch(first, second, catalogRow) {
 
 async function run() {
   assertLifecyclePreflight();
-  acquireBrowserLock();
+  browserRuntimeLease = acquireBrowserRuntimeLease({
+    runner: "snapshot-minigames-live-browser",
+    runId,
+    baseUrl,
+    syncBaseUrl,
+    stackContainer,
+    redisContainer: process.env.HARTHMERE_E2E_REDIS_CONTAINER || "",
+  });
+  report.browserRuntimeLane = browserRuntimeLease.laneId;
   const browser = await chromium.launch({
     headless: process.env.HARTHMERE_E2E_HEADLESS !== "0",
     args: [
@@ -1500,6 +1464,6 @@ run()
   })
   .finally(() => {
     serializeReport();
-    releaseBrowserLock();
+    browserRuntimeLease?.release();
     console.log(`REPORT ${reportPath}`);
   });

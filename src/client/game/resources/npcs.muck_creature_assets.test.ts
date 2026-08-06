@@ -1,9 +1,16 @@
 /// <reference types="mocha" />
 
-import { harthmereMuckCreatureAssetKeyForLabel } from "@/shared/harthmere/muck_creature_assets";
+import {
+  HARTHMERE_CREATURE_STAGGER_RUNTIME_ASSET_URLS,
+  HARTHMERE_INDISWORM_RUNTIME_ASSET_URL,
+  harthmereMuckCreatureAssetKeyForLabel,
+  harthmereMuckCreatureRuntimeAssetUrl,
+} from "@/shared/harthmere/muck_creature_assets";
 import assetVersions from "@/galois/interface/gen/asset_versions.json";
 import { HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS } from "@/shared/harthmere/live_entity_production_seed";
 import assert from "assert";
+import fs from "fs";
+import path from "path";
 
 describe("harthmere muck creature npc assets", () => {
   it("routes Muckers and Hexes to authored creature GLTF assets", () => {
@@ -27,6 +34,10 @@ describe("harthmere muck creature npc assets", () => {
       harthmereMuckCreatureAssetKeyForLabel("Indisworm 1"),
       "npcs/indisworm"
     );
+    assert.equal(
+      HARTHMERE_INDISWORM_RUNTIME_ASSET_URL,
+      "/assets/harthmere/glb/creatures/indisworm.glb"
+    );
   });
 
   it("does not steal player-like NPCs, robots, or business owners", () => {
@@ -49,6 +60,22 @@ describe("harthmere muck creature npc assets", () => {
     assert.equal(
       harthmereMuckCreatureAssetKeyForLabel("Greenlamp Walk-In Clinic owner"),
       undefined
+    );
+  });
+
+  it("loads the tracked stagger-polished runtime asset for every ordinary Harthmere creature", () => {
+    for (const [assetKey, url] of Object.entries(
+      HARTHMERE_CREATURE_STAGGER_RUNTIME_ASSET_URLS
+    )) {
+      assert.equal(harthmereMuckCreatureRuntimeAssetUrl(assetKey), url);
+      assert.ok(
+        fs.existsSync(path.join(process.cwd(), "public", url.slice(1))),
+        `${assetKey} missing tracked runtime asset ${url}`
+      );
+    }
+    assert.equal(
+      harthmereMuckCreatureRuntimeAssetUrl("npcs/indisworm"),
+      HARTHMERE_INDISWORM_RUNTIME_ASSET_URL
     );
   });
 

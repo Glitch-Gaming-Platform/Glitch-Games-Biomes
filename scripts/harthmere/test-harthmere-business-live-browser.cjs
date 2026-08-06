@@ -18,6 +18,9 @@ const path = require("path");
 const { spawnSync } = require("child_process");
 const { chromium } = require("playwright");
 const {
+  acquireBrowserRuntimeLease,
+} = require("./browser-runtime-lease.cjs");
+const {
   Health,
   Orientation,
   Position,
@@ -97,6 +100,7 @@ const artifactsDir = path.resolve(
     path.join(root, "artifacts/harthmere-business-live-browser")
 );
 const reportPath = path.join(artifactsDir, `${runId}-report.json`);
+let browserRuntimeLease;
 const report = {
   version: "harthmere-business-live-browser-v1",
   runId,
@@ -361,6 +365,20 @@ async function openActor(browser) {
       "biomes.world.missingShardRecoveryReloadedAt",
       String(Date.now())
     );
+    const missingShardRecoveryKey =
+      "biomes.world.missingShardRecoveryReloadedAt";
+    const removeStorageItem = Storage.prototype.removeItem;
+    Storage.prototype.removeItem = function (key) {
+      if (this === sessionStorage && key === missingShardRecoveryKey) {
+        // The focused business matrix deliberately teleports one actor between
+        // distant interiors. Preserve the product's recent one-shot recovery
+        // marker so a successful board interaction cannot be replaced by a
+        // test-only hard reload while terrain catches up.
+        this.setItem(key, String(Date.now()));
+        return;
+      }
+      return removeStorageItem.call(this, key);
+    };
   });
   const authUrl = new URL("/api/harthmere/visual_test_auth", baseUrl);
   authUrl.searchParams.set("usernameOrId", String(actorId));
@@ -425,6 +443,7 @@ async function waitForActorReady(page) {
     { timeout: timeoutMs }
   );
   await page.evaluate(() => globalThis.__harthmereBusinessInteriors.ready());
+  await waitForStableGameplayOverlayClear(page, "initial_actor_ready");
 }
 
 function serializedChange(change) {
@@ -1647,6 +1666,15 @@ async function runBusiness(page, record, index) {
 
 async function main() {
   fs.mkdirSync(artifactsDir, { recursive: true });
+  browserRuntimeLease = acquireBrowserRuntimeLease({
+    runner: "harthmere-business-live-browser",
+    runId,
+    baseUrl,
+    syncBaseUrl,
+    stackContainer,
+    redisContainer,
+  });
+  report.browserRuntimeLane = browserRuntimeLease.laneId;
   lifecyclePreflight();
   const browser = await chromium.launch({
     headless: process.env.HARTHMERE_E2E_HEADLESS !== "0",
@@ -1794,4 +1822,4 @@ main().catch((error) => {
   persistReport();
   console.error(error?.stack || error);
   process.exitCode = 1;
-});
+}).finally(() => browserRuntimeLease?.release());

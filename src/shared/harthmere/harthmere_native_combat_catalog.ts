@@ -14,6 +14,24 @@ import {
 import { harthmereBossNativeCombatTuningForEntity } from "@/shared/harthmere/boss_attack_catalog";
 import type { BiomesId } from "@/shared/ids";
 import { HARTHMERE_NATIVE_BANDIT_SEEDS } from "@/shared/harthmere/bandit_production_seed";
+import type { AABB } from "@/shared/math/types";
+
+/**
+ * Small combat-selection allowance for native non-boss creature bodies.
+ *
+ * This is deliberately not a physics/collision resize. It only makes player
+ * melee contact agree with the visible outer body of Muckers, Hexes,
+ * livestock, and other native creatures. Player-like NPCs and bosses keep
+ * their authored exact body bounds.
+ */
+export const HARTHMERE_NATIVE_CREATURE_MELEE_HITBOX_PADDING_METERS = 0.18;
+
+export interface HarthmereNativeNpcCombatEntityIdentity {
+  entityId?: BiomesId;
+  typeId?: BiomesId;
+  displayName?: string;
+  maxHp?: number;
+}
 
 export function allHarthmereNativeNpcCombatProfiles() {
   const profiles = [
@@ -40,6 +58,36 @@ export function harthmereNativeNpcCombatProfileForTypeId(id: BiomesId) {
     ])
   );
   return byId.get(id);
+}
+
+export function harthmereNativeCreatureMeleeHitboxPadding(
+  input: HarthmereNativeNpcCombatEntityIdentity
+) {
+  if (input.typeId === undefined) return 0;
+  const profile = harthmereNativeNpcCombatProfileForEntity({
+    ...input,
+    typeId: input.typeId,
+  });
+  return profile &&
+    !profile.isBoss &&
+    !profile.isPlayerLikeAppearance &&
+    (profile.behaviorKind === "hostile" || profile.behaviorKind === "retaliate")
+    ? HARTHMERE_NATIVE_CREATURE_MELEE_HITBOX_PADDING_METERS
+    : 0;
+}
+
+export function expandHarthmereNativeCreatureMeleeTargetAabb(
+  input: HarthmereNativeNpcCombatEntityIdentity,
+  aabb: AABB
+): AABB {
+  const padding = harthmereNativeCreatureMeleeHitboxPadding(input);
+  if (padding <= 0) return aabb;
+  // Horizontal-only expansion keeps a creature easier to strike around its
+  // visible shoulders/flanks without permitting attacks through a floor.
+  return [
+    [aabb[0][0] - padding, aabb[0][1], aabb[0][2] - padding],
+    [aabb[1][0] + padding, aabb[1][1], aabb[1][2] + padding],
+  ];
 }
 
 /**

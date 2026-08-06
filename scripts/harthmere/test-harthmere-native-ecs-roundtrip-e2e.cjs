@@ -35,6 +35,7 @@ const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
 const { chromium } = require("playwright");
+const { acquireBrowserRuntimeLease } = require("./browser-runtime-lease.cjs");
 const { z } = require("zod");
 const { lookAtOrientation } = require("../../src/shared/cutscene/math");
 
@@ -239,6 +240,16 @@ const {
   HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES,
 } = require("../../src/shared/harthmere/jobs_board_business_templates");
 const {
+  HARTHMERE_BUSINESS_OUTPOSTS,
+  HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS,
+  harthmereBusinessOutpostBusinessId,
+} = require("../../src/shared/harthmere/business_customer_simulator");
+const {
+  harthmereBusinessToolForType,
+  harthmereBusinessToolVendorMarkerId,
+  harthmereBusinessTypeSellingTool,
+} = require("../../src/shared/harthmere/harthmere_business_tool_shop");
+const {
   harthmereJobsBoardQuestMarkerRuntimePositionForId,
 } = require("../../src/shared/harthmere/jobs_board_quest_marker_positions");
 const {
@@ -262,9 +273,7 @@ const {
   connectToRedis,
   connectToRedisWithLua,
 } = require("../../src/server/shared/redis/connection");
-const {
-  releaseCh1Slot,
-} = require("../../src/server/harthmere/ch1_slot_claim");
+const { releaseCh1Slot } = require("../../src/server/harthmere/ch1_slot_claim");
 const { HfcWorldApi } = require("../../src/server/shared/world/hfc/hfc");
 const { HybridWorldApi } = require("../../src/server/shared/world/hfc/hybrid");
 const { RedisWorld } = require("../../src/server/shared/world/redis");
@@ -707,6 +716,9 @@ const syncBaseUrl = (
   process.env.HARTHMERE_E2E_SYNC_BASE_URL || baseUrl
 ).replace(/\/$/, "");
 const configuredGameUrl = process.env.HARTHMERE_E2E_URL || `${baseUrl}/at`;
+const clientHotfixScriptPath = process.env.HARTHMERE_E2E_CLIENT_HOTFIX_SCRIPT
+  ? path.resolve(root, process.env.HARTHMERE_E2E_CLIENT_HOTFIX_SCRIPT)
+  : undefined;
 const combatMusicOnly = process.env.HARTHMERE_E2E_COMBAT_MUSIC_ONLY === "1";
 const chaseOnly = process.env.HARTHMERE_E2E_CHASE_ONLY === "1";
 const escortOnly = process.env.HARTHMERE_E2E_ESCORT_ONLY === "1";
@@ -717,7 +729,10 @@ const hillCombatSkipGiant =
 const retaliationOnly = process.env.HARTHMERE_E2E_RETALIATION_ONLY === "1";
 const retaliationSoloRotation =
   process.env.HARTHMERE_E2E_RETALIATION_SOLO_ROTATION === "1";
-const hoePurchaseOnly = process.env.HARTHMERE_E2E_HOE_PURCHASE_ONLY === "1";
+const muckRakeVisualOnly =
+  process.env.HARTHMERE_E2E_MUCK_RAKE_VISUAL_ONLY === "1";
+const hoePurchaseOnly =
+  process.env.HARTHMERE_E2E_HOE_PURCHASE_ONLY === "1" || muckRakeVisualOnly;
 const skillsOnly = process.env.HARTHMERE_E2E_SKILLS_ONLY === "1";
 const exhaustiveRobotStory =
   process.env.HARTHMERE_E2E_ROBOT_STORY_EXHAUSTIVE === "1";
@@ -855,6 +870,8 @@ const robotStoryOnly =
   questPropPromptSweepOnly;
 const jobsOnly = process.env.HARTHMERE_E2E_JOBS_ONLY === "1";
 const remainingJobsOnly = process.env.HARTHMERE_E2E_REMAINING_JOBS_ONLY === "1";
+const realJobsToolPurchase =
+  process.env.HARTHMERE_E2E_REAL_JOB_TOOL_PURCHASE === "1";
 const allowPreDynamicFieldTargetImage =
   process.env.HARTHMERE_E2E_ALLOW_PRE_DYNAMIC_FIELD_TARGET_IMAGE === "1";
 const remainingQuestsOnly =
@@ -1141,77 +1158,14 @@ const reportPath = path.join(artifactsDir, `${runId}-report.json`);
 // Reused snapshot ids can still point at actors thousands of metres outside
 // bounds; Sync otherwise resets them after quest fixtures have already begun.
 const FOCUSED_E2E_SAFE_START = [484.24980838010384, 53, -207.51197432867897];
-const browserLockPath =
-  process.env.HARTHMERE_E2E_BROWSER_LOCK_PATH ||
-  "/tmp/biomes-harthmere-native-ecs-browser.lock";
-let browserLockOwned = false;
-
-function releaseExclusiveBrowserLock() {
-  if (!browserLockOwned) return;
-  browserLockOwned = false;
-  try {
-    const owner = JSON.parse(fs.readFileSync(browserLockPath, "utf8"));
-    if (Number(owner?.pid) === process.pid) {
-      fs.unlinkSync(browserLockPath);
-    }
-  } catch (error) {
-    if (error?.code !== "ENOENT") throw error;
-  }
-}
-
-function acquireExclusiveBrowserLock() {
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    try {
-      const fd = fs.openSync(browserLockPath, "wx");
-      fs.writeFileSync(
-        fd,
-        JSON.stringify({ pid: process.pid, runId, startedAt: Date.now() })
-      );
-      fs.closeSync(fd);
-      browserLockOwned = true;
-      process.on("exit", releaseExclusiveBrowserLock);
-      return;
-    } catch (error) {
-      if (error?.code !== "EEXIST") throw error;
-      let owner;
-      try {
-        owner = JSON.parse(fs.readFileSync(browserLockPath, "utf8"));
-      } catch {
-        owner = undefined;
-      }
-      if (!owner) {
-        const ageMs = Date.now() - fs.statSync(browserLockPath).mtimeMs;
-        if (ageMs < 5_000) {
-          // The winning process has created the lock but has not finished its
-          // tiny JSON write yet. Treat that as owned; unlinking this fresh,
-          // temporarily empty file allowed two production browsers to start.
-          Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
-          continue;
-        }
-      }
-      const ownerPid = Number(owner?.pid);
-      let ownerAlive = Number.isInteger(ownerPid) && ownerPid > 0;
-      if (ownerAlive) {
-        try {
-          process.kill(ownerPid, 0);
-        } catch {
-          ownerAlive = false;
-        }
-      }
-      if (ownerAlive) {
-        throw new Error(
-          `Another native ECS browser E2E owns ${browserLockPath} (pid ${ownerPid}, run ${
-            owner?.runId ?? "unknown"
-          })`
-        );
-      }
-      fs.unlinkSync(browserLockPath);
-    }
-  }
-  throw new Error(
-    `Could not acquire native ECS browser lock ${browserLockPath}`
-  );
-}
+const browserRuntimeLease = acquireBrowserRuntimeLease({
+  runner: "harthmere-native-ecs-roundtrip-e2e",
+  runId,
+  baseUrl,
+  syncBaseUrl,
+  stackContainer: chapter1StackContainer,
+  redisContainer: process.env.HARTHMERE_E2E_REDIS_CONTAINER || "",
+});
 
 if (!controlToken) {
   console.error("FAIL HARTHMERE_E2E_CONTROL_TOKEN is required");
@@ -1219,7 +1173,6 @@ if (!controlToken) {
 }
 
 fs.mkdirSync(artifactsDir, { recursive: true });
-acquireExclusiveBrowserLock();
 
 // Page-isolated video capture intentionally closes a fully loaded game page
 // between scenes. Chromium reports in-flight image/poll cancellation as
@@ -1243,7 +1196,9 @@ const report = {
         : hillCombatOnly
           ? "hill-combat-only"
           : hoePurchaseOnly
-            ? "hoe-purchase-only"
+            ? muckRakeVisualOnly
+              ? "muck-rake-visual-only"
+              : "hoe-purchase-only"
             : skillsOnly
               ? "skills-only"
               : combatMusicOnly
@@ -2123,6 +2078,8 @@ async function frontendInteractionSnapshot(page) {
     const inspectableEntityId = inspectable?.entityId;
     const markerDebug = globalThis.__harthmereQuestObjectMarkerDebug;
     let groveState;
+    let activeMapPin;
+    let mainQuest;
     try {
       const raw = globalThis.localStorage?.getItem(
         "biomes.localDev.snapshotGroveQuestState"
@@ -2130,6 +2087,18 @@ async function frontendInteractionSnapshot(page) {
       groveState = raw ? JSON.parse(raw) : undefined;
     } catch {
       groveState = undefined;
+    }
+    try {
+      const raw = globalThis.localStorage?.getItem("biomes_ui_active_map_pin");
+      activeMapPin = raw ? JSON.parse(raw) : undefined;
+    } catch {
+      activeMapPin = undefined;
+    }
+    try {
+      const raw = globalThis.localStorage?.getItem("biomes_ui_main_quest");
+      mainQuest = raw ? JSON.parse(raw) : undefined;
+    } catch {
+      mainQuest = undefined;
     }
     return {
       inspectable: inspectable
@@ -2232,6 +2201,8 @@ async function frontendInteractionSnapshot(page) {
       }),
       bodyHasOpenContainer: document.body.innerText.includes("Open Container"),
       groveState,
+      activeMapPin,
+      mainQuest,
       markerDebug: markerDebug
         ? {
             activeMarkerId: markerDebug.activeMarkerId,
@@ -2531,6 +2502,16 @@ function attachDiagnostics(page, label) {
               `${baseUrl}/api/harthmere/chapter1_story`,
               `${baseUrl}/api/harthmere/chapter1_gate?e2e=1`,
             ].includes(url))));
+    const abortedJobsCatalogAudioTransition =
+      jobsCatalogOnly &&
+      errorText === "net::ERR_ABORTED" &&
+      request.method() === "GET" &&
+      (/^\/buckets\/biomes-static\/asset_data\/audio\/[^?]+\.webm(?:\?|$)/.test(
+        new URL(url).pathname
+      ) ||
+        /^\/assets\/harthmere\/audio\/[^?]+\.mp3(?:\?|$)/.test(
+          new URL(url).pathname
+        ));
     const abortedVoiceSynthesis =
       errorText === "net::ERR_ABORTED" &&
       request.method() === "POST" &&
@@ -2628,7 +2609,8 @@ function attachDiagnostics(page, label) {
         recoveredRobotStoryLiveModeBackgroundAbort ||
         recoveredRobotStoryUnmountedQuestIcon ||
         abortedChapter1UnmountedQuestIcon ||
-        recoveredJobsOnlyAbortedRequest
+        recoveredJobsOnlyAbortedRequest ||
+        abortedJobsCatalogAudioTransition
       ) {
         report.browser.transients.push(diagnostic);
       } else if (!abortedLiveModeBuildingPoll) {
@@ -2782,12 +2764,23 @@ async function openUser(browser, username, label) {
       questsUiOnly ||
       skillsOnly ||
       chaseOnly ||
+      escortOnly ||
       hillCombatOnly ||
       retaliationOnly ||
       snapshotGroveOnboardingOnly
         ? { width: 800, height: 600 }
         : { width: 1440, height: 900 },
   });
+  if (clientHotfixScriptPath) {
+    assert(
+      fs.existsSync(clientHotfixScriptPath),
+      `HARTHMERE_E2E_CLIENT_HOTFIX_SCRIPT is missing: ${clientHotfixScriptPath}`
+    );
+    await context.addInitScript({ path: clientHotfixScriptPath });
+    report.browser.transients.push(
+      `${label}:client-hotfix:${path.basename(clientHotfixScriptPath)}`
+    );
+  }
   if (
     robotStoryOnly ||
     jobsOnly ||
@@ -2798,12 +2791,14 @@ async function openUser(browser, username, label) {
     questsUiOnly ||
     skillsOnly ||
     chaseOnly ||
+    escortOnly ||
     hillCombatOnly ||
     retaliationOnly ||
     snapshotGroveOnboardingOnly ||
     chapter1Only ||
     chapter1CaptureOnly ||
-    chapter1NpcAuditOnly
+    chapter1NpcAuditOnly ||
+    hoePurchaseOnly
   ) {
     await context.addInitScript((desktopControlsOnly) => {
       // Headless Chromium exposes Pointer Lock but cannot retain it reliably.
@@ -2925,8 +2920,8 @@ async function openUser(browser, username, label) {
     { userId: auth.userId, sessionId: authSessionId }
   );
 
-  if (chaseOnly) {
-    const chasePlayerChange = {
+  if (chaseOnly || escortOnly) {
+    const focusedMovementPlayerChange = {
       kind: "update",
       entity: {
         id: auth.userId,
@@ -2940,20 +2935,22 @@ async function openUser(browser, username, label) {
       },
     };
     if (directWorldFixtures) {
-      await applyDirectFixtureChanges([chasePlayerChange]);
+      await applyDirectFixtureChanges([focusedMovementPlayerChange]);
     } else {
       const chasePlayerResponse = await context.request.post(
         new URL("/api/admin/apply_ecs_changes", baseUrl).toString(),
         {
           data: {
-            z: zrpcWebSerialize([serializedChange(chasePlayerChange)]),
+            z: zrpcWebSerialize([
+              serializedChange(focusedMovementPlayerChange),
+            ]),
           },
           timeout: timeoutMs,
         }
       );
       assert(
         chasePlayerResponse.ok(),
-        `${label} focused chase player bootstrap failed HTTP ${chasePlayerResponse.status()}: ${await chasePlayerResponse.text()}`
+        `${label} focused movement player bootstrap failed HTTP ${chasePlayerResponse.status()}: ${await chasePlayerResponse.text()}`
       );
     }
   }
@@ -2968,10 +2965,12 @@ async function openUser(browser, username, label) {
     questsUiOnly ||
     skillsOnly ||
     chaseOnly ||
+    escortOnly ||
     snapshotGroveOnboardingOnly ||
     chapter1Only ||
     chapter1CaptureOnly ||
-    chapter1NpcAuditOnly
+    chapter1NpcAuditOnly ||
+    hoePurchaseOnly
   ) {
     // Visual auth publishes PlayerInit asynchronously. On a freshly hydrated
     // large world that event can trail browser startup long enough for the
@@ -3047,7 +3046,11 @@ async function openUser(browser, username, label) {
     chapter1Only ||
     chapter1CaptureOnly ||
     chapter1NpcAuditOnly ||
-    robotStoryOnly
+    robotStoryOnly ||
+    jobsOnly ||
+    remainingJobsOnly ||
+    escortOnly ||
+    hoePurchaseOnly
   ) {
     // A freshly allocated visual-test id can collide with a live snapshot NPC
     // already owned by Anima. Updating that row into a player is insufficient:
@@ -3106,10 +3109,12 @@ async function openUser(browser, username, label) {
     questsUiOnly ||
     skillsOnly ||
     chaseOnly ||
+    escortOnly ||
     snapshotGroveOnboardingOnly ||
     chapter1Only ||
     chapter1CaptureOnly ||
-    chapter1NpcAuditOnly
+    chapter1NpcAuditOnly ||
+    hoePurchaseOnly
   ) {
     // The isolated production-bundle harness can receive one initial Bikkie
     // notifier refresh after the first context is ready. Let that navigation
@@ -3159,10 +3164,12 @@ async function openUser(browser, username, label) {
     remainingClientQuestsOnly ||
     questsUiOnly ||
     skillsOnly ||
+    escortOnly ||
     snapshotGroveOnboardingOnly ||
     chapter1Only ||
     chapter1CaptureOnly ||
-    chapter1NpcAuditOnly
+    chapter1NpcAuditOnly ||
+    hoePurchaseOnly
   ) {
     await page.evaluate(() => {
       const resources = globalThis.clientContext?.resources;
@@ -3222,7 +3229,11 @@ async function openUser(browser, username, label) {
     chapter1Only ||
     chapter1CaptureOnly ||
     chapter1NpcAuditOnly ||
-    robotStoryOnly
+    robotStoryOnly ||
+    jobsOnly ||
+    remainingJobsOnly ||
+    escortOnly ||
+    hoePurchaseOnly
   ) {
     // A large production-shaped world can construct clientContext before the
     // delayed player-mesh/bootstrap createPlayer row finishes. Waiting for the
@@ -3289,7 +3300,13 @@ async function openUser(browser, username, label) {
         username,
         robotStoryOnly
           ? `${label}: post-load robot-story actor is stable`
-          : `${label}: post-load Chapter 1 actor remains normalized`
+          : jobsOnly || remainingJobsOnly
+            ? `${label}: post-load Jobs Board actor remains normalized`
+            : escortOnly
+              ? `${label}: post-load escort actor remains normalized`
+              : hoePurchaseOnly
+                ? `${label}: post-load held-tool actor remains normalized`
+                : `${label}: post-load Chapter 1 actor remains normalized`
       );
     }
     const staleWakeUpScreen = page.locator(".wake-up-container");
@@ -3358,7 +3375,13 @@ async function openUser(browser, username, label) {
           username,
           robotStoryOnly
             ? `${label}: reloaded robot-story actor is stable`
-            : `${label}: reloaded Chapter 1 actor remains normalized`
+            : jobsOnly || remainingJobsOnly
+              ? `${label}: reloaded Jobs Board actor remains normalized`
+              : escortOnly
+                ? `${label}: reloaded escort actor remains normalized`
+                : hoePurchaseOnly
+                  ? `${label}: reloaded held-tool actor remains normalized`
+                  : `${label}: reloaded Chapter 1 actor remains normalized`
         );
       }
       await staleWakeUpScreen.waitFor({
@@ -9503,7 +9526,31 @@ function e2eBoardIdForTemplate(template) {
     : HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID;
 }
 
+function resumeJobsBoardE2ETemplates(templates) {
+  const resumeAt = String(
+    process.env.HARTHMERE_E2E_JOBS_RESUME_AT ?? ""
+  ).trim();
+  if (!resumeAt) return templates;
+  const resumeIndex = templates.findIndex(
+    (template) => template.templateId === resumeAt
+  );
+  assert(resumeIndex >= 0, `unknown Jobs Board resume template ${resumeAt}`);
+  return templates.slice(resumeIndex);
+}
+
 function jobsBoardE2ETemplates(templateFamily) {
+  const onlyTemplateIds = new Set(
+    String(process.env.HARTHMERE_E2E_ONLY_JOB_TEMPLATE_IDS ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean)
+  );
+  const selected = (templates) =>
+    onlyTemplateIds.size === 0
+      ? templates
+      : templates.filter((template) =>
+          onlyTemplateIds.has(template.templateId)
+        );
   if (templateFamily === "business") {
     // Business templates are production jobs too, but unlike the 20 automatic
     // board seeds they are issued by a business/outpost system. Normalize
@@ -9515,34 +9562,40 @@ function jobsBoardE2ETemplates(templateFamily) {
         .map((value) => value.trim())
         .filter(Boolean)
     );
-    return HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES.filter(
-      (template) => !skippedTemplateIds.has(template.templateId)
-    ).map((template) => ({
-      ...template,
-      // Business templates are issuer-authored and intentionally do not pin a
-      // public board scope. Exercise their complete lifecycle on the default
-      // Grove board; forcing `harthmere` here invents a location contract that
-      // is absent from the template and duplicates the recently passed
-      // auto-template coverage of the Harthmere town board.
-      boardScope: "grove",
-      issuerKind: "business",
-      issuerId: template.businessType,
-      rewardGold: { min: template.defaultRewardGold },
-    }));
+    return resumeJobsBoardE2ETemplates(
+      selected(
+        HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES.filter(
+          (template) => !skippedTemplateIds.has(template.templateId)
+        ).map((template) => ({
+          ...template,
+          // Business templates are issuer-authored and intentionally do not pin a
+          // public board scope. Exercise their complete lifecycle on the default
+          // Grove board; forcing `harthmere` here invents a location contract that
+          // is absent from the template and duplicates the recently passed
+          // auto-template coverage of the Harthmere town board.
+          boardScope: "grove",
+          issuerKind: "business",
+          issuerId: template.businessType,
+          rewardGold: { min: template.defaultRewardGold },
+        }))
+      )
+    );
   }
-  const templates = HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES.filter(
-    (template) =>
+  const templates = selected(
+    HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES.filter((template) =>
       harthmereAutoSeedTemplateRequirementsObtainable(template.requirements)
+    )
   );
-  const resumeAt = String(
-    process.env.HARTHMERE_E2E_JOBS_RESUME_AT ?? ""
-  ).trim();
-  if (!resumeAt) return templates;
-  const resumeIndex = templates.findIndex(
-    (template) => template.templateId === resumeAt
-  );
-  assert(resumeIndex >= 0, `unknown Jobs Board resume template ${resumeAt}`);
-  return templates.slice(resumeIndex);
+  if (onlyTemplateIds.size > 0) {
+    const selectedIds = new Set(templates.map(({ templateId }) => templateId));
+    const missing = [...onlyTemplateIds].filter((id) => !selectedIds.has(id));
+    assert.equal(
+      missing.length,
+      0,
+      `unknown or unobtainable focused Jobs Board templates: ${missing.join(", ")}`
+    );
+  }
+  return resumeJobsBoardE2ETemplates(templates);
 }
 
 async function installAllJobsBoardE2EFixtures(actorId, templateFamily) {
@@ -9675,6 +9728,32 @@ async function installAllJobsBoardE2EFixtures(actorId, templateFamily) {
       latest.updatedAtMs = Date.now();
       await redis.primary.set(key, JSON.stringify(latest));
     },
+    async resetFailedJob(jobId) {
+      const latestRaw = await redis.primary.get(key);
+      const nowMs = Date.now();
+      const latest = parseHarthmereLiveModeSharedWorldState(latestRaw, nowMs);
+      assert(latest, "jobs-board E2E shared state disappeared");
+      const posting = latest.jobsBoard.postings[jobId];
+      if (posting) {
+        posting.status = "open";
+        posting.acceptedAtMs = undefined;
+        posting.acceptedByActorId = undefined;
+        posting.completedAtMs = undefined;
+        posting.deadlineAtMs = nowMs + 24 * 60 * 60 * 1000;
+        posting.escortCompanion = undefined;
+      }
+      for (const [todoId, todo] of Object.entries(latest.jobsBoard.todos)) {
+        if (todo.jobId === jobId && todo.actorId === String(actorId)) {
+          delete latest.jobsBoard.todos[todoId];
+        }
+      }
+      latest.jobsBoard.actorAcceptedJobIds[String(actorId)] = (
+        latest.jobsBoard.actorAcceptedJobIds[String(actorId)] ?? []
+      ).filter((acceptedJobId) => acceptedJobId !== jobId);
+      latest.jobsBoard.actorCooldowns[String(actorId)] = { abuseScore: 0 };
+      latest.updatedAtMs = nowMs;
+      await redis.primary.set(key, JSON.stringify(latest));
+    },
     async serviceProgressCount(targetId) {
       const playerKey = harthmereLiveModePlayerStateKey(String(actorId));
       const playerRaw = await redis.primary.get(playerKey);
@@ -9733,6 +9812,292 @@ function setNativeInventoryCount(inventory, itemId, count) {
   const emptyIndex = inventory.items.findIndex((slot) => !slot);
   assert(emptyIndex >= 0, `no native inventory slot available for ${itemId}`);
   inventory.items[emptyIndex] = countOf(itemId, BigInt(count));
+}
+
+function jobsE2ERequiredTool(expected) {
+  const requiredToolAction = expected.requirements.find(
+    (requirement) => requirement.requiredToolAction
+  )?.requiredToolAction;
+  if (!requiredToolAction) return undefined;
+  const toolItemKey =
+    requiredToolAction === "repair" ? "repair_mallet" : "muck_rake";
+  const nativeItemId = harthmereNativeBiomesIdForItemId(toolItemKey);
+  assert(nativeItemId, `${toolItemKey} has no native item id`);
+  const businessType = harthmereBusinessTypeSellingTool(toolItemKey);
+  assert(businessType, `${toolItemKey} has no selling business`);
+  const listing = harthmereBusinessToolForType(businessType);
+  assert(listing, `${toolItemKey} has no business listing`);
+  const outpost = HARTHMERE_BUSINESS_OUTPOSTS.find(
+    (candidate) => candidate.businessType === businessType
+  );
+  assert(outpost, `${toolItemKey} has no real business outpost`);
+  const building =
+    HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS[outpost.outpostId];
+  assert(building, `${toolItemKey} has no materialized business building`);
+  const vendorMarkerId = harthmereBusinessToolVendorMarkerId(toolItemKey);
+  assert(vendorMarkerId, `${toolItemKey} has no vendor marker`);
+  return {
+    requiredToolAction,
+    toolItemKey,
+    nativeItemId,
+    businessType,
+    listing,
+    outpost,
+    building,
+    businessId: harthmereBusinessOutpostBusinessId(outpost.outpostId),
+    vendorMarkerId,
+  };
+}
+
+async function waitForJobsE2EHeldTool(first, expected, tool) {
+  await waitFor(
+    `${expected.templateId}: selected job tool has a visible held mesh`,
+    () =>
+      first.page.evaluate(
+        ({ userId, expectedItemId }) => {
+          const resources = globalThis.clientContext?.resources;
+          const attachment = resources?.cached(
+            "/scene/player/mesh",
+            userId
+          )?.itemAttachment;
+          const root = attachment?.itemMeshInstance?.three;
+          if (!root) return undefined;
+          let meshCount = 0;
+          let vertexCount = 0;
+          root.traverse?.((child) => {
+            if (!child?.isMesh || !child.geometry) return;
+            meshCount += 1;
+            vertexCount += Number(
+              child.geometry.attributes?.position?.count ?? 0
+            );
+          });
+          return {
+            selectedItemId: String(attachment?.selectedItem?.id ?? ""),
+            expectedItemId: String(expectedItemId),
+            meshCount,
+            vertexCount,
+          };
+        },
+        { userId: first.userId, expectedItemId: tool.nativeItemId }
+      ),
+    (attachment) =>
+      Boolean(attachment) &&
+      attachment.selectedItemId === attachment.expectedItemId &&
+      attachment.meshCount > 0 &&
+      attachment.vertexCount > 0,
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+}
+
+async function prepareJobsE2ERealToolPurchase(first, expected) {
+  if (!realJobsToolPurchase) return undefined;
+  const tool = jobsE2ERequiredTool(expected);
+  if (!tool) return undefined;
+
+  const authoritative = await authoritativeEntity(first.page, first.userId);
+  assert(
+    authoritative.entity?.inventory,
+    `${expected.templateId}: no inventory before real tool purchase`
+  );
+  const inventory = withoutInventoryItem(
+    authoritative.entity,
+    tool.nativeItemId
+  );
+  // Force the real purchase into backpack storage. This proves the Inventory
+  // UI path a player needs when every quick slot is occupied, and prevents a
+  // retained hotbar tool from making the vendor redirect pass accidentally.
+  inventory.hotbar = Array.from({ length: PLAYER_HOTBAR_SLOTS }, () =>
+    countOf(BikkieIds.dirt, 1n)
+  );
+  inventory.selected = { kind: "hotbar", idx: 0 };
+  replaceChapter1FixtureNativeGold(inventory, 200);
+  await applyFixture(first.page, {
+    kind: "update",
+    entity: {
+      id: first.userId,
+      inventory,
+      selected_item: SelectedItem.create({ item: inventory.hotbar[0] }),
+    },
+  });
+  await first.page.evaluate((toolItemKey) => {
+    const key = "biomes.localDev.harthmere.inventoryState";
+    let state = {};
+    try {
+      state = JSON.parse(localStorage.getItem(key) ?? "{}");
+    } catch {
+      state = {};
+    }
+    if (Array.isArray(state.backpack?.items)) {
+      state.backpack.items = state.backpack.items.filter(
+        (item) => item?.itemId !== toolItemKey
+      );
+    }
+    for (const slot of ["main_hand", "off_hand"]) {
+      if (state.equipment?.[slot]?.itemId === toolItemKey) {
+        delete state.equipment[slot];
+      }
+    }
+    state.wallet = { ...(state.wallet ?? {}), gold: 200 };
+    localStorage.setItem(key, JSON.stringify(state));
+    window.dispatchEvent(new Event("biomes:harthmere-inventory-changed"));
+  }, tool.toolItemKey);
+  await waitFor(
+    `${expected.templateId}: starts without required tool`,
+    () => localEntity(first.page, first.userId),
+    ({ entity }) =>
+      inventoryCount(entity, tool.nativeItemId) === 0n &&
+      nativeGold(entity) === 200n &&
+      entity?.selected_item?.item?.item?.id === BikkieIds.dirt,
+    originSyncGateMs,
+    timeoutMs
+  );
+  return tool;
+}
+
+async function buyAndEquipJobsE2ERequiredTool(
+  first,
+  expected,
+  acceptedMarker,
+  tool
+) {
+  assert.equal(
+    acceptedMarker.mapMarkerId,
+    tool.vendorMarkerId,
+    `${expected.templateId}: missing-tool job did not point to its exact vendor`
+  );
+  const access = tool.building.dashboardAccessPoint;
+  const accessPosition = [
+    access.position.x,
+    access.position.y,
+    access.position.z,
+  ];
+  await moveJobsE2EPlayer(
+    first,
+    accessPosition,
+    `${expected.templateId}: ${tool.listing.toolName} shop`
+  );
+  const businessPrompt = first.page.locator(
+    `[data-harthmere-business-prompt="true"][data-business-id="${tool.businessId}"]`
+  );
+  await businessPrompt.waitFor({ state: "visible", timeout: timeoutMs });
+  await first.page.locator("canvas.biomes-canvas").focus();
+  await first.page.keyboard.press("KeyF");
+  const businessPanel = first.page.locator(
+    `[data-harthmere-business-interface="true"][data-business-id="${tool.businessId}"]`
+  );
+  await businessPanel.waitFor({ state: "visible", timeout: timeoutMs });
+  await businessPanel
+    .getByRole("button", { name: "Shopfront", exact: true })
+    .click();
+
+  const goldBeforePurchase = nativeGold(
+    (await authoritativeEntity(first.page, first.userId)).entity
+  );
+  const buyButton = businessPanel.getByRole("button", {
+    name: `Buy ${tool.listing.toolName}`,
+    exact: true,
+  });
+  await buyButton.waitFor({ state: "visible", timeout: timeoutMs });
+  await buyButton.click();
+  await businessPanel
+    .getByTestId("biomes-business-purchase-feedback")
+    .filter({
+      hasText: `${tool.listing.toolName} was added to your inventory.`,
+    })
+    .waitFor({ state: "visible", timeout: timeoutMs });
+  const purchased = await waitFor(
+    `${expected.templateId}: real shop purchase reaches native inventory`,
+    () => authoritativeEntity(first.page, first.userId),
+    ({ entity }) =>
+      inventoryCount(entity, tool.nativeItemId) === 1n &&
+      nativeGold(entity) ===
+        goldBeforePurchase - BigInt(tool.listing.priceGold),
+    Math.max(acceptanceGateMs, 10_000),
+    timeoutMs
+  );
+  await first.page.screenshot({
+    path: path.join(
+      artifactsDir,
+      `${runId}-${expected.templateId}-real-tool-purchase.png`
+    ),
+    fullPage: true,
+  });
+  await businessPanel
+    .getByRole("button", { name: "Close business interface" })
+    .click();
+  await businessPanel.waitFor({ state: "hidden", timeout: timeoutMs });
+
+  const completionTarget =
+    expected.requirements.find(
+      (requirement) => requirement.mapMarkerId || requirement.targetId
+    ) ?? {};
+  const objectiveMarkerId =
+    completionTarget.mapMarkerId ?? expected.mapMarkerId;
+  assert(
+    objectiveMarkerId,
+    `${expected.templateId}: no field marker after buying ${tool.listing.toolName}`
+  );
+  await waitFor(
+    `${expected.templateId}: purchase returns marker from vendor to job`,
+    () =>
+      jobsBoardFetchWithRetry(first.page, `${expected.templateId}:tool-owned`),
+    (snapshot) =>
+      snapshot.markers.some(
+        (row) =>
+          row.jobsBoardJobId === expected.jobId &&
+          row.mapMarkerId === objectiveMarkerId
+      ),
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+
+  const purchasedRef = inventoryRefForItem(
+    purchased.value.entity,
+    tool.nativeItemId
+  );
+  assert.equal(
+    purchasedRef?.kind,
+    "item",
+    `${expected.templateId}: bought tool did not arrive in backpack`
+  );
+  await first.page.keyboard.press("KeyI");
+  const inventoryButton = first.page.locator(
+    `button[data-inventory-ref="item:${purchasedRef.idx}"]`
+  );
+  await inventoryButton.waitFor({ state: "visible", timeout: timeoutMs });
+  await inventoryButton.click();
+  const hotbarAction = first.page.getByRole("button", {
+    name: "Hotbar 1",
+    exact: true,
+  });
+  await hotbarAction.waitFor({ state: "visible", timeout: timeoutMs });
+  assert(
+    await hotbarAction.isEnabled(),
+    `${expected.templateId}: bought tool cannot be assigned to Hotbar 1`
+  );
+  await hotbarAction.click();
+  await waitFor(
+    `${expected.templateId}: bought tool reaches native hotbar`,
+    () => authoritativeEntity(first.page, first.userId),
+    ({ entity }) =>
+      entity?.inventory?.hotbar?.[0]?.item?.id === tool.nativeItemId,
+    Math.max(acceptanceGateMs, 10_000),
+    timeoutMs
+  );
+  await first.page.keyboard.press("Escape");
+  await first.page.keyboard.press("Digit1");
+  await waitFor(
+    `${expected.templateId}: bought tool becomes selected`,
+    () => localEntity(first.page, first.userId),
+    ({ entity }) =>
+      entity?.inventory?.selected?.kind === "hotbar" &&
+      entity.inventory.selected.idx === 0 &&
+      entity?.selected_item?.item?.item?.id === tool.nativeItemId,
+    originSyncGateMs,
+    timeoutMs
+  );
+  await waitForJobsE2EHeldTool(first, expected, tool);
 }
 
 async function moveJobsE2EPlayer(first, position, label) {
@@ -9802,7 +10167,7 @@ async function provisionJobsE2ERequirements(first, expected) {
   let selectedItem;
   let selectedToolId;
   let selectedToolKey;
-  if (requiredToolAction) {
+  if (requiredToolAction && !realJobsToolPurchase) {
     const toolItemKey =
       requiredToolAction === "repair" ? "repair_mallet" : "muck_rake";
     const toolItemId = harthmereNativeBiomesIdForItemId(toolItemKey);
@@ -9874,6 +10239,11 @@ async function provisionJobsE2ERequirements(first, expected) {
     originSyncGateMs,
     timeoutMs
   );
+  if (selectedToolId) {
+    await waitForJobsE2EHeldTool(first, expected, {
+      nativeItemId: selectedToolId,
+    });
+  }
 }
 
 // HARTHMERE_JOBS_E2E_NATIVE_BOUNTY_KILL (2026-07-29):
@@ -10000,7 +10370,8 @@ async function performJobsE2EFieldInteraction(
   todoId,
   questTitle,
   label,
-  requiredInteractionCount = 1
+  requiredInteractionCount = 1,
+  selectFieldTargetOnMap = false
 ) {
   const fieldTarget = harthmereJobsBoardFieldTargetForId(targetId);
   // A Grove marker on an item-gather job identifies the source area, not a
@@ -10027,11 +10398,11 @@ async function performJobsE2EFieldInteraction(
   });
   assert(interaction, `${label}: field target ${targetId} has no interaction`);
 
-  if (landmark) {
-    // Grove landmark props are intentionally visible only while their job is
-    // the player-selected destination. Accepting work must not steal an
-    // existing main-quest pin, so exercise the real Quests -> Show on map path
-    // instead of mutating browser storage or expecting automatic replacement.
+  if (landmark || (fieldTarget && selectFieldTargetOnMap)) {
+    // Accepted work must not steal an existing main-quest pin. Exercise the
+    // real Quests -> Show on map path before every physical field objective so
+    // the exact job prop wins over nearby boards, Patrons, and shallow cursor
+    // hits without making every permanent fixture globally high-priority.
     await first.page.keyboard.press("KeyJ");
     const questsTab = first.page.getByTestId("biomes-ui-quests-tab");
     await questsTab.waitFor({ state: "visible", timeout: timeoutMs });
@@ -10225,15 +10596,41 @@ async function performJobsE2EFieldInteraction(
       );
       return undefined;
     }
+    const missingPromptGrounding = visiblePrompt
+      ? undefined
+      : await bridgeCall(first.page, "groundedHarthmerePosition", {
+          position: target.position,
+          requireOpenSky: false,
+        }).catch((error) => ({ error: String(error) }));
+    const missingPromptPlayerPose = visiblePrompt
+      ? undefined
+      : await frontendPlayerPose(first.page, first.userId);
     assert(
       visiblePrompt,
       `${label}: no visible F ${interaction.title} prompt for ${target.label} ` +
         `(${
           interactionIndex + 1
-        }/${requiredInteractions}); last=${JSON.stringify(
-          lastInteractionSnapshot
-        )}`
+        }/${requiredInteractions}); target=${JSON.stringify(
+          target.position
+        )} player=${JSON.stringify(
+          missingPromptPlayerPose
+        )} ground=${JSON.stringify(
+          missingPromptGrounding
+        )} last=${JSON.stringify(lastInteractionSnapshot)}`
     );
+    if (interactionIndex === 0) {
+      const screenshot = path.join(
+        artifactsDir,
+        `${runId}-${jobId.replace(/[^a-z0-9_-]+/gi, "-")}-field-tool-use.png`
+      );
+      await first.page.screenshot({ path: screenshot });
+      (report.gates.jobsBoardFieldToolUseScreenshots ??= []).push({
+        jobId,
+        targetId: target.targetId,
+        interaction: interaction.kind,
+        screenshot,
+      });
+    }
     let receiptRecorded = false;
     let lastReceiptError;
     for (let keyAttempt = 1; keyAttempt <= 3; keyAttempt += 1) {
@@ -10340,6 +10737,8 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(
     first.userId,
     templateFamily
   );
+  const keepGoing = process.env.HARTHMERE_E2E_JOBS_KEEP_GOING === "1";
+  const failures = [];
   try {
     // First prove the request really crosses the native ECS Position gate by
     // trying the frontend accept action before moving the player to the board.
@@ -10364,383 +10763,454 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(
           },
           `${firstFixture.templateId}:away-rejection`
         ),
-      /jobs_board_rejected:/
+      /jobs_board_rejected:|Go to the correct Jobs Board before accepting that job\./
     );
 
     for (const expected of fixture.fixtures) {
-      const board = HARTHMERE_JOBS_BOARD_LOCATIONS[expected.boardId];
-      assert(board, `missing board ${expected.boardId}`);
-      const boardPosition = [
-        board.location.x,
-        board.location.y,
-        board.location.z,
-      ];
-      await moveJobsE2EPlayer(
-        first,
-        boardPosition,
-        `${expected.templateId}: native ECS board position`
-      );
+      try {
+        const board = HARTHMERE_JOBS_BOARD_LOCATIONS[expected.boardId];
+        assert(board, `missing board ${expected.boardId}`);
+        const boardPosition = [
+          board.location.x,
+          board.location.y,
+          board.location.z,
+        ];
+        await moveJobsE2EPlayer(
+          first,
+          boardPosition,
+          `${expected.templateId}: native ECS board position`
+        );
+        const realTool = await prepareJobsE2ERealToolPurchase(first, expected);
 
-      const before = await jobsBoardFetchWithRetry(
-        first.page,
-        `${expected.templateId}:before`
-      );
-      assert(
-        before.openJobs.some(
+        const before = await jobsBoardFetchWithRetry(
+          first.page,
+          `${expected.templateId}:before`
+        );
+        const visibleFixture = before.openJobs.find(
           (job) =>
             job.jobId === expected.jobId &&
             job.templateId === expected.templateId &&
-            job.title === expected.title &&
             job.kind === expected.kind
-        ),
-        `${expected.templateId}: exact fixture was not visible to the frontend`
-      );
-
-      const accepted = await jobsBoardMutationWithRetry(
-        first.page,
-        {
-          operation: "accept",
-          jobId: expected.jobId,
-          boardId: expected.boardId,
-          requestId: `jobs_e2e_accept:${runId}:${expected.templateId}`,
-        },
-        `${expected.templateId}:accept`
-      );
-      const acceptedJob = accepted.acceptedJobs.find(
-        (job) => job.jobId === expected.jobId
-      );
-      assert.deepEqual(acceptedJob, {
-        jobId: expected.jobId,
-        boardId: expected.boardId,
-        templateId: expected.templateId,
-        title: expected.title,
-        kind: expected.kind,
-      });
-      const todo = accepted.todos.find((row) => row.jobId === expected.jobId);
-      assert(todo, `${expected.templateId}: authoritative todo missing`);
-      assert.equal(todo.title, expected.title);
-      assert.equal(todo.kind, expected.kind);
-      assert.equal(todo.status, "active");
-      const quest = accepted.quests.find(
-        (row) => row.questId === `jobs_board:${todo.todoId}`
-      );
-      assert(
-        quest,
-        `${expected.templateId}: frontend quest projection missing`
-      );
-      assert.equal(quest.title, expected.title);
-      assert.equal(quest.kind, expected.kind);
-      assert.equal(quest.status, "active");
-      const marker = accepted.markers.find(
-        (row) =>
-          row.jobsBoardJobId === expected.jobId &&
-          row.jobsBoardTodoId === todo.todoId
-      );
-      assert(marker, `${expected.templateId}: frontend map marker missing`);
-      assert(
-        marker.position.every(Number.isFinite),
-        `${expected.templateId}: map marker position is invalid`
-      );
-
-      const nativePlayer = await authoritativeEntity(first.page, first.userId);
-      assert(
-        distance3(nativePlayer.entity?.position?.v, boardPosition) <=
-          JOBS_BOARD_E2E_POSITION_TOLERANCE_METERS,
-        `${expected.templateId}: accept did not use the native ECS board proximity`
-      );
-      const goldBefore = nativeGold(nativePlayer.entity);
-      await provisionJobsE2ERequirements(first, expected);
-
-      let objectiveCompleted;
-      if (expected.kind === "delivery") {
-        const parcel = expected.requirements.find(
-          (requirement) => requirement.itemId
         );
         assert(
-          parcel?.pickupMarkerId,
-          `${expected.templateId}: pickup missing`
+          visibleFixture,
+          `${expected.templateId}: exact fixture was not visible to the frontend`
         );
-        assert.equal(
-          marker.mapMarkerId,
-          parcel.pickupMarkerId,
-          `${expected.templateId}: frontend did not start at parcel pickup`
-        );
-        const parcelItemId = harthmereNativeBiomesIdForItemId(parcel.itemId);
-        assert(parcelItemId, `${expected.templateId}: parcel item id missing`);
-        const beforePickup = inventoryCount(nativePlayer.entity, parcelItemId);
-        await moveJobsE2EPlayer(
-          first,
-          jobsE2EMarkerPosition(
-            parcel.pickupMarkerId,
-            `${expected.templateId}: pickup`
-          ),
-          `${expected.templateId}: pickup`
-        );
-        const pickedUp = await jobsBoardMutationWithRetry(
+        if (expected.kind === "escort") {
+          assert.match(visibleFixture.title, /Road Post|Protected Landmark/);
+        } else {
+          assert.equal(visibleFixture.title, expected.title);
+        }
+
+        const accepted = await jobsBoardMutationWithRetry(
           first.page,
           {
-            operation: "pickup",
+            operation: "accept",
             jobId: expected.jobId,
             boardId: expected.boardId,
-            questTodoId: todo.todoId,
-            completedTargetId: parcel.pickupMarkerId,
-            requestId: `jobs_e2e_pickup:${runId}:${expected.templateId}`,
+            requestId: `jobs_e2e_accept:${runId}:${expected.templateId}`,
           },
-          `${expected.templateId}:pickup`
+          `${expected.templateId}:accept`
         );
-        const dropoffMarker = pickedUp.markers.find(
+        const acceptedJob = accepted.acceptedJobs.find(
+          (job) => job.jobId === expected.jobId
+        );
+        assert(acceptedJob, `${expected.templateId}: accepted job missing`);
+        assert.equal(acceptedJob.boardId, expected.boardId);
+        assert.equal(acceptedJob.templateId, expected.templateId);
+        assert.equal(acceptedJob.kind, expected.kind);
+        const acceptedTitle = acceptedJob.title;
+        if (expected.kind === "escort") {
+          assert.match(acceptedTitle, /Protected Landmark/);
+        } else {
+          assert.equal(acceptedTitle, expected.title);
+        }
+        const todo = accepted.todos.find((row) => row.jobId === expected.jobId);
+        assert(todo, `${expected.templateId}: authoritative todo missing`);
+        assert.equal(todo.title, acceptedTitle);
+        assert.equal(todo.kind, expected.kind);
+        assert.equal(todo.status, "active");
+        const quest = accepted.quests.find(
+          (row) => row.questId === `jobs_board:${todo.todoId}`
+        );
+        assert(
+          quest,
+          `${expected.templateId}: frontend quest projection missing`
+        );
+        assert.equal(quest.title, acceptedTitle);
+        assert.equal(quest.kind, expected.kind);
+        assert.equal(quest.status, "active");
+        const marker = accepted.markers.find(
+          (row) =>
+            row.jobsBoardJobId === expected.jobId &&
+            row.jobsBoardTodoId === todo.todoId
+        );
+        assert(marker, `${expected.templateId}: frontend map marker missing`);
+        assert(
+          marker.position.every(Number.isFinite),
+          `${expected.templateId}: map marker position is invalid`
+        );
+
+        const nativePlayer = await authoritativeEntity(
+          first.page,
+          first.userId
+        );
+        assert(
+          distance3(nativePlayer.entity?.position?.v, boardPosition) <=
+            JOBS_BOARD_E2E_POSITION_TOLERANCE_METERS,
+          `${expected.templateId}: accept did not use the native ECS board proximity`
+        );
+        if (realTool) {
+          await buyAndEquipJobsE2ERequiredTool(
+            first,
+            expected,
+            marker,
+            realTool
+          );
+        }
+        await provisionJobsE2ERequirements(first, expected);
+        const goldBeforeReward = nativeGold(
+          (await authoritativeEntity(first.page, first.userId)).entity
+        );
+
+        let objectiveCompleted;
+        if (expected.kind === "delivery") {
+          const parcel = expected.requirements.find(
+            (requirement) => requirement.itemId
+          );
+          assert(
+            parcel?.pickupMarkerId,
+            `${expected.templateId}: pickup missing`
+          );
+          assert.equal(
+            marker.mapMarkerId,
+            parcel.pickupMarkerId,
+            `${expected.templateId}: frontend did not start at parcel pickup`
+          );
+          const parcelItemId = harthmereNativeBiomesIdForItemId(parcel.itemId);
+          assert(
+            parcelItemId,
+            `${expected.templateId}: parcel item id missing`
+          );
+          const beforePickup = inventoryCount(
+            nativePlayer.entity,
+            parcelItemId
+          );
+          await moveJobsE2EPlayer(
+            first,
+            jobsE2EMarkerPosition(
+              parcel.pickupMarkerId,
+              `${expected.templateId}: pickup`
+            ),
+            `${expected.templateId}: pickup`
+          );
+          const pickedUp = await jobsBoardMutationWithRetry(
+            first.page,
+            {
+              operation: "pickup",
+              jobId: expected.jobId,
+              boardId: expected.boardId,
+              questTodoId: todo.todoId,
+              completedTargetId: parcel.pickupMarkerId,
+              requestId: `jobs_e2e_pickup:${runId}:${expected.templateId}`,
+            },
+            `${expected.templateId}:pickup`
+          );
+          const dropoffMarker = pickedUp.markers.find(
+            (row) => row.jobsBoardJobId === expected.jobId
+          );
+          assert(
+            dropoffMarker,
+            `${expected.templateId}: drop-off marker missing`
+          );
+          assert.equal(
+            dropoffMarker.mapMarkerId,
+            parcel.mapMarkerId,
+            `${expected.templateId}: marker did not advance to drop-off`
+          );
+          const nativeAfterPickup = await authoritativeEntity(
+            first.page,
+            first.userId
+          );
+          assert.equal(
+            inventoryCount(nativeAfterPickup.entity, parcelItemId),
+            beforePickup + BigInt(parcel.count ?? 1),
+            `${expected.templateId}: parcel was not created in native inventory`
+          );
+          await moveJobsE2EPlayer(
+            first,
+            jobsE2EMarkerPosition(
+              parcel.mapMarkerId,
+              `${expected.templateId}: drop-off`
+            ),
+            `${expected.templateId}: drop-off`
+          );
+          const visibleFieldCompletion = await performJobsE2EFieldInteraction(
+            first,
+            fixture,
+            parcel.targetId ?? parcel.mapMarkerId,
+            expected.jobId,
+            todo.todoId,
+            acceptedTitle,
+            `${expected.templateId}: drop-off interaction`
+          );
+          objectiveCompleted =
+            visibleFieldCompletion ??
+            (await jobsBoardMutationWithRetry(
+              first.page,
+              {
+                operation: "completeQuest",
+                jobId: expected.jobId,
+                boardId: expected.boardId,
+                questTodoId: todo.todoId,
+                completedTargetId:
+                  parcel.recipientNpcId ??
+                  parcel.targetId ??
+                  parcel.mapMarkerId,
+                requestId: `jobs_e2e_objective:${runId}:${expected.templateId}`,
+              },
+              `${expected.templateId}:delivery-objective`
+            ));
+          const nativeAfterDropoff = await authoritativeEntity(
+            first.page,
+            first.userId
+          );
+          assert.equal(
+            inventoryCount(nativeAfterDropoff.entity, parcelItemId),
+            beforePickup,
+            `${expected.templateId}: delivered parcel was not consumed natively`
+          );
+        } else if (expected.kind === "escort") {
+          const escortMarker = accepted.markers.find(
+            (row) => row.jobsBoardJobId === expected.jobId
+          );
+          assert(
+            escortMarker,
+            `${expected.templateId}: authoritative escort marker missing`
+          );
+          const escortPosition = escortMarker.position;
+          await moveJobsE2EPlayer(
+            first,
+            escortPosition,
+            `${expected.templateId}: escort destination`
+          );
+          // The focused all-jobs stack deliberately omits the heavyweight Anima
+          // worker. Accepting still creates the exact native companion assignment
+          // and the server scheduler materializes its ECS entity; supply the one
+          // authoritative ECS arrival that Anima owns in production, then prove
+          // the real scheduler observes it and completes the browser todo.
+          const companion = await waitFor(
+            `${expected.templateId}: accepted escort companion exists`,
+            () => fixture.escortCompanion(expected.jobId),
+            (candidate) =>
+              candidate?.status === "following" &&
+              Number.isSafeInteger(candidate.entityId),
+            Math.max(originSyncGateMs, 10_000),
+            timeoutMs
+          );
+          await waitFor(
+            `${expected.templateId}: scheduler materializes native escort ECS`,
+            () => authoritativeEntity(first.page, companion.value.entityId),
+            ({ entity }) =>
+              Boolean(entity?.npc_metadata && entity?.position?.v),
+            Math.max(originSyncGateMs, 10_000),
+            timeoutMs
+          );
+          await applyFixture(first.page, {
+            kind: "update",
+            entity: {
+              id: companion.value.entityId,
+              position: Position.create({ v: escortPosition }),
+              rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+            },
+          });
+          objectiveCompleted = (
+            await waitFor(
+              `${expected.templateId}: server escort scheduler completed todo`,
+              () =>
+                bridgeCall(first.page, "jobsBoardFrontendRoundTrip", {
+                  operation: "fetch",
+                }),
+              (snapshot) =>
+                snapshot.todos.some(
+                  (row) =>
+                    row.todoId === todo.todoId && row.status === "completed"
+                ),
+              Math.max(originSyncGateMs, 10_000),
+              timeoutMs
+            )
+          ).value;
+        } else {
+          const completionTarget =
+            expected.requirements.find(
+              (requirement) => requirement.mapMarkerId || requirement.targetId
+            ) ?? {};
+          const objectiveMarkerId =
+            completionTarget.mapMarkerId ?? expected.mapMarkerId;
+          if (expected.requirements.length && expected.kind !== "craft") {
+            assert(
+              objectiveMarkerId,
+              `${expected.templateId}: field objective marker missing`
+            );
+          }
+          if (objectiveMarkerId && expected.kind !== "craft") {
+            await moveJobsE2EPlayer(
+              first,
+              jobsE2EMarkerPosition(
+                objectiveMarkerId,
+                `${expected.templateId}: objective`
+              ),
+              `${expected.templateId}: objective`
+            );
+          }
+          const nativeBountyKilled = await performJobsE2ENativeBountyKill(
+            first,
+            completionTarget.targetId ?? objectiveMarkerId,
+            `${expected.templateId}: native bounty`
+          );
+          if (nativeBountyKilled && objectiveMarkerId) {
+            // The ranked creature may patrol outside the eight-metre objective
+            // marker radius. After proving the exact native kill, follow the
+            // same map destination back into its submission zone before asking
+            // the Jobs Board authority to close the objective.
+            await moveJobsE2EPlayer(
+              first,
+              jobsE2EMarkerPosition(
+                objectiveMarkerId,
+                `${expected.templateId}: bounty submission`
+              ),
+              `${expected.templateId}: bounty submission`
+            );
+          }
+          const visibleFieldCompletion = await performJobsE2EFieldInteraction(
+            first,
+            fixture,
+            completionTarget.targetId ?? objectiveMarkerId,
+            expected.jobId,
+            todo.todoId,
+            expected.title,
+            `${expected.templateId}: field interaction`,
+            completionTarget.serviceUnits ?? 1,
+            expected.requirements.every((requirement) => !requirement.itemId)
+          );
+          objectiveCompleted =
+            visibleFieldCompletion ??
+            (await jobsBoardMutationWithRetry(
+              first.page,
+              {
+                operation: "completeQuest",
+                jobId: expected.jobId,
+                boardId: expected.boardId,
+                questTodoId: todo.todoId,
+                completedTargetId:
+                  completionTarget.targetId ?? objectiveMarkerId,
+                requestId: `jobs_e2e_objective:${runId}:${expected.templateId}`,
+              },
+              `${expected.templateId}:objective`
+            ));
+        }
+
+        assert(
+          objectiveCompleted.todos.some(
+            (row) => row.todoId === todo.todoId && row.status === "completed"
+          ),
+          `${expected.templateId}: objective did not complete`
+        );
+        const returnMarker = objectiveCompleted.markers.find(
           (row) => row.jobsBoardJobId === expected.jobId
         );
         assert(
-          dropoffMarker,
-          `${expected.templateId}: drop-off marker missing`
+          returnMarker,
+          `${expected.templateId}: return-to-board marker missing`
         );
-        assert.equal(
-          dropoffMarker.mapMarkerId,
-          parcel.mapMarkerId,
-          `${expected.templateId}: marker did not advance to drop-off`
+        assert(
+          distance3(returnMarker.position, boardPosition) <=
+            board.location.radius + 2,
+          `${expected.templateId}: completed objective did not point to its board`
         );
-        const nativeAfterPickup = await authoritativeEntity(
-          first.page,
-          first.userId
-        );
-        assert.equal(
-          inventoryCount(nativeAfterPickup.entity, parcelItemId),
-          beforePickup + BigInt(parcel.count ?? 1),
-          `${expected.templateId}: parcel was not created in native inventory`
-        );
+
         await moveJobsE2EPlayer(
           first,
-          jobsE2EMarkerPosition(
-            parcel.mapMarkerId,
-            `${expected.templateId}: drop-off`
-          ),
-          `${expected.templateId}: drop-off`
+          boardPosition,
+          `${expected.templateId}: reward board`
         );
-        const visibleFieldCompletion = await performJobsE2EFieldInteraction(
-          first,
-          fixture,
-          parcel.targetId ?? parcel.mapMarkerId,
-          expected.jobId,
-          todo.todoId,
-          expected.title,
-          `${expected.templateId}: drop-off interaction`
-        );
-        objectiveCompleted =
-          visibleFieldCompletion ??
-          (await jobsBoardMutationWithRetry(
-            first.page,
-            {
-              operation: "completeQuest",
-              jobId: expected.jobId,
-              boardId: expected.boardId,
-              questTodoId: todo.todoId,
-              completedTargetId:
-                parcel.recipientNpcId ?? parcel.targetId ?? parcel.mapMarkerId,
-              requestId: `jobs_e2e_objective:${runId}:${expected.templateId}`,
-            },
-            `${expected.templateId}:delivery-objective`
-          ));
-        const nativeAfterDropoff = await authoritativeEntity(
+        const completed = await jobsBoardMutationWithRetry(
           first.page,
-          first.userId
-        );
-        assert.equal(
-          inventoryCount(nativeAfterDropoff.entity, parcelItemId),
-          beforePickup,
-          `${expected.templateId}: delivered parcel was not consumed natively`
-        );
-      } else if (expected.kind === "escort") {
-        const escortTarget = expected.requirements[0]?.mapMarkerId;
-        assert(escortTarget, `${expected.templateId}: escort target missing`);
-        const escortPosition = jobsE2EMarkerPosition(
-          escortTarget,
-          `${expected.templateId}: escort destination`
-        );
-        await moveJobsE2EPlayer(
-          first,
-          escortPosition,
-          `${expected.templateId}: escort destination`
-        );
-        // The focused all-jobs stack deliberately omits the heavyweight Anima
-        // worker. Accepting still creates the exact native companion assignment
-        // and the server scheduler materializes its ECS entity; supply the one
-        // authoritative ECS arrival that Anima owns in production, then prove
-        // the real scheduler observes it and completes the browser todo.
-        const companion = await waitFor(
-          `${expected.templateId}: accepted escort companion exists`,
-          () => fixture.escortCompanion(expected.jobId),
-          (candidate) =>
-            candidate?.status === "following" &&
-            Number.isSafeInteger(candidate.entityId),
-          Math.max(originSyncGateMs, 10_000),
-          timeoutMs
-        );
-        await waitFor(
-          `${expected.templateId}: scheduler materializes native escort ECS`,
-          () => authoritativeEntity(first.page, companion.value.entityId),
-          ({ entity }) => Boolean(entity?.npc_metadata && entity?.position?.v),
-          Math.max(originSyncGateMs, 10_000),
-          timeoutMs
-        );
-        await applyFixture(first.page, {
-          kind: "update",
-          entity: {
-            id: companion.value.entityId,
-            position: Position.create({ v: escortPosition }),
-            rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+          {
+            operation: "complete",
+            jobId: expected.jobId,
+            boardId: expected.boardId,
+            requestId: `jobs_e2e_complete:${runId}:${expected.templateId}`,
           },
-        });
-        objectiveCompleted = (
-          await waitFor(
-            `${expected.templateId}: server escort scheduler completed todo`,
-            () =>
-              bridgeCall(first.page, "jobsBoardFrontendRoundTrip", {
-                operation: "fetch",
-              }),
-            (snapshot) =>
-              snapshot.todos.some(
-                (row) =>
-                  row.todoId === todo.todoId && row.status === "completed"
-              ),
-            Math.max(originSyncGateMs, 10_000),
-            timeoutMs
-          )
-        ).value;
-      } else {
-        const completionTarget =
-          expected.requirements.find(
-            (requirement) => requirement.mapMarkerId || requirement.targetId
-          ) ?? {};
-        const objectiveMarkerId =
-          completionTarget.mapMarkerId ?? expected.mapMarkerId;
-        if (expected.requirements.length && expected.kind !== "craft") {
-          assert(
-            objectiveMarkerId,
-            `${expected.templateId}: field objective marker missing`
-          );
-        }
-        if (objectiveMarkerId && expected.kind !== "craft") {
-          await moveJobsE2EPlayer(
-            first,
-            jobsE2EMarkerPosition(
-              objectiveMarkerId,
-              `${expected.templateId}: objective`
-            ),
-            `${expected.templateId}: objective`
-          );
-        }
-        const nativeBountyKilled = await performJobsE2ENativeBountyKill(
-          first,
-          completionTarget.targetId ?? objectiveMarkerId,
-          `${expected.templateId}: native bounty`
+          `${expected.templateId}:complete`
         );
-        if (nativeBountyKilled && objectiveMarkerId) {
-          // The ranked creature may patrol outside the eight-metre objective
-          // marker radius. After proving the exact native kill, follow the
-          // same map destination back into its submission zone before asking
-          // the Jobs Board authority to close the objective.
-          await moveJobsE2EPlayer(
-            first,
-            jobsE2EMarkerPosition(
-              objectiveMarkerId,
-              `${expected.templateId}: bounty submission`
-            ),
-            `${expected.templateId}: bounty submission`
-          );
-        }
-        const visibleFieldCompletion = await performJobsE2EFieldInteraction(
-          first,
-          fixture,
-          completionTarget.targetId ?? objectiveMarkerId,
-          expected.jobId,
-          todo.todoId,
-          expected.title,
-          `${expected.templateId}: field interaction`,
-          completionTarget.serviceUnits ?? 1
+        assert(
+          !completed.acceptedJobs.some((row) => row.jobId === expected.jobId),
+          `${expected.templateId}: completed job remained accepted`
         );
-        objectiveCompleted =
-          visibleFieldCompletion ??
-          (await jobsBoardMutationWithRetry(
-            first.page,
-            {
-              operation: "completeQuest",
-              jobId: expected.jobId,
-              boardId: expected.boardId,
-              questTodoId: todo.todoId,
-              completedTargetId: completionTarget.targetId ?? objectiveMarkerId,
-              requestId: `jobs_e2e_objective:${runId}:${expected.templateId}`,
-            },
-            `${expected.templateId}:objective`
-          ));
-      }
-
-      assert(
-        objectiveCompleted.todos.some(
-          (row) => row.todoId === todo.todoId && row.status === "completed"
-        ),
-        `${expected.templateId}: objective did not complete`
-      );
-      const returnMarker = objectiveCompleted.markers.find(
-        (row) => row.jobsBoardJobId === expected.jobId
-      );
-      assert(
-        returnMarker,
-        `${expected.templateId}: return-to-board marker missing`
-      );
-      assert(
-        distance3(returnMarker.position, boardPosition) <=
-          board.location.radius + 2,
-        `${expected.templateId}: completed objective did not point to its board`
-      );
-
-      await moveJobsE2EPlayer(
-        first,
-        boardPosition,
-        `${expected.templateId}: reward board`
-      );
-      const completed = await jobsBoardMutationWithRetry(
-        first.page,
-        {
-          operation: "complete",
+        assert(
+          !completed.markers.some(
+            (row) => row.jobsBoardJobId === expected.jobId
+          ),
+          `${expected.templateId}: completed marker remained active`
+        );
+        const nativeCompleted = await waitFor(
+          `${expected.templateId}: native wallet receives reward`,
+          () => authoritativeEntity(first.page, first.userId),
+          ({ entity }) =>
+            nativeGold(entity) ===
+            goldBeforeReward + BigInt(expected.rewardGold),
+          Math.max(acceptanceGateMs, 60_000),
+          timeoutMs
+        );
+        assert.equal(
+          nativeGold(nativeCompleted.value.entity),
+          goldBeforeReward + BigInt(expected.rewardGold),
+          `${expected.templateId}: reward was not paid through native wallet`
+        );
+        await fixture.clearAcceptCooldown();
+        report.scenarios.push({
+          name: `jobs board frontend/native ECS/frontend: ${expected.templateId}`,
+          status: "pass",
           jobId: expected.jobId,
           boardId: expected.boardId,
-          requestId: `jobs_e2e_complete:${runId}:${expected.templateId}`,
-        },
-        `${expected.templateId}:complete`
-      );
-      assert(
-        !completed.acceptedJobs.some((row) => row.jobId === expected.jobId),
-        `${expected.templateId}: completed job remained accepted`
-      );
-      assert(
-        !completed.markers.some((row) => row.jobsBoardJobId === expected.jobId),
-        `${expected.templateId}: completed marker remained active`
-      );
-      const nativeCompleted = await waitFor(
-        `${expected.templateId}: native wallet receives reward`,
-        () => authoritativeEntity(first.page, first.userId),
-        ({ entity }) =>
-          nativeGold(entity) === goldBefore + BigInt(expected.rewardGold),
-        Math.max(acceptanceGateMs, 60_000),
-        timeoutMs
-      );
-      assert.equal(
-        nativeGold(nativeCompleted.value.entity),
-        goldBefore + BigInt(expected.rewardGold),
-        `${expected.templateId}: reward was not paid through native wallet`
-      );
-      await fixture.clearAcceptCooldown();
-      report.scenarios.push({
-        name: `jobs board frontend/native ECS/frontend: ${expected.templateId}`,
-        status: "pass",
-        jobId: expected.jobId,
-        boardId: expected.boardId,
-        kind: expected.kind,
-        todoId: todo.todoId,
-        markerId: marker.mapMarkerId,
-        rewardGold: expected.rewardGold,
-      });
+          kind: expected.kind,
+          todoId: todo.todoId,
+          markerId: marker.mapMarkerId,
+          rewardGold: expected.rewardGold,
+        });
+      } catch (error) {
+        if (!keepGoing || isCatalogInfrastructureFailure(error)) {
+          throw error;
+        }
+        const message = error?.stack || String(error);
+        failures.push({
+          templateId: expected.templateId,
+          jobId: expected.jobId,
+          error: message,
+        });
+        report.scenarios.push({
+          name: `jobs board frontend/native ECS/frontend: ${expected.templateId}`,
+          status: "fail",
+          jobId: expected.jobId,
+          boardId: expected.boardId,
+          kind: expected.kind,
+          error: message,
+        });
+        await first.page
+          .screenshot({
+            path: path.join(
+              artifactsDir,
+              `${runId}-${expected.templateId}-failure.png`
+            ),
+            fullPage: true,
+          })
+          .catch(() => undefined);
+        await closeSnapshotGroveModal(first.page).catch(() => undefined);
+        await fixture.resetFailedJob(expected.jobId);
+      } finally {
+        persistReportCheckpoint();
+      }
     }
 
     assert.equal(
@@ -10748,6 +11218,18 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(
       jobsBoardE2ETemplates(templateFamily).length,
       `every ${templateFamily} jobs-board template must run through E2E`
     );
+    if (failures.length) {
+      throw new Error(
+        `Jobs Board ${templateFamily} batch found ${
+          failures.length
+        } failure(s):\n${failures
+          .map(
+            (failure) =>
+              `${failure.templateId} (${failure.jobId}): ${failure.error}`
+          )
+          .join("\n\n")}`
+      );
+    }
   } finally {
     await fixture.close();
   }
@@ -11018,6 +11500,7 @@ async function proveNativeEscortRoundTrip(first, combatPosition) {
     ? [...originalPlayer.entity.orientation.v]
     : [0, 0];
   const leaderOrientation = [0, -Math.PI / 2];
+  const escortReviewOrientation = [0, Math.PI / 2];
   const leaderStart = [...combatPosition];
   const leaderEnd = [
     combatPosition[0] + 10,
@@ -11144,9 +11627,13 @@ async function proveNativeEscortRoundTrip(first, combatPosition) {
         entity.rigid_body?.velocity.every(Number.isFinite) === true &&
         entity.orientation?.v.every(Number.isFinite) === true,
       30_000,
-      60_000
+      Math.min(timeoutMs, 120_000)
     );
     const movedPosition = [...moved.value.entity.position.v];
+    assert(
+      movedPosition[1] >= companionStart[1] + 0.5,
+      `Escort did not traverse the raised road surface: startY=${companionStart[1]} endY=${movedPosition[1]}`
+    );
     const localMoved = await waitFor(
       "Anima escort movement synchronizes to the browser",
       () => localEntity(first.page, companionId),
@@ -11155,21 +11642,33 @@ async function proveNativeEscortRoundTrip(first, combatPosition) {
         distance3(entity.position.v, movedPosition) <= 0.75,
       originSyncGateMs
     );
+    await placeFrontendPlayerForFixture(
+      first.page,
+      first.userId,
+      leaderEnd,
+      escortReviewOrientation
+    );
+    await publishFrontendMove(
+      first.page,
+      first.userId,
+      leaderEnd,
+      escortReviewOrientation
+    );
     const rendered = await waitFor(
-      "Anima escort movement selects a visible locomotion animation",
+      "Anima escort catch-up is visible in front of the player",
       () => bridgeCall(first.page, "combatRenderSnapshot"),
       (snapshot) => {
-        const actor = snapshot.combatActors[String(companionId)];
-        const audit = snapshot.animationAudits[String(companionId)];
+        const record = snapshot.liveCreatureRecords.find(
+          (candidate) => Number(candidate.id) === Number(companionId)
+        );
         return (
-          Boolean(actor?.world) &&
-          distance3(actor.world, movedPosition) <= 1.5 &&
-          audit?.animationMoving === true &&
-          ["walk", "run"].includes(audit?.selectedState)
+          Boolean(record?.at) &&
+          record?.label === "E2E Anima Escort" &&
+          distance3(record.at, movedPosition) <= 1.5
         );
       },
       20_000,
-      30_000
+      60_000
     );
     const screenshotPath = path.join(
       artifactsDir,
@@ -11177,13 +11676,14 @@ async function proveNativeEscortRoundTrip(first, combatPosition) {
     );
     await first.page.screenshot({ path: screenshotPath });
     report.scenarios.push({
-      name: "native escort assignment -> Anima follow -> ECS sync -> rendered locomotion",
+      name: "native escort assignment -> terrain follow -> ECS sync -> visible companion",
       status: "pass",
       companionId: String(companionId),
       leaderStart,
       leaderEnd,
       companionStart,
       companionEnd: movedPosition,
+      terrainHeightGain: movedPosition[1] - companionStart[1],
       authoritativeMs: moved.elapsedMs,
       localSyncMs: localMoved.elapsedMs,
       renderSyncMs: rendered.elapsedMs,
@@ -11248,9 +11748,7 @@ const HARTHMERE_HILL_COMBAT_BROWSER_FIXTURE_POSITION = [895, 62, -197];
 // The assertion covers the whole authored pack instead of pretending two selected
 // members are the only responders. The solitary row runs separately at its own
 // authored production position after the complete group is suspended.
-const HARTHMERE_RETALIATION_BROWSER_FIXTURE_POSITION = [
-  781.227, 66, -180.855,
-];
+const HARTHMERE_RETALIATION_BROWSER_FIXTURE_POSITION = [781.227, 66, -180.855];
 
 // Run it on a warm production-shaped stack with Anima ready:
 //
@@ -11328,7 +11826,9 @@ async function proveNativeMultiplayerRetaliationRoundTrip(
   );
   const originalPlayerPosition = [...originalPlayer.entity.position.v];
   const originalPlayerHealth = Health.clone(originalPlayer.entity.health);
-  const originalPlayerInventory = Inventory.clone(originalPlayer.entity.inventory);
+  const originalPlayerInventory = Inventory.clone(
+    originalPlayer.entity.inventory
+  );
   const originalPlayerSelectedItem = originalPlayer.entity.selected_item
     ? SelectedItem.clone(originalPlayer.entity.selected_item)
     : undefined;
@@ -11383,18 +11883,16 @@ async function proveNativeMultiplayerRetaliationRoundTrip(
       position,
       [0, 0]
     );
-    await publishFrontendMove(
-      client.page,
-      client.userId,
-      position,
-      [0, 0]
-    );
+    await publishFrontendMove(client.page, client.userId, position, [0, 0]);
   };
 
   const provokeFixtureNpc = async (npcId, label, options = {}) => {
     const before = await authoritativeEntity(first.page, npcId);
     assert(before.entity?.health, `${label}: fixture has no native health`);
-    assert(before.entity.health.hp > 1, `${label}: fixture cannot receive damage`);
+    assert(
+      before.entity.health.hp > 1,
+      `${label}: fixture cannot receive damage`
+    );
     const event = new UpdateNpcHealthEvent({
       id: npcId,
       hp: -1,
@@ -11486,10 +11984,7 @@ async function proveNativeMultiplayerRetaliationRoundTrip(
       ({ entity }) => entity?.collideable !== undefined,
       combatFixtureSyncGateMs
     );
-    await publishEncounterPlayerPose(
-      first,
-      combatPosition
-    );
+    await publishEncounterPlayerPose(first, combatPosition);
     await delay(500);
     await applyFixture(first.page, {
       kind: "update",
@@ -11562,10 +12057,7 @@ async function proveNativeMultiplayerRetaliationRoundTrip(
       ({ entity }) => entity?.collideable !== undefined,
       combatFixtureSyncGateMs
     );
-    await publishEncounterPlayerPose(
-      nearbySecond,
-      nearbySecondPosition
-    );
+    await publishEncounterPlayerPose(nearbySecond, nearbySecondPosition);
     await delay(500);
     await applyFixture(nearbySecond.page, {
       kind: "update",
@@ -11607,18 +12099,14 @@ async function proveNativeMultiplayerRetaliationRoundTrip(
       retaliationOnlySeed,
     ];
     originalCombatNpcs = await Promise.all(
-      combatSeeds.map(({ entityId: id }) =>
-        authoritativeEntity(first.page, id)
-      )
+      combatSeeds.map(({ entityId: id }) => authoritativeEntity(first.page, id))
     );
     const canonicalCombatNpcs = combatSeeds.map((seed) =>
       buildHarthmereLiveCreatureEntity(seed, secondsSinceEpoch())
     );
     const missingCombatNpcChanges = originalCombatNpcs.flatMap(
       ({ entity }, index) =>
-        entity
-          ? []
-          : [{ kind: "create", entity: canonicalCombatNpcs[index] }]
+        entity ? [] : [{ kind: "create", entity: canonicalCombatNpcs[index] }]
     );
     if (missingCombatNpcChanges.length > 0) {
       await applyTypedFixture(first.page, ...missingCombatNpcChanges);
@@ -11655,46 +12143,46 @@ async function proveNativeMultiplayerRetaliationRoundTrip(
     const matePosition = [...mateSeed.position];
     const strangerPosition = [...otherGroupSeed.position];
     const groupFixtureChanges = [
-        {
-          id: sourceId,
-          position: sourcePosition,
-          npcState: harthmereLiveCreatureNpcState(roadSeed),
-          typeId: profile.id,
-          label: `E2E ${profile.displayName} Retaliation Source`,
-        },
-        {
-          id: mateId,
-          position: matePosition,
-          npcState: harthmereLiveCreatureNpcState(mateSeed),
-          typeId: profile.id,
-          label: `E2E ${profile.displayName} Pack Mate`,
-        },
-        {
-          id: strangerId,
-          position: strangerPosition,
-          npcState: harthmereLiveCreatureNpcState(otherGroupSeed),
-          typeId: otherGroupProfile.id,
-          label: `E2E ${otherGroupProfile.displayName} Other Group`,
-        },
-      ].map(({ id, position, npcState, typeId, label }) => ({
-        kind: "update",
-        entity: {
-          id,
-          position: Position.create({ v: position }),
-          orientation: Orientation.create({ v: [0, 0] }),
-          rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
-          size: Size.create({ v: [1, 1.2, 1] }),
-          health: Health.create({ hp: maxHp, maxHp }),
-          npc_state: npcState,
-          npc_metadata: NpcMetadata.create({
-            type_id: typeId,
-            created_time: secondsSinceEpoch(),
-            spawn_position: position,
-            spawn_orientation: [0, 0],
-          }),
-          label: Label.create({ text: label }),
-        },
-      }));
+      {
+        id: sourceId,
+        position: sourcePosition,
+        npcState: harthmereLiveCreatureNpcState(roadSeed),
+        typeId: profile.id,
+        label: `E2E ${profile.displayName} Retaliation Source`,
+      },
+      {
+        id: mateId,
+        position: matePosition,
+        npcState: harthmereLiveCreatureNpcState(mateSeed),
+        typeId: profile.id,
+        label: `E2E ${profile.displayName} Pack Mate`,
+      },
+      {
+        id: strangerId,
+        position: strangerPosition,
+        npcState: harthmereLiveCreatureNpcState(otherGroupSeed),
+        typeId: otherGroupProfile.id,
+        label: `E2E ${otherGroupProfile.displayName} Other Group`,
+      },
+    ].map(({ id, position, npcState, typeId, label }) => ({
+      kind: "update",
+      entity: {
+        id,
+        position: Position.create({ v: position }),
+        orientation: Orientation.create({ v: [0, 0] }),
+        rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+        size: Size.create({ v: [1, 1.2, 1] }),
+        health: Health.create({ hp: maxHp, maxHp }),
+        npc_state: npcState,
+        npc_metadata: NpcMetadata.create({
+          type_id: typeId,
+          created_time: secondsSinceEpoch(),
+          spawn_position: position,
+          spawn_orientation: [0, 0],
+        }),
+        label: Label.create({ text: label }),
+      },
+    }));
     const clearGroupPresentation = () =>
       applyFixture(
         first.page,
@@ -11727,9 +12215,7 @@ async function proveNativeMultiplayerRetaliationRoundTrip(
       "retaliation: group fixtures settle without stale targets",
       () =>
         Promise.all(
-          sourcePackIds.map((id) =>
-            authoritativeEntity(first.page, id)
-          )
+          sourcePackIds.map((id) => authoritativeEntity(first.page, id))
         ),
       (entities) =>
         entities.every(({ entity }) => {
@@ -11750,24 +12236,25 @@ async function proveNativeMultiplayerRetaliationRoundTrip(
     ]);
     const sourceBody = preGroupBodies[0].entity?.position?.v;
     const mateBody = preGroupBodies[1].entity?.position?.v;
-    assert(sourceBody && mateBody, "retaliation pack has no authoritative body");
-    await publishEncounterPlayerPose(
-      nearbySecond,
-      [mateBody[0] + 1, combatPosition[1], mateBody[2]]
+    assert(
+      sourceBody && mateBody,
+      "retaliation pack has no authoritative body"
     );
+    await publishEncounterPlayerPose(nearbySecond, [
+      mateBody[0] + 1,
+      combatPosition[1],
+      mateBody[2],
+    ]);
     const preHitSource = await authoritativeEntity(first.page, sourceId);
     assert(
       preHitSource.entity?.position?.v,
       "retaliation source has no authoritative body"
     );
-    await publishEncounterPlayerPose(
-      first,
-      [
-        preHitSource.entity.position.v[0] - 1,
-        combatPosition[1],
-        preHitSource.entity.position.v[2],
-      ]
-    );
+    await publishEncounterPlayerPose(first, [
+      preHitSource.entity.position.v[0] - 1,
+      combatPosition[1],
+      preHitSource.entity.position.v[2],
+    ]);
     await delay(500);
 
     const scenarioFailures = [];
@@ -11895,231 +12382,224 @@ async function proveNativeMultiplayerRetaliationRoundTrip(
     // The default browser release gate is the complete authored pack above.
     if (retaliationSoloRotation) {
       try {
-      const soloPosition = [...retaliationOnlySeed.position];
-      const soloFloorId = await allocateFixtureId();
-      await applyFixture(first.page, {
-        kind: "create",
-        entity: {
-          id: soloFloorId,
-          position: Position.create({
-            v: [soloPosition[0] - 3, soloPosition[1] - 1, soloPosition[2]],
-          }),
-          size: Size.create({ v: [40, 1, 20] }),
-          collideable: Collideable.create(),
-          label: Label.create({ text: "E2E solitary retaliation floor" }),
-        },
-      });
-      await waitFor(
-        "retaliation: solitary floor created authoritatively",
-        () => authoritativeEntity(first.page, soloFloorId),
-        ({ entity }) => entity?.collideable !== undefined,
-        combatFixtureSyncGateMs
-      );
-      await Promise.all([
-        publishEncounterPlayerPose(first, soloPosition),
-        publishEncounterPlayerPose(nearbySecond, [
-          soloPosition[0] + 1.5,
-          soloPosition[1],
-          soloPosition[2],
-        ]),
-      ]);
-      await Promise.all([
-        waitFor(
-          "retaliation: opener synchronizes solitary floor",
-          () => localEntity(first.page, soloFloorId),
+        const soloPosition = [...retaliationOnlySeed.position];
+        const soloFloorId = await allocateFixtureId();
+        await applyFixture(first.page, {
+          kind: "create",
+          entity: {
+            id: soloFloorId,
+            position: Position.create({
+              v: [soloPosition[0] - 3, soloPosition[1] - 1, soloPosition[2]],
+            }),
+            size: Size.create({ v: [40, 1, 20] }),
+            collideable: Collideable.create(),
+            label: Label.create({ text: "E2E solitary retaliation floor" }),
+          },
+        });
+        await waitFor(
+          "retaliation: solitary floor created authoritatively",
+          () => authoritativeEntity(first.page, soloFloorId),
           ({ entity }) => entity?.collideable !== undefined,
           combatFixtureSyncGateMs
-        ),
-        waitFor(
-          "retaliation: second client synchronizes solitary floor",
-          () => localEntity(nearbySecond.page, soloFloorId),
-          ({ entity }) => entity?.collideable !== undefined,
-          combatFixtureSyncGateMs
-        ),
-      ]);
-      await Promise.all([
-        publishEncounterPlayerPose(first, soloPosition),
-        publishEncounterPlayerPose(nearbySecond, [
-          soloPosition[0] + 1.5,
-          soloPosition[1],
-          soloPosition[2],
-        ]),
-      ]);
-      await Promise.all([
-        applyFixture(first.page, {
-          kind: "update",
-          entity: {
-            id: first.userId,
-            health: Health.create({ hp: 1_000_000, maxHp: 1_000_000 }),
-          },
-        }),
-        applyFixture(nearbySecond.page, {
-          kind: "update",
-          entity: {
-            id: nearbySecond.userId,
-            health: Health.create({ hp: 1_000_000, maxHp: 1_000_000 }),
-          },
-        }),
-      ]);
-      const soloFixture = {
-        kind: "update",
-        entity: {
-          id: soloId,
-          position: Position.create({ v: soloPosition }),
-          orientation: Orientation.create({ v: [0, 0] }),
-          rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
-          size: Size.create({ v: [1, 1.2, 1] }),
-          health: Health.create({
-            hp: retaliationOnlyMaxHp,
-            maxHp: retaliationOnlyMaxHp,
-          }),
-          npc_state: harthmereLiveCreatureNpcState(retaliationOnlySeed),
-          npc_metadata: NpcMetadata.create({
-            type_id: retaliationOnlyProfile.id,
-            created_time: secondsSinceEpoch(),
-            spawn_position: soloPosition,
-            spawn_orientation: [0, 0],
-          }),
-          label: Label.create({
-            text: `E2E ${retaliationOnlyProfile.displayName} Solo Retaliation`,
-          }),
-        },
-      };
-      await applyTypedFixture(first.page, soloFixture);
-      await waitFor(
-        "retaliation: authored solo identity synchronized",
-        () => localEntity(first.page, soloId),
-        ({ entity }) =>
-          entity?.health?.hp === retaliationOnlyMaxHp &&
-          entity.npc_metadata?.spawn_position !== undefined &&
-          distance3(entity.npc_metadata.spawn_position, soloPosition) <= 0.25,
-        combatFixtureSyncGateMs
-      );
-      // Anima can have one in-flight movement delta from the NPC's original
-      // production location when the first fixture update arrives. Reapply only
-      // after the new identity/state is visible, then require the authoritative
-      // body itself to settle in the encounter before provoking it.
-      await delay(1_000);
-      await applyTypedFixture(first.page, soloFixture);
-      await waitFor(
-        "retaliation: authored solo pose settles in the encounter",
-        () => authoritativeEntity(first.page, soloId),
-        ({ entity }) =>
-          entity?.position?.v !== undefined &&
-          distance3(entity.position.v, soloPosition) <= 4 &&
-          entity.health?.hp === retaliationOnlyMaxHp,
-        60_000,
-        hillCombatFunctionalTimeoutMs
-      );
-      await delay(1_500);
-      const stableSolo = await authoritativeEntity(first.page, soloId);
-      assert(
-        stableSolo.entity?.position?.v &&
-          distance3(stableSolo.entity.position.v, soloPosition) <= 4,
-        "retaliation-only authored NPC did not remain in the staged encounter"
-      );
-      const soloBodyPosition = [...stableSolo.entity.position.v];
-      const soloSecondPosition = [
-        soloBodyPosition[0] + 1.5,
-        soloBodyPosition[1],
-        soloBodyPosition[2],
-      ];
-      await publishEncounterPlayerPose(
-        nearbySecond,
-        soloSecondPosition
-      );
-      // Read the moving retaliation-only body again after placing the second
-      // participant, then put the opener inside authoritative bare-hand range
-      // immediately before publishing the real attack event.
-      const preHitSolo = await authoritativeEntity(first.page, soloId);
-      assert(preHitSolo.entity?.position?.v, "solo retaliation NPC has no body");
-      const soloOpenerPosition = [
-        preHitSolo.entity.position.v[0] - 1,
-        preHitSolo.entity.position.v[1],
-        preHitSolo.entity.position.v[2],
-      ];
-      await publishEncounterPlayerPose(
-        first,
-        soloOpenerPosition
-      );
-
-      await provokeFixtureNpc(
-        soloId,
-        "retaliation: solitary rotation provocation"
-      );
-      let nextSolitaryProvocationAt = Date.now() + 10_000;
-      let nextSoloParticipantReassertAt = 0;
-      const soloParticipantProbe = async () => {
-        let [solo, opener, second] = await Promise.all([
-          authoritativeEntity(first.page, soloId),
-          authoritativeEntity(first.page, first.userId),
-          authoritativeEntity(nearbySecond.page, nearbySecond.userId),
+        );
+        await Promise.all([
+          publishEncounterPlayerPose(first, soloPosition),
+          publishEncounterPlayerPose(nearbySecond, [
+            soloPosition[0] + 1.5,
+            soloPosition[1],
+            soloPosition[2],
+          ]),
         ]);
-        const soloBody = solo.entity?.position?.v;
-        if (soloBody && Date.now() >= nextSoloParticipantReassertAt) {
-          const participantY = Math.max(soloPosition[1], soloBody[1]);
-          const openerPosition = [
-            soloBody[0] - 1,
-            participantY,
-            soloBody[2],
-          ];
-          const secondPosition = [
-            soloBody[0] + 1.5,
-            participantY,
-            soloBody[2],
-          ];
-          await Promise.all([
-            publishEncounterPlayerPose(first, openerPosition),
-            publishEncounterPlayerPose(nearbySecond, secondPosition),
-          ]);
-          [solo, opener, second] = await Promise.all([
+        await Promise.all([
+          waitFor(
+            "retaliation: opener synchronizes solitary floor",
+            () => localEntity(first.page, soloFloorId),
+            ({ entity }) => entity?.collideable !== undefined,
+            combatFixtureSyncGateMs
+          ),
+          waitFor(
+            "retaliation: second client synchronizes solitary floor",
+            () => localEntity(nearbySecond.page, soloFloorId),
+            ({ entity }) => entity?.collideable !== undefined,
+            combatFixtureSyncGateMs
+          ),
+        ]);
+        await Promise.all([
+          publishEncounterPlayerPose(first, soloPosition),
+          publishEncounterPlayerPose(nearbySecond, [
+            soloPosition[0] + 1.5,
+            soloPosition[1],
+            soloPosition[2],
+          ]),
+        ]);
+        await Promise.all([
+          applyFixture(first.page, {
+            kind: "update",
+            entity: {
+              id: first.userId,
+              health: Health.create({ hp: 1_000_000, maxHp: 1_000_000 }),
+            },
+          }),
+          applyFixture(nearbySecond.page, {
+            kind: "update",
+            entity: {
+              id: nearbySecond.userId,
+              health: Health.create({ hp: 1_000_000, maxHp: 1_000_000 }),
+            },
+          }),
+        ]);
+        const soloFixture = {
+          kind: "update",
+          entity: {
+            id: soloId,
+            position: Position.create({ v: soloPosition }),
+            orientation: Orientation.create({ v: [0, 0] }),
+            rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+            size: Size.create({ v: [1, 1.2, 1] }),
+            health: Health.create({
+              hp: retaliationOnlyMaxHp,
+              maxHp: retaliationOnlyMaxHp,
+            }),
+            npc_state: harthmereLiveCreatureNpcState(retaliationOnlySeed),
+            npc_metadata: NpcMetadata.create({
+              type_id: retaliationOnlyProfile.id,
+              created_time: secondsSinceEpoch(),
+              spawn_position: soloPosition,
+              spawn_orientation: [0, 0],
+            }),
+            label: Label.create({
+              text: `E2E ${retaliationOnlyProfile.displayName} Solo Retaliation`,
+            }),
+          },
+        };
+        await applyTypedFixture(first.page, soloFixture);
+        await waitFor(
+          "retaliation: authored solo identity synchronized",
+          () => localEntity(first.page, soloId),
+          ({ entity }) =>
+            entity?.health?.hp === retaliationOnlyMaxHp &&
+            entity.npc_metadata?.spawn_position !== undefined &&
+            distance3(entity.npc_metadata.spawn_position, soloPosition) <= 0.25,
+          combatFixtureSyncGateMs
+        );
+        // Anima can have one in-flight movement delta from the NPC's original
+        // production location when the first fixture update arrives. Reapply only
+        // after the new identity/state is visible, then require the authoritative
+        // body itself to settle in the encounter before provoking it.
+        await delay(1_000);
+        await applyTypedFixture(first.page, soloFixture);
+        await waitFor(
+          "retaliation: authored solo pose settles in the encounter",
+          () => authoritativeEntity(first.page, soloId),
+          ({ entity }) =>
+            entity?.position?.v !== undefined &&
+            distance3(entity.position.v, soloPosition) <= 4 &&
+            entity.health?.hp === retaliationOnlyMaxHp,
+          60_000,
+          hillCombatFunctionalTimeoutMs
+        );
+        await delay(1_500);
+        const stableSolo = await authoritativeEntity(first.page, soloId);
+        assert(
+          stableSolo.entity?.position?.v &&
+            distance3(stableSolo.entity.position.v, soloPosition) <= 4,
+          "retaliation-only authored NPC did not remain in the staged encounter"
+        );
+        const soloBodyPosition = [...stableSolo.entity.position.v];
+        const soloSecondPosition = [
+          soloBodyPosition[0] + 1.5,
+          soloBodyPosition[1],
+          soloBodyPosition[2],
+        ];
+        await publishEncounterPlayerPose(nearbySecond, soloSecondPosition);
+        // Read the moving retaliation-only body again after placing the second
+        // participant, then put the opener inside authoritative bare-hand range
+        // immediately before publishing the real attack event.
+        const preHitSolo = await authoritativeEntity(first.page, soloId);
+        assert(
+          preHitSolo.entity?.position?.v,
+          "solo retaliation NPC has no body"
+        );
+        const soloOpenerPosition = [
+          preHitSolo.entity.position.v[0] - 1,
+          preHitSolo.entity.position.v[1],
+          preHitSolo.entity.position.v[2],
+        ];
+        await publishEncounterPlayerPose(first, soloOpenerPosition);
+
+        await provokeFixtureNpc(
+          soloId,
+          "retaliation: solitary rotation provocation"
+        );
+        let nextSolitaryProvocationAt = Date.now() + 10_000;
+        let nextSoloParticipantReassertAt = 0;
+        const soloParticipantProbe = async () => {
+          let [solo, opener, second] = await Promise.all([
             authoritativeEntity(first.page, soloId),
             authoritativeEntity(first.page, first.userId),
             authoritativeEntity(nearbySecond.page, nearbySecond.userId),
           ]);
-          nextSoloParticipantReassertAt = Date.now() + 1_000;
-        }
-        return { solo, opener, second };
-      };
-      const solitaryOpener = await waitFor(
-        "retaliation: solitary creature first targets the opener",
-        async () => {
-          const state = await soloParticipantProbe();
-          if (Date.now() >= nextSolitaryProvocationAt) {
-            await provokeFixtureNpc(
-              soloId,
-              "retaliation: solitary rotation provocation refresh",
-              { record: false }
-            );
-            nextSolitaryProvocationAt = Date.now() + 10_000;
+          const soloBody = solo.entity?.position?.v;
+          if (soloBody && Date.now() >= nextSoloParticipantReassertAt) {
+            const participantY = Math.max(soloPosition[1], soloBody[1]);
+            const openerPosition = [soloBody[0] - 1, participantY, soloBody[2]];
+            const secondPosition = [
+              soloBody[0] + 1.5,
+              participantY,
+              soloBody[2],
+            ];
+            await Promise.all([
+              publishEncounterPlayerPose(first, openerPosition),
+              publishEncounterPlayerPose(nearbySecond, secondPosition),
+            ]);
+            [solo, opener, second] = await Promise.all([
+              authoritativeEntity(first.page, soloId),
+              authoritativeEntity(first.page, first.userId),
+              authoritativeEntity(nearbySecond.page, nearbySecond.userId),
+            ]);
+            nextSoloParticipantReassertAt = Date.now() + 1_000;
           }
-          return state;
-        },
-        ({ solo }) =>
-          Number(solo.entity?.npc_combat_state?.attack_target) ===
-          Number(first.userId),
-        60_000,
-        hillCombatFunctionalTimeoutMs
-      );
-      const solitarySecond = await waitFor(
-        "retaliation: solitary creature rotates to the second nearby player",
-        soloParticipantProbe,
-        ({ solo }) =>
-          Number(solo.entity?.npc_combat_state?.attack_target) ===
-          Number(nearbySecond.userId),
-        (RETALIATION_TARGET_ROTATION_SECONDS + 4) * 1000,
-        hillCombatFunctionalTimeoutMs
-      );
+          return { solo, opener, second };
+        };
+        const solitaryOpener = await waitFor(
+          "retaliation: solitary creature first targets the opener",
+          async () => {
+            const state = await soloParticipantProbe();
+            if (Date.now() >= nextSolitaryProvocationAt) {
+              await provokeFixtureNpc(
+                soloId,
+                "retaliation: solitary rotation provocation refresh",
+                { record: false }
+              );
+              nextSolitaryProvocationAt = Date.now() + 10_000;
+            }
+            return state;
+          },
+          ({ solo }) =>
+            Number(solo.entity?.npc_combat_state?.attack_target) ===
+            Number(first.userId),
+          60_000,
+          hillCombatFunctionalTimeoutMs
+        );
+        const solitarySecond = await waitFor(
+          "retaliation: solitary creature rotates to the second nearby player",
+          soloParticipantProbe,
+          ({ solo }) =>
+            Number(solo.entity?.npc_combat_state?.attack_target) ===
+            Number(nearbySecond.userId),
+          (RETALIATION_TARGET_ROTATION_SECONDS + 4) * 1000,
+          hillCombatFunctionalTimeoutMs
+        );
 
-      report.scenarios.push({
-        name: "solitary retaliation rotates to the second nearby player",
-        status: "pass",
-        npcId: String(soloId),
-        solitaryRotation: {
-          openerAcquireMs: solitaryOpener.elapsedMs,
-          secondAcquireMs: solitarySecond.elapsedMs,
-        },
-      });
+        report.scenarios.push({
+          name: "solitary retaliation rotates to the second nearby player",
+          status: "pass",
+          npcId: String(soloId),
+          solitaryRotation: {
+            openerAcquireMs: solitaryOpener.elapsedMs,
+            secondAcquireMs: solitarySecond.elapsedMs,
+          },
+        });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         scenarioFailures.push(`solo: ${message}`);
@@ -14331,9 +14811,7 @@ async function ensureChapter1ExternalInventoryRequirements(first, quest, step) {
         `${quest.id}/${step.id}: no real vendor route for ${requirement.itemId}`
       );
       if (missing > 0) {
-        const bundlePurchases = Math.ceil(
-          missing / vendorRoute.bundleCount
-        );
+        const bundlePurchases = Math.ceil(missing / vendorRoute.bundleCount);
         for (
           let bundleIndex = 0;
           bundleIndex < bundlePurchases;
@@ -14657,28 +15135,6 @@ async function installChapter1CompletedGroveJobEvidence(first, challengeId) {
   );
 }
 
-async function installChapter1SupplierTransactionEvidence(first, vendorId) {
-  const redis = await connectToRedis("firehose");
-  try {
-    const actorId = String(first.userId);
-    const key = harthmereLiveModePlayerStateKey(actorId);
-    const nowMs = Date.now();
-    const raw = await redis.primary.get(key);
-    const state = parseHarthmereLiveModeBackendState(raw, actorId, nowMs);
-    state.economy.vendorTransactions[vendorId] = Math.max(
-      1,
-      Number(state.economy.vendorTransactions[vendorId] ?? 0)
-    );
-    state.updatedAtMs = nowMs;
-    await redis.primary.set(
-      key,
-      stringifyHarthmereLiveModePlayerPersistenceState(state)
-    );
-  } finally {
-    await redis.quit("Chapter 1 supplier transaction fixture installed");
-  }
-}
-
 async function satisfyChapter1ExternalSystemRequirement(
   first,
   quest,
@@ -14776,6 +15232,37 @@ async function satisfyChapter1ExternalSystemRequirement(
         `${quest.id}/${step.id}: supplier route repeated ${supplier.label}`
       );
       const previousCount = Number(body.requirement.current);
+      const projectedDestination = await waitFor(
+        `${quest.id}/${step.id}: ${supplier.label} is the active map destination`,
+        () => bridgeCall(first.page, "nativeQuestFrontendSnapshot"),
+        (snapshot) =>
+          String(snapshot.activeMapPin?.label ?? "").includes(supplier.label) &&
+          Array.isArray(snapshot.activeMapPin?.worldPosition) &&
+          distanceXZ(
+            snapshot.activeMapPin.worldPosition,
+            body.targetPosition
+          ) <= CHAPTER1_E2E_WARP_VERTICAL_TOLERANCE_METERS,
+        20_000,
+        40_000
+      );
+      const activeSupplierMarkerId = String(
+        projectedDestination.value.activeMapPin?.markerId ?? ""
+      );
+      assert(
+        activeSupplierMarkerId,
+        `${quest.id}/${step.id}: ${supplier.label} has no active map marker id`
+      );
+      await first.page
+        .locator(
+          `[data-biomes-ui-active-minimap-pin="${activeSupplierMarkerId}"]`
+        )
+        .waitFor({ state: "visible", timeout: 20_000 });
+      const destinationScreenshot = path.join(
+        artifactsDir,
+        `${runId}-ch1-supplier-${supplier.id}-map-minimap.png`
+      );
+      await first.page.screenshot({ path: destinationScreenshot });
+
       await chapter1WarpAndWait(
         first,
         body.targetPosition,
@@ -14786,13 +15273,79 @@ async function satisfyChapter1ExternalSystemRequirement(
         false,
         `${quest.id}/${step.id}: ${supplier.label} must retain the vendor interaction`
       );
-      await installChapter1SupplierTransactionEvidence(
-        first,
-        supplier.vendorId
+      const targetEntityId = Number(body.targetEntityId);
+      assert(
+        Number.isSafeInteger(targetEntityId) && targetEntityId > 0,
+        `${quest.id}/${step.id}: ${supplier.label} has no canonical NPC entity id`
       );
+      await first.page.evaluate((talkingToNPCId) => {
+        const context = globalThis.clientContext;
+        if (!context?.resources) throw new Error("client context unavailable");
+        context.resources.set("/game_modal", {
+          kind: "talk_to_npc",
+          talkingToNPCId,
+        });
+      }, targetEntityId);
+      const tradeAction = first.page.getByRole("button", {
+        name: `Trade with ${supplier.label}`,
+        exact: true,
+      });
+      await tradeAction.waitFor({ state: "visible", timeout: 20_000 });
+      const dialogueScreenshot = path.join(
+        artifactsDir,
+        `${runId}-ch1-supplier-${supplier.id}-dialogue.png`
+      );
+      await first.page.screenshot({ path: dialogueScreenshot });
+      await tradeAction.click();
+
+      const vendorPanel = first.page.locator(
+        '[data-harthmere-vendor-trade-panel="true"]'
+      );
+      await vendorPanel.waitFor({ state: "visible", timeout: 20_000 });
+      const buyButton = vendorPanel
+        .locator("button:not(:disabled)")
+        .filter({ hasText: /^Buy for \d+ Gold$/ })
+        .first();
+      await buyButton.waitFor({ state: "visible", timeout: 20_000 });
+      const storefrontScreenshot = path.join(
+        artifactsDir,
+        `${runId}-ch1-supplier-${supplier.id}-storefront.png`
+      );
+      await first.page.screenshot({ path: storefrontScreenshot });
+      const [transactionResponse] = await Promise.all([
+        first.page.waitForResponse(
+          (response) => {
+            if (
+              response.request().method() !== "POST" ||
+              new URL(response.url()).pathname !== "/api/harthmere/live_mode"
+            ) {
+              return false;
+            }
+            try {
+              const request = response.request().postDataJSON();
+              return (
+                request?.actionKind === "request_vendor_transaction" &&
+                request?.payload?.vendorId === supplier.vendorId
+              );
+            } catch {
+              return false;
+            }
+          },
+          { timeout: 40_000 }
+        ),
+        buyButton.click(),
+      ]);
+      assert(
+        transactionResponse.ok(),
+        `${quest.id}/${step.id}: ${supplier.label} transaction HTTP ${transactionResponse.status()}`
+      );
+      await vendorPanel
+        .locator(".biomes-ui-vendor-transaction-log")
+        .getByText(/Bought Item/i)
+        .waitFor({ state: "visible", timeout: 20_000 });
       visitedSupplierIds.add(supplier.vendorId);
       const advanced = await waitFor(
-        `${quest.id}/${step.id}: supplier evidence advanced after ${supplier.label}`,
+        `${quest.id}/${step.id}: real supplier transaction advanced after ${supplier.label}`,
         () =>
           pageJson(first.page, "/api/harthmere/chapter1_progress", {
             method: "POST",
@@ -14806,6 +15359,16 @@ async function satisfyChapter1ExternalSystemRequirement(
         20_000,
         40_000
       );
+      await first.page.keyboard.press("Escape");
+      await vendorPanel.waitFor({ state: "hidden", timeout: 20_000 });
+      report.scenarios.push({
+        name: `Chapter 1 supplier trade ${supplier.label}`,
+        status: "pass",
+        vendorId: supplier.vendorId,
+        destinationScreenshot,
+        dialogueScreenshot,
+        storefrontScreenshot,
+      });
       if (
         advanced.value.body?.status !== "active" ||
         String(advanced.value.body?.challengeId) !== String(challengeId) ||
@@ -19579,6 +20142,260 @@ function finishFocusedSkillsRun() {
   );
 }
 
+async function proveMuckRakeHeldVisual(first) {
+  const itemId = "muck_rake";
+  const nativeId = harthmereNativeBiomesIdForItemId(itemId);
+  assert(nativeId, "native Muck Rake id missing");
+  const inventory = Inventory.create({
+    items: new Array(PLAYER_INVENTORY_SLOTS),
+    hotbar: new Array(PLAYER_HOTBAR_SLOTS),
+    currencies: new Map(),
+    overflow: new Map(),
+    selected: { kind: "hotbar", idx: 0 },
+  });
+  inventory.hotbar[0] = countOf(nativeId, 1n);
+  await applyFixture(first.page, {
+    kind: "update",
+    entity: {
+      id: first.userId,
+      inventory,
+      selected_item: SelectedItem.create({ item: inventory.hotbar[0] }),
+    },
+  });
+  await waitFor(
+    "Muck Rake fixture reaches selected native hotbar",
+    () => localEntity(first.page, first.userId),
+    ({ entity }) =>
+      entity?.inventory?.hotbar?.[0]?.item?.id === nativeId &&
+      entity?.selected_item?.item?.item?.id === nativeId,
+    originSyncGateMs,
+    timeoutMs
+  );
+  await first.page.evaluate(() => {
+    const resources = globalThis.clientContext?.resources;
+    resources?.set("/hotbar/index", { value: 1 });
+    resources?.set("/hotbar/index", { value: 0 });
+  });
+  const firstPerson = await first.page.evaluate(() =>
+    Boolean(
+      globalThis.clientContext?.resources?.get("/scene/camera")?.isFirstPerson
+    )
+  );
+  if (firstPerson) await first.page.keyboard.press("KeyT");
+
+  const attachment = await waitFor(
+    "Muck Rake attaches as a visible held mesh",
+    () =>
+      first.page.evaluate(
+        ({ userId, expectedItemId }) => {
+          const resources = globalThis.clientContext?.resources;
+          const playerMesh = resources?.cached("/scene/player/mesh", userId);
+          const itemAttachment = playerMesh?.itemAttachment;
+          const root = itemAttachment?.itemMeshInstance?.three;
+          if (!root) return undefined;
+          root.updateMatrixWorld?.(true);
+          const min = [Infinity, Infinity, Infinity];
+          const max = [-Infinity, -Infinity, -Infinity];
+          let meshCount = 0;
+          let vertexCount = 0;
+          const localMeshSizes = [];
+          root.traverse?.((child) => {
+            if (!child?.isMesh || !child.geometry) return;
+            meshCount += 1;
+            vertexCount += Number(
+              child.geometry.attributes?.position?.count ?? 0
+            );
+            child.geometry.computeBoundingBox?.();
+            const box = child.geometry.boundingBox;
+            const elements = child.matrixWorld?.elements;
+            if (!box || !elements) return;
+            localMeshSizes.push([
+              box.max.x - box.min.x,
+              box.max.y - box.min.y,
+              box.max.z - box.min.z,
+            ]);
+            for (const x of [box.min.x, box.max.x]) {
+              for (const y of [box.min.y, box.max.y]) {
+                for (const z of [box.min.z, box.max.z]) {
+                  const point = [
+                    elements[0] * x +
+                      elements[4] * y +
+                      elements[8] * z +
+                      elements[12],
+                    elements[1] * x +
+                      elements[5] * y +
+                      elements[9] * z +
+                      elements[13],
+                    elements[2] * x +
+                      elements[6] * y +
+                      elements[10] * z +
+                      elements[14],
+                  ];
+                  for (let axis = 0; axis < 3; axis += 1) {
+                    min[axis] = Math.min(min[axis], point[axis]);
+                    max[axis] = Math.max(max[axis], point[axis]);
+                  }
+                }
+              }
+            }
+          });
+          if (!min.every(Number.isFinite) || !max.every(Number.isFinite)) {
+            return undefined;
+          }
+          return {
+            cameraFirstPerson: Boolean(
+              resources?.get("/scene/camera")?.isFirstPerson
+            ),
+            selectedItemId: String(itemAttachment?.selectedItem?.id ?? ""),
+            expectedItemId: String(expectedItemId),
+            min,
+            max,
+            center: min.map((value, index) => (value + max[index]) / 2),
+            size: min.map((value, index) => max[index] - value),
+            meshCount,
+            vertexCount,
+            localMeshSizes,
+            localLongestToSecondRatio: Math.max(
+              0,
+              ...localMeshSizes.map((size) => {
+                const sorted = [...size].sort((a, b) => b - a);
+                return sorted[1] > 0 ? sorted[0] / sorted[1] : 0;
+              })
+            ),
+            presentationHotfix:
+              globalThis.__harthmereMuckRakePresentationHotfix,
+            runtimeBiscuit: (() => {
+              const biscuit =
+                globalThis.bikkieRuntime?.getBiscuitOnlyIfExists?.(
+                  Number(expectedItemId)
+                );
+              return biscuit
+                ? {
+                    galoisPath: biscuit.galoisPath,
+                    meshGaloisPath: biscuit.meshGaloisPath,
+                    hasMesh: biscuit.mesh !== undefined,
+                    hasVox: biscuit.vox !== undefined,
+                  }
+                : undefined;
+            })(),
+          };
+        },
+        { userId: first.userId, expectedItemId: nativeId }
+      ),
+    (snapshot) =>
+      Boolean(snapshot) &&
+      snapshot.cameraFirstPerson === false &&
+      snapshot.selectedItemId === snapshot.expectedItemId &&
+      snapshot.meshCount > 0 &&
+      snapshot.vertexCount > 0 &&
+      snapshot.localLongestToSecondRatio > 0 &&
+      snapshot.size.every((axis) => Number.isFinite(axis) && axis > 0),
+    10_000,
+    30_000
+  );
+  assert(
+    attachment.value.localLongestToSecondRatio >= 1.8,
+    `Muck Rake must read as a long-handled implement, got world bounds ${attachment.value.size.join(
+      " x "
+    )} and local ratio ${attachment.value.localLongestToSecondRatio.toFixed(
+      2
+    )}; presentation=${JSON.stringify({
+      hotfix: attachment.value.presentationHotfix,
+      biscuit: attachment.value.runtimeBiscuit,
+    })}`
+  );
+
+  const sortedSize = [...attachment.value.size].sort((a, b) => b - a);
+  const target = [...attachment.value.center];
+  const radius = Math.max(0.9, Math.min(3.2, sortedSize[0] * 1.8));
+  const cameras = {
+    front: [target[0], target[1] + 0.08, target[2] - radius],
+  };
+  const gameplayScreenshot = path.join(
+    artifactsDir,
+    `${runId}-muck-rake-held-gameplay.png`
+  );
+  await first.page.screenshot({ path: gameplayScreenshot, fullPage: true });
+  const cutsceneId = await registerHostChapter1Cutscene(first, {
+    id: "muck-rake-held-visual-review",
+    name: "Muck Rake Held Visual Review",
+    priority: 950_000,
+    settings: {
+      skippable: true,
+      skipAfterSeconds: 0,
+      lockPlayer: true,
+      hideHud: false,
+      letterbox: false,
+      invulnerablePlayer: true,
+      mode: "clientPuppet",
+      commitOn: [],
+      maxSceneDurationSeconds: 20,
+    },
+    cast: [{ role: "player", binding: { kind: "player" } }],
+    shots: Object.entries(cameras).map(([id, position]) => ({
+      id,
+      duration: 20,
+      camera: {
+        kind: "static",
+        position,
+        orientation: lookAtOrientation(position, target),
+      },
+      transitionIn: "blend",
+      blendSeconds: 0.1,
+      actions: [{ kind: "fov", at: 0, fov: 40 }],
+    })),
+    onEnd: { placements: [], commits: [] },
+  });
+  const started = await bridgeCall(
+    first.page,
+    "chapter1StartCutscene",
+    cutsceneId
+  );
+  assert.equal(
+    started.accepted,
+    true,
+    "Muck Rake review cutscene was rejected"
+  );
+  const screenshots = { gameplay: gameplayScreenshot };
+  for (const [label, position] of Object.entries(cameras)) {
+    await waitFor(
+      `Muck Rake ${label} camera settles`,
+      () =>
+        first.page.evaluate((expected) => {
+          const resources = globalThis.clientContext?.resources;
+          const waypoint = resources?.get("/scene/waypoint_camera/active");
+          const current =
+            waypoint?.kind === "active" ? waypoint.value?.[0] : undefined;
+          return Array.isArray(current)
+            ? Math.hypot(
+                current[0] - expected[0],
+                current[1] - expected[1],
+                current[2] - expected[2]
+              )
+            : Number.POSITIVE_INFINITY;
+        }, position),
+      (distance) => distance <= 0.12,
+      15_000,
+      60_000
+    );
+    const screenshot = path.join(
+      artifactsDir,
+      `${runId}-muck-rake-held-${label}.png`
+    );
+    await first.page.screenshot({ path: screenshot, fullPage: true });
+    screenshots[label] = screenshot;
+  }
+  await bridgeCall(first.page, "chapter1StopCutscene");
+  report.scenarios.push({
+    name: "Muck Rake held model is a long-handled rake/hoe, not a robot",
+    status: "pass",
+    itemId,
+    nativeItemId: String(nativeId),
+    bounds: attachment.value,
+    screenshots,
+  });
+}
+
 async function proveHoePurchaseInventoryHotbarRoundTrip(first) {
   const hoeItemId = "7539420629350046";
   const hoeId = harthmereNativeBiomesIdForItemId(hoeItemId);
@@ -24167,7 +24984,11 @@ async function run() {
     }
 
     if (hoePurchaseOnly) {
-      await proveHoePurchaseInventoryHotbarRoundTrip(first);
+      if (muckRakeVisualOnly) {
+        await proveMuckRakeHeldVisual(first);
+      } else {
+        await proveHoePurchaseInventoryHotbarRoundTrip(first);
+      }
       finishFocusedHoePurchaseRun();
       return;
     }
@@ -24288,6 +25109,23 @@ async function run() {
         },
       });
       await waitForPlayerFixture(first.page, first.userId, 1_000_000);
+      // A queued NPC sharder write can race the first tombstone when the
+      // authenticated id reused a retained snapshot NPC. Drain that write with
+      // the same bounded cleanup used by the Bible catalog before any job warp.
+      for (let cleanupAttempt = 0; cleanupAttempt < 3; cleanupAttempt += 1) {
+        await delay(250);
+        await applyFixture(first.page, {
+          kind: "update",
+          entity: {
+            id: first.userId,
+            npc_metadata: null,
+            npc_state: null,
+            default_dialog: null,
+            quest_giver: null,
+            expires: null,
+          },
+        });
+      }
       await waitFor(
         "jobs-board actor is normalized as a player",
         () => authoritativeEntity(first.page, first.userId),
@@ -25329,6 +26167,6 @@ run()
   })
   .finally(() => {
     persistReportCheckpoint();
-    releaseExclusiveBrowserLock();
+    browserRuntimeLease.release();
     console.log(`REPORT ${reportPath}`);
   });

@@ -82,6 +82,9 @@ export const HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION =
     -202,
   ]);
 export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS = 3.25;
+// Business boards share tight interiors with customers/patrons. Keep their
+// prompt close to the physical board so it cannot capture F from a nearby NPC.
+export const HARTHMERE_BUSINESS_JOBS_BOARD_INTERACTION_RADIUS = 1.75;
 export const HARTHMERE_JOBS_BOARD_FIELD_COMPLETION_RADIUS = 8;
 export const HARTHMERE_JOBS_BOARD_MAX_ACTIVE_POSTINGS_PER_ISSUER = 12;
 export const HARTHMERE_JOBS_BOARD_MAX_ACTIVE_ACCEPTED_PER_SEEKER = 6;
@@ -551,7 +554,7 @@ const HARTHMERE_BUSINESS_OUTPOST_JOB_BOARD_LOCATIONS: Record<
           x: position.x,
           y: position.y,
           z: position.z,
-          radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
+          radius: HARTHMERE_BUSINESS_JOBS_BOARD_INTERACTION_RADIUS,
           district: outpost.district,
           landmarkId: markerId,
           voxelAssetHint: "procedural_business_outpost_jobs_board",

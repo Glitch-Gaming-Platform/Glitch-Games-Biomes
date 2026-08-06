@@ -53,7 +53,10 @@ import {
   readHarthmereNativeCombatProgression,
   writeHarthmereNativeCombatProgression,
 } from "@/shared/harthmere/harthmere_native_combat";
-import { harthmereNativeNpcCombatProfileForEntity } from "@/shared/harthmere/harthmere_native_combat_catalog";
+import {
+  expandHarthmereNativeCreatureMeleeTargetAabb,
+  harthmereNativeNpcCombatProfileForEntity,
+} from "@/shared/harthmere/harthmere_native_combat_catalog";
 import { ch1EscortIsUnkillable } from "@/shared/harthmere/ch1_dungeon_encounters";
 import {
   harthmereNativeLevelStats,
@@ -657,7 +660,18 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
 
           if (!authorizedBurnTick && !authorizedSecondary) {
             const reach = itemProfile?.reach ?? 3.5;
-            const targetAabb = getAabbForEntity(npc.asReadonlyEntity());
+            const rawTargetAabb = getAabbForEntity(npc.asReadonlyEntity());
+            const targetAabb = rawTargetAabb
+              ? expandHarthmereNativeCreatureMeleeTargetAabb(
+                  {
+                    entityId: npc.id,
+                    typeId: npc.npcMetadata().type_id,
+                    displayName: npc.label()?.text,
+                    maxHp: npc.health().maxHp,
+                  },
+                  rawTargetAabb
+                )
+              : undefined;
             const distanceToTarget = targetAabb
               ? Math.sqrt(distSqToAABB(attackerPosition, targetAabb))
               : Number.POSITIVE_INFINITY;

@@ -1,5 +1,6 @@
 {
-  "version": 2,
+  "version": 3,
+  "animationPolishVersion": "harthmere-boss-animation-polish-v1",
   "generator": "scripts/harthmere/generate_boss_voxel_assets.py",
   "normalizedNpcBox": [
     0.6,
@@ -63,6 +64,7 @@
         "Rupture",
         "BreachCollapse"
       ],
+      "animationPolishVersion": "harthmere-boss-animation-polish-v1",
       "rawVoxelBounds": {
         "min": [
           -32.5,
@@ -75,7 +77,7 @@
           48.5
         ]
       },
-      "fileBytes": 4473024
+      "fileBytes": 4712140
     },
     {
       "id": "gilded_bull",
@@ -133,6 +135,7 @@
         "Unbalanced",
         "CoreRupture"
       ],
+      "animationPolishVersion": "harthmere-boss-animation-polish-v1",
       "rawVoxelBounds": {
         "min": [
           -25.5,
@@ -145,7 +148,7 @@
           33.5
         ]
       },
-      "fileBytes": 3704936
+      "fileBytes": 4103392
     },
     {
       "id": "ninth_winter",
@@ -203,6 +206,7 @@
         "Rainfall",
         "MeltDeath"
       ],
+      "animationPolishVersion": "harthmere-boss-animation-polish-v1",
       "rawVoxelBounds": {
         "min": [
           -41.5,
@@ -215,7 +219,7 @@
           75.5
         ]
       },
-      "fileBytes": 6093096
+      "fileBytes": 6623832
     },
     {
       "id": "failed_apprentice",
@@ -275,6 +279,7 @@
         "LastLesson",
         "BellCollapse"
       ],
+      "animationPolishVersion": "harthmere-boss-animation-polish-v1",
       "rawVoxelBounds": {
         "min": [
           -25.5,
@@ -287,7 +292,7 @@
           58.5
         ]
       },
-      "fileBytes": 2829096
+      "fileBytes": 2961860
     },
     {
       "id": "first_choir",
@@ -333,6 +338,7 @@
         "Chant",
         "HarmonyBreak"
       ],
+      "animationPolishVersion": "harthmere-boss-animation-polish-v1",
       "rawVoxelBounds": {
         "min": [
           -15.5,
@@ -345,7 +351,7 @@
           26.5
         ]
       },
-      "fileBytes": 975968
+      "fileBytes": 1032344
     },
     {
       "id": "echo_singer",
@@ -405,6 +411,7 @@
         "ResonanceOverload",
         "Silence"
       ],
+      "animationPolishVersion": "harthmere-boss-animation-polish-v1",
       "rawVoxelBounds": {
         "min": [
           -42.5,
@@ -417,7 +424,7 @@
           52.5
         ]
       },
-      "fileBytes": 3095396
+      "fileBytes": 3226792
     },
     {
       "id": "vyrahel_vein_keeper",
@@ -477,6 +484,7 @@
         "Yield",
         "VeinFade"
       ],
+      "animationPolishVersion": "harthmere-boss-animation-polish-v1",
       "rawVoxelBounds": {
         "min": [
           -29.5,
@@ -489,7 +497,7 @@
           42.5
         ]
       },
-      "fileBytes": 4897036
+      "fileBytes": 5025852
     },
     {
       "id": "thaedryn_bellbound",
@@ -555,6 +563,7 @@
         "Slay",
         "Wake"
       ],
+      "animationPolishVersion": "harthmere-boss-animation-polish-v1",
       "rawVoxelBounds": {
         "min": [
           -39.5,
@@ -567,7 +576,7 @@
           53.5
         ]
       },
-      "fileBytes": 12476448
+      "fileBytes": 13427772
     },
     {
       "id": "hex_wraith",
@@ -613,6 +622,7 @@
         "Teleport",
         "HexVolley"
       ],
+      "animationPolishVersion": "harthmere-boss-animation-polish-v1",
       "rawVoxelBounds": {
         "min": [
           -16.5,
@@ -625,7 +635,7 @@
           35.5
         ]
       },
-      "fileBytes": 871272
+      "fileBytes": 938828
     },
     {
       "id": "alpha_mucker",
@@ -685,6 +695,7 @@
         "HeartExposed",
         "Timberfall"
       ],
+      "animationPolishVersion": "harthmere-boss-animation-polish-v1",
       "rawVoxelBounds": {
         "min": [
           -53.5,
@@ -697,7 +708,7 @@
           102.5
         ]
       },
-      "fileBytes": 11183940
+      "fileBytes": 11282840
     },
     {
       "id": "root_crowned_dead",
@@ -743,6 +754,7 @@
         "RootEruption",
         "SpawnRootlings"
       ],
+      "animationPolishVersion": "harthmere-boss-animation-polish-v1",
       "rawVoxelBounds": {
         "min": [
           -31.5,
@@ -755,7 +767,7 @@
           55.5
         ]
       },
-      "fileBytes": 2046672
+      "fileBytes": 2122488
     }
   ]
 }

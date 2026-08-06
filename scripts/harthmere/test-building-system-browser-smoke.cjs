@@ -17,7 +17,12 @@ if (!shouldRun) {
 (async () => {
   let chromium;
   try {
-    ({ chromium } = require("playwright"));
+    const { leasePlaywright } = require("./harthmere-live-runtime-probe.cjs");
+    ({ chromium } = leasePlaywright(require("playwright"), {
+      baseUrl:
+        process.env.BUILDING_SYSTEM_BROWSER_URL ||
+        "http://localhost:3000/at/Local%20Biomes%20Player",
+    }));
   } catch (error) {
     console.error("FAIL Playwright is not installed; install it or run the static production test instead.");
     process.exit(1);

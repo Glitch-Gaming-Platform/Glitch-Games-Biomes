@@ -12,8 +12,12 @@ import {
 } from "@/shared/harthmere/ch1_dungeon_terrain";
 import { CH1_QUESTS } from "@/shared/harthmere/ch1_quests";
 import { CH1_ANCHORS } from "@/shared/harthmere/ch1_ids";
-import { ch1ObjectiveOwnsNpcInteraction } from "@/shared/harthmere/ch1_interaction_surfaces";
 import {
+  ch1ObjectiveDelegatesToNpcTrade,
+  ch1ObjectiveOwnsNpcInteraction,
+} from "@/shared/harthmere/ch1_interaction_surfaces";
+import {
+  CH1_GROVE_SUPPLIER_ROUTE,
   CH1_TESTIMONY_ROUTE,
   CH1_THREE_ANSWER_ROUTE,
 } from "@/shared/harthmere/ch1_objective_routes";
@@ -121,10 +125,7 @@ describe("Chapter 1 objective targets", () => {
           trigger: step.trigger,
         };
         if (
-          !ch1ObjectiveOwnsNpcInteraction(
-            projection,
-            Number(target.entityId)
-          )
+          !ch1ObjectiveOwnsNpcInteraction(projection, Number(target.entityId))
         ) {
           failures.push(`${scope}: Chapter 1 does not own its NPC modal`);
         }
@@ -173,8 +174,10 @@ describe("Chapter 1 objective targets", () => {
     const routeKey = `${answerQuestId}/the_three_answers`;
     for (const [index, stop] of CH1_THREE_ANSWER_ROUTE.entries()) {
       const runtime = defaultCh1LiveGateRuntimeState();
-      runtime.objectiveRouteProgress[routeKey] =
-        CH1_THREE_ANSWER_ROUTE.slice(0, index).map((row) => row.id);
+      runtime.objectiveRouteProgress[routeKey] = CH1_THREE_ANSWER_ROUTE.slice(
+        0,
+        index
+      ).map((row) => row.id);
       const target = ch1ObjectiveTarget(answerQuestId, "the_three_answers", {
         runtime,
       })!;
@@ -191,6 +194,36 @@ describe("Chapter 1 objective targets", () => {
         ),
         true,
         stop.label
+      );
+    }
+  });
+
+  it("routes each missing Grove supplier to Chapter 1 trade copy without stealing vendor authority", () => {
+    for (const [index, supplier] of CH1_GROVE_SUPPLIER_ROUTE.entries()) {
+      const vendorTransactions = Object.fromEntries(
+        CH1_GROVE_SUPPLIER_ROUTE.slice(0, index).map((row) => [row.vendorId, 1])
+      );
+      const target = ch1ObjectiveTarget(
+        "ch1_a2_q02_work_the_board",
+        "meet_the_suppliers",
+        { vendorTransactions }
+      )!;
+      assert.equal(target.label, supplier.label);
+      assert.ok(target.entityId, `${supplier.label}: no canonical entity`);
+      const projection = {
+        authoredStepId: "meet_the_suppliers",
+        targetEntityId: Number(target.entityId),
+        trigger: "interact",
+      };
+      assert.equal(
+        ch1ObjectiveDelegatesToNpcTrade(projection, Number(target.entityId)),
+        true,
+        supplier.label
+      );
+      assert.equal(
+        ch1ObjectiveOwnsNpcInteraction(projection, Number(target.entityId)),
+        false,
+        `${supplier.label}: vendor interaction must retain F authority`
       );
     }
   });

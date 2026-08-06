@@ -69,11 +69,32 @@ export function harthmereHotbarHeldItemForAttachment(
  * must not fall through the generic ACL helper's `destroy` default and hide
  * the held mesh while the player is standing in a protected region.
  */
-export function isHarthmereChapter1DisplayOnlyHeldItem(
+export function isHarthmereChapter1DisplayOnlyHeldItem(item: Item | undefined) {
+  if (!item) return false;
+  const semanticItemId =
+    harthmereNativeItemIdForBiomesId(Number(item.id)) ?? String(item.id);
+  return Boolean(getCh1ItemVisualAsset(semanticItemId));
+}
+
+const HARTHMERE_PROTECTED_REGION_VISIBLE_JOB_TOOLS = new Set([
+  "muck_rake",
+  "repair_mallet",
+]);
+
+/**
+ * Protected regions may forbid using a selected tool, but the restriction must
+ * not erase the item from the player's hands. Chapter 1 display props and the
+ * two Grove job tools remain visible; the normal permission gate still blocks
+ * any disallowed action.
+ */
+export function isHarthmereProtectedRegionVisibleHeldItem(
   item: Item | undefined
 ) {
   if (!item) return false;
   const semanticItemId =
     harthmereNativeItemIdForBiomesId(Number(item.id)) ?? String(item.id);
-  return Boolean(getCh1ItemVisualAsset(semanticItemId));
+  return (
+    Boolean(getCh1ItemVisualAsset(semanticItemId)) ||
+    HARTHMERE_PROTECTED_REGION_VISIBLE_JOB_TOOLS.has(semanticItemId)
+  );
 }

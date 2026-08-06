@@ -62,6 +62,35 @@ describe("Harthmere native vitals client projection", () => {
     assert.deepEqual(projection.health, { hp: 180, maxHp: 240 });
   });
 
+  it("uses a newer REST/optimistic receipt while ECS sync is stalled", () => {
+    const ecsVitals = {
+      ...readHarthmereNativeVitals(undefined),
+      stamina: 14,
+      maxStamina: 20,
+    };
+    const heartbeat = normalizeHarthmereNativeVitalsHeartbeatForTest(
+      {
+        ok: true,
+        mana: 100,
+        maxMana: 100,
+        stamina: 11,
+        maxStamina: 20,
+        breath: 45,
+        maxBreath: 45,
+        hp: 100,
+        maxHp: 100,
+      },
+      2_000
+    );
+    const projection = resolveHarthmereNativeVitalsProjectionForTest({
+      ecsVitals,
+      ecsHealth: { hp: 100, maxHp: 100 },
+      ecsReceivedAtMs: 1_000,
+      heartbeat,
+    });
+    assert.equal(projection.vitals.stamina, 11);
+  });
+
   it("rejects malformed or unsuccessful heartbeat payloads", () => {
     assert.equal(
       normalizeHarthmereNativeVitalsHeartbeatForTest({ ok: false }),

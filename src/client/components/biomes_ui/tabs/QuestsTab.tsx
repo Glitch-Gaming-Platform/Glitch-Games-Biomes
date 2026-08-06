@@ -32,15 +32,12 @@ import {
 import {
   activeBiomesUIMapPinFromMarkerForTest,
   requestBiomesUILocateOnMap,
+  writeActiveBiomesUIMapPin,
 } from "../adapters/mapPinnedDestination";
 import { HarthmereMaterialAcquisitionGuide } from "@/client/components/harthmere_materials/HarthmereMaterialAcquisitionGuide";
 
 export type QuestFilter =
-  | "all"
-  | "active"
-  | "available"
-  | "failed"
-  | "completed";
+  "all" | "active" | "available" | "failed" | "completed";
 
 const FILTERS: Array<{ id: QuestFilter; label: string }> = [
   { id: "all", label: "All" },
@@ -129,6 +126,28 @@ export function questsTabMarkerForQuestForTest(
     if (marker) return marker;
   }
   return undefined;
+}
+
+export function activateQuestsTabMainQuestForTest(input: {
+  quest: MapTrackableQuest;
+  adapter?: MapAdapter;
+}): BiomesUIMainQuestSelection | undefined {
+  const selection =
+    input.adapter?.setMainQuest?.(input.quest) ??
+    setBiomesUIMainQuestFromTrackableQuest(input.quest);
+  const marker = questsTabMarkerForQuestForTest(
+    input.quest,
+    input.adapter?.getMarkers?.() ?? []
+  );
+  if (marker) {
+    if (input.adapter?.setActiveMapPin) {
+      input.adapter.setActiveMapPin(marker);
+    } else {
+      const pin = activeBiomesUIMapPinFromMarkerForTest(marker);
+      if (pin) writeActiveBiomesUIMapPin(pin);
+    }
+  }
+  return selection;
 }
 
 function ensureQuestsTabStyles() {
@@ -237,9 +256,7 @@ export const QuestsTab: React.FunctionComponent<{
 
   const activate = React.useCallback(
     (quest: MapTrackableQuest) => {
-      const selection =
-        adapter?.setMainQuest?.(quest) ??
-        setBiomesUIMainQuestFromTrackableQuest(quest);
+      const selection = activateQuestsTabMainQuestForTest({ quest, adapter });
       setMainQuest(selection);
     },
     [adapter]

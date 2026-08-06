@@ -19,6 +19,7 @@ import { updatePunchthroughInfo } from "@/client/game/resources/placeables/punch
 import { makePlaceableShopContainerMesh } from "@/client/game/resources/placeables/shop";
 import { updateSimpleRaceInfo } from "@/client/game/resources/placeables/simple_race";
 import type { AnimatedPlaceableMesh } from "@/client/game/resources/placeables/types";
+import { runPlaceableMeshOptionalUpdates } from "@/client/game/resources/placeables/optional_updates";
 import {
   makeECSWearablesUrl,
   makePlayerLikeAppearanceMesh,
@@ -214,10 +215,24 @@ async function updatePlaceableMesh(
     renderBox.setFromObject(mesh.three);
   }
 
-  await updatePictureFrameInfo(context, deps, mesh);
-  await updateMountContentsInfo(context, deps, mesh);
-  await updatePunchthroughInfo(context, deps, mesh);
-  await updateSimpleRaceInfo(context, deps, mesh);
+  await runPlaceableMeshOptionalUpdates(mesh.placeableId, [
+    {
+      name: "picture_frame",
+      run: () => updatePictureFrameInfo(context, deps, mesh),
+    },
+    {
+      name: "mount_contents",
+      run: () => updateMountContentsInfo(context, deps, mesh),
+    },
+    {
+      name: "punchthrough",
+      run: () => updatePunchthroughInfo(context, deps, mesh),
+    },
+    {
+      name: "simple_race",
+      run: () => updateSimpleRaceInfo(context, deps, mesh),
+    },
+  ]);
   mesh.particleSystems?.forEach((system) => {
     setPlaceableOrientation(system.three, orientation?.v);
   });

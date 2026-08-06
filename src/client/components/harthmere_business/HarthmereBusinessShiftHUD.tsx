@@ -301,7 +301,7 @@ function SpatialCustomerCard({
         </p>
       ) : (
         <p style={{ margin: 0, color: "#c9bda7", fontSize: 12 }}>
-          Stay behind the counter. The customer is walking to you.
+          The customer is walking to the service point.
         </p>
       )}
     </aside>

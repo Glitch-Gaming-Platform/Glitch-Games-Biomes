@@ -77,16 +77,17 @@ check(
 );
 check(
   "basic attack torso yaw span is wide enough to be readable",
-  /basic:[\s\S]*torsoYawDeg:\s*34[\s\S]*torsoYawDeg:\s*-34[\s\S]*torsoYawDeg:\s*36[\s\S]*torsoYawDeg:\s*-36/.test(
+  /basic:[\s\S]*torsoYawDeg:\s*-34[\s\S]*torsoYawDeg:\s*34[\s\S]*torsoYawDeg:\s*12[\s\S]*torsoYawDeg:\s*-36/.test(
     manifest
   )
 );
 check(
-  "heavy attack includes overhead sweep backhand and rising finisher",
-  /overhead_cleave/.test(manifest) &&
-    /broad_side_sweep/.test(manifest) &&
-    /backhand_crusher/.test(manifest) &&
-    /rising_finisher/.test(manifest)
+  "both melee families preserve four non-repeating combo trajectories",
+  (manifest.match(/arc:\s*"horizontal_left_to_right"/g) || []).length >= 2 &&
+    (manifest.match(/arc:\s*"horizontal_right_to_left"/g) || []).length >= 2 &&
+    (manifest.match(/arc:\s*"vertical_overhead_to_low"/g) || []).length >= 2 &&
+    /diagonal_low_left_to_high_right/.test(manifest) &&
+    /diagonal_low_right_to_high_left/.test(manifest)
 );
 check(
   "magic attack includes forward overhead side sweep and ground cast",

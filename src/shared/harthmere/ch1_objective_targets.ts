@@ -265,6 +265,10 @@ const TARGET_ALIASES = new Map<string, Ch1Vec3>([
   ["the grove road house", CH1_ANCHORS.roadhouse_door],
 
   ["journal", CH1_ANCHORS.fountain_lesson_board],
+  // BiomesUI owns this objective and publishes no world marker, but the
+  // catalogue target must still resolve deterministically for audits/resume
+  // tools instead of falling through to the generic district centre.
+  ["biomesui mem recovered", CH1_ANCHORS.fountain_lesson_board],
   ["grove residents", CH1_ANCHORS.jackie_post],
   ["grove suppliers", CH1_ANCHORS.fountain_lesson_board],
   ["provisioning checklist", CH1_ANCHORS.ranger_jane],
@@ -620,13 +624,27 @@ function targetPosition(
     };
   }
 
-  // RESOLUTION ORDER. Authored intent first, inference last.
-  //
-  // Cast lookup used to run before the alias table, which meant a hand-written
-  // alias could never win. `["tea", jackie_post]` was present and unreachable
-  // because the cast scan matched "Tea" against "Teague Teak Morrow" first.
-  // Exact landmark and alias are both authored statements about where a label
-  // lives, so they now precede the inferred cast/fuzzy matches.
+  // A direct cast name must follow the per-player staged body. Resolving
+  // landmark/aliases first pinned generic "Jackie"/"Doc" objectives to one historical
+  // post while the visible Chapter 1 body had already moved to the road-house,
+  // clinic, gate, or watch-house. Step-specific authored overrides above still
+  // win for cinematic posts such as the fence seam. `castMatchesTarget` uses
+  // whole-token matching, so this does not revive the old Tea/Teague bug.
+  const cast = CH1_NEW_CAST.find((member) =>
+    castMatchesTarget(member.displayName, target)
+  );
+  if (cast) {
+    const position = ch1CastPosition(cast.key, context, quest.id, step.id);
+    if (position) {
+      return {
+        position,
+        positionAuthority: "live_entity",
+        source: "npc",
+        entityId: cast.entityId,
+      };
+    }
+  }
+
   const exactLandmark = LANDMARKS.find(
     (landmark) => landmark.normalized === target
   );
@@ -651,21 +669,6 @@ function targetPosition(
       source: aliasEntityId === undefined ? "alias" : "npc",
       ...(aliasEntityId !== undefined ? { entityId: aliasEntityId } : {}),
     };
-  }
-
-  const cast = CH1_NEW_CAST.find((member) =>
-    castMatchesTarget(member.displayName, target)
-  );
-  if (cast) {
-    const position = ch1CastPosition(cast.key, context, quest.id, step.id);
-    if (position) {
-      return {
-        position,
-        positionAuthority: "live_entity",
-        source: "npc",
-        entityId: cast.entityId,
-      };
-    }
   }
 
   const groveNpc = SNAPSHOT_GROVE_NPCS.find((npc) =>

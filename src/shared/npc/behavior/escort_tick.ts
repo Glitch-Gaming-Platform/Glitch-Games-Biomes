@@ -37,7 +37,8 @@ import { getNpcRunSpeed } from "@/shared/npc/bikkie";
 import type { Environment } from "@/shared/npc/environment";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
 
-export const HARTHMERE_ESCORT_TICK_VERSION = "harthmere-escort-tick-v1" as const;
+export const HARTHMERE_ESCORT_TICK_VERSION =
+  "harthmere-escort-tick-v1" as const;
 
 /** Radius scanned for hostiles an escort might be allowed to fight. */
 const ESCORT_HOSTILE_SCAN_RADIUS = 24;
@@ -180,9 +181,9 @@ export function escortTick(
     destinationDistance,
   });
 
-  // Track ACTUAL movement progress. Being outside the leash is not itself a
-  // path failure: a sprinting leader can widen the gap while the escort is still
-  // moving normally.
+  // Track useful catch-up progress. Normal terrain physics own movement, but an
+  // escort sliding along an obstacle without closing the gap must eventually use
+  // the terrain-validated recovery warp instead of being left behind forever.
   const progress = escortPathProgress({
     catchingUp: decision.action === "catch_up",
     position: npc.position,
@@ -190,10 +191,13 @@ export function escortTick(
     lastProgressPosition: state.lastProgressPosition,
     lastProgressAtSeconds: state.lastProgressAtSeconds,
     pathFailingSinceSeconds: state.pathFailingSinceSeconds,
+    distanceToLeader,
+    lastProgressDistanceToLeader: state.lastProgressDistanceToLeader,
   });
   state.lastProgressPosition = progress.lastProgressPosition;
   state.lastProgressAtSeconds = progress.lastProgressAtSeconds;
   state.pathFailingSinceSeconds = progress.pathFailingSinceSeconds;
+  state.lastProgressDistanceToLeader = progress.lastProgressDistanceToLeader;
 
   if (
     escortShouldWarp({
@@ -221,6 +225,7 @@ export function escortTick(
       state.pathFailingSinceSeconds = undefined;
       state.lastProgressPosition = [...safeWarpNode.position] as Vec3;
       state.lastProgressAtSeconds = nowSeconds;
+      state.lastProgressDistanceToLeader = 0;
       state.status = "following";
       return { forwardSpeed: 0 };
     }

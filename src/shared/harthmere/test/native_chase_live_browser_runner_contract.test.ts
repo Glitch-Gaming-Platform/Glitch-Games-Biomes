@@ -14,8 +14,11 @@ const runner = fs.readFileSync(
 );
 
 describe("native chase live-browser runner contract", () => {
-  it("boots chase-only users on known terrain before opening the browser", () => {
-    assert.match(runner, /if \(chaseOnly\) \{\s*const chasePlayerChange/);
+  it("boots focused chase and escort users on known terrain before opening the browser", () => {
+    assert.match(
+      runner,
+      /if \(chaseOnly \|\| escortOnly\) \{\s*const focusedMovementPlayerChange/
+    );
     assert.match(
       runner,
       /position: Position\.create\(\{ v: \[\.\.\.FOCUSED_E2E_SAFE_START\] \}\)/
@@ -29,13 +32,13 @@ describe("native chase live-browser runner contract", () => {
       /player_status: PlayerStatus\.create\(\{ init: true \}\)/
     );
     assert.match(runner, /death_info: null/);
-    assert.match(runner, /focused chase player bootstrap failed/);
+    assert.match(runner, /focused movement player bootstrap failed/);
   });
 
   it("uses the bounded low-memory terrain profile for chase-only rendering", () => {
     assert.match(
       runner,
-      /skillsOnly \|\|\s*chaseOnly \|\|\s*hillCombatOnly \|\|\s*retaliationOnly \|\|\s*hoePurchaseOnly/
+      /skillsOnly \|\|\s*chaseOnly \|\|\s*escortOnly \|\|\s*hillCombatOnly \|\|\s*retaliationOnly/
     );
     assert.match(runner, /url\.searchParams\.set\("lowMemory", "1"\)/);
     assert.match(runner, /biomes\.harthmere\.partialTerrainRecoveryReloaded/);

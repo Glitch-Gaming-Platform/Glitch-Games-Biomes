@@ -5,7 +5,10 @@ const { mkdir, readFile, rm, writeFile } = require("fs/promises");
 const os = require("os");
 const path = require("path");
 const sharp = require("sharp");
-const { chromium } = require("playwright");
+const {
+  leasePlaywright,
+} = require("./harthmere-live-runtime-probe.cjs");
+const { chromium } = leasePlaywright(require("playwright"));
 
 const root = path.resolve(__dirname, "../..");
 const artifactDir = path.join(root, "artifacts/harthmere-crafting-visual");

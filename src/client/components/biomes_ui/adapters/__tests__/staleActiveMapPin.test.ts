@@ -83,4 +83,28 @@ describe("shouldClearStaleActiveMapPin", () => {
     });
     assert.deepEqual(pin?.worldPosition, [490, 64, -206]);
   });
+
+  it("preserves exact render and interaction ids for synthetic job pins", () => {
+    const pin = activeBiomesUIMapPinFromMarkerForTest({
+      id: "jobs_board_marker:delivery_todo",
+      label: "Pick up the sealed package",
+      kind: "objective",
+      worldPosition: [500, 70, -140],
+      worldObjectId: "coop_supply_box",
+      interactionTargetId: "sealed_package_pickup",
+    });
+    assert.equal(pin?.worldObjectId, "coop_supply_box");
+    assert.equal(pin?.interactionTargetId, "sealed_package_pickup");
+  });
+
+  it("recovers exact field-target ids when an older synthetic pin only has the position", () => {
+    const pin = activeBiomesUIMapPinFromMarkerForTest({
+      id: "jobs_board_marker:security_todo",
+      label: "Secure the Marked Trade Route",
+      kind: "objective",
+      worldPosition: [1455.0714258969656, 46, 90.03012025065367],
+    });
+    assert.equal(pin?.worldObjectId, "trade_route_watch_marker");
+    assert.equal(pin?.interactionTargetId, "trade_route_watch");
+  });
 });

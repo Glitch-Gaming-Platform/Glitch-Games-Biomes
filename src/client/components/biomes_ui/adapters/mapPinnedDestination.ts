@@ -4,6 +4,8 @@ import type {
 } from "@/client/game/helpers/navigation_aids";
 import { isCh1NativeQuestId } from "@/shared/harthmere/ch1_native_quests";
 import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
+import { harthmereJobsBoardFieldTargetsNearPosition } from "@/shared/harthmere/jobs_board_field_targets";
+import { HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MATCH_RADIUS } from "@/shared/harthmere/harthmere_world_object_inspectable";
 import { linearMainStoryProgressOrderForTest } from "./mainQuestSelection";
 
 export const BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY = "biomes_ui_active_map_pin";
@@ -27,6 +29,10 @@ export interface BiomesUIActiveMapPin {
   description?: string;
   ownerQuestId?: string;
   ownerStepId?: string;
+  /** Exact rendered prop behind a synthetic quest/todo marker. */
+  worldObjectId?: string;
+  /** Exact interaction candidate when it differs from the rendered prop id. */
+  interactionTargetId?: string;
   setAtMs: number;
 }
 
@@ -38,6 +44,8 @@ export interface BiomesUIMapPinSourceMarker {
   description?: string;
   ownerQuestId?: string;
   ownerStepId?: string;
+  worldObjectId?: string;
+  interactionTargetId?: string;
 }
 
 export interface BiomesUIAutoDestinationQuest {
@@ -56,11 +64,7 @@ export interface BiomesUIAutoDestinationQuest {
 export function automaticQuestDestinationMarkerForTest(input: {
   existingPin?: Pick<
     BiomesUIActiveMapPin,
-    | "markerId"
-    | "label"
-    | "worldPosition"
-    | "ownerQuestId"
-    | "ownerStepId"
+    "markerId" | "label" | "worldPosition" | "ownerQuestId" | "ownerStepId"
   >;
   quest?: BiomesUIAutoDestinationQuest;
   markers: readonly BiomesUIMapPinSourceMarker[];
@@ -79,6 +83,17 @@ export function automaticQuestDestinationMarkerForTest(input: {
     ownerStepId: input.quest.currentStepId,
   };
   const existingMarkerId = String(input.existingPin?.markerId ?? "").trim();
+  // A multi-person Chapter 1 step publishes its exact authenticated route stop
+  // under this marker family. The generic native trigger remains unchanged
+  // while Rin -> Fern -> Gus (or testimony/answer routes) advances, so the
+  // automatic quest anchor must not overwrite the more precise destination.
+  if (
+    existingMarkerId.startsWith("chapter1_route:") &&
+    input.existingPin?.ownerQuestId === input.quest.questId &&
+    input.existingPin?.ownerStepId === input.quest.currentStepId
+  ) {
+    return undefined;
+  }
   if (existingMarkerId === markerId) {
     // Quest-level fallback anchors intentionally reuse
     // native_quest:<questId>:<questId> while their label and destination move
@@ -87,7 +102,7 @@ export function automaticQuestDestinationMarkerForTest(input: {
     // (for example Cross the Dunes after the story had reached Salt Market).
     const objectiveChanged = Boolean(
       input.quest.currentStepId &&
-        input.existingPin?.ownerStepId !== input.quest.currentStepId
+      input.existingPin?.ownerStepId !== input.quest.currentStepId
     );
     const labelChanged =
       String(input.existingPin?.label ?? "").trim() !==
@@ -103,11 +118,11 @@ export function automaticQuestDestinationMarkerForTest(input: {
     // active pin may be collision-grounded below an authored marker's Y.
     const destinationChanged = Boolean(
       existingPosition &&
-        markerPosition &&
-        Math.hypot(
-          existingPosition[0] - markerPosition[0],
-          existingPosition[2] - markerPosition[2]
-        ) >= 1
+      markerPosition &&
+      Math.hypot(
+        existingPosition[0] - markerPosition[0],
+        existingPosition[2] - markerPosition[2]
+      ) >= 1
     );
     return objectiveChanged || labelChanged || destinationChanged
       ? questOwnedMarker
@@ -229,6 +244,10 @@ export function activeBiomesUIMapPinFromMarkerForTest(
     markerId,
     fallback: worldPosition,
   }) as [number, number, number];
+  const physicalFieldTarget = harthmereJobsBoardFieldTargetsNearPosition(
+    resolvedWorldPosition,
+    HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MATCH_RADIUS
+  )[0];
   return {
     markerId,
     label,
@@ -246,6 +265,15 @@ export function activeBiomesUIMapPinFromMarkerForTest(
       typeof marker.ownerStepId === "string" && marker.ownerStepId.trim()
         ? marker.ownerStepId.trim()
         : undefined,
+    worldObjectId:
+      typeof marker.worldObjectId === "string" && marker.worldObjectId.trim()
+        ? marker.worldObjectId.trim()
+        : physicalFieldTarget?.mapMarkerId,
+    interactionTargetId:
+      typeof marker.interactionTargetId === "string" &&
+      marker.interactionTargetId.trim()
+        ? marker.interactionTargetId.trim()
+        : physicalFieldTarget?.targetId,
     setAtMs: nowMs,
   };
 }
@@ -304,6 +332,8 @@ function parseActiveBiomesUIMapPin(
         description: parsed.description,
         ownerQuestId: parsed.ownerQuestId,
         ownerStepId: parsed.ownerStepId,
+        worldObjectId: parsed.worldObjectId,
+        interactionTargetId: parsed.interactionTargetId,
       },
       Number(parsed.setAtMs) || Date.now()
     );

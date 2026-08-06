@@ -37,6 +37,11 @@ function preflightBoss(
     cameraFar: plan.cameraFar,
     cameraNear: plan.cameraNear,
     target: bossFrameFocus({ ...spec, ...plan }, visual),
+    sightlineTargets: [0.12, 0.5, 0.88].map((heightFraction) => [
+      spec.stage[0],
+      spec.stage[1] + visual.worldSize[1] * heightFraction,
+      spec.stage[2],
+    ]),
     bossBodyRadius: geometry.bodyRadius,
   });
 }

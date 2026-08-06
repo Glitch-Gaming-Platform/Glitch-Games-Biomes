@@ -61,6 +61,7 @@ import {
   recordHarthmereQuestEconomyCompletion,
 } from "@/client/components/challenges/LocalDevHarthmereQuestEconomySystem";
 import { HARTHMERE_JOBS_BOARD_OPEN_EVENT } from "@/client/components/challenges/harthmereEvents";
+import { announceHarthmereQuestCompletion } from "@/client/components/biomes_ui/questCompletionCelebrationState";
 import type { BiomesId } from "@/shared/ids";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -937,6 +938,11 @@ export function completeHarthmereJobsBoardReadQuest(
   );
   awardHarthmereQuestXp(quest.id, quest.title, true);
   grantHarthmereQuestInventoryReward(quest.id, quest.title);
+  announceHarthmereQuestCompletion({
+    id: `harthmere-quest:${quest.id}`,
+    title: quest.title,
+    rewards: quest.reward ? [quest.reward] : [],
+  });
 
   return { changed: true, reason: "completed" as const };
 }
@@ -1185,7 +1191,7 @@ export function useLocalDevHarthmereDialog(
             quest.title,
             `${harthmereQuestNextLeadCopy(
               quest,
-              completedQuest ? quest.steps.length : next.active[quest.id] ?? 0
+              completedQuest ? quest.steps.length : (next.active[quest.id] ?? 0)
             )}${
               isBoard
                 ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT}`
@@ -1202,6 +1208,11 @@ export function useLocalDevHarthmereDialog(
           if (completedQuest) {
             grantHarthmereQuestInventoryReward(quest.id, quest.title);
             recordHarthmereQuestEconomyCompletion(quest.id, quest.title);
+            announceHarthmereQuestCompletion({
+              id: `harthmere-quest:${quest.id}`,
+              title: quest.title,
+              rewards: quest.reward ? [quest.reward] : [],
+            });
             recordHarthmereEconomicEvent(
               "source",
               "Quest Economy Reward",
@@ -2115,12 +2126,12 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
                     isSelected
                       ? "bg-cyan-200 text-black ring-4 ring-white"
                       : isObjective
-                      ? "bg-emerald-300 text-black shadow-[0_0_16px_rgba(190,242,100,0.85)] ring-2 ring-white"
-                      : isLessonItemMarker
-                      ? "bg-amber-300 ring-amber-100 text-black shadow-[0_0_14px_rgba(252,211,77,0.75)] ring-2"
-                      : isLessonMarker
-                      ? "bg-violet-300 ring-violet-100 text-black ring-2"
-                      : "bg-black/75 text-white ring-1 ring-white/30"
+                        ? "bg-emerald-300 text-black shadow-[0_0_16px_rgba(190,242,100,0.85)] ring-2 ring-white"
+                        : isLessonItemMarker
+                          ? "bg-amber-300 ring-amber-100 text-black shadow-[0_0_14px_rgba(252,211,77,0.75)] ring-2"
+                          : isLessonMarker
+                            ? "bg-violet-300 ring-violet-100 text-black ring-2"
+                            : "bg-black/75 text-white ring-1 ring-white/30"
                   }`}
                   style={{ left: `${left}%`, top: `${top}%` }}
                   title={`${marker.label} · ${marker.area.replaceAll(
@@ -2134,8 +2145,8 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
                   {isObjective
                     ? "!"
                     : isLessonItemMarker
-                    ? "I"
-                    : groveMarkerGlyph(marker)}
+                      ? "I"
+                      : groveMarkerGlyph(marker)}
                 </button>
               );
             })}
@@ -2216,8 +2227,8 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
                           row.isActive
                             ? "rounded bg-lime-300/20 text-lime-50 flex w-full items-center justify-between px-2 py-1 text-left"
                             : row.isItem
-                            ? "rounded bg-amber-300/15 text-amber-50 flex w-full items-center justify-between px-2 py-1 text-left"
-                            : "rounded flex w-full items-center justify-between bg-white/5 px-2 py-1 text-left text-white/70"
+                              ? "rounded bg-amber-300/15 text-amber-50 flex w-full items-center justify-between px-2 py-1 text-left"
+                              : "rounded flex w-full items-center justify-between bg-white/5 px-2 py-1 text-left text-white/70"
                         }
                         data-snapshot-grove-center-map-item-row={
                           row.isItem ? "true" : "false"
@@ -2361,8 +2372,8 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
                   isSelected
                     ? "bg-cyan-200 text-black ring-4 ring-white"
                     : isTarget
-                    ? "bg-yellow-300 text-black ring-2 ring-white"
-                    : "bg-black/75 text-white ring-1 ring-white/30"
+                      ? "bg-yellow-300 text-black ring-2 ring-white"
+                      : "bg-black/75 text-white ring-1 ring-white/30"
                 }`}
                 style={{ left: `${left}%`, top: `${top}%` }}
                 title={`${marker.label} · ${marker.district} · ${markerLayer}`}

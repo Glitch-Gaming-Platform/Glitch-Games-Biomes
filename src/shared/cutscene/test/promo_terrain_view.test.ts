@@ -30,6 +30,20 @@ describe("promo terrain view corridor", () => {
           checkUntil === Math.max(0, distance - spec.bossBodyRadius * 0.75)
       )
     );
+
+    const silhouette = promoCameraSightlineSamples({
+      ...spec,
+      sightlineTargets: [
+        [20, 2, 0],
+        [20, 6, 0],
+        [20, 10, 0],
+      ],
+    });
+    assert.equal(silhouette.length, PROMO_CAMERA_SIGHTLINE_SAMPLES * 3);
+    assert.deepEqual(
+      [...new Set(silhouette.map(({ target }) => target[1]))],
+      [2, 6, 10]
+    );
   });
 
   it("samples center and lateral lanes through the full marketing view", () => {

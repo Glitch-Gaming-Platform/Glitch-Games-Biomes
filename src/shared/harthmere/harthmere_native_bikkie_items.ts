@@ -92,6 +92,9 @@ const HARTHMERE_PREMIUM_WEAPON_PRESENTATION_SOURCE_IDS = Object.fromEntries(
   ])
 ) as Readonly<Record<string, BiomesId>>;
 
+const HARTHMERE_WOODEN_HOE_PRESENTATION_SOURCE_ID =
+  1_534_621_126_189_388 as BiomesId;
+
 const HARTHMERE_NATIVE_PRESENTATION_SOURCE_IDS: Readonly<
   Record<string, BiomesId>
 > = {
@@ -104,7 +107,11 @@ const HARTHMERE_NATIVE_PRESENTATION_SOURCE_IDS: Readonly<
   woodsman_axe: BikkieIds.axe,
   woodcutters_axe: BikkieIds.axe,
   rusty_pickaxe: BikkieIds.pickaxe,
-  muck_rake: BikkieIds.muckBuster,
+  // A Muck Buster is a squat robot-like device, not a hand rake. Borrow the
+  // authored Wooden Hoe mesh so the equipped cleanup tool reads as a long-
+  // handled garden implement in first and third person. The exact semantic
+  // Muck Rake identity is still preserved for jobs, inventory and durability.
+  muck_rake: HARTHMERE_WOODEN_HOE_PRESENTATION_SOURCE_ID,
   repair_mallet: BikkieIds.axe,
   herbalist_sickle: BikkieIds.axe,
   simple_fishing_rod: SNAPSHOT_FISHING_RODS[1].id,
@@ -132,6 +139,9 @@ const HARTHMERE_NATIVE_PRESENTATION_SOURCE_IDS: Readonly<
   grove_festival_skewer: BikkieIds.muckerMeat,
   grove_festival_skewer_ingredients: BikkieIds.muckerMeat,
   grove_road_torch: BikkieIds.log,
+  grove_warm_loaf_tray: 2_071_428_426_278_062 as BiomesId,
+  grove_heavy_parcel: BikkieIds.parcel,
+  grove_bolt_crate: BikkieIds.parcel,
   billys_lunch_pail: BikkieIds.bucket,
   jackies_sealed_letter: BikkieIds.parcel,
   bolt_order: BikkieIds.recipePaper,
@@ -402,6 +412,23 @@ export function ensureHarthmereNativeItemCatalogue() {
       tradeable: false,
     })
   );
+  for (const [itemId, displayName] of [
+    ["grove_warm_loaf_tray", "Warm Loaf Tray"],
+    ["grove_heavy_parcel", "Kit's Heavy Parcel"],
+    ["grove_bolt_crate", "Luis's Bolt Crate"],
+  ] as const) {
+    ensureDefinition(
+      defaultHarthmereItemDefinition({
+        itemId,
+        displayName,
+        category: "quest_item",
+        maxStackSize: 1,
+        isCraftingMaterial: false,
+        isQuestItem: true,
+        tradeable: false,
+      })
+    );
+  }
   ensureDefinition(
     defaultHarthmereItemDefinition({
       itemId: "billys_lunch_pail",
@@ -693,7 +720,7 @@ export function harthmereStorableBiscuitIdentity(
 const HARTHMERE_NATIVE_TOOL_PRESENTATION_DONORS: Readonly<
   Record<string, BiomesId>
 > = {
-  "7539420629350046": 1_534_621_126_189_388 as BiomesId,
+  "7539420629350046": HARTHMERE_WOODEN_HOE_PRESENTATION_SOURCE_ID,
 };
 
 function harthmereBorrowedPresentation(
@@ -782,8 +809,17 @@ export function harthmereBiscuitForItemDefinition(
   const yieldItemId = seedDefinition
     ? harthmereNativeBiomesIdForItemId(seedDefinition.yieldItemId)
     : undefined;
+  const presentationAttributes =
+    definition.itemId === "muck_rake"
+      ? (["attachmentTransform", "galoisPath"] as const)
+      : HARTHMERE_NATIVE_PRESENTATION_ATTRIBUTES;
+  // The production Wooden Hoe biscuit also carries legacy mesh/vox fields.
+  // Item rendering prefers those over galoisPath, yielding a compact object
+  // instead of the shipped long-handled hoe GLTF. Muck Rake deliberately takes
+  // only the donor's hand transform + galois path so no higher-priority stale
+  // attribute can eclipse the readable rake silhouette.
   const presentation = Object.fromEntries(
-    HARTHMERE_NATIVE_PRESENTATION_ATTRIBUTES.flatMap((attribute) => {
+    presentationAttributes.flatMap((attribute) => {
       if (
         inventoryIcon &&
         (attribute === "icon" || attribute === "iconSettings")

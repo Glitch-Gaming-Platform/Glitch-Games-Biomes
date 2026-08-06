@@ -217,8 +217,20 @@ describe("business customer talk routing", () => {
     assert.equal(dialog.includes('name: "Chit Chat"'), false);
     assert.equal(dialog.includes('name: "Ask about this place"'), false);
     assert.ok(
-      dialog.includes("`${target.askLine}{break}${status}{break}Stay behind"),
-      "the customer request must remain visible while they approach the counter"
+      dialog.includes(
+        "`${target.askLine}{break}${status}{break}They will be ready"
+      ),
+      "the customer request must remain visible while they approach without repeating an unverified player-position instruction"
+    );
+    assert.equal(dialog.includes("Stay behind the counter"), false);
+    assert.ok(
+      hud.includes("The customer is walking to the service point."),
+      "the spatial card must report customer progress rather than guessing the player's side"
+    );
+    assert.equal(
+      (dialog.match(/focusCamera=\{false\}/g) ?? []).length,
+      2,
+      "question and result surfaces must keep a stable gameplay camera"
     );
   });
 

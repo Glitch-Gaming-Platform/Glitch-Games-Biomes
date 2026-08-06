@@ -118,6 +118,11 @@ COLORS = {
     "energy_green": rgba(0x5CFF78),
     "energy_orange": rgba(0xFF7A21),
     "energy_violet": rgba(0x8D4DFF),
+    "electric_blue": rgba(0xBDF7FF),
+    "molten": rgba(0xFFB229),
+    "poison_dark": rgba(0x173B2B),
+    "void": rgba(0x0A0714),
+    "rose": rgba(0xFF87BD),
 }
 
 
@@ -181,6 +186,11 @@ MATERIALS = {
     "energy_green": material("energy-green", COLORS["energy_green"], 0.14, 0.13, 1.45),
     "energy_orange": material("energy-orange", COLORS["energy_orange"], 0.12, 0.16, 1.5),
     "energy_violet": material("energy-violet", COLORS["energy_violet"], 0.18, 0.13, 1.5),
+    "electric_blue": material("electric-blue", COLORS["electric_blue"], 0.08, 0.08, 1.7),
+    "molten": material("molten", COLORS["molten"], 0.06, 0.16, 1.45),
+    "poison_dark": material("poison-dark", COLORS["poison_dark"], 0.04, 0.56, 0.12),
+    "void": material("void", COLORS["void"], 0.18, 0.58, 0.06),
+    "rose": material("rose", COLORS["rose"], 0.1, 0.18, 1.4),
 }
 
 
@@ -287,6 +297,48 @@ def prism_xz(collection, root, name, points, thickness, mat, edge=0.02, location
     return obj
 
 
+def prism_xy(collection, root, name, points, thickness, mat, edge=0.02, location=(0, 0, 0)):
+    """Create a face-on glyph whose normal follows the projectile's +Z axis."""
+    vertices = [(x, y, -thickness) for x, y in points] + [(x, y, thickness) for x, y in points]
+    count = len(points)
+    faces = [tuple(range(count)), tuple(range(count, count * 2))[::-1]]
+    for index in range(count):
+        nxt = (index + 1) % count
+        faces.append((index, nxt, count + nxt, count + index))
+    mesh = bpy.data.meshes.new(f"{name}Mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    obj.location = location
+    collection.objects.link(obj)
+    obj.parent = root
+    obj.data.materials.append(mat)
+    bevel(obj, edge, 2)
+    return obj
+
+
+def wake_shards(collection, root, prefix, material_value, *, count=3, radius=0.12, start_z=-0.24, spacing=0.16):
+    """Add a restrained directional wake that stays readable at gameplay scale."""
+    for index in range(count):
+        angle = (math.tau * index / max(1, count)) + 0.35
+        distance = radius * (0.72 + index * 0.12)
+        x = math.cos(angle) * distance
+        y = math.sin(angle) * distance
+        z = start_z - index * spacing
+        cone(
+            collection,
+            root,
+            f"{prefix}Wake_{index}",
+            (x, y, z),
+            max(0.035, radius * (0.52 - index * 0.08)),
+            max(0.14, spacing * (1.25 + index * 0.18)),
+            material_value,
+            5,
+            rotation=(math.pi, 0, angle),
+            edge=0.009,
+        )
+
+
 def rivets(collection, root, positions, mat=None, radius=0.025):
     for index, position in enumerate(positions):
         ico(collection, root, f"Rivet_{index}", position, (radius,) * 3, mat or MATERIALS["brass"], 1, edge=radius * 0.4)
@@ -325,12 +377,14 @@ def arrow_base(collection, root, *, shaft, head, trim, fletching, length=1.5, he
 
 def build_hunter_arrow(spec, collection, root):
     arrow_base(collection, root, shaft=MATERIALS["wood_light"], head=MATERIALS["steel"], trim=MATERIALS["brass"], fletching=MATERIALS["linen"], length=1.05)
+    ico(collection, root, "HunterNock", (0, 0, -0.53), (0.05, 0.05, 0.075), MATERIALS["green"], 1)
 
 
 def build_quick_arrow(spec, collection, root):
     arrow_base(collection, root, shaft=MATERIALS["steel"], head=MATERIALS["edge"], trim=MATERIALS["cyan"], fletching=MATERIALS["blue"], length=1.42)
     for side in (-1, 1):
         prism_xz(collection, root, f"WindVane_{side}", [(0, -0.45), (side * 0.18, -0.3), (side * 0.08, 0.12), (0, 0.2)], 0.018, MATERIALS["cyan"], 0.008)
+    wake_shards(collection, root, "Quick", MATERIALS["cyan"], count=2, radius=0.09, start_z=-0.58, spacing=0.16)
 
 
 def build_aimed_arrow(spec, collection, root):
@@ -338,11 +392,15 @@ def build_aimed_arrow(spec, collection, root):
     for ring_index, (z, radius) in enumerate(((-0.05, 0.16), (0.22, 0.13), (0.46, 0.1))):
         torus(collection, root, f"ChargeRing_{ring_index}", (0, 0, z), radius, 0.018, MATERIALS["gold_bright"], segments=12)
     cube(collection, root, "CrystalChannel", (0, -0.06, 0.12), (0.025, 0.012, 0.32), MATERIALS["cyan"], edge=0.008)
+    ico(collection, root, "AimedFocus", (0, 0, 0.92), (0.055, 0.055, 0.1), MATERIALS["gold_bright"], 1)
 
 
 def build_multi_arrow(spec, collection, root):
-    offsets = ((0, 0, 0), (-0.24, 0.02, -0.08), (0.24, -0.02, -0.08), (-0.42, 0.04, -0.2), (0.42, -0.04, -0.2))
-    colors = (MATERIALS["linen"], MATERIALS["blue"], MATERIALS["red_cloth"], MATERIALS["green"], MATERIALS["gold"])
+    # Three strong silhouettes read as a volley without turning into a noisy
+    # cage at combat distance (the previous five-arrow bundle was nearly at
+    # the entire per-projectile triangle budget by itself).
+    offsets = ((0, 0, 0.05), (-0.3, 0.02, -0.1), (0.3, -0.02, -0.1))
+    colors = (MATERIALS["linen"], MATERIALS["blue"], MATERIALS["red_cloth"])
     for index, ((x, y, z), feathers) in enumerate(zip(offsets, colors)):
         subroot = bpy.data.objects.new(f"VolleyArrow_{index}", None)
         collection.objects.link(subroot)
@@ -350,7 +408,9 @@ def build_multi_arrow(spec, collection, root):
         subroot.location = (x, y, z)
         subroot.rotation_euler = (y * 0.6, -x * 0.32, 0)
         arrow_base(collection, subroot, shaft=MATERIALS["wood_light"], head=MATERIALS["steel"], trim=MATERIALS["brass"], fletching=feathers, length=1.25)
-    torus(collection, root, "VolleyWindRing", (0, 0, -0.18), 0.55, 0.022, MATERIALS["green_bright"], segments=16)
+    torus(collection, root, "VolleyWindRing", (0, 0, -0.2), 0.48, 0.018, MATERIALS["green_bright"], rotation=(0.2, 0.1, 0), segments=14)
+    for side in (-1, 1):
+        between(collection, root, f"VolleyGuide_{side}", (side * 0.1, 0, -0.3), (side * 0.38, 0, 0.42), 0.018, MATERIALS["green_bright"], 5)
 
 
 def build_bandit_arrow(spec, collection, root):
@@ -361,46 +421,61 @@ def build_bandit_arrow(spec, collection, root):
 
 
 def build_ranged_arrow(spec, collection, root):
-    arrow_base(collection, root, shaft=MATERIALS["wood_light"], head=MATERIALS["steel"], trim=MATERIALS["blue"], fletching=MATERIALS["blue"], length=1.52)
-    torus(collection, root, "GuideRing", (0, 0, 0.05), 0.12, 0.016, MATERIALS["cyan"], segments=12)
+    # A compact crossbow quarrel, deliberately stouter than the bow arrows.
+    cylinder(collection, root, "QuarrelShaft", (0, 0, -0.02), 0.052, 1.05, MATERIALS["dark_iron"], 8)
+    prism_xz(collection, root, "QuarrelHead", [(-0.16, 0.26), (0, 0.72), (0.16, 0.26), (0, 0.38)], 0.07, MATERIALS["steel"], 0.025)
+    prism_xz(collection, root, "QuarrelEdge", [(-0.05, 0.34), (0, 0.67), (0.05, 0.34)], 0.078, MATERIALS["edge"], 0.01)
+    for side in (-1, 1):
+        prism_xz(collection, root, f"QuarrelFin_{side}", [(0, -0.54), (side * 0.18, -0.4), (side * 0.14, -0.2), (0, -0.3)], 0.03, MATERIALS["blue"], 0.012)
+    torus(collection, root, "GuideRing", (0, 0, 0.02), 0.13, 0.018, MATERIALS["cyan"], segments=12)
 
 
 def build_spark(spec, collection, root):
-    ico(collection, root, "SparkCore", (0, 0, 0.08), (0.18, 0.18, 0.28), MATERIALS["white"], 1, rotation=(0.3, 0.2, 0.1))
-    for index, angle in enumerate((0, math.pi / 2, math.pi, math.pi * 1.5)):
-        x, y = math.cos(angle) * 0.24, math.sin(angle) * 0.24
-        between(collection, root, f"ArcProng_{index}", (x * 0.42, y * 0.42, -0.15), (x, y, 0.18), 0.025, MATERIALS["cyan"], 4)
-        ico(collection, root, f"ArcNode_{index}", (x, y, 0.18), (0.05, 0.05, 0.08), MATERIALS["arcane"], 1)
-    torus(collection, root, "ArcaneOrbit", (0, 0, 0), 0.32, 0.018, MATERIALS["arcane"], rotation=(0.45, 0.25, 0), segments=12)
+    ico(collection, root, "SparkCore", (0, 0, 0.1), (0.16, 0.16, 0.24), MATERIALS["white"], 2, rotation=(0.3, 0.2, 0.1))
+    points = (
+        (0.38, 0.02, 0.1), (-0.38, -0.02, 0.1),
+        (0.02, 0.34, 0.08), (-0.02, -0.34, 0.08),
+        (0.08, 0.02, 0.48), (-0.06, -0.02, -0.38),
+    )
+    for index, point in enumerate(points):
+        between(collection, root, f"SparkRay_{index}", (0, 0, 0.1), point, 0.026 if index < 4 else 0.032, MATERIALS["electric_blue"] if index % 2 == 0 else MATERIALS["arcane"], 4)
+        ico(collection, root, f"SparkPoint_{index}", point, (0.045, 0.045, 0.065), MATERIALS["white"], 1)
+    torus(collection, root, "BrokenArc", (0, 0, 0.06), 0.28, 0.014, MATERIALS["arcane"], rotation=(0.55, 0.28, 0.2), segments=10)
 
 
 def build_fireball(spec, collection, root):
-    ico(collection, root, "WhiteHotCore", (0, 0, 0.12), (0.23, 0.23, 0.29), MATERIALS["fire_hot"], 2)
+    ico(collection, root, "WhiteHotCore", (0, 0, 0.15), (0.22, 0.22, 0.3), MATERIALS["fire_hot"], 2)
+    ico(collection, root, "EmberMantle", (0, 0, 0.1), (0.33, 0.31, 0.37), MATERIALS["ember"], 1, rotation=(0.2, 0.4, 0.1), edge=0.025)
     for index, angle in enumerate(range(0, 360, 45)):
         rad = math.radians(angle)
-        ico(collection, root, f"LavaShell_{index}", (math.cos(rad) * 0.24, math.sin(rad) * 0.24, 0.06 + (index % 2) * 0.08), (0.13, 0.13, 0.19), MATERIALS["fire"], 1)
+        ico(collection, root, f"LavaShell_{index}", (math.cos(rad) * 0.27, math.sin(rad) * 0.25, 0.08 + (index % 2) * 0.08), (0.11, 0.11, 0.17), MATERIALS["molten"] if index % 3 == 0 else MATERIALS["fire"], 1)
     for index, (x, y, z, size) in enumerate(((0.16, 0.05, -0.32, 0.16), (-0.12, 0.12, -0.4, 0.13), (0.05, -0.16, -0.48, 0.1), (-0.08, -0.05, -0.58, 0.07))):
         cone(collection, root, f"FlameTongue_{index}", (x, y, z), size, size * 2.4, MATERIALS["fire"] if index < 2 else MATERIALS["ember"], 5, rotation=(math.pi, 0, 0))
-    torus(collection, root, "HeatBand", (0, 0, 0.1), 0.36, 0.022, MATERIALS["fire_hot"], rotation=(0.25, 0.35, 0), segments=14)
+    wake_shards(collection, root, "Fire", MATERIALS["fire"], count=3, radius=0.15, start_z=-0.34, spacing=0.16)
+    torus(collection, root, "HeatBand", (0, 0, 0.1), 0.37, 0.018, MATERIALS["fire_hot"], rotation=(0.25, 0.35, 0), segments=14)
 
 
 def build_meteor(spec, collection, root):
     ico(collection, root, "MeteorStone", (0, 0, 0.12), (0.48, 0.42, 0.58), MATERIALS["rock"], 2, rotation=(0.3, 0.4, 0.2), edge=0.035)
+    ico(collection, root, "MoltenLeadingFace", (0, 0, 0.56), (0.31, 0.28, 0.16), MATERIALS["molten"], 1, rotation=(0.1, 0.2, 0.1), edge=0.025)
     for index, (a, b) in enumerate((((-0.35, -0.1, 0.12), (0.22, 0.08, 0.5)), ((-0.18, 0.38, -0.1), (0.25, -0.25, 0.2)), ((0.1, -0.36, -0.18), (0.3, 0.2, 0.02)))):
         between(collection, root, f"LavaCrack_{index}", a, b, 0.035, MATERIALS["fire_hot"], 4)
     for index, (x, y, z, scale) in enumerate(((0.22, 0.1, -0.52, 0.18), (-0.26, -0.12, -0.62, 0.15), (0.1, -0.2, -0.78, 0.1), (-0.08, 0.16, -0.92, 0.07))):
         ico(collection, root, f"BreakawayRock_{index}", (x, y, z), (scale, scale * 0.8, scale * 1.1), MATERIALS["rock"], 1, rotation=(index * 0.4, index * 0.2, 0.1))
         cone(collection, root, f"BreakawayFlame_{index}", (x, y, z - scale * 1.4), scale * 0.7, scale * 2.0, MATERIALS["fire"], 5, rotation=(math.pi, 0, 0))
+    wake_shards(collection, root, "Meteor", MATERIALS["molten"], count=4, radius=0.24, start_z=-0.54, spacing=0.2)
 
 
 def build_lightning(spec, collection, root):
     points = ((0, 0, -0.72), (0.12, -0.04, -0.45), (-0.09, 0.03, -0.18), (0.15, 0.02, 0.12), (-0.05, -0.03, 0.42), (0, 0, 0.78))
     for index, (a, b) in enumerate(zip(points, points[1:])):
         between(collection, root, f"BoltSegment_{index}", a, b, 0.065 if index in (1, 2) else 0.05, MATERIALS["holy_white"] if index % 2 == 0 else MATERIALS["cyan"], 4)
+        between(collection, root, f"BoltCore_{index}", a, b, 0.022, MATERIALS["electric_blue"], 4)
     branches = (((0.12, -0.04, -0.45), (0.38, 0.06, -0.2)), ((-0.09, 0.03, -0.18), (-0.38, -0.08, 0.05)), ((0.15, 0.02, 0.12), (0.42, 0.12, 0.35)), ((-0.05, -0.03, 0.42), (-0.3, 0.06, 0.62)))
     for index, (a, b) in enumerate(branches):
         between(collection, root, f"LightningBranch_{index}", a, b, 0.028, MATERIALS["cyan"], 4)
         ico(collection, root, f"BranchSpark_{index}", b, (0.055, 0.055, 0.07), MATERIALS["white"], 1)
+    wake_shards(collection, root, "Lightning", MATERIALS["electric_blue"], count=2, radius=0.12, start_z=-0.65, spacing=0.2)
 
 
 def build_holy_lance(spec, collection, root):
@@ -409,6 +484,7 @@ def build_holy_lance(spec, collection, root):
     torus(collection, root, "SanctifiedHalo", (0, 0, 0.02), 0.34, 0.025, MATERIALS["gold_bright"], segments=16)
     for side in (-1, 1):
         prism_xz(collection, root, f"FeatherWing_{side}", [(0, -0.18), (side * 0.28, -0.03), (side * 0.38, 0.18), (side * 0.13, 0.1)], 0.025, MATERIALS["holy_white"], 0.014)
+    wake_shards(collection, root, "HolyLight", MATERIALS["holy"], count=2, radius=0.12, start_z=-0.5, spacing=0.2)
 
 
 def build_smite(spec, collection, root):
@@ -417,6 +493,7 @@ def build_smite(spec, collection, root):
     for side in (-1, 1):
         cone(collection, root, f"CrossbarRay_{side}", (side * 0.4, 0, -0.16), 0.07, 0.25, MATERIALS["holy"], 4, rotation=(0, side * math.pi / 2, 0))
     torus(collection, root, "SmiteRuneRing", (0, 0, 0.08), 0.29, 0.018, MATERIALS["holy"], rotation=(0.35, 0.2, 0), segments=12)
+    ico(collection, root, "SmiteFocus", (0, 0, 0.7), (0.06, 0.06, 0.1), MATERIALS["gold_bright"], 1)
 
 
 def build_judgment(spec, collection, root):
@@ -425,22 +502,26 @@ def build_judgment(spec, collection, root):
     cylinder(collection, root, "JudgmentHaft", (0, 0, -0.28), 0.06, 0.68, MATERIALS["bell_dark"], 8)
     torus(collection, root, "JudgmentSeal", (0, -0.16, 0.22), 0.17, 0.025, MATERIALS["gold_bright"], rotation=(math.pi / 2, 0, 0), segments=12)
     rivets(collection, root, [(-0.25, -0.13, 0.22), (0.25, -0.13, 0.22)], MATERIALS["holy_white"], 0.03)
+    wake_shards(collection, root, "Judgment", MATERIALS["holy"], count=2, radius=0.13, start_z=-0.44, spacing=0.2)
 
 
 def build_consecrate(spec, collection, root):
-    cylinder(collection, root, "DescendingSeal", (0, 0, 0.02), 0.42, 0.12, MATERIALS["gold"], 16, rotation=(math.pi / 2, 0, 0), edge=0.035)
-    cylinder(collection, root, "WhiteSealFace", (0, -0.08, 0.02), 0.32, 0.03, MATERIALS["holy_white"], 16, rotation=(math.pi / 2, 0, 0), edge=0.015)
-    torus(collection, root, "OuterHolyRing", (0, -0.11, 0.02), 0.48, 0.028, MATERIALS["gold_bright"], rotation=(math.pi / 2, 0, 0), segments=16)
+    # Consecrate descends along local +Z, so the seal must face +Z. The old
+    # XZ-oriented token arrived edge-on and lost the entire rune at impact.
+    cylinder(collection, root, "DescendingSeal", (0, 0, 0.02), 0.42, 0.12, MATERIALS["gold"], 16, edge=0.035)
+    cylinder(collection, root, "WhiteSealFace", (0, 0, 0.09), 0.32, 0.03, MATERIALS["holy_white"], 16, edge=0.015)
+    torus(collection, root, "OuterHolyRing", (0, 0, 0.12), 0.48, 0.028, MATERIALS["gold_bright"], segments=16)
     for index in range(8):
         angle = math.tau * index / 8
-        start = (math.cos(angle) * 0.2, -0.13, math.sin(angle) * 0.2 + 0.02)
-        end = (math.cos(angle) * 0.38, -0.13, math.sin(angle) * 0.38 + 0.02)
+        start = (math.cos(angle) * 0.2, math.sin(angle) * 0.2, 0.14)
+        end = (math.cos(angle) * 0.38, math.sin(angle) * 0.38, 0.14)
         between(collection, root, f"SunRay_{index}", start, end, 0.027, MATERIALS["holy"], 4)
-    prism_xz(collection, root, "CentralCross", [(-0.06, -0.22), (-0.06, -0.06), (-0.2, -0.06), (-0.2, 0.06), (-0.06, 0.06), (-0.06, 0.24), (0.06, 0.24), (0.06, 0.06), (0.2, 0.06), (0.2, -0.06), (0.06, -0.06), (0.06, -0.22)], 0.145, MATERIALS["gold_bright"], 0.015)
+    prism_xy(collection, root, "CentralCross", [(-0.06, -0.22), (-0.06, -0.06), (-0.2, -0.06), (-0.2, 0.06), (-0.06, 0.06), (-0.06, 0.24), (0.06, 0.24), (0.06, 0.06), (0.2, 0.06), (0.2, -0.06), (0.06, -0.06), (0.06, -0.22)], 0.155, MATERIALS["gold_bright"], 0.015)
 
 
 def build_life_drain(spec, collection, root):
-    ico(collection, root, "BloodSoulCore", (0, 0, 0.12), (0.18, 0.18, 0.32), MATERIALS["blood"], 1, rotation=(0.2, 0.3, 0.1))
+    ico(collection, root, "SoulVoid", (0, 0, 0.15), (0.23, 0.23, 0.34), MATERIALS["void"], 2, rotation=(0.2, 0.3, 0.1))
+    ico(collection, root, "BloodSoulCore", (0, 0, 0.22), (0.13, 0.13, 0.23), MATERIALS["rose"], 1, rotation=(0.2, 0.3, 0.1))
     for strand in (-1, 1):
         points = []
         for index in range(8):
@@ -448,13 +529,15 @@ def build_life_drain(spec, collection, root):
             angle = index * 0.85 + (math.pi if strand < 0 else 0)
             points.append((math.cos(angle) * 0.24, math.sin(angle) * 0.24, z))
         for index, (a, b) in enumerate(zip(points, points[1:])):
-            between(collection, root, f"SoulHelix_{strand}_{index}", a, b, 0.028, MATERIALS["purple"] if strand < 0 else MATERIALS["blood"], 5)
+            between(collection, root, f"SoulHelix_{strand}_{index}", a, b, 0.025, MATERIALS["purple"] if strand < 0 else MATERIALS["blood"], 5)
     for index, z in enumerate((-0.42, -0.12, 0.2, 0.48)):
         ico(collection, root, f"CapturedSoul_{index}", (0.24 * (-1 if index % 2 else 1), 0.08 * (index - 1.5), z), (0.055, 0.055, 0.08), MATERIALS["pink_light"], 1)
+    wake_shards(collection, root, "Soul", MATERIALS["blood"], count=3, radius=0.13, start_z=-0.5, spacing=0.15)
 
 
 def build_roots(spec, collection, root):
-    ico(collection, root, "RootSeed", (0, 0, 0.15), (0.24, 0.22, 0.3), MATERIALS["root"], 1, rotation=(0.2, 0.4, 0.1), edge=0.03)
+    ico(collection, root, "RootSeed", (0, 0, 0.18), (0.24, 0.22, 0.3), MATERIALS["root"], 1, rotation=(0.2, 0.4, 0.1), edge=0.03)
+    ico(collection, root, "SeedHeart", (0, 0, 0.27), (0.11, 0.1, 0.13), MATERIALS["green_bright"], 1)
     for index in range(6):
         angle = math.tau * index / 6
         middle = (math.cos(angle) * 0.23, math.sin(angle) * 0.23, -0.08)
@@ -462,19 +545,19 @@ def build_roots(spec, collection, root):
         between(collection, root, f"RootArmA_{index}", (0, 0, 0.06), middle, 0.045, MATERIALS["root"], 6)
         between(collection, root, f"RootArmB_{index}", middle, end, 0.032, MATERIALS["green"], 5)
         cone(collection, root, f"Thorn_{index}", end, 0.05, 0.18, MATERIALS["green_bright"], 4, rotation=(0.6, angle, 0))
-    torus(collection, root, "NatureRune", (0, 0, 0.12), 0.32, 0.02, MATERIALS["green_bright"], rotation=(0.3, 0.2, 0), segments=12)
+    torus(collection, root, "NatureRune", (0, 0, 0.12), 0.32, 0.017, MATERIALS["green_bright"], rotation=(0.3, 0.2, 0), segments=12)
 
 
 def build_poison_spit(spec, collection, root):
-    ico(collection, root, "PoisonCore", (0, 0, 0.12), (0.24, 0.22, 0.34), MATERIALS["green_bright"], 2)
-    for index in range(9):
+    ico(collection, root, "PoisonCore", (0, 0, 0.19), (0.2, 0.19, 0.34), MATERIALS["green_bright"], 2)
+    ico(collection, root, "VenomShadow", (0, 0, 0.04), (0.29, 0.26, 0.38), MATERIALS["poison_dark"], 1, rotation=(0.2, 0.4, 0.1), edge=0.025)
+    for index in range(6):
         angle = math.tau * index / 9
-        radius = 0.2 + (index % 3) * 0.035
-        ico(collection, root, f"VenomLobe_{index}", (math.cos(angle) * radius, math.sin(angle) * radius, 0.08 + (index % 2) * 0.12), (0.13, 0.12, 0.17), MATERIALS["green"] if index % 2 else MATERIALS["teal"], 1)
+        radius = 0.21 + (index % 2) * 0.035
+        ico(collection, root, f"VenomLobe_{index}", (math.cos(angle) * radius, math.sin(angle) * radius, 0.09 + (index % 2) * 0.12), (0.11, 0.1, 0.16), MATERIALS["green"] if index % 2 else MATERIALS["teal"], 1)
     for index, (x, y, z, scale) in enumerate(((0.14, 0.02, -0.28, 0.13), (-0.12, 0.1, -0.38, 0.11), (0.04, -0.14, -0.48, 0.09), (-0.05, -0.04, -0.58, 0.065))):
         ico(collection, root, f"VenomDroplet_{index}", (x, y, z), (scale, scale, scale * 1.35), MATERIALS["green_bright"] if index < 2 else MATERIALS["green"], 1)
-    for index, rotation in enumerate(((0.25, 0.1, 0), (0.75, -0.2, 0.35))):
-        torus(collection, root, f"VenomMembrane_{index}", (0, 0, 0.08 - index * 0.08), 0.34 + index * 0.06, 0.018, MATERIALS["green_bright"] if index == 0 else MATERIALS["teal"], rotation=rotation, segments=14)
+    torus(collection, root, "VenomMembrane", (0, 0, 0.09), 0.34, 0.016, MATERIALS["teal"], rotation=(0.45, -0.2, 0.2), segments=14)
     for index in range(5):
         angle = math.tau * index / 5 + 0.3
         ico(collection, root, f"ToxicBubble_{index}", (math.cos(angle) * 0.38, math.sin(angle) * 0.38, -0.08 + index * 0.07), (0.045, 0.045, 0.055), MATERIALS["white"] if index == 0 else MATERIALS["green_bright"], 1)
@@ -484,23 +567,25 @@ def build_verse(spec, collection, root):
     torus(collection, root, "NoteHead", (0.1, 0, -0.12), 0.2, 0.065, MATERIALS["pink"], rotation=(math.pi / 2, 0, 0), segments=12)
     cylinder(collection, root, "NoteStem", (0.22, 0, 0.24), 0.04, 0.68, MATERIALS["gold"], 8)
     prism_xz(collection, root, "NoteFlag", [(0.2, 0.48), (0.5, 0.38), (0.42, 0.16), (0.2, 0.24)], 0.05, MATERIALS["purple"], 0.022)
-    for index, radius in enumerate((0.32, 0.46, 0.58)):
-        torus(collection, root, f"SoundWave_{index}", (0, 0, -0.02 - index * 0.09), radius, 0.018, MATERIALS["pink_light"] if index % 2 == 0 else MATERIALS["arcane"], rotation=(0.4 + index * 0.2, 0.1, 0), segments=14)
+    for index, radius in enumerate((0.34, 0.5)):
+        torus(collection, root, f"SoundWave_{index}", (0, 0, -0.04 - index * 0.11), radius, 0.017, MATERIALS["pink_light"] if index == 0 else MATERIALS["arcane"], rotation=(0.42 + index * 0.24, 0.1, 0), segments=14)
+    wake_shards(collection, root, "Verse", MATERIALS["rose"], count=2, radius=0.11, start_z=-0.44, spacing=0.18)
 
 
 def build_curse(spec, collection, root):
-    ico(collection, root, "WeaknessCore", (0, 0, 0.06), (0.2, 0.18, 0.28), MATERIALS["shadow"], 1, rotation=(0.3, 0.2, 0.1))
+    ico(collection, root, "WeaknessCore", (0, 0, 0.06), (0.2, 0.18, 0.28), MATERIALS["void"], 1, rotation=(0.3, 0.2, 0.1))
     prism_xz(collection, root, "BrokenCrown", [(-0.38, -0.05), (-0.28, 0.28), (-0.1, 0.1), (0, 0.36), (0.12, 0.08), (0.32, 0.26), (0.38, -0.08), (0, -0.22)], 0.055, MATERIALS["purple"], 0.025)
     for side in (-1, 1):
         torus(collection, root, f"BrokenChain_{side}", (side * 0.31, 0, -0.26), 0.11, 0.025, MATERIALS["dark_iron"], rotation=(0.3, 0.5, side * 0.3), segments=8)
     prism_xz(collection, root, "CrackRune", [(-0.03, -0.3), (0.08, -0.08), (-0.02, 0.04), (0.09, 0.28), (0, 0.18), (-0.08, -0.02)], 0.07, MATERIALS["pink_light"], 0.01)
+    wake_shards(collection, root, "Curse", MATERIALS["purple"], count=3, radius=0.13, start_z=-0.32, spacing=0.14)
 
 
 def build_mark(spec, collection, root):
     prism_xz(collection, root, "MarkArrowhead", [(-0.28, -0.26), (0, 0.44), (0.28, -0.26), (0, -0.1)], 0.055, MATERIALS["red_cloth"], 0.03)
     ico(collection, root, "HunterEye", (0, -0.075, -0.02), (0.16, 0.035, 0.1), MATERIALS["gold_bright"], 1)
     ico(collection, root, "EyePupil", (0, -0.12, -0.02), (0.055, 0.018, 0.055), MATERIALS["shadow"], 1)
-    torus(collection, root, "TargetRing", (0, 0, -0.04), 0.42, 0.025, MATERIALS["pink"], rotation=(0.2, 0.15, 0), segments=16)
+    torus(collection, root, "TargetRing", (0, 0, -0.04), 0.42, 0.021, MATERIALS["pink"], rotation=(0.2, 0.15, 0), segments=16)
     for reticle_index, angle in enumerate((0, math.pi / 2, math.pi, math.pi * 1.5)):
         start = (math.cos(angle) * 0.38, math.sin(angle) * 0.38, -0.04)
         end = (math.cos(angle) * 0.53, math.sin(angle) * 0.53, -0.04)
@@ -508,12 +593,15 @@ def build_mark(spec, collection, root):
 
 
 def build_polymorph(spec, collection, root):
-    ico(collection, root, "TransformationCore", (0, 0, 0.08), (0.19, 0.19, 0.26), MATERIALS["teal"], 1)
+    ico(collection, root, "TransformationCore", (0, 0, 0.08), (0.17, 0.17, 0.24), MATERIALS["rose"], 1)
     for index, (x, y, z, scale) in enumerate(((-0.22, 0, 0.02, 0.18), (0.22, 0.02, 0.04, 0.16), (0, 0.16, -0.05, 0.17), (0, -0.14, 0.14, 0.15), (0.08, 0.05, -0.22, 0.13))):
         ico(collection, root, f"WoolCloud_{index}", (x, y, z), (scale, scale, scale), MATERIALS["wool"], 1, edge=0.025)
     for side in (-1, 1):
         cone(collection, root, f"TinyHorn_{side}", (side * 0.18, 0, 0.26), 0.045, 0.18, MATERIALS["gold"], 5, rotation=(0, side * 0.45, 0))
-    torus(collection, root, "TransformationRune", (0, 0, 0.03), 0.4, 0.022, MATERIALS["teal"], rotation=(0.4, 0.2, 0), segments=14)
+    ico(collection, root, "SheepFace", (0, -0.18, 0.02), (0.13, 0.035, 0.1), MATERIALS["shadow"], 1)
+    for side in (-1, 1):
+        ico(collection, root, f"SheepEye_{side}", (side * 0.045, -0.22, 0.045), (0.014, 0.01, 0.014), MATERIALS["white"], 1)
+    torus(collection, root, "TransformationRune", (0, 0, 0.03), 0.4, 0.018, MATERIALS["teal"], rotation=(0.4, 0.2, 0), segments=14)
 
 
 def build_fear(spec, collection, root):
@@ -522,7 +610,8 @@ def build_fear(spec, collection, root):
         prism_xz(collection, root, f"Horn_{side}", [(side * 0.18, 0.3), (side * 0.44, 0.58), (side * 0.34, 0.18)], 0.07, MATERIALS["purple"], 0.025)
         ico(collection, root, f"Eye_{side}", (side * 0.12, -0.11, 0.12), (0.065, 0.022, 0.045), MATERIALS["pink_light"], 1)
     prism_xz(collection, root, "MouthVoid", [(-0.12, -0.14), (0, -0.28), (0.12, -0.14), (0, -0.08)], 0.105, MATERIALS["arcane_dark"], 0.01)
-    torus(collection, root, "DreadAura", (0, 0, 0.06), 0.48, 0.03, MATERIALS["purple"], rotation=(0.35, 0.15, 0), segments=14)
+    torus(collection, root, "DreadAura", (0, 0, 0.06), 0.48, 0.024, MATERIALS["purple"], rotation=(0.35, 0.15, 0), segments=14)
+    wake_shards(collection, root, "Dread", MATERIALS["void"], count=3, radius=0.16, start_z=-0.34, spacing=0.16)
 
 
 def build_charm(spec, collection, root):
@@ -530,7 +619,8 @@ def build_charm(spec, collection, root):
     prism_xz(collection, root, "HeartHighlight", [(-0.06, -0.22), (-0.22, -0.02), (-0.18, 0.16), (-0.08, 0.2), (0.02, 0.08)], 0.105, MATERIALS["pink_light"], 0.012)
     for side in (-1, 1):
         prism_xz(collection, root, f"CharmWing_{side}", [(side * 0.22, 0.08), (side * 0.5, 0.26), (side * 0.42, 0.02), (side * 0.24, -0.08)], 0.04, MATERIALS["gold_bright"], 0.02)
-    torus(collection, root, "CharmOrbit", (0, 0, 0), 0.46, 0.022, MATERIALS["arcane"], rotation=(0.45, 0.2, 0), segments=14)
+    torus(collection, root, "CharmOrbit", (0, 0, 0), 0.46, 0.018, MATERIALS["arcane"], rotation=(0.45, 0.2, 0), segments=14)
+    ico(collection, root, "CharmFocus", (0, 0, 0.42), (0.055, 0.055, 0.09), MATERIALS["pink_light"], 1)
 
 
 def build_hex(spec, collection, root):
@@ -542,7 +632,8 @@ def build_hex(spec, collection, root):
         end = (math.cos(angle + 0.28) * 0.42, math.sin(angle + 0.28) * 0.42, 0.12 + (index % 2) * 0.18)
         between(collection, root, f"ThornCage_{index}", start, end, 0.035, MATERIALS["purple"], 5)
         cone(collection, root, f"HexThorn_{index}", end, 0.055, 0.2, MATERIALS["green_bright"], 4, rotation=(0.7, angle, 0))
-    torus(collection, root, "HexSeal", (0, 0, 0.1), 0.45, 0.025, MATERIALS["arcane"], rotation=(0.5, 0.2, 0), segments=12)
+    torus(collection, root, "HexSeal", (0, 0, 0.1), 0.45, 0.021, MATERIALS["arcane"], rotation=(0.5, 0.2, 0), segments=12)
+    wake_shards(collection, root, "Hex", MATERIALS["green_bright"], count=2, radius=0.14, start_z=-0.34, spacing=0.2)
 
 
 def build_resonance(spec, collection, root):
@@ -557,6 +648,7 @@ def build_resonance(spec, collection, root):
     for index in range(5):
         angle = math.tau * index / 5
         ico(collection, root, f"OrbitingBellChip_{index}", (math.cos(angle) * 0.58, math.sin(angle) * 0.58, -0.02 + (index % 2) * 0.18), (0.07, 0.05, 0.12), MATERIALS["bell"], 1, rotation=(index * 0.4, index * 0.3, 0.2))
+    ico(collection, root, "ResonanceFocus", (0, 0, 0.62), (0.07, 0.07, 0.11), MATERIALS["fire_hot"], 1)
 
 
 def build_energy_projectile(spec, collection, root):
@@ -567,6 +659,7 @@ def build_energy_projectile(spec, collection, root):
             torus(collection, root, f"CoherenceRing_{index}", (0, 0, z), 0.11 + index * 0.018, 0.014, MATERIALS["cyan"], segments=12)
         for side in (-1, 1):
             prism_xz(collection, root, f"BlueFin_{side}", [(0, -0.35), (side * 0.13, -0.2), (side * 0.08, 0.08), (0, 0.16)], 0.02, MATERIALS["energy_blue"], 0.008)
+        wake_shards(collection, root, "Photon", MATERIALS["energy_blue"], count=2, radius=0.075, start_z=-0.38, spacing=0.17)
         return
 
     if spec.id == "pulse_carbine_burst":
@@ -577,6 +670,7 @@ def build_energy_projectile(spec, collection, root):
             torus(collection, root, f"BurstRing_{index}", (x, 0, -0.2 - abs(index - 1) * 0.12), 0.1, 0.015, MATERIALS["energy_blue"], segments=10)
         between(collection, root, "BurstLinkLeft", (-0.15, 0, -0.06), (0, 0, 0.06), 0.018, MATERIALS["cyan"], 6)
         between(collection, root, "BurstLinkRight", (0, 0, 0.06), (0.15, 0, -0.06), 0.018, MATERIALS["cyan"], 6)
+        wake_shards(collection, root, "Burst", MATERIALS["cyan"], count=2, radius=0.12, start_z=-0.42, spacing=0.17)
         return
 
     if spec.id == "helix_projector_beam":
@@ -592,6 +686,7 @@ def build_energy_projectile(spec, collection, root):
         for index, z in enumerate((-0.42, -0.14, 0.14, 0.42)):
             torus(collection, root, f"HelixFieldRing_{index}", (0, 0, z), 0.22, 0.014, MATERIALS["green_bright"], segments=12)
         cone(collection, root, "HelixPenetrator", (0, 0, 0.7), 0.14, 0.4, MATERIALS["white"], 6)
+        wake_shards(collection, root, "Helix", MATERIALS["energy_green"], count=2, radius=0.13, start_z=-0.58, spacing=0.21)
         return
 
     if spec.id == "nova_cannon_bolt":
@@ -603,6 +698,7 @@ def build_energy_projectile(spec, collection, root):
             angle = math.tau * index / 6
             cone(collection, root, f"NovaWake_{index}", (math.cos(angle) * 0.28, math.sin(angle) * 0.28, -0.42), 0.085, 0.48, MATERIALS["fire"], 5, rotation=(math.pi, 0, angle))
         cone(collection, root, "NovaImpactNose", (0, 0, 0.58), 0.25, 0.45, MATERIALS["fire_hot"], 8)
+        ico(collection, root, "NovaLeadingFocus", (0, 0, 0.8), (0.09, 0.09, 0.13), MATERIALS["white"], 1)
         return
 
     cylinder(collection, root, "SingularityWhiteLance", (0, 0, 0.15), 0.07, 1.45, MATERIALS["white"], 10)
@@ -616,6 +712,7 @@ def build_energy_projectile(spec, collection, root):
     for index, z in enumerate((0.05, 0.32, 0.59)):
         torus(collection, root, f"LanceFocusRing_{index}", (0, 0, z), 0.18 - index * 0.025, 0.014, MATERIALS["energy_violet"], segments=14)
     cone(collection, root, "LancePoint", (0, 0, 1.02), 0.12, 0.42, MATERIALS["white"], 8)
+    wake_shards(collection, root, "Gravity", MATERIALS["energy_violet"], count=3, radius=0.18, start_z=-0.6, spacing=0.2)
 
 
 BUILDERS: Dict[str, Callable] = {
@@ -673,9 +770,17 @@ def animate(root, spec):
         "energy": 0.4,
         "gravity": 0.9,
     }[spec.family]
-    root.rotation_euler.z = family_spin
-    pulse = 1.035 if spec.family != "physical" else 1.008
-    root.scale = (pulse, pulse, pulse)
+    magical = spec.family != "physical"
+    root.rotation_euler = (
+        0.018 if magical else 0.006,
+        -0.024 if magical else 0.004,
+        family_spin,
+    )
+    radial_pulse = 1.045 if magical else 1.008
+    longitudinal_pulse = 1.018 if magical else 1.003
+    if spec.family in {"fire", "energy", "gravity", "lightning"}:
+        longitudinal_pulse = 1.065
+    root.scale = (radial_pulse, radial_pulse, longitudinal_pulse)
     root.keyframe_insert("rotation_euler", frame=13)
     root.keyframe_insert("scale", frame=13)
     root.rotation_euler = (0, 0, family_spin * 2)
@@ -771,10 +876,15 @@ def setup_preview(size):
     scene.render.image_settings.file_format = "PNG"
     scene.render.image_settings.color_mode = "RGBA"
     scene.render.film_transparent = False
-    scene.world.color = (0.006, 0.008, 0.014)
-    scene.view_settings.view_transform = "Standard"
+    scene.world.color = (0.004, 0.006, 0.012)
+    scene.world.use_nodes = True
+    background = scene.world.node_tree.nodes.get("Background")
+    if background:
+        background.inputs["Color"].default_value = (0.004, 0.006, 0.014, 1)
+        background.inputs["Strength"].default_value = 0.16
+    scene.view_settings.view_transform = "AgX"
     scene.view_settings.look = "None"
-    scene.view_settings.exposure = -0.25
+    scene.view_settings.exposure = 0.1
     bpy.ops.object.camera_add(location=(4.4, -6.8, 3.1))
     camera = bpy.context.object
     camera.data.lens = 62
@@ -900,7 +1010,7 @@ def main():
         print(f"Rendered {spec.id}", flush=True)
 
     manifest = {
-        "version": "harthmere-premium-projectiles-v2",
+        "version": "harthmere-premium-projectiles-v3",
         "blenderVersion": bpy.app.version_string,
         "count": len(generated),
         "projectiles": generated,

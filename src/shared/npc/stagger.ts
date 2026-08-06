@@ -2,8 +2,11 @@ import type { ReadonlyNpcCombatState } from "@/shared/ecs/gen/components";
 import type { HarthmereNativeNpcCombatProfile } from "@/shared/harthmere/harthmere_native_combat";
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 
-export const HARTHMERE_NON_BOSS_STAGGER_VERSION =
-  "harthmere-non-boss-stagger-v1" as const;
+export const HARTHMERE_NPC_STAGGER_VERSION =
+  "harthmere-npc-stagger-v2-bosses" as const;
+// Compatibility alias for older diagnostics. The runtime now covers eligible
+// ordinary creatures and every live Harthmere boss.
+export const HARTHMERE_NON_BOSS_STAGGER_VERSION = HARTHMERE_NPC_STAGGER_VERSION;
 
 export type HarthmereNpcStaggerKind = "light" | "medium" | "heavy";
 
@@ -15,6 +18,31 @@ export const HARTHMERE_NPC_STAGGER_TIMING = {
   HarthmereNpcStaggerKind,
   { durationSeconds: number; immunitySeconds: number }
 >;
+
+// Each duration starts with its authored 24 fps BossStagger clip and adds the
+// requested boss-only recovery hold. Bosses also retain a longer post-reaction
+// immunity so a coordinated group cannot chain poise breaks indefinitely.
+export const HARTHMERE_BOSS_STAGGER_DURATION_BONUS_SECONDS = 2;
+export const HARTHMERE_BOSS_STAGGER_TIMING = {
+  light: {
+    durationSeconds: 14 / 24 + HARTHMERE_BOSS_STAGGER_DURATION_BONUS_SECONDS,
+    immunitySeconds: 1.1,
+  },
+  medium: {
+    durationSeconds: 30 / 24 + HARTHMERE_BOSS_STAGGER_DURATION_BONUS_SECONDS,
+    immunitySeconds: 1.4,
+  },
+  heavy: {
+    durationSeconds: 58 / 24 + HARTHMERE_BOSS_STAGGER_DURATION_BONUS_SECONDS,
+    immunitySeconds: 1.8,
+  },
+} as const satisfies Record<
+  HarthmereNpcStaggerKind,
+  { durationSeconds: number; immunitySeconds: number }
+>;
+
+export const HARTHMERE_BOSS_POISE_MULTIPLIER = 1.75;
+export const HARTHMERE_BOSS_POISE_MAX = 520;
 
 export const HARTHMERE_NPC_POISE_RECOVERY_DELAY_SECONDS = 1.1;
 export const HARTHMERE_NPC_POISE_RECOVERY_PER_SECOND = 0.42;
@@ -44,6 +72,7 @@ export interface HarthmereNpcStaggerAdvanceInput {
   nowSeconds: number;
   maxHp: number;
   level: number;
+  isBoss?: boolean;
   damageTime?: number;
   damageAmount?: number;
   damageIsAttack: boolean;
@@ -79,17 +108,29 @@ export function harthmereNpcStaggerEligible(
 ) {
   return Boolean(
     profile &&
-    !profile.isBoss &&
     !profile.isPlayerLikeAppearance &&
     profile.attackDamage > 0 &&
     (profile.behaviorKind === "hostile" || profile.behaviorKind === "retaliate")
   );
 }
 
-export function harthmereNpcPoiseMax(input: { maxHp: number; level: number }) {
+export function harthmereNpcPoiseMax(input: {
+  maxHp: number;
+  level: number;
+  isBoss?: boolean;
+}) {
   const maxHp = finitePositive(input.maxHp, 100);
   const level = clamp(Math.trunc(input.level || 1), 1, 100);
-  return Math.round(clamp(42 + Math.sqrt(maxHp) * 2.8 + level * 4, 60, 180));
+  const ordinaryPoise = 42 + Math.sqrt(maxHp) * 2.8 + level * 4;
+  return Math.round(
+    input.isBoss
+      ? clamp(
+          ordinaryPoise * HARTHMERE_BOSS_POISE_MULTIPLIER,
+          180,
+          HARTHMERE_BOSS_POISE_MAX
+        )
+      : clamp(ordinaryPoise, 60, 180)
+  );
 }
 
 export function harthmereNpcPoiseDamage(input: {
@@ -268,7 +309,9 @@ export function advanceHarthmereNpcStagger(
     poiseDamage,
     poiseMax,
   });
-  const timing = HARTHMERE_NPC_STAGGER_TIMING[kind];
+  const timing = (
+    input.isBoss ? HARTHMERE_BOSS_STAGGER_TIMING : HARTHMERE_NPC_STAGGER_TIMING
+  )[kind];
   const stagger: HarthmereNpcStaggerWindow = {
     kind,
     startTime: now,

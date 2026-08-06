@@ -174,12 +174,12 @@ function promoObserverStreamingDebug():
 }
 
 function promoStreamingSnapshot(): PromoStreamingSnapshot | undefined {
-  const player = finiteVec3(promoLivePlayerDebug()?.getPosition?.());
-  if (player) {
-    return { kind: "player", position: player };
-  }
   const observer = finiteVec3(promoObserverStreamingDebug()?.getPosition?.());
-  return observer ? { kind: "observer", position: observer } : undefined;
+  if (observer) {
+    return { kind: "observer", position: observer };
+  }
+  const player = finiteVec3(promoLivePlayerDebug()?.getPosition?.());
+  return player ? { kind: "player", position: player } : undefined;
 }
 
 function finiteVec3(value: unknown): [number, number, number] | undefined {
@@ -243,9 +243,22 @@ async function stagePromoStreamingObserver(
   await waitForPromoStreamingHook();
   const playerDebug = promoLivePlayerDebug();
   const observerDebug = promoObserverStreamingDebug();
+  const observerPosition = finiteVec3(observerDebug?.getPosition?.());
 
   let landed = false;
-  if (typeof playerDebug?.teleportTo === "function") {
+  if (
+    observerPosition !== undefined &&
+    typeof observerDebug?.moveTo === "function"
+  ) {
+    const result = (await observerDebug.moveTo(position)) as
+      { ok?: unknown; position?: unknown } | undefined;
+    const after = finiteVec3(result?.position ?? observerDebug.getPosition?.());
+    landed =
+      result?.ok === true &&
+      after !== undefined &&
+      Math.abs(after[0] - position[0]) < 0.35 &&
+      Math.abs(after[2] - position[2]) < 0.35;
+  } else if (typeof playerDebug?.teleportTo === "function") {
     const result = playerDebug.teleportTo({
       x: position[0],
       y: position[1],
@@ -259,15 +272,6 @@ async function stagePromoStreamingObserver(
       after !== undefined &&
       Math.abs(after[0] - position[0]) < 0.35 &&
       Math.abs(after[2] - position[2]) < 0.35;
-  } else if (typeof observerDebug?.moveTo === "function") {
-    const result = (await observerDebug.moveTo(position)) as
-      { ok?: unknown; position?: unknown } | undefined;
-    const after = finiteVec3(result?.position ?? observerDebug.getPosition?.());
-    landed =
-      result?.ok === true &&
-      after !== undefined &&
-      Math.abs(after[0] - position[0]) < 0.35 &&
-      Math.abs(after[2] - position[2]) < 0.35;
   }
   if (!landed) {
     throw new Error(
@@ -278,6 +282,65 @@ async function stagePromoStreamingObserver(
   // The player script publishes the new observer immediately, but one short
   // beat avoids starting the director before the subscription request leaves.
   await sleep(350);
+}
+
+type PromoRuntimeSceneryStatus = {
+  origin?: unknown;
+  selectedDistrictCounts?: Record<string, unknown>;
+  loadedDistrictCounts?: Record<string, unknown>;
+  failedDistrictCounts?: Record<string, unknown>;
+};
+
+async function waitForPromoRuntimeScenery(
+  spec: { district: string; minLoadedPlacements: number } | undefined,
+  expectedOrigin: [number, number, number],
+  timeoutMs = 120_000
+): Promise<void> {
+  if (!spec) return;
+  const deadline = performance.now() + timeoutMs;
+  let lastStatus: PromoRuntimeSceneryStatus | undefined;
+  while (performance.now() < deadline) {
+    lastStatus = (
+      window as typeof window & {
+        __harthmereMobileRuntimeStreaming?: PromoRuntimeSceneryStatus;
+      }
+    ).__harthmereMobileRuntimeStreaming;
+    const selected = Number(
+      lastStatus?.selectedDistrictCounts?.[spec.district] ?? 0
+    );
+    const loaded = Number(
+      lastStatus?.loadedDistrictCounts?.[spec.district] ?? 0
+    );
+    const failed = Number(
+      lastStatus?.failedDistrictCounts?.[spec.district] ?? 0
+    );
+    const origin = finiteVec3(
+      Array.isArray(lastStatus?.origin)
+        ? [lastStatus.origin[0], expectedOrigin[1], lastStatus.origin[1]]
+        : undefined
+    );
+    const originReady =
+      origin !== undefined &&
+      Math.abs(origin[0] - expectedOrigin[0]) < 1 &&
+      Math.abs(origin[2] - expectedOrigin[2]) < 1;
+    if (failed > 0) {
+      throw new Error(
+        `promo runtime scenery failed: ${JSON.stringify({ spec, lastStatus })}`
+      );
+    }
+    if (
+      originReady &&
+      selected >= spec.minLoadedPlacements &&
+      loaded >= selected &&
+      loaded >= spec.minLoadedPlacements
+    ) {
+      return;
+    }
+    await sleep(100);
+  }
+  throw new Error(
+    `promo runtime scenery timed out: ${JSON.stringify({ spec, lastStatus })}`
+  );
 }
 
 async function restorePromoStreamingObserver(
@@ -496,6 +559,10 @@ export function useCutscenePromoCapture(
           captureAtOverride: string | null
         ): Promise<PromoCaptureRecord> => {
           await stagePromoStreamingObserver(
+            scene.streamingFocus ?? scene.observer.position
+          );
+          await waitForPromoRuntimeScenery(
+            scene.runtimeScenery,
             scene.streamingFocus ?? scene.observer.position
           );
           await waitForPromoTerrainProofs(

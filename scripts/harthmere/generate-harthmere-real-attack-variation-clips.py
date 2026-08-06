@@ -16,15 +16,15 @@ FPS = 24
 TIMES = [i / FPS for i in range(FRAMES)]
 
 VARIATION_SPECS = {
-    "HarthmereBodyWeaponBasic_Variation1_24": dict(family="basic", label="wide_forehand", torso=26, spine=-8, shoulder=38, elbow=22, wrist=32, hip=10, step=0.10, lateral=0.03, arc=122),
-    "HarthmereBodyWeaponBasic_Variation2_24": dict(family="basic", label="backhand_return", torso=-34, spine=9, shoulder=-42, elbow=-28, wrist=-36, hip=-16, step=0.02, lateral=-0.12, arc=148),
-    "HarthmereBodyWeaponBasic_Variation3_24": dict(family="basic", label="forward_lunge_thrust", torso=0, spine=-5, shoulder=12, elbow=-10, wrist=8, hip=0, step=0.20, lateral=0.0, arc=34),
-    "HarthmereBodyWeaponBasic_Variation4_24": dict(family="basic", label="low_rising_cut", torso=38, spine=15, shoulder=48, elbow=30, wrist=42, hip=22, step=0.07, lateral=0.09, arc=168),
+    "HarthmereBodyWeaponBasic_Variation1_24": dict(family="basic", label="left_to_right_opener", torso=-34, spine=8, shoulder=-42, elbow=-28, wrist=-36, hip=-20, step=0.08, lateral=-0.04, arc=128),
+    "HarthmereBodyWeaponBasic_Variation2_24": dict(family="basic", label="right_to_left_return", torso=34, spine=8, shoulder=42, elbow=22, wrist=32, hip=20, step=0.10, lateral=0.02, arc=128),
+    "HarthmereBodyWeaponBasic_Variation3_24": dict(family="basic", label="overhead_cleave", torso=12, spine=18, shoulder=52, elbow=36, wrist=46, hip=10, step=0.11, lateral=0.03, arc=152),
+    "HarthmereBodyWeaponBasic_Variation4_24": dict(family="basic", label="rising_cut", torso=-36, spine=18, shoulder=-48, elbow=-30, wrist=-42, hip=-20, step=0.09, lateral=-0.03, arc=152),
 
-    "HarthmereBodyWeaponHeavy_Variation1_24": dict(family="heavy", label="overhead_cleave", torso=4, spine=-18, shoulder=58, elbow=34, wrist=50, hip=5, step=0.14, lateral=0.0, arc=178),
-    "HarthmereBodyWeaponHeavy_Variation2_24": dict(family="heavy", label="broad_side_sweep", torso=-44, spine=8, shoulder=-54, elbow=-36, wrist=-48, hip=-26, step=0.04, lateral=-0.18, arc=190),
-    "HarthmereBodyWeaponHeavy_Variation3_24": dict(family="heavy", label="backhand_crusher", torso=42, spine=11, shoulder=52, elbow=34, wrist=46, hip=24, step=0.04, lateral=0.16, arc=176),
-    "HarthmereBodyWeaponHeavy_Variation4_24": dict(family="heavy", label="committed_heavy_lunge", torso=0, spine=-9, shoulder=20, elbow=-18, wrist=12, hip=0, step=0.28, lateral=0.0, arc=58),
+    "HarthmereBodyWeaponHeavy_Variation1_24": dict(family="heavy", label="left_to_right_power_sweep", torso=-44, spine=12, shoulder=-54, elbow=-36, wrist=-48, hip=-28, step=0.12, lateral=-0.06, arc=168),
+    "HarthmereBodyWeaponHeavy_Variation2_24": dict(family="heavy", label="right_to_left_power_return", torso=44, spine=12, shoulder=54, elbow=36, wrist=48, hip=28, step=0.14, lateral=0.04, arc=168),
+    "HarthmereBodyWeaponHeavy_Variation3_24": dict(family="heavy", label="overhead_crusher", torso=14, spine=24, shoulder=60, elbow=42, wrist=54, hip=12, step=0.15, lateral=0.04, arc=188),
+    "HarthmereBodyWeaponHeavy_Variation4_24": dict(family="heavy", label="rising_finisher", torso=-46, spine=24, shoulder=-60, elbow=-42, wrist=-54, hip=-30, step=0.13, lateral=-0.04, arc=188),
 
     "HarthmereBodyMagicCast_Variation1_24": dict(family="magic", label="palm_burst", torso=0, spine=-4, shoulder=16, elbow=18, wrist=24, hip=0, step=0.03, lateral=0.0, arc=38),
     "HarthmereBodyMagicCast_Variation2_24": dict(family="magic", label="overhead_invocation", torso=18, spine=-14, shoulder=42, elbow=26, wrist=38, hip=8, step=0.04, lateral=0.03, arc=112),

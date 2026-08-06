@@ -690,6 +690,14 @@ export function buildBiomesUIMapAdapter(
             Number(pos[1] ?? 0),
             Number(pos[2]),
           ] as [number, number, number],
+          worldObjectId:
+            typeof landmark.mapMarkerId === "string"
+              ? landmark.mapMarkerId
+              : undefined,
+          interactionTargetId:
+            typeof landmark.targetId === "string"
+              ? landmark.targetId
+              : undefined,
           description: isLiveEntityHelperMarker
             ? String(landmark.description ?? "Active helper quest target.")
             : isSharedQuestMarker

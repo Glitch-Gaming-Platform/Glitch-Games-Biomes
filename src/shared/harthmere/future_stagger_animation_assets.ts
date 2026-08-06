@@ -13,8 +13,8 @@ export const HARTHMERE_FUTURE_NPC_STAGGER_CLIPS = [
 ] as const;
 
 /**
- * Authored on every bespoke live boss rig. Boss hyper-armor/poise and clip
- * execution remain a later gameplay feature.
+ * Authored on every bespoke live boss rig. These clips are now selected by the
+ * authoritative NPC stagger window whenever a boss's poise is broken.
  */
 export const HARTHMERE_FUTURE_BOSS_STAGGER_CLIPS = [
   "BossStaggerLight",
@@ -24,7 +24,7 @@ export const HARTHMERE_FUTURE_BOSS_STAGGER_CLIPS = [
 
 export const HARTHMERE_FUTURE_STAGGER_RUNTIME_EXECUTION = Object.freeze({
   npc: false,
-  boss: false,
+  boss: true,
 });
 
 export type HarthmereFutureNpcStaggerClip =

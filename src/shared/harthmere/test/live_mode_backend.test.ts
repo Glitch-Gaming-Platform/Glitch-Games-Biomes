@@ -1429,6 +1429,45 @@ describe("parseHarthmereLiveModeBackendState", function () {
       "the authoritative behind-counter station must support shift play"
     );
 
+    const boundary =
+      (harthmereBusinessInteriorInteractionPoints(interior).customer[2] +
+        staff[2]) /
+      2;
+    const staffDirection =
+      staff[2] >
+      harthmereBusinessInteriorInteractionPoints(interior).customer[2]
+        ? 1
+        : -1;
+    const tickedAtCounterContact = applyOne(
+      started.state,
+      "request_economy_mutation",
+      {
+        operation: "tick_business_customer_session",
+        businessId,
+        sessionId: session.sessionId,
+        interactionBusinessId: businessId,
+        targetBusinessId: businessId,
+        outpostId: outpost.outpostId,
+        businessInteractionMarkerId: outpost.dashboardAccessPoint.markerId,
+        businessInteractionPosition: board,
+      },
+      {
+        subsystem: "economy",
+        serverActorPosition: {
+          x: staff[0],
+          y: staff[1],
+          z: boundary - staffDirection * 0.7,
+        },
+      }
+    );
+    assert.equal(
+      tickedAtCounterContact.summary.warnings.some((warning) =>
+        warning.includes("business_staff_side_required")
+      ),
+      false,
+      "authoritative capsule contact with the counter must count as staff-side play"
+    );
+
     const endedOutside = applyOne(
       started.state,
       "request_economy_mutation",

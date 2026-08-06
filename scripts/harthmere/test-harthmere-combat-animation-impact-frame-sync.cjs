@@ -5,15 +5,8 @@ const fs = require("fs");
 const path = require("path");
 
 const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
-const versions = JSON.parse(
-  fs.readFileSync(
-    path.join(root, "src/galois/js/interface/gen/asset_versions.json"),
-    "utf8"
-  )
-);
 const relative = path.join(
-  "public/buckets/biomes-static",
-  versions.paths["wearables/animations"]
+  "public/assets/harthmere/glb/animations/player_animations.glb"
 );
 const bytes = fs.readFileSync(path.join(root, relative));
 const jsonLength = bytes.readUInt32LE(12);
@@ -57,12 +50,22 @@ const combat = fs.readFileSync(
   "utf8"
 );
 check(
+  /basic:\s*\{[\s\S]*?impactMs:\s*250/.test(combat),
+  "gameplay basic impact is the exact frame-6 clock"
+);
+check(
   /heavy:\s*\{[\s\S]*?impactMs:\s*417/.test(combat),
   "gameplay heavy impact rounds frame 10 to 417 ms"
 );
 check(
   /heavy:\s*\{[\s\S]*?recoveryMs:\s*666/.test(combat),
   "gameplay heavy recovery keeps the full frame-26 commitment"
+);
+check(
+  /return HARTHMERE_PLAYER_ATTACK_TIMINGS\[timingClass\]\.impactMs \/ 1000/.test(
+    combat
+  ),
+  "combo links use the same gameplay contact clock as damage"
 );
 
 console.log(ok ? `RESULT: PASS ${relative}` : "RESULT: FAIL");

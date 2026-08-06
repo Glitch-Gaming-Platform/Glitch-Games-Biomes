@@ -15,8 +15,12 @@ import {
 } from "@/shared/harthmere/projectile_visual_manifest";
 import {
   emitHarthmereSoundEffect,
-  HARTHMERE_PROJECTILE_SOUND_MAP,
+  preloadHarthmereSoundEffect,
 } from "@/shared/harthmere/sound_effect_manifest";
+import {
+  HARTHMERE_PROJECTILE_EXPLOSION_AUDIO_PROFILE,
+  resolveHarthmereProjectileLifecycleSounds,
+} from "@/shared/harthmere/projectile_sound_lifecycle";
 import type { HarthmereMagicChargePhase } from "@/shared/harthmere/magic_charge";
 import {
   HARTHMERE_MAGIC_IMPACT_VERSION,
@@ -43,7 +47,7 @@ type TrailSample = {
 
 type PremiumTrail = {
   mesh: THREE.InstancedMesh;
-  geometry: THREE.BoxGeometry;
+  geometry: THREE.BufferGeometry;
   material: THREE.MeshBasicMaterial;
   samples: TrailSample[];
   accumulator: number;
@@ -124,6 +128,7 @@ type MagicImpactLayer = {
   end: number;
   startScale: number;
   endScale: number;
+  shapeScale: THREE.Vector3;
   initialOpacity: number;
   fadePower: number;
   rotationSpeed: THREE.Vector3;
@@ -242,6 +247,58 @@ const MAX_IMPACT_LIGHTS = 8;
 const MIN_VISIBLE_FRAMES = 3;
 const MAGIC_CHARGE_PARTICLE_COUNT = 24;
 const MAGIC_CHARGE_MATRIX = new THREE.Matrix4();
+
+function emitProjectileLaunchAndFlightSound(input: {
+  definition: HarthmereProjectileVisualDefinition;
+  origin: THREE.Vector3;
+  target: THREE.Vector3;
+  durationSeconds: number;
+  damageType?: string;
+}) {
+  const sounds = resolveHarthmereProjectileLifecycleSounds(input);
+  if (!sounds) return;
+  if (sounds.explosion) {
+    // Production fetches and decodes this while the projectile is still in
+    // flight, so the first explosion is ready at the authoritative hit frame.
+    preloadHarthmereSoundEffect(sounds.explosion);
+  }
+  if (sounds.launch) {
+    emitHarthmereSoundEffect(sounds.launch, {
+      position: input.origin.toArray(),
+    });
+  }
+  if (sounds.flight) {
+    const flightPosition = input.origin.clone().lerp(input.target, 0.45);
+    emitHarthmereSoundEffect(sounds.flight, {
+      position: flightPosition.toArray(),
+      durationSeconds: input.durationSeconds,
+      fadeOutSeconds: Math.min(0.16, input.durationSeconds * 0.28),
+    });
+  }
+}
+
+function emitProjectileImpactSound(input: {
+  definition: HarthmereProjectileVisualDefinition;
+  damageType?: string;
+  contactSoundId?: string;
+  position: THREE.Vector3;
+  impact: PremiumImpact;
+}) {
+  const sounds = resolveHarthmereProjectileLifecycleSounds(input);
+  const contactSoundId = input.contactSoundId ?? sounds?.impact;
+  if (contactSoundId) {
+    emitHarthmereSoundEffect(contactSoundId, {
+      position: input.position.toArray(),
+    });
+  }
+  if (input.impact.kind !== "magic_explosion" || !sounds?.explosion) return;
+  emitHarthmereSoundEffect(sounds.explosion, {
+    position: input.position.toArray(),
+    durationSeconds: input.impact.duration,
+    fadeOutSeconds: Math.min(0.42, input.impact.duration * 0.34),
+    ...HARTHMERE_PROJECTILE_EXPLOSION_AUDIO_PROFILE,
+  });
+}
 const MAGIC_CHARGE_POSITION = new THREE.Vector3();
 const MAGIC_CHARGE_SCALE = new THREE.Vector3();
 const MAGIC_CHARGE_QUATERNION = new THREE.Quaternion();
@@ -458,20 +515,52 @@ function trailProfile(definition: HarthmereProjectileVisualDefinition) {
   return {
     interval,
     lifetime,
-    width: meteor ? 0.24 : boss ? 0.18 : physical ? 0.055 : 0.11,
-    length: fast ? 0.52 : physical ? 0.3 : meteor ? 0.48 : 0.25,
+    width: meteor
+      ? 0.21
+      : boss
+        ? 0.16
+        : physical
+          ? 0.048
+          : definition.family === "sonic" || definition.family === "mark"
+            ? 0.14
+            : 0.095,
+    length: fast ? 0.48 : physical ? 0.34 : meteor ? 0.52 : 0.24,
     maxSamples: THREE.MathUtils.clamp(Math.ceil(lifetime / interval), 9, 26),
   };
 }
 
+function trailGeometry(definition: HarthmereProjectileVisualDefinition) {
+  if (definition.family === "fire") {
+    return new THREE.TetrahedronGeometry(0.72, 0);
+  }
+  if (definition.family === "sonic" || definition.family === "mark") {
+    return new THREE.TorusGeometry(0.58, 0.11, 4, 12);
+  }
+  if (definition.family === "nature") {
+    const geometry = new THREE.ConeGeometry(0.5, 1, 4);
+    geometry.rotateX(Math.PI / 2);
+    return geometry;
+  }
+  if (
+    ["arcane", "holy", "dark", "hex", "boss", "gravity"].includes(
+      definition.family
+    )
+  ) {
+    return new THREE.OctahedronGeometry(0.65, 0);
+  }
+  return new THREE.BoxGeometry(1, 1, 1);
+}
+
 function makeTrail(definition: HarthmereProjectileVisualDefinition) {
   const profile = trailProfile(definition);
-  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  const geometry = trailGeometry(definition);
   const material = effectMaterial(
     definition.family === "physical"
       ? definition.primaryColor
-      : definition.secondaryColor,
-    definition.family === "physical" ? 0.48 : 0.68,
+      : definition.family === "fire" || definition.family === "holy"
+        ? definition.primaryColor
+        : definition.secondaryColor,
+    definition.family === "physical" ? 0.42 : 0.64,
     definition.id === "bandit_archer_shot"
       ? THREE.NormalBlending
       : THREE.AdditiveBlending
@@ -513,6 +602,14 @@ function trailDrift(
     offset.y = Math.cos(sample.seed + sample.age * 14) * 0.09;
   } else if (definition.family === "dark" || definition.family === "hex") {
     offset.y = Math.sin(sample.seed + sample.age * 8) * 0.06;
+    offset.x = Math.cos(sample.seed * 0.7 + sample.age * 7) * 0.035;
+  } else if (definition.family === "holy") {
+    offset.y = sample.age * 0.24;
+  } else if (definition.family === "arcane") {
+    offset.x = Math.sin(sample.seed + sample.age * 9) * 0.04;
+    offset.y = Math.cos(sample.seed * 1.2 + sample.age * 9) * 0.04;
+  } else if (definition.family === "gravity") {
+    offset.multiplyScalar(Math.max(0, 1 - sample.age / 0.3));
   }
   return offset;
 }
@@ -614,6 +711,9 @@ function makePremiumImpact(
   group.name = `harthmere-premium-${phase}-${definition.id}`;
   group.position.copy(position);
   const missed = /miss|dodge|evade|out_of_range/.test(result ?? "");
+  const smokeLike = definition.id === "smoke_bomb_throw";
+  const physical = definition.family === "physical";
+  const energyLike = definition.family === "energy";
   const materials = impactMaterials(definition);
   const parts: ImpactPart[] = [];
   const radius =
@@ -627,12 +727,21 @@ function makePremiumImpact(
   );
   group.add(core);
 
-  const ringCount =
-    definition.family === "sonic" || definition.family === "boss"
-      ? 3
-      : definition.family === "holy" || definition.id === "consecrate"
+  const ringCount = smokeLike
+    ? phase === "impact"
+      ? 2
+      : 0
+    : physical
+      ? phase === "impact"
+        ? 1
+        : 0
+      : energyLike
         ? 2
-        : 1;
+        : definition.family === "sonic" || definition.family === "boss"
+          ? 3
+          : definition.family === "holy" || definition.id === "consecrate"
+            ? 2
+            : 1;
   for (let index = 0; index < ringCount; index += 1) {
     addImpactRing(
       group,
@@ -645,38 +754,54 @@ function makePremiumImpact(
   const count =
     phase === "launch"
       ? 5
-      : definition.id === "meteor"
-        ? 18
-        : definition.family === "boss"
-          ? 16
-          : 10;
+      : smokeLike
+        ? 12
+        : energyLike
+          ? 14
+          : definition.id === "meteor"
+            ? 18
+            : definition.family === "boss"
+              ? 16
+              : 10;
   for (let index = 0; index < count; index += 1) {
     const angle = (Math.PI * 2 * index) / count;
     const direction = new THREE.Vector3(
       Math.cos(angle),
-      definition.family === "holy"
-        ? 0.4 + (index % 3) * 0.18
-        : definition.family === "fire"
-          ? 0.22 + (index % 4) * 0.12
-          : definition.family === "lightning"
-            ? (index % 3) * 0.3 - 0.25
-            : Math.sin(index * 1.9) * 0.16,
+      smokeLike
+        ? 0.35 + (index % 4) * 0.18
+        : definition.family === "holy"
+          ? 0.4 + (index % 3) * 0.18
+          : definition.family === "fire"
+            ? 0.22 + (index % 4) * 0.12
+            : definition.family === "lightning"
+              ? (index % 3) * 0.3 - 0.25
+              : Math.sin(index * 1.9) * 0.16,
       Math.sin(angle)
     ).normalize();
     const rootLike = definition.family === "nature";
     const boltLike = definition.family === "lightning";
-    const geometry = rootLike
-      ? new THREE.ConeGeometry(0.045, 0.48, 4)
-      : boltLike
-        ? new THREE.BoxGeometry(0.035, 0.035, 0.5)
-        : new THREE.BoxGeometry(
-            definition.family === "physical" ? 0.055 : 0.075,
-            definition.family === "physical" ? 0.055 : 0.075,
-            definition.family === "physical" ? 0.32 : 0.22
-          );
+    const geometry = smokeLike
+      ? new THREE.DodecahedronGeometry(0.16 + (index % 3) * 0.035, 0)
+      : energyLike
+        ? new THREE.OctahedronGeometry(0.11, 0)
+        : rootLike
+          ? new THREE.ConeGeometry(0.045, 0.48, 4)
+          : boltLike
+            ? new THREE.BoxGeometry(0.035, 0.035, 0.5)
+            : new THREE.BoxGeometry(
+                definition.family === "physical" ? 0.055 : 0.075,
+                definition.family === "physical" ? 0.055 : 0.075,
+                definition.family === "physical" ? 0.32 : 0.22
+              );
     const shard = new THREE.Mesh(
       geometry,
-      materials[definition.family === "fire" && index % 4 === 3 ? 2 : index % 2]
+      materials[
+        smokeLike
+          ? 2
+          : definition.family === "fire" && index % 4 === 3
+            ? 2
+            : index % 2
+      ]
     );
     shard.position.copy(direction).multiplyScalar(0.18 + (index % 3) * 0.05);
     shard.quaternion.setFromUnitVectors(FORWARD, direction);
@@ -687,11 +812,15 @@ function makePremiumImpact(
       direction.multiplyScalar(
         phase === "launch"
           ? 0.7
-          : definition.id === "meteor"
-            ? 3.8
-            : definition.family === "boss"
-              ? 3.0
-              : 2.0
+          : smokeLike
+            ? 0.55 + (index % 3) * 0.16
+            : energyLike
+              ? 2.8
+              : definition.id === "meteor"
+                ? 3.8
+                : definition.family === "boss"
+                  ? 3.0
+                  : 2.0
       ),
       new THREE.Vector3(2 + (index % 3), 2.6 + (index % 4), 1.4)
     );
@@ -709,11 +838,15 @@ function makePremiumImpact(
   const duration =
     phase === "launch"
       ? 0.14
-      : definition.id === "consecrate"
-        ? 1.0
-        : definition.id === "meteor" || definition.family === "boss"
-          ? 0.82
-          : THREE.MathUtils.clamp(0.3 + radius * 0.08, 0.34, 0.62);
+      : smokeLike
+        ? 1.2
+        : energyLike
+          ? THREE.MathUtils.clamp(0.42 + radius * 0.1, 0.48, 0.82)
+          : definition.id === "consecrate"
+            ? 1.0
+            : definition.id === "meteor" || definition.family === "boss"
+              ? 0.82
+              : THREE.MathUtils.clamp(0.3 + radius * 0.08, 0.34, 0.62);
   return {
     kind: "basic",
     group,
@@ -770,13 +903,20 @@ function addMagicImpactLayer(
   group: THREE.Group,
   object: THREE.Object3D,
   material: THREE.MeshBasicMaterial,
-  input: Omit<MagicImpactLayer, "object" | "material">
+  input: Omit<MagicImpactLayer, "object" | "material" | "shapeScale"> & {
+    shapeScale?: THREE.Vector3;
+  }
 ) {
   object.visible = false;
   object.scale.setScalar(0.001);
   object.renderOrder = 31;
   group.add(object);
-  return { object, material, ...input } satisfies MagicImpactLayer;
+  return {
+    object,
+    material,
+    ...input,
+    shapeScale: input.shapeScale?.clone() ?? new THREE.Vector3(1, 1, 1),
+  } satisfies MagicImpactLayer;
 }
 
 function makeMagicImpactBatch(input: {
@@ -1021,6 +1161,276 @@ function dustParticles(input: {
   return particles;
 }
 
+function addSignatureMagicImpactLayers(input: {
+  group: THREE.Group;
+  layers: MagicImpactLayer[];
+  profile: HarthmereMagicImpactProfile;
+  definition: HarthmereProjectileVisualDefinition;
+  groundOffsetY: number;
+  direction: THREE.Vector3;
+}) {
+  const { group, layers, profile, definition } = input;
+  const add = (
+    object: THREE.Object3D,
+    color: number,
+    options: Omit<MagicImpactLayer, "object" | "material" | "shapeScale"> & {
+      shapeScale?: THREE.Vector3;
+    }
+  ) => {
+    const material = effectMaterial(color, options.initialOpacity);
+    const mesh = object as THREE.Mesh;
+    if (mesh.isMesh) {
+      const previous = mesh.material;
+      if (Array.isArray(previous)) previous.forEach((entry) => entry.dispose());
+      else previous.dispose();
+      mesh.material = material;
+    }
+    layers.push(addMagicImpactLayer(group, object, material, options));
+  };
+
+  if (profile.silhouette === "eruption") {
+    for (let index = 0; index < 3; index += 1) {
+      const angle = (index / 3) * Math.PI * 2 + 0.35;
+      const flame = new THREE.Mesh(
+        new THREE.ConeGeometry(0.18, 0.9, 5),
+        effectMaterial(0xffffff)
+      );
+      flame.position.set(
+        Math.cos(angle) * profile.radius * 0.09,
+        input.groundOffsetY + profile.radius * 0.12,
+        Math.sin(angle) * profile.radius * 0.09
+      );
+      add(
+        flame,
+        index === 1 ? definition.primaryColor : definition.secondaryColor,
+        {
+          start: 0.025 + index * 0.018,
+          end: Math.min(0.72, profile.durationSecs * 0.48),
+          startScale: 0.08,
+          endScale: profile.radius * (1.15 + index * 0.13),
+          initialOpacity: 0.8 - index * 0.08,
+          fadePower: 1.7,
+          rotationSpeed: new THREE.Vector3(0, index % 2 ? -2.2 : 2.4, 0),
+          rise: profile.radius * (0.22 + index * 0.05),
+          shapeScale: new THREE.Vector3(0.72, 1.5, 0.72),
+        }
+      );
+    }
+    return;
+  }
+
+  if (profile.silhouette === "crackle") {
+    for (let index = 0; index < 6; index += 1) {
+      const angle = (index / 6) * Math.PI * 2 + index * 0.17;
+      const radial = new THREE.Vector3(
+        Math.cos(angle),
+        index % 2 ? 0.28 : -0.12,
+        Math.sin(angle)
+      ).normalize();
+      const bolt = new THREE.Mesh(
+        new THREE.BoxGeometry(0.045, 0.045, 0.82),
+        effectMaterial(0xffffff)
+      );
+      bolt.quaternion.setFromUnitVectors(FORWARD, radial);
+      bolt.position.copy(radial).multiplyScalar(profile.radius * 0.12);
+      add(bolt, index % 2 ? definition.primaryColor : 0xffffff, {
+        start: 0.018 + index * 0.008,
+        end: 0.34 + (index % 3) * 0.04,
+        startScale: 0.15,
+        endScale: profile.radius * (1.25 + (index % 2) * 0.22),
+        initialOpacity: 0.92,
+        fadePower: 2.4,
+        rotationSpeed: new THREE.Vector3(0, 0, index % 2 ? -2.4 : 2.8),
+        rise: 0,
+      });
+    }
+    return;
+  }
+
+  if (profile.silhouette === "pillar") {
+    add(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.18, 0.34, 1, 8),
+        effectMaterial(0xffffff)
+      ),
+      definition.primaryColor,
+      {
+        start: 0.018,
+        end: Math.min(0.86, profile.durationSecs * 0.58),
+        startScale: 0.12,
+        endScale: profile.radius * 1.6,
+        initialOpacity: 0.76,
+        fadePower: 1.9,
+        rotationSpeed: new THREE.Vector3(0, 1.4, 0),
+        rise: profile.radius * 0.12,
+        shapeScale: new THREE.Vector3(0.62, 1.9, 0.62),
+      }
+    );
+    return;
+  }
+
+  if (profile.silhouette === "root_burst") {
+    for (let index = 0; index < 8; index += 1) {
+      const angle = (index / 8) * Math.PI * 2;
+      const radial = new THREE.Vector3(
+        Math.cos(angle),
+        0.22 + (index % 2) * 0.14,
+        Math.sin(angle)
+      ).normalize();
+      const root = new THREE.Mesh(
+        new THREE.ConeGeometry(0.085, 0.7, 4),
+        effectMaterial(0xffffff)
+      );
+      root.quaternion.setFromUnitVectors(UP, radial);
+      root.position
+        .copy(radial)
+        .multiplyScalar(profile.radius * 0.12)
+        .setY(input.groundOffsetY + profile.radius * 0.04);
+      add(
+        root,
+        index % 3 ? definition.primaryColor : definition.secondaryColor,
+        {
+          start: 0.04 + index * 0.012,
+          end: 0.58 + (index % 2) * 0.08,
+          startScale: 0.08,
+          endScale: profile.radius * (1.05 + (index % 3) * 0.1),
+          initialOpacity: 0.76,
+          fadePower: 1.8,
+          rotationSpeed: new THREE.Vector3(0, 0.35 * (index % 2 ? -1 : 1), 0),
+          rise: 0,
+          shapeScale: new THREE.Vector3(0.72, 1.25, 0.72),
+        }
+      );
+    }
+    return;
+  }
+
+  if (profile.silhouette === "reticle") {
+    for (let index = 0; index < 4; index += 1) {
+      const angle = (index / 4) * Math.PI * 2;
+      const tick = new THREE.Mesh(
+        new THREE.BoxGeometry(0.28, 0.045, 0.07),
+        effectMaterial(0xffffff)
+      );
+      tick.position.set(
+        Math.cos(angle) * profile.radius * 0.24,
+        input.groundOffsetY + 0.05,
+        Math.sin(angle) * profile.radius * 0.24
+      );
+      tick.rotation.y = -angle;
+      add(
+        tick,
+        index % 2 ? definition.primaryColor : definition.secondaryColor,
+        {
+          start: 0.035 + index * 0.014,
+          end: 0.62,
+          startScale: 0.12,
+          endScale: profile.radius * 1.4,
+          initialOpacity: 0.84,
+          fadePower: 1.8,
+          rotationSpeed: new THREE.Vector3(0, index % 2 ? -0.9 : 0.9, 0),
+          rise: 0,
+        }
+      );
+    }
+    return;
+  }
+
+  if (profile.silhouette === "smoke_bloom") {
+    for (let index = 0; index < 5; index += 1) {
+      const angle = (index / 5) * Math.PI * 2 + 0.25;
+      const cloud = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(0.24 + (index % 2) * 0.06, 0),
+        effectMaterial(0xffffff)
+      );
+      cloud.position.set(
+        Math.cos(angle) * profile.radius * 0.14,
+        input.groundOffsetY + profile.radius * (0.08 + (index % 3) * 0.05),
+        Math.sin(angle) * profile.radius * 0.14
+      );
+      add(
+        cloud,
+        index % 2 ? definition.secondaryColor : definition.primaryColor,
+        {
+          start: 0.035 + index * 0.028,
+          end: Math.min(1.05, profile.durationSecs * 0.82),
+          startScale: 0.08,
+          endScale: profile.radius * (1.5 + (index % 3) * 0.18),
+          initialOpacity: 0.48 - (index % 2) * 0.08,
+          fadePower: 1.15,
+          rotationSpeed: new THREE.Vector3(
+            0.18 * (index % 2 ? -1 : 1),
+            0.65 * (index % 2 ? -1 : 1),
+            0.12
+          ),
+          rise: profile.radius * (0.18 + (index % 2) * 0.07),
+          shapeScale: new THREE.Vector3(1.45, 0.7, 1.45),
+        }
+      );
+    }
+    return;
+  }
+
+  if (
+    profile.silhouette === "implosion" ||
+    profile.silhouette === "singularity"
+  ) {
+    const aperture = new THREE.Mesh(
+      new THREE.TorusGeometry(0.5, 0.055, 6, 32),
+      effectMaterial(0xffffff)
+    );
+    aperture.rotation.x = Math.PI / 2;
+    aperture.position.y = input.groundOffsetY + profile.radius * 0.08;
+    add(aperture, definition.secondaryColor, {
+      start: 0.03,
+      end: Math.min(0.9, profile.durationSecs * 0.62),
+      startScale: profile.radius * (3.2 + profile.power * 0.8),
+      endScale: profile.radius * 0.18,
+      initialOpacity: 0.9,
+      fadePower: 1.35,
+      rotationSpeed: new THREE.Vector3(
+        0.25,
+        profile.silhouette === "singularity" ? 3.8 : 2.1,
+        -0.3
+      ),
+      rise: profile.silhouette === "singularity" ? -profile.radius * 0.04 : 0,
+      shapeScale: new THREE.Vector3(1.25, 0.55, 1.25),
+    });
+    return;
+  }
+
+  if (profile.silhouette === "cataclysm") {
+    for (let index = 0; index < 8; index += 1) {
+      const radial = impactDirection(97, index, 401);
+      radial.y = Math.abs(radial.y) + 0.18;
+      radial.normalize();
+      const spike = new THREE.Mesh(
+        new THREE.ConeGeometry(0.075, 0.78, 4),
+        effectMaterial(0xffffff)
+      );
+      spike.quaternion.setFromUnitVectors(UP, radial);
+      add(
+        spike,
+        index % 2 ? definition.primaryColor : definition.secondaryColor,
+        {
+          start: 0.02 + index * 0.009,
+          end: 0.68,
+          startScale: 0.08,
+          endScale: profile.radius * 1.45,
+          initialOpacity: 0.82,
+          fadePower: 1.8,
+          rotationSpeed: new THREE.Vector3(
+            index * 0.12,
+            -index * 0.1,
+            index * 0.08
+          ),
+          rise: profile.radius * 0.04,
+        }
+      );
+    }
+  }
+}
+
 function makeAaaMagicImpact(input: {
   definition: HarthmereProjectileVisualDefinition;
   position: THREE.Vector3;
@@ -1080,6 +1490,11 @@ function makeAaaMagicImpact(input: {
       .getHex(),
     0.96
   );
+  const coreShapeScale = new THREE.Vector3(...profile.coreStretch);
+  const coreStartScale = profile.implosion
+    ? profile.radius * (2.4 + profile.power * 0.65)
+    : 0.2;
+  const coreEndScale = profile.implosion ? 0.12 : profile.radius * 2.35;
   layers.push(
     addMagicImpactLayer(
       group,
@@ -1088,12 +1503,13 @@ function makeAaaMagicImpact(input: {
       {
         start: 0.012,
         end: Math.min(0.58, profile.durationSecs * 0.4),
-        startScale: 0.2,
-        endScale: profile.radius * 2.55,
+        startScale: coreStartScale,
+        endScale: coreEndScale,
         initialOpacity: 0.96,
         fadePower: 1.15,
         rotationSpeed: new THREE.Vector3(3.2, 5.4, -2.2),
         rise: profile.family === "fire" ? profile.radius * 0.16 : 0,
+        shapeScale: coreShapeScale,
       }
     )
   );
@@ -1108,12 +1524,16 @@ function makeAaaMagicImpact(input: {
       {
         start: 0.025,
         end: Math.min(0.72, profile.durationSecs * 0.48),
-        startScale: 0.3,
-        endScale: profile.radius * 3.1,
-        initialOpacity: 0.62,
+        startScale: profile.implosion ? profile.radius * 3.35 : 0.3,
+        endScale: profile.implosion ? 0.18 : profile.radius * 2.9,
+        initialOpacity:
+          profile.silhouette === "wave" || profile.silhouette === "reticle"
+            ? 0.42
+            : 0.62,
         fadePower: 2.15,
         rotationSpeed: new THREE.Vector3(-2.4, 3.8, 1.8),
         rise: 0,
+        shapeScale: coreShapeScale.clone().multiplyScalar(1.08),
       }
     )
   );
@@ -1129,7 +1549,26 @@ function makeAaaMagicImpact(input: {
       new THREE.TorusGeometry(0.42, 0.025 + index * 0.006, 5, 32),
       material
     );
-    if (index === 0) {
+    const groundDominant = [
+      "wave",
+      "root_burst",
+      "reticle",
+      "singularity",
+    ].includes(profile.silhouette);
+    if (groundDominant) {
+      ring.rotation.x = Math.PI / 2;
+      ring.rotation.y = index * 0.32;
+      ring.position.y = groundOffsetY + 0.035 + index * 0.018;
+    } else if (profile.silhouette === "pillar") {
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = groundOffsetY + profile.radius * (0.08 + index * 0.13);
+    } else if (profile.silhouette === "crackle") {
+      ring.rotation.set(
+        Math.PI / (2 + index * 0.3),
+        index * 1.05,
+        index * 0.66
+      );
+    } else if (index === 0) {
       ring.rotation.x = Math.PI / 2;
       ring.position.y = groundOffsetY + 0.04;
     } else if (index === 1) {
@@ -1145,8 +1584,14 @@ function makeAaaMagicImpact(input: {
       addMagicImpactLayer(group, ring, material, {
         start: 0.028 + index * 0.026,
         end: Math.min(0.82, 0.46 + index * 0.09 + profile.power * 0.12),
-        startScale: 0.2,
-        endScale: profile.radius * (2.5 + index * 0.48),
+        startScale: profile.implosion
+          ? profile.radius * profile.ringSpread * (3.4 + index * 0.38)
+          : 0.2,
+        endScale: profile.implosion
+          ? profile.radius * (0.14 + index * 0.04)
+          : profile.radius *
+            profile.ringSpread *
+            (2.2 + index * (groundDominant ? 0.62 : 0.42)),
         initialOpacity: 0.82 - index * 0.08,
         fadePower: 1.65,
         rotationSpeed: new THREE.Vector3(
@@ -1158,6 +1603,15 @@ function makeAaaMagicImpact(input: {
       })
     );
   }
+
+  addSignatureMagicImpactLayers({
+    group,
+    layers,
+    profile,
+    definition: input.definition,
+    groundOffsetY,
+    direction,
+  });
 
   const debris = makeMagicImpactBatch({
     group,
@@ -1269,9 +1723,11 @@ function updateMagicImpactLayer(
     1
   );
   const easeOut = 1 - Math.pow(1 - progress, 3);
-  layer.object.scale.setScalar(
-    THREE.MathUtils.lerp(layer.startScale, layer.endScale, easeOut)
-  );
+  layer.object.scale
+    .copy(layer.shapeScale)
+    .multiplyScalar(
+      THREE.MathUtils.lerp(layer.startScale, layer.endScale, easeOut)
+    );
   layer.object.position.y += layer.rise * dt;
   layer.object.rotation.x += layer.rotationSpeed.x * dt;
   layer.object.rotation.y += layer.rotationSpeed.y * dt;
@@ -1705,12 +2161,13 @@ export class HarthmereProjectileVisualRuntime {
         this.impacts.filter((entry) => entry.light).length < MAX_IMPACT_LIGHTS
       )
     );
-    const launchSound = HARTHMERE_PROJECTILE_SOUND_MAP[definition.id]?.launch;
-    if (launchSound) {
-      emitHarthmereSoundEffect(launchSound, {
-        position: request.origin.toArray(),
-      });
-    }
+    emitProjectileLaunchAndFlightSound({
+      definition,
+      origin: request.origin,
+      target,
+      durationSeconds: projectile.duration,
+      damageType: request.damageType,
+    });
 
     void this.load(definition)
       .then((prototype) => {
@@ -1870,13 +2327,13 @@ export class HarthmereProjectileVisualRuntime {
       )
     );
 
-    const launchSound =
-      HARTHMERE_PROJECTILE_SOUND_MAP[projectileDefinition.id]?.launch;
-    if (launchSound) {
-      emitHarthmereSoundEffect(launchSound, {
-        position: group.position.toArray(),
-      });
-    }
+    emitProjectileLaunchAndFlightSound({
+      definition: projectileDefinition,
+      origin: group.position,
+      target,
+      durationSeconds: effect.duration,
+      damageType: request.damageType,
+    });
 
     void this.loadShape(shapeDefinition)
       .then((prototype) => {
@@ -2311,7 +2768,7 @@ export class HarthmereProjectileVisualRuntime {
         )
       );
     }
-    this.addResolvedImpact({
+    const impact = this.addResolvedImpact({
       definition: effect.projectileDefinition,
       position: impactPosition,
       direction: impactPosition.clone().sub(effect.origin),
@@ -2323,13 +2780,12 @@ export class HarthmereProjectileVisualRuntime {
       seed: effect.sequence,
     });
     this.impactCount += 1;
-    const impactSound =
-      HARTHMERE_PROJECTILE_SOUND_MAP[effect.projectileDefinition.id]?.impact;
-    if (impactSound) {
-      emitHarthmereSoundEffect(impactSound, {
-        position: impactPosition.toArray(),
-      });
-    }
+    emitProjectileImpactSound({
+      definition: effect.projectileDefinition,
+      damageType: effect.damageType,
+      position: impactPosition,
+      impact,
+    });
     this.removeAttackShape(effect);
     this.debug?.("renderer.boss_attack_shape.impact", {
       projectileId: effect.projectileDefinition.id,
@@ -2340,7 +2796,7 @@ export class HarthmereProjectileVisualRuntime {
   }
 
   private finishProjectile(projectile: ActiveProjectile) {
-    this.addResolvedImpact({
+    const impact = this.addResolvedImpact({
       definition: projectile.definition,
       position: projectile.target,
       direction: projectile.target.clone().sub(projectile.start),
@@ -2352,8 +2808,10 @@ export class HarthmereProjectileVisualRuntime {
       seed: projectile.sequence,
     });
     this.impactCount += 1;
-    const mappedSounds =
-      HARTHMERE_PROJECTILE_SOUND_MAP[projectile.definition.id];
+    const mappedSounds = resolveHarthmereProjectileLifecycleSounds({
+      definition: projectile.definition,
+      damageType: projectile.damageType,
+    });
     const missed = /miss|dodge|evade|out_of_range/.test(
       projectile.result ?? ""
     );
@@ -2368,11 +2826,13 @@ export class HarthmereProjectileVisualRuntime {
       ].includes(projectile.definition.id)
         ? "arrow_impact_hard"
         : mappedSounds?.impact;
-    if (impactSound) {
-      emitHarthmereSoundEffect(impactSound, {
-        position: projectile.target.toArray(),
-      });
-    }
+    emitProjectileImpactSound({
+      definition: projectile.definition,
+      damageType: projectile.damageType,
+      contactSoundId: impactSound,
+      position: projectile.target,
+      impact,
+    });
     this.removeProjectile(projectile);
     this.debug?.("renderer.projectile.impact", {
       projectileId: projectile.definition.id,
@@ -2435,7 +2895,7 @@ export class HarthmereProjectileVisualRuntime {
       }
     ).__harthmereProjectileVisuals = {
       version: HARTHMERE_PROJECTILE_VISUAL_VERSION,
-      runtime: "premium-clean-room-v4-aaa-magic-impacts",
+      runtime: "premium-clean-room-v5-signature-impacts",
       magicImpactVersion: HARTHMERE_MAGIC_IMPACT_VERSION,
       manifestCount: HARTHMERE_PROJECTILE_VISUALS.length,
       loadedOrLoading: this.prototypes.size,

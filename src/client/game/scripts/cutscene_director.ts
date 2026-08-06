@@ -29,6 +29,7 @@ import { emptyCutsceneUiState } from "@/client/game/resources/cutscene";
 import { ParticleSystem } from "@/client/game/resources/particles";
 import type { ClientResources } from "@/client/game/resources/types";
 import { getActiveRendererController } from "@/client/game/renderers/capture_bridge";
+import { waitForNativeCutsceneActors } from "@/client/game/cutscene/native_actor_readiness";
 import type { Script } from "@/client/game/scripts/script_controller";
 import { selectBackgroundMusicTrack } from "@/client/game/scripts/audio";
 import { publishHarthmereLiveCreatureSnapshot } from "@/client/game/scripts/harthmere_live_creature_bridge_script";
@@ -802,6 +803,23 @@ export class CutsceneDirectorScript implements Script {
     effect: Extract<CutsceneEffect, { kind: "capture" }>
   ) {
     const activeDefId = this.activeDef?.id;
+    // Publish staged ghosts before waiting. The Harthmere renderer owns their
+    // asynchronous GLB/avatar load; renderer-ready and three generic settle
+    // frames do not prove that a required actor has joined the scene graph.
+    publishCutscenePuppetOverrides([...this.overrides.values()]);
+    publishHarthmereLiveCreatureSnapshot(this.table);
+    const requiredSyntheticActors = [...this.overrides.values()]
+      .filter((override) => override.ghost !== undefined)
+      .map((override) => override.id);
+    try {
+      await waitForNativeCutsceneActors(requiredSyntheticActors);
+    } catch (error) {
+      failCutsceneCapture(
+        effect.captureId,
+        error instanceof Error ? error.message : String(error)
+      );
+      return;
+    }
     for (let frame = 0; frame < effect.settleFrames; frame += 1) {
       await new Promise<void>((resolve) =>
         requestAnimationFrame(() => resolve())

@@ -14,8 +14,9 @@ if (!url) {
 }
 
 async function loadPlaywright() {
+  const { leasePlaywright } = require("./harthmere-live-runtime-probe.cjs");
   for (const name of ["playwright", "playwright-chromium"]) {
-    try { return require(name); } catch (_) {}
+    try { return leasePlaywright(require(name), { baseUrl: url }); } catch (_) {}
   }
   return null;
 }

@@ -83,8 +83,13 @@ import {
   activeHarthmereQuestMarkerIds,
   isVisibleHarthmereWorldObjectMarker,
 } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers";
-import { harthmereJobsBoardFieldTargets } from "@/shared/harthmere/jobs_board_field_targets";
 import {
+  harthmereJobsBoardFieldTargetFeetY,
+  harthmereJobsBoardFieldTargets,
+  harthmereJobsBoardFieldTargetsNearPosition,
+} from "@/shared/harthmere/jobs_board_field_targets";
+import {
+  HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MATCH_RADIUS,
   HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS,
   harthmereWorldObjectCandidateIsVisibleForInteraction,
   isHarthmereInspectableWorldObject,
@@ -381,26 +386,30 @@ function harthmereJobsBoardFieldTargetInspectCandidates(
     // otherwise a built apron or platform can put the visible prop several
     // metres above its authored hint and the proximity selector rejects a
     // player who is standing directly beside it.
-    const feetY = harthmereGroundedFeetYWithMemory(
+    const groundedFeetY = harthmereGroundedFeetYWithMemory(
       resources,
       harthmereFieldTargetGroundedFeetYByColumn,
       candidate.position[0],
       candidate.position[2],
       candidate.position[1],
-      true
+      // Business fixtures can intentionally sit beneath shop awnings/porches.
+      // They need a standable surface, not open sky.
+      false
     );
-    return feetY === undefined
-      ? []
-      : [
-          {
-            ...candidate,
-            position: [candidate.position[0], feetY, candidate.position[2]] as [
-              number,
-              number,
-              number,
-            ],
-          },
-        ];
+    const feetY = harthmereJobsBoardFieldTargetFeetY(
+      groundedFeetY,
+      candidate.position[1]
+    );
+    return [
+      {
+        ...candidate,
+        position: [candidate.position[0], feetY, candidate.position[2]] as [
+          number,
+          number,
+          number,
+        ],
+      },
+    ];
   });
 }
 
@@ -416,7 +425,10 @@ function harthmereVisibleStaticWorldObjectInspectCandidates(
       harthmereWorldObjectCandidateIsVisibleForInteraction({
         candidate,
         activeMarkerId,
-        activePinMarkerId: activePin?.markerId,
+        activePinMarkerId:
+          activePin?.interactionTargetId ??
+          activePin?.worldObjectId ??
+          activePin?.markerId,
         activePinPosition: activePin?.worldPosition,
         alwaysVisible:
           activeMarkerIds.has(candidate.id) ||
@@ -2106,6 +2118,23 @@ export class OverlayScript implements Script {
     const activeQuestMarkerIds = activeHarthmereQuestMarkerIds(
       readSnapshotGroveQuestState()
     );
+    const activePin = readActiveBiomesUIMapPin();
+    const preferredCandidateIds = new Set(activeQuestMarkerIds);
+    for (const target of harthmereJobsBoardFieldTargetsNearPosition(
+      activePin?.worldPosition,
+      HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MATCH_RADIUS
+    )) {
+      preferredCandidateIds.add(target.targetId);
+      priorityCandidateIds.add(target.targetId);
+    }
+    if (activePin?.worldObjectId) {
+      preferredCandidateIds.add(activePin.worldObjectId);
+      priorityCandidateIds.add(activePin.worldObjectId);
+    }
+    if (activePin?.interactionTargetId) {
+      preferredCandidateIds.add(activePin.interactionTargetId);
+      priorityCandidateIds.add(activePin.interactionTargetId);
+    }
     const selected = selectNearestHarthmereWorldObjectInspectable({
       playerPosition,
       facingView: viewDir([0, localPlayer.player.orientation[1]]) as [
@@ -2143,7 +2172,7 @@ export class OverlayScript implements Script {
       // gate for those exact candidates instead of clipping them to the hit.
       priorityCandidateIds,
       priorityRadius: HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS,
-      preferredCandidateIds: activeQuestMarkerIds,
+      preferredCandidateIds,
     });
     if (!selected) {
       return undefined;

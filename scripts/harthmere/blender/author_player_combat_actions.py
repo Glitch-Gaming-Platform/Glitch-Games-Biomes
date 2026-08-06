@@ -67,17 +67,20 @@ ALIGNED_NAMES = (
 ACTION_NAMES = BASIC_NAMES + HEAVY_NAMES + ALIGNED_NAMES
 
 BASIC_SPECS = (
-    ("forehand", "wide_forehand", "horizontal_right_to_left"),
-    ("backhand", "backhand_return", "horizontal_left_to_right"),
-    ("descending", "descending_cleave", "high_right_to_low_left"),
-    ("rising", "rising_cut", "low_left_to_high_right"),
+    ("backhand", "left_to_right_opener", "horizontal_left_to_right"),
+    ("forehand", "right_to_left_return", "horizontal_right_to_left"),
+    ("descending", "overhead_cleave", "vertical_overhead_to_low"),
+    ("rising", "rising_cut", "diagonal_low_left_to_high_right"),
 )
 HEAVY_SPECS = (
-    ("overhead", "overhead_cleave", "vertical_high_to_low"),
-    ("sweep", "broad_side_sweep", "horizontal_left_to_right"),
-    ("crusher", "backhand_crusher", "high_left_to_low_right"),
-    ("uppercut", "rising_finisher", "low_right_to_high_left"),
+    ("sweep", "left_to_right_power_sweep", "horizontal_left_to_right"),
+    ("reverse_sweep", "right_to_left_power_return", "horizontal_right_to_left"),
+    ("overhead", "overhead_crusher", "vertical_overhead_to_low"),
+    ("uppercut", "rising_finisher", "diagonal_low_right_to_high_left"),
 )
+COMBO_ROLES = ("opener", "return", "power", "finisher")
+COMBAT_PROFILE = "aaa-voxel-sword-v4-distinct-trajectory-combo"
+ANIMATION_POLISH_VERSION = "harthmere-player-combo-animation-polish-v4-trajectories"
 
 
 def args() -> argparse.Namespace:
@@ -149,7 +152,7 @@ def attack_key_poses(style: str):
         "forehand": (
             {
                 "Waist": (-0.08, 0.30, -0.04), "Chest": (0.04, -0.38, 0.10), "Head": (-0.05, 0.18, -0.04),
-                "R_Arm": (-0.34, 1.22, 0.24), "R_Forearm": (0.0, 0.24, -1.16), "R_Hand": (0.0, 0.34, -0.06), "Tool": (-0.08, 0.10, -0.24),
+                "R_Arm": (0.0, 0.0, 0.0), "R_Forearm": (0.0, 0.24, -1.16), "R_Hand": (0.0, 0.34, -0.06), "Tool": (1.0, 0.10, -0.24),
                 "L_Arm": (0.16, 0.0, -0.12), "L_Forearm": (-0.34, 0.0, 0.0),
                 "R_Thigh": (0.02, 0.12, 0.04), "L_Thigh": (0.08, -0.12, -0.08), "L_Leg": (0.10, 0.0, 0.0),
             },
@@ -169,19 +172,19 @@ def attack_key_poses(style: str):
         "backhand": (
             {
                 "Waist": (-0.08, -0.12, 0.02), "Chest": (-0.08, 0.42, -0.04), "Head": (0.08, -0.32, -0.05),
-                "R_Arm": (-1.08, 0.64, -1.34), "R_Forearm": (0.0, 0.0, -0.58), "R_Hand": (0.0, 0.0, 0.24), "Tool": (-0.10, 0.08, 0.30),
+                "R_Arm": (-0.12, 0.64, -1.34), "R_Forearm": (0.0, 0.0, -0.58), "R_Hand": (0.0, 0.0, 0.24), "Tool": (-0.10, 0.08, 0.30),
                 "L_Arm": (0.62, 0.04, -0.24), "L_Forearm": (-0.72, 0.0, 0.0),
                 "R_Thigh": (-0.02, -0.10, -0.06), "L_Thigh": (0.04, 0.12, 0.08),
             },
             {
                 "Waist": (-0.06, -0.08, -0.04), "Chest": (0.10, 0.30, -0.04), "Head": (-0.08, -0.16, -0.08),
-                "R_Arm": (0.70, 0.60, 0.60), "R_Forearm": (0.06, -0.14, 0.04), "R_Hand": (0.02, -0.10, -0.14), "Tool": (1.20, 0.08, 0.40),
+                "R_Arm": (0.70, 0.60, 0.60), "R_Forearm": (0.06, -0.14, 0.04), "R_Hand": (0.02, -0.10, -0.14), "Tool": (0.18, 0.08, 0.40),
                 "L_Arm": (-0.54, 0.34, -0.32), "L_Forearm": (-0.24, 0.0, 0.0),
                 "R_Thigh": (0.08, 0.10, 0.04), "L_Thigh": (0.10, -0.18, -0.10), "L_Leg": (0.12, 0.0, 0.0),
             },
             {
                 "Waist": (-0.04, -0.18, -0.06), "Chest": (0.14, 0.04, -0.08), "Head": (-0.08, -0.02, -0.10),
-                "R_Arm": (0.82, 0.42, 0.82), "R_Forearm": (0.12, -0.20, 0.16), "R_Hand": (0.04, -0.14, -0.18), "Tool": (1.32, 0.10, 0.64),
+                "R_Arm": (0.82, 0.42, 0.82), "R_Forearm": (0.12, -0.20, 0.16), "R_Hand": (0.04, -0.14, -0.18), "Tool": (0.24, 0.10, 0.64),
                 "L_Arm": (-0.66, 0.38, -0.42), "L_Forearm": (-0.12, 0.0, 0.0),
                 "R_Thigh": (0.12, 0.14, 0.06), "L_Thigh": (0.14, -0.24, -0.12), "L_Leg": (0.16, 0.0, 0.0),
             },
@@ -194,16 +197,16 @@ def attack_key_poses(style: str):
                 "R_Thigh": (-0.08, 0.08, 0.04), "L_Thigh": (0.10, -0.12, -0.06), "L_Leg": (0.10, 0.0, 0.0),
             },
             {
-                "Waist": (0.08, -0.20, 0.04), "Chest": (0.22, 0.42, -0.10), "Head": (-0.12, -0.20, -0.02),
-                "R_Arm": (0.40, 0.48, 0.62), "R_Forearm": (0.20, 0.06, 0.30), "R_Hand": (0.18, 0.02, 0.12), "Tool": (0.58, -0.04, 0.22),
-                "L_Arm": (0.12, 0.18, -0.30), "L_Forearm": (-0.64, 0.0, 0.0),
-                "R_Thigh": (0.22, 0.16, 0.08), "L_Thigh": (-0.04, 0.12, 0.06), "R_Leg": (0.22, 0.0, 0.0),
+                "Waist": (0.16, -0.32, 0.08), "Chest": (0.36, 0.56, -0.16), "Head": (-0.20, -0.28, -0.04),
+                "R_Arm": (0.66, 0.28, 0.94), "R_Forearm": (0.36, -0.02, 0.52), "R_Hand": (0.24, -0.04, 0.18), "Tool": (0.96, -0.10, 0.52),
+                "L_Arm": (-0.10, 0.30, -0.54), "L_Forearm": (-0.90, 0.0, 0.0),
+                "R_Thigh": (0.30, 0.20, 0.10), "L_Thigh": (-0.08, 0.16, 0.08), "R_Leg": (0.28, 0.0, 0.0),
             },
             {
-                "Waist": (0.12, -0.28, 0.06), "Chest": (0.30, 0.52, -0.16), "Head": (-0.16, -0.26, -0.02),
-                "R_Arm": (0.62, 0.38, 0.82), "R_Forearm": (0.28, 0.02, 0.42), "R_Hand": (0.24, 0.0, 0.14), "Tool": (0.78, -0.06, 0.34),
-                "L_Arm": (0.04, 0.24, -0.42), "L_Forearm": (-0.72, 0.0, 0.0),
-                "R_Thigh": (0.28, 0.20, 0.10), "L_Thigh": (-0.02, 0.16, 0.08), "R_Leg": (0.26, 0.0, 0.0),
+                "Waist": (0.22, -0.42, 0.10), "Chest": (0.52, 0.66, -0.24), "Head": (-0.24, -0.34, -0.04),
+                "R_Arm": (0.92, 0.18, 1.18), "R_Forearm": (0.48, -0.08, 0.66), "R_Hand": (0.30, -0.08, 0.22), "Tool": (1.20, -0.14, 0.74),
+                "L_Arm": (-0.20, 0.38, -0.70), "L_Forearm": (-1.04, 0.0, 0.0),
+                "R_Thigh": (0.36, 0.24, 0.12), "L_Thigh": (-0.10, 0.20, 0.10), "R_Leg": (0.32, 0.0, 0.0),
             },
         ),
         "rising": (
@@ -236,7 +239,7 @@ def attack_key_poses(style: str):
     heavy_sources = {
         "overhead": "descending",
         "sweep": "backhand",
-        "crusher": "forehand",
+        "reverse_sweep": "forehand",
         "uppercut": "rising",
     }
     source = poses[heavy_sources[style]]
@@ -246,12 +249,17 @@ def attack_key_poses(style: str):
         contact.update({"Waist": (0.14, -0.24, 0.04), "Chest": (0.34, 0.34, -0.08), "R_Arm": (0.54, 0.40, 0.54), "R_Forearm": (0.34, 0.02, 0.42), "Tool": (0.82, -0.06, 0.18)})
         follow.update({"Waist": (0.18, -0.34, 0.06), "Chest": (0.46, 0.42, -0.14), "R_Arm": (0.82, 0.28, 0.76), "R_Forearm": (0.42, -0.02, 0.56), "Tool": (1.02, -0.08, 0.28)})
     elif style == "sweep":
-        contact["Waist"] = (-0.08, -0.10, -0.06); contact["Chest"] = (0.14, 0.34, -0.06)
-        follow["Waist"] = (-0.06, -0.22, -0.08); follow["Chest"] = (0.18, 0.02, -0.10)
-    elif style == "crusher":
-        windup.update({"R_Arm": (-1.18, 0.72, -1.44), "R_Forearm": (-0.16, 0.08, -0.82), "Tool": (-0.38, 0.08, 0.42)})
-        contact.update({"Chest": (0.28, 0.22, -0.12), "R_Arm": (0.80, 0.50, 0.40), "R_Forearm": (0.18, -0.10, 0.20), "R_Hand": (0.08, -0.10, -0.16), "Tool": (1.25, 0.08, 0.50)})
-        follow.update({"Chest": (0.38, -0.08, -0.18), "R_Arm": (0.94, 0.28, 0.62), "R_Forearm": (0.28, -0.16, 0.32), "R_Hand": (0.12, -0.14, -0.20), "Tool": (1.38, 0.10, 0.72)})
+        windup.update({"Waist": (-0.12, -0.20, 0.04), "Chest": (-0.18, 0.58, -0.08), "R_Arm": (0.02, 0.72, -1.46), "R_Forearm": (-0.14, 0.02, -0.78), "Tool": (-0.20, 0.12, 0.46)})
+        contact.update({"Waist": (-0.08, -0.10, -0.06), "Chest": (0.14, 0.34, -0.06), "Tool": (0.16, 0.10, 0.48)})
+        follow.update({"Waist": (-0.06, -0.22, -0.08), "Chest": (0.18, 0.02, -0.10), "Tool": (0.24, 0.12, 0.72)})
+    elif style == "reverse_sweep":
+        # The second combo step must cross the body in the opposite direction
+        # from step one.  Its shoulder, wrist, Tool roll, and planted hip turn
+        # all reverse, rather than replaying the same broad sweep mirrored only
+        # by metadata.
+        windup.update({"Waist": (-0.16, 0.48, -0.10), "Chest": (-0.28, -0.66, 0.18), "R_Arm": (0.0, 0.0, -0.50), "R_Forearm": (0.02, 0.28, -1.26), "R_Hand": (0.02, 0.38, -0.08), "Tool": (1.50, 0.12, -0.46), "L_Arm": (0.22, -0.02, -0.18)})
+        contact.update({"Waist": (-0.02, -0.40, 0.04), "Chest": (0.10, 0.82, -0.12), "Head": (-0.04, -0.36, -0.04), "R_Arm": (0.84, 0.70, 1.02), "R_Forearm": (0.08, 0.18, 0.02), "R_Hand": (0.04, 0.14, 0.18), "Tool": (0.12, -0.14, 0.38), "L_Arm": (0.38, 0.16, -0.38), "L_Forearm": (-0.94, 0.0, 0.0)})
+        follow.update({"Waist": (-0.02, -0.56, 0.06), "Chest": (-0.02, 0.98, -0.24), "Head": (0.0, -0.46, -0.04), "R_Arm": (1.02, 0.60, 1.22), "R_Forearm": (0.04, 0.18, 0.12), "R_Hand": (0.0, 0.10, 0.10), "Tool": (0.20, -0.18, 0.58), "L_Arm": (0.50, 0.12, -0.50), "L_Forearm": (-1.10, 0.0, 0.0)})
     elif style == "uppercut":
         windup.update({"Waist": (0.16, -0.30, 0.04), "Chest": (0.24, 0.42, -0.14), "R_Arm": (0.72, -0.46, 0.96), "R_Forearm": (0.26, -0.12, 0.34), "Tool": (0.62, -0.04, -0.42)})
         contact.update({"Waist": (-0.10, 0.34, -0.06), "Chest": (-0.18, -0.62, 0.18), "R_Arm": (-0.62, 0.78, -0.88), "R_Forearm": (-0.18, 0.18, -0.42), "R_Hand": (-0.12, 0.12, 0.20), "Tool": (-0.62, 0.06, 0.48)})
@@ -260,7 +268,7 @@ def attack_key_poses(style: str):
 
 
 def attack_locations(style: str, heavy: bool):
-    lateral = -1.0 if style in {"backhand", "rising", "sweep", "crusher", "uppercut"} else 1.0
+    lateral = -1.0 if style in {"backhand", "rising", "sweep", "uppercut"} else 1.0
     forward = 0.08 if heavy else 0.05
     return {
         "windup": {"Chest": (-forward * 0.25, 0.0, -0.06 * lateral), "Waist": (-forward * 0.12, 0.0, 0.03 * lateral)},
@@ -269,7 +277,17 @@ def attack_locations(style: str, heavy: bool):
     }
 
 
-def create_attack(rig, name, style, heavy, base_pose, base_locations):
+def create_attack(
+    rig,
+    name,
+    style,
+    direction,
+    weapon_arc,
+    heavy,
+    combo_step,
+    base_pose,
+    base_locations,
+):
     windup, contact, follow = attack_key_poses(style)
     locations = attack_locations(style, heavy)
 
@@ -281,7 +299,7 @@ def create_attack(rig, name, style, heavy, base_pose, base_locations):
 
     if heavy:
         frames = [
-            (0.0, base_pose, base_locations),
+            (0.0, pose(scaled_pose(windup, 0.10)), location(scaled_pose(locations["windup"], 0.10))),
             (2.0, pose(scaled_pose(windup, 0.30)), location(scaled_pose(locations["windup"], 0.30))),
             (5.5, pose(windup), location(locations["windup"])),
             (7.0, pose(blend_pose(windup, contact, 0.20)), location(blend_pose(locations["windup"], locations["contact"], 0.20))),
@@ -296,7 +314,7 @@ def create_attack(rig, name, style, heavy, base_pose, base_locations):
         ]
     else:
         frames = [
-            (0.0, base_pose, base_locations),
+            (0.0, pose(scaled_pose(windup, 0.08)), location(scaled_pose(locations["windup"], 0.08))),
             (1.25, pose(scaled_pose(windup, 0.30)), location(scaled_pose(locations["windup"], 0.30))),
             (3.25, pose(windup), location(locations["windup"])),
             (4.15, pose(blend_pose(windup, contact, 0.22)), location(blend_pose(locations["windup"], locations["contact"], 0.22))),
@@ -311,10 +329,18 @@ def create_attack(rig, name, style, heavy, base_pose, base_locations):
         ]
 
     action = create_action(rig, name, frames)
-    action["harthmereCombatProfile"] = "aaa-voxel-sword-v2"
+    action["harthmereCombatProfile"] = COMBAT_PROFILE
+    action["harthmereAnimationPolishVersion"] = ANIMATION_POLISH_VERSION
+    action["comboStep"] = combo_step
+    action["comboRole"] = COMBO_ROLES[combo_step - 1]
+    action["comboHandoffSeconds"] = (
+        HEAVY_IMPACT_SECONDS if heavy else BASIC_IMPACT_SECONDS
+    )
     action["impactSeconds"] = HEAVY_IMPACT_SECONDS if heavy else BASIC_IMPACT_SECONDS
     action["durationSeconds"] = HEAVY_DURATION_SECONDS if heavy else BASIC_DURATION_SECONDS
     action["attackStyle"] = style
+    action["direction"] = direction
+    action["weaponArc"] = weapon_arc
     action["gameplayRootMotion"] = True
     action["authoredFootwork"] = True
     action["weaponArcMotionPathReviewed"] = True
@@ -344,15 +370,22 @@ def polish_curves(action):
 def metadata():
     result = {}
     for heavy, names, specs in ((False, BASIC_NAMES, BASIC_SPECS), (True, HEAVY_NAMES, HEAVY_SPECS)):
-        for name, (style, label, arc) in zip(names, specs):
+        for combo_step, (name, (style, label, arc)) in enumerate(
+            zip(names, specs), start=1
+        ):
             impact = HEAVY_IMPACT_SECONDS if heavy else BASIC_IMPACT_SECONDS
             duration = HEAVY_DURATION_SECONDS if heavy else BASIC_DURATION_SECONDS
             anticipation_end = (5.5 if heavy else 3.25) / FPS
             impact_end = (HEAVY_IMPACT + 0.8 if heavy else BASIC_IMPACT + 0.6) / FPS
             follow_end = (17.0 if heavy else 10.5) / FPS
             result[name] = {
-                "harthmereCombatProfile": "aaa-voxel-sword-v2",
+                "harthmereCombatProfile": COMBAT_PROFILE,
+                "harthmereAnimationPolishVersion": ANIMATION_POLISH_VERSION,
                 "family": "heavy" if heavy else "basic",
+                "comboStep": combo_step,
+                "comboRole": COMBO_ROLES[combo_step - 1],
+                "comboHandoffSeconds": impact,
+                "nextComboStep": combo_step + 1 if combo_step < 4 else None,
                 "direction": label,
                 "weaponArc": arc,
                 "attackStyle": style,
@@ -396,13 +429,25 @@ def main() -> None:
 
     created = []
     for heavy, names, specs in ((False, BASIC_NAMES, BASIC_SPECS), (True, HEAVY_NAMES, HEAVY_SPECS)):
-        for name, (style, _, _) in zip(names, specs):
-            action = create_attack(rig, name, style, heavy, base_pose, base_locations)
+        for combo_step, (name, (style, direction, weapon_arc)) in enumerate(
+            zip(names, specs), start=1
+        ):
+            action = create_attack(
+                rig,
+                name,
+                style,
+                direction,
+                weapon_arc,
+                heavy,
+                combo_step,
+                base_pose,
+                base_locations,
+            )
             polish_curves(action)
             created.append(name)
 
     # Keep the aligned names as deliberate compatibility fallbacks, but make
-    # them authored copies of the new right-to-left attacks rather than stale
+    # them authored copies of the new opening attacks rather than stale
     # clones of legacy Attack / Attack2.
     for aligned, source in zip(ALIGNED_NAMES, (BASIC_NAMES[0], HEAVY_NAMES[0])):
         old = bpy.data.actions.get(aligned)

@@ -10,6 +10,8 @@ import type { BiomesId } from "@/shared/ids";
 
 export const HARTHMERE_NATIVE_VITALS_VERSION =
   "harthmere-native-vitals-v2" as const;
+export const HARTHMERE_NATIVE_VITALS_CLIENT_UPDATE_EVENT =
+  "biomes:harthmere-native-vitals-updated" as const;
 export const HARTHMERE_NATIVE_VITALS_MIGRATION_VERSION = 2;
 export const HARTHMERE_NATIVE_MAX_BREATH_SECONDS = 45;
 export const HARTHMERE_NATIVE_STAMINA_DRAIN_PER_SECOND = 100 / (2 * 60 * 60);

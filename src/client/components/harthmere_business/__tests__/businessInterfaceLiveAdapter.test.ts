@@ -377,6 +377,101 @@ describe("Harthmere in-world business interface live adapter", () => {
     assert.equal(envelope.payload.businessId, "business_food");
   });
 
+  it("serializes business writes so one degraded replica cannot create an actor-lock request pileup", async () => {
+    const calls: string[] = [];
+    let releaseFirst!: () => void;
+    const firstGate = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const fetchImpl = (async (_url: string, init: any) => {
+      const requestId = JSON.parse(init.body).requestId as string;
+      calls.push(requestId);
+      if (requestId === "business_serial_1") await firstGate;
+      return {
+        ok: true,
+        json: async () => ({ ok: true, economyState: sampleSnapshot() }),
+      };
+    }) as any;
+
+    const first = submitHarthmereBusinessEconomyMutation(
+      "start_business_customer_session",
+      { businessId: "business_food" },
+      { fetchImpl, requestId: "business_serial_1" }
+    );
+    const second = submitHarthmereBusinessEconomyMutation(
+      "serve_business_customer",
+      { businessId: "business_food" },
+      { fetchImpl, requestId: "business_serial_2" }
+    );
+
+    await Promise.resolve();
+    assert.deepEqual(calls, ["business_serial_1"]);
+    releaseFirst();
+    await Promise.all([first, second]);
+    assert.deepEqual(calls, ["business_serial_1", "business_serial_2"]);
+  });
+
+  it("does not let a hung background tick strand a foreground service choice", async () => {
+    const calls: string[] = [];
+    let tickAttempts = 0;
+    const fetchImpl = (async (_url: string, init: any) => {
+      const requestId = JSON.parse(init.body).requestId as string;
+      calls.push(requestId);
+      if (requestId.startsWith("hung_tick") && tickAttempts++ === 0) {
+        return await new Promise((_resolve, reject) => {
+          init.signal.addEventListener(
+            "abort",
+            () => {
+              const error = new Error("aborted");
+              error.name = "AbortError";
+              reject(error);
+            },
+            { once: true }
+          );
+        });
+      }
+      return {
+        ok: true,
+        json: async () => ({ ok: true, economyState: sampleSnapshot() }),
+      };
+    }) as any;
+
+    const hungTick = submitHarthmereBusinessEconomyMutation(
+      "tick_business_customer_session",
+      { businessId: "business_food", sessionId: "customer_shift_1" },
+      { fetchImpl, requestId: "hung_tick_1", timeoutMs: 20 }
+    );
+    const tickFailure = assert.rejects(
+      hungTick,
+      /The business service could not be reached\. Try again in a moment\./
+    );
+    await Promise.resolve();
+
+    await submitHarthmereBusinessEconomyMutation(
+      "serve_business_customer",
+      {
+        businessId: "business_food",
+        sessionId: "customer_shift_1",
+        ticketId: "customer_ticket_1",
+        offerId: "serve_worker_meal",
+      },
+      { fetchImpl, requestId: "foreground_serve", timeoutMs: 250 }
+    );
+    assert.deepEqual(
+      calls.slice(0, 2),
+      ["hung_tick_1", "foreground_serve"],
+      "the service choice must be sent without waiting for background reconciliation"
+    );
+    await tickFailure;
+
+    await submitHarthmereBusinessEconomyMutation(
+      "tick_business_customer_session",
+      { businessId: "business_food", sessionId: "customer_shift_1" },
+      { fetchImpl, requestId: "hung_tick_retry", timeoutMs: 250 }
+    );
+    assert.equal(calls.at(-1), "hung_tick_retry");
+  });
+
   it("broadcasts inventory loot updates from business mutations for HUD wallet refreshes", async () => {
     const originalWindow = (globalThis as any).window;
     const originalCustomEvent = (globalThis as any).CustomEvent;

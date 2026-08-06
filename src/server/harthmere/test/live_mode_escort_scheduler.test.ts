@@ -16,7 +16,6 @@ import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
   reduceHarthmereJobsBoardMutation,
 } from "@/shared/harthmere/mmo_jobs_board_authority";
-import { harthmereJobsBoardQuestMarkerPositionForId } from "@/shared/harthmere/jobs_board_quest_marker_positions";
 
 const NOW = 1_800_000_000_000;
 const ACTOR_ID = 1234 as any;
@@ -45,9 +44,6 @@ class FakeRedis implements HarthmereLiveModeEscortRedis {
 
 describe("Harthmere native escort scheduler", () => {
   it("mirrors Anima's ECS position to complete one shared escort", async () => {
-    const target = harthmereJobsBoardQuestMarkerPositionForId(
-      "old_grove_road_post"
-    )!;
     const state = defaultHarthmereLiveModeBackendState(DURABLE_ACTOR_ID, NOW);
     state.jobsBoard.postings.escort_scheduler_job = {
       jobId: "escort_scheduler_job",
@@ -101,10 +97,15 @@ describe("Harthmere native escort scheduler", () => {
     state.jobsBoard = accepted.jobsBoard;
     const companion =
       state.jobsBoard.postings.escort_scheduler_job.escortCompanion!;
+    const target: [number, number, number] = [
+      companion.destination.x,
+      companion.destination.y,
+      companion.destination.z,
+    ];
     companion.position = {
-      x: target.position[0] + 6,
-      y: target.position[1],
-      z: target.position[2],
+      x: target[0] + 6,
+      y: target[1],
+      z: target[2],
     };
 
     const redis = new FakeRedis();
@@ -118,7 +119,7 @@ describe("Harthmere native escort scheduler", () => {
         kind: "create",
         entity: {
           id: ACTOR_ID,
-          position: Position.create({ v: target.position }),
+          position: Position.create({ v: target }),
         },
       },
     ]);
@@ -148,7 +149,7 @@ describe("Harthmere native escort scheduler", () => {
         kind: "update",
         entity: {
           id: companion.entityId,
-          position: Position.create({ v: target.position }),
+          position: Position.create({ v: target }),
         },
       },
     ]);

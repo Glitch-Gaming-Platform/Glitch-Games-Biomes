@@ -6,6 +6,7 @@ import {
   harthmereBusinessInteriorInteractionPoints,
 } from "@/shared/harthmere/business_interior_runtime";
 import {
+  HARTHMERE_BUSINESS_STAFF_SIDE_TOLERANCE_METERS,
   HARTHMERE_BUSINESS_STAFF_STATION_RADIUS_METERS,
   harthmereBusinessPointIsStaffSide,
   harthmereBusinessStaffSideStationForPoint,
@@ -56,6 +57,23 @@ describe("harthmere business staff-side shift station", () => {
         assert.equal(
           harthmereBusinessStaffSideStationForPoint(points.customer as Vec3),
           undefined
+        );
+      });
+
+      it("accepts capsule contact just across the mathematical counter centre", () => {
+        const boundary = (points.customer[2] + points.staff[2]) / 2;
+        const staffDirection = points.staff[2] > points.customer[2] ? 1 : -1;
+        const capsuleContact: Vec3 = [
+          points.staff[0],
+          points.staff[1],
+          boundary -
+            staffDirection *
+              (HARTHMERE_BUSINESS_STAFF_SIDE_TOLERANCE_METERS - 0.05),
+        ];
+        assert.equal(
+          harthmereBusinessStaffSideStationForPoint(capsuleContact)?.outpostId,
+          record.outpostId,
+          `${record.outpostId} rejected a player visibly touching the staff side of the counter`
         );
       });
 

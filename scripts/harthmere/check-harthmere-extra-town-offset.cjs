@@ -137,7 +137,9 @@ ok(
   "client runtime offset marker is present"
 );
 ok(
-  renderer.includes("NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN"),
+  clientWorldExtension.includes(
+    "process.env.NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN"
+  ),
   "client reads public extra-town flag"
 );
 ok(

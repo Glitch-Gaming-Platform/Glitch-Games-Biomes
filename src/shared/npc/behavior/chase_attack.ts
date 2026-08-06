@@ -106,6 +106,7 @@ export const NIGHT_MUCKER_HEX_DISENGAGE_DISTANCE = 48;
 export const NIGHT_MUCKER_HEX_MOVEMENT_MULTIPLIER = 1.8;
 export const NIGHT_MUCKER_HEX_DAMAGE_MULTIPLIER = 1.5;
 export const NIGHT_MUCKER_HEX_ATTACK_INTERVAL_MULTIPLIER = 0.55;
+export const HARTHMERE_NON_BOSS_CREATURE_MELEE_FOV_CAP_DEG = 125;
 // Combat pursuit tuning is cumulative, not absolute. It was first tuned to
 // 1.35x, then raised by 20% to 1.62x, and the current requirement is another
 // 30% on top of that already-increased pursuit speed.
@@ -120,11 +121,15 @@ export const HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30 = 1.3;
  * the pursuit speed was before this pass.
  */
 export const HARTHMERE_NPC_SPEED_STEP_DOWN_30 = 0.7;
+/** 2026-08-06 follow-up: hostile battle movement is another 10% slower. */
+export const HARTHMERE_NPC_SPEED_STEP_DOWN_10 = 0.9;
+export const HARTHMERE_NPC_SPEED_COMBINED_STEP_DOWN =
+  HARTHMERE_NPC_SPEED_STEP_DOWN_30 * HARTHMERE_NPC_SPEED_STEP_DOWN_10;
 export const HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER =
   HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER *
   HARTHMERE_NPC_CHASE_SPEED_STEP_UP_20 *
   HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30 *
-  HARTHMERE_NPC_SPEED_STEP_DOWN_30;
+  HARTHMERE_NPC_SPEED_COMBINED_STEP_DOWN;
 // Normal player sprint animation transitions at 8 m/s. Keep Harthmere pursuit
 // urgent without allowing an NPC to outrun a sprinting player on open ground.
 //
@@ -133,9 +138,9 @@ export const HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER =
 // change is aimed at, and a floor left at its old value would put every slow
 // creature back at its previous speed.
 export const HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND =
-  7.6 * HARTHMERE_NPC_SPEED_STEP_DOWN_30;
+  7.6 * HARTHMERE_NPC_SPEED_COMBINED_STEP_DOWN;
 export const HARTHMERE_NPC_CHASE_MIN_EFFECTIVE_METERS_PER_SECOND =
-  2.25 * HARTHMERE_NPC_SPEED_STEP_DOWN_30;
+  2.25 * HARTHMERE_NPC_SPEED_COMBINED_STEP_DOWN;
 const CHASE_STUCK_DIRECT_PURSUIT_SECONDS = 1.0;
 const LINE_OF_SIGHT_SAMPLE_STEP_METERS = 0.45;
 const LINE_OF_SIGHT_SAMPLE_BOX_METERS = 0.18;
@@ -495,7 +500,7 @@ export function boundedHarthmereChaseSpeedForName(
         HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND
       )
     : isHarthmereMonsterSpeedName(name)
-      ? requestedSpeed * HARTHMERE_NPC_SPEED_STEP_DOWN_30
+      ? requestedSpeed * HARTHMERE_NPC_SPEED_COMBINED_STEP_DOWN
       : requestedSpeed;
 }
 
@@ -631,7 +636,7 @@ export function boundedHarthmereNpcChaseSpeed(
   // The two authored boss overrides below bypass boundedHarthmereChaseSpeedForName
   // entirely, so they apply the 30% step-down (and scale their own bespoke caps)
   // themselves. Without this the bosses would be the only monsters unaffected.
-  const slower = HARTHMERE_NPC_SPEED_STEP_DOWN_30;
+  const slower = HARTHMERE_NPC_SPEED_COMBINED_STEP_DOWN;
   if (name.includes("gilded bull")) {
     const horned =
       (npc.state.chapter1Encounter?.brokenPartIds?.length ?? 0) < 2;
@@ -702,7 +707,13 @@ export function enhancedNightMuckerHexCombatParams(
       0.55,
       base.attackIntervalSecs * NIGHT_MUCKER_HEX_ATTACK_INTERVAL_MULTIPLIER
     ),
-    attackFovDeg: Math.max(base.attackFovDeg, 175),
+    // Night aggression may make the enemy faster to engage and more damaging,
+    // but it must not widen melee into a near-rear hit. The committed cast yaw
+    // remains authoritative, so circling behind during windup produces a whiff.
+    attackFovDeg: Math.min(
+      base.attackFovDeg,
+      HARTHMERE_NON_BOSS_CREATURE_MELEE_FOV_CAP_DEG
+    ),
     attackDamage: Math.max(
       base.attackDamage + 1,
       Math.ceil(base.attackDamage * NIGHT_MUCKER_HEX_DAMAGE_MULTIPLIER)

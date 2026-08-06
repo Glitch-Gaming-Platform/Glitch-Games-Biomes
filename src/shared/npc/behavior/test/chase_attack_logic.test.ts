@@ -30,7 +30,10 @@ import {
   HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
   HARTHMERE_NPC_CHASE_SPEED_STEP_UP_20,
   HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30,
+  HARTHMERE_NPC_SPEED_COMBINED_STEP_DOWN,
+  HARTHMERE_NPC_SPEED_STEP_DOWN_10,
   HARTHMERE_NPC_SPEED_STEP_DOWN_30,
+  HARTHMERE_NON_BOSS_CREATURE_MELEE_FOV_CAP_DEG,
   HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER,
   retaliationTargetRotationIndex,
   isRetaliationEncounterParticipant,
@@ -368,6 +371,17 @@ describe("chase attack: night muck/hex aggression helpers", () => {
     assert.equal(night.attackStrikeMomentSecs, base.attackStrikeMomentSecs);
     assert.ok(night.attackAnimationMultiplier > base.attackAnimationMultiplier);
     assert.ok(NIGHT_MUCKER_HEX_MOVEMENT_MULTIPLIER >= 1.8);
+    assert.equal(night.attackFovDeg, base.attackFovDeg);
+    assert.equal(
+      enhancedNightMuckerHexCombatParams(
+        "Pale Hexer",
+        true,
+        { ...base, attackFovDeg: 360 },
+        base
+      )?.attackFovDeg,
+      HARTHMERE_NON_BOSS_CREATURE_MELEE_FOV_CAP_DEG,
+      "stale/wide source data must not turn a creature swing into a rear hit"
+    );
 
     assert.equal(
       enhancedNightMuckerHexCombatParams("Pale Hexer", false, base, base),
@@ -399,21 +413,23 @@ describe("chase attack: Harthmere sight and speed limits", () => {
     assert.equal(isHarthmereSightBoundChaserName("Town Guard"), false);
   });
 
-  it("compounds the pursuit tuning history, ending 30% slower", () => {
+  it("compounds the pursuit tuning history, then applies the extra 10% slowdown", () => {
     assert.equal(HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER, 1.35);
     assert.equal(HARTHMERE_NPC_CHASE_SPEED_STEP_UP_20, 1.2);
     assert.equal(HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30, 1.3);
     assert.equal(HARTHMERE_NPC_SPEED_STEP_DOWN_30, 0.7);
-    // Cumulative, not a replacement: 1.35 -> 1.62 -> 2.106 -> 1.4742.
+    assert.equal(HARTHMERE_NPC_SPEED_STEP_DOWN_10, 0.9);
+    assert.equal(HARTHMERE_NPC_SPEED_COMBINED_STEP_DOWN, 0.63);
+    // Cumulative, not a replacement: 1.35 -> 1.62 -> 2.106 -> 1.32678.
     assert.equal(
       HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
-      HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER * 1.2 * 1.3 * 0.7
+      HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER * 1.2 * 1.3 * 0.7 * 0.9
     );
-    // The 2026-08-03 pass: exactly 30% off the previously shipped pursuit speed.
+    // The 2026-08-03 30% pass and this 10% follow-up are both retained.
     assert.ok(
       Math.abs(
         HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER -
-          HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER * 1.2 * 1.3 * 0.7
+          HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER * 1.2 * 1.3 * 0.7 * 0.9
       ) < 1e-9
     );
     assert.ok(
@@ -431,10 +447,13 @@ describe("chase attack: Harthmere sight and speed limits", () => {
     // The cap must stay strictly below the 8 m/s player sprint transition, and
     // it scales with the step-down so the ceiling cannot absorb the reduction.
     assert.ok(HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND < 8);
-    assert.equal(HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND, 7.6 * 0.7);
+    assert.equal(
+      HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND,
+      7.6 * 0.7 * 0.9
+    );
     assert.equal(
       boundedHarthmereChaseSpeedForName("Road Bandit Scout", 5.1),
-      5.1 * HARTHMERE_NPC_SPEED_STEP_DOWN_30
+      5.1 * HARTHMERE_NPC_SPEED_COMBINED_STEP_DOWN
     );
     assert.equal(
       boundedHarthmereChaseSpeedForName("Unrelated NPC", 8.64),
@@ -505,7 +524,7 @@ describe("chase attack: Harthmere sight and speed limits", () => {
               4 * HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
               HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND
             )
-          : 4 * HARTHMERE_NPC_SPEED_STEP_DOWN_30,
+          : 4 * HARTHMERE_NPC_SPEED_COMBINED_STEP_DOWN,
         name
       );
     }

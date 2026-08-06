@@ -2,6 +2,7 @@ import { getClientRenderPosition } from "@/client/components/map/helpers";
 import {
   harthmereCombatLockCameraFrame,
   harthmereCombatLockCameraTarget,
+  smoothHarthmereCombatLockTarget,
 } from "@/client/components/challenges/harthmere_combat_lock_on";
 import type { ClientConfig } from "@/client/game/client_config";
 import type { Events } from "@/client/game/context_managers/events";
@@ -124,6 +125,8 @@ export class CameraScript implements Script {
   private selfieTransitionFinishOrientation: Vec2f = [0, 0];
   private lastTrackedPosition: Vec3f = [0, 0, 0];
   private lastTrackedOrientation: Vec2f = [0, 0];
+  private combatLockTargetOffset?: number;
+  private smoothedCombatLockTarget?: Vec3;
 
   private cinematicOffsets: Vec3f = [0, 0, 0];
   private wasWaypointCameraActive = false;
@@ -743,9 +746,21 @@ export class CameraScript implements Script {
     trackedObject: CameraTargetObject,
     camTweaks: TrackingCamTweaks
   ) {
-    this.tickCameraOrientation(camTweaks);
     const player = this.resources.get("/scene/local_player");
     const scenePlayer = this.resources.get("/scene/player", player.id);
+    const combatLock =
+      trackedObject.kind === "player" && camTweaks.kind !== "tracking_selfie"
+        ? harthmereCombatLockCameraTarget(player.player.position)
+        : undefined;
+    // Lock-on is the orientation authority while active. Applying free-look
+    // input first and then correcting toward the target made the two controls
+    // fight every frame, producing the visible left/right camera shake while
+    // strafing. Free look resumes immediately when the lock releases.
+    if (!combatLock) {
+      this.tickCameraOrientation(camTweaks);
+      this.combatLockTargetOffset = undefined;
+      this.smoothedCombatLockTarget = undefined;
+    }
 
     if (
       trackedObject.kind !== this.lastTrackedObject.kind ||
@@ -805,18 +820,32 @@ export class CameraScript implements Script {
           this.orientation = [...player.player.orientation];
         }
 
-        const combatLock = harthmereCombatLockCameraTarget(
-          player.player.position
-        );
         let combatLockFrame:
           ReturnType<typeof harthmereCombatLockCameraFrame> | undefined;
-        if (combatLock && camTweaks.kind !== "tracking_selfie") {
+        if (combatLock) {
+          if (
+            this.combatLockTargetOffset !== combatLock.offset ||
+            !this.smoothedCombatLockTarget
+          ) {
+            this.combatLockTargetOffset = combatLock.offset;
+            this.smoothedCombatLockTarget = [...combatLock.world];
+          } else {
+            this.smoothedCombatLockTarget = smoothHarthmereCombatLockTarget({
+              current: this.smoothedCombatLockTarget,
+              target: combatLock.world,
+              dt,
+            });
+          }
+          const smoothedDistance = Math.hypot(
+            this.smoothedCombatLockTarget[0] - player.player.position[0],
+            this.smoothedCombatLockTarget[2] - player.player.position[2]
+          );
           combatLockFrame = harthmereCombatLockCameraFrame({
             currentOrientation: this.orientation,
             eye: track,
-            target: combatLock.world,
+            target: this.smoothedCombatLockTarget,
             targetRadius: combatLock.radius,
-            distance: combatLock.distance,
+            distance: smoothedDistance,
             dt,
           });
           this.orientation = combatLockFrame.orientation;

@@ -1,7 +1,7 @@
 import type { Vec3 } from "@/shared/math/types";
 
 export const HARTHMERE_BOSS_VISUAL_ASSETS_VERSION =
-  "harthmere-boss-visual-assets-v5-future-stagger-clips" as const;
+  "harthmere-boss-visual-assets-v6-polished-motion" as const;
 
 export const HARTHMERE_BOSS_REQUIRED_ANIMATION_CLIPS = [
   "Idle",

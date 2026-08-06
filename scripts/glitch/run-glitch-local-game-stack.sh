@@ -616,6 +616,24 @@ apply_mutable_hotfix() {
 
 apply_mutable_hotfix
 
+start_mutable_hotfix_watcher() {
+  if [ "${GLITCH_MUTABLE_HOTFIX_ENABLED:-0}" != "1" ] && [ "${GLITCH_MUTABLE_HOTFIX_OPEN:-0}" != "1" ]; then
+    return 0
+  fi
+  if [ "${GLITCH_MUTABLE_HOTFIX_WATCH_ENABLED:-1}" != "1" ]; then
+    log "Mutable hotfix watcher disabled by GLITCH_MUTABLE_HOTFIX_WATCH_ENABLED."
+    return 0
+  fi
+
+  log "Starting Glitch mutable hotfix watcher for role=$GLITCH_STACK_ROLE."
+  node "$APP_ROOT/dist/apply-mutable-hotfix.js" --watch &
+  local pid="$!"
+  PIDS="$PIDS $pid"
+  log "PID mutable-hotfix-watcher=$pid"
+}
+
+start_mutable_hotfix_watcher
+
 start_anima_worker() {
   local galois_prefix="${GALOIS_STATIC_PREFIX:-}"
   if [ -z "$galois_prefix" ]; then

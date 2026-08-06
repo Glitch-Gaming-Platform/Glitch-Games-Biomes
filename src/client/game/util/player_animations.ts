@@ -1,6 +1,7 @@
 import {
   HARTHMERE_ATTACK_VARIATION_POLISH_VERSION,
   getHarthmereAttackFamilyForAction,
+  harthmereMeleeComboAnimation,
   pickHarthmereAttackVariation,
 } from "@/shared/harthmere/attack_variation_polish";
 import type { Player } from "@/client/game/resources/players";
@@ -97,7 +98,10 @@ function getHarthmereAttackVariationEmoteType(
   variationIndex: number | undefined
 ): HarthmereAttackVariationEmoteType {
   const normalized = Math.min(4, Math.max(1, Math.trunc(variationIndex ?? 1)));
-  return `${emoteType}Var${normalized}` as HarthmereAttackVariationEmoteType;
+  return harthmereMeleeComboAnimation(
+    emoteType === "attack2" ? "heavy" : "basic",
+    normalized as 1 | 2 | 3 | 4
+  ).emoteType as HarthmereAttackVariationEmoteType;
 }
 
 // harthmere-body-weapon-visual-cohesion
@@ -139,6 +143,7 @@ export const HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION =
 export const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION =
   "harthmere-body-weapon-visual-cohesion";
 const HARTHMERE_BODY_WEAPON_ATTACK_EASE_IN = 0.08;
+const HARTHMERE_BODY_WEAPON_ATTACK_EASE_OUT = 0.1;
 
 // harthmere-full-animation-runtime
 export const HARTHMERE_FULL_BODY_ANIMATION_RUNTIME_VERSION =
@@ -787,6 +792,7 @@ function getHarthmereWeaponSyncedEmoteWeights(
       // The weapon trail/damage timing starts immediately. Keep the body
       // action responsive, then let normal locomotion take the lower body.
       easeInTime: HARTHMERE_BODY_WEAPON_ATTACK_EASE_IN,
+      easeOutTime: HARTHMERE_BODY_WEAPON_ATTACK_EASE_OUT,
     },
     layers: {
       arms: "apply",

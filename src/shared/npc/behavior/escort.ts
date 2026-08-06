@@ -48,17 +48,10 @@ export const HARTHMERE_ESCORT_VERSION = "harthmere-escort-v1" as const;
  *   missing.
  */
 export type EscortCombatPolicy =
-  | "noncombatant"
-  | "defend_self"
-  | "defend_leader"
-  | "fight_muck";
+  "noncombatant" | "defend_self" | "defend_leader" | "fight_muck";
 
 export type EscortStatus =
-  | "following"
-  | "fighting"
-  | "catching_up"
-  | "arrived"
-  | "down";
+  "following" | "fighting" | "catching_up" | "arrived" | "down";
 
 /** Default trailing distance behind the leader, in metres. */
 export const ESCORT_DEFAULT_FOLLOW_DISTANCE = 2.6;
@@ -67,11 +60,11 @@ export const ESCORT_FOLLOW_SLACK_METERS = 1.4;
 /** Escorts visibly run even while correcting a small formation gap. */
 export const ESCORT_FOLLOW_RUN_SPEED_MULTIPLIER = 1;
 /** Extra pace used as soon as the escort falls out of formation. */
-export const ESCORT_CLOSE_FAST_RUN_SPEED_MULTIPLIER = 1.5;
-/** Near-player-sprint pace reserved for recovering a badly separated escort. */
-export const ESCORT_CATCH_UP_RUN_SPEED_MULTIPLIER = 1.8;
+export const ESCORT_CLOSE_FAST_RUN_SPEED_MULTIPLIER = 1.7;
+/** Faster than player sprint so hills and collision corrections do not lose ground. */
+export const ESCORT_CATCH_UP_RUN_SPEED_MULTIPLIER = 2.25;
 /** Beyond this the escort has lost the leader and must catch up. */
-export const ESCORT_DEFAULT_LEASH_DISTANCE = 48;
+export const ESCORT_DEFAULT_LEASH_DISTANCE = 32;
 /** Radius around the leader in which `fight_muck` will pick up a hostile. */
 export const ESCORT_DEFEND_RADIUS = 12;
 /** Distance from the formation slot inside which the escort simply holds. */
@@ -116,6 +109,7 @@ export const zEscortComponent = z.object({
       pathFailingSinceSeconds: z.number().optional(),
       lastProgressPosition: zVec3f.optional(),
       lastProgressAtSeconds: z.number().optional(),
+      lastProgressDistanceToLeader: z.number().nonnegative().optional(),
     })
     .optional(),
 });
@@ -134,6 +128,7 @@ export interface EscortState {
   pathFailingSinceSeconds?: number;
   lastProgressPosition?: Vec3;
   lastProgressAtSeconds?: number;
+  lastProgressDistanceToLeader?: number;
 }
 
 /**
@@ -185,11 +180,7 @@ export function escortFormationAnchor(input: {
 }
 
 export type EscortLocomotionAction =
-  | "hold"
-  | "follow"
-  | "close_fast"
-  | "catch_up"
-  | "arrived";
+  "hold" | "follow" | "close_fast" | "catch_up" | "arrived";
 
 export interface EscortLocomotionInput {
   distanceToFormationAnchor: number;
@@ -296,7 +287,8 @@ export function evaluateEscortCombatTarget(
 
   return pickNearestToEscort(
     live.filter(
-      (candidate) => candidate.isMuck && candidate.distanceToLeader <= defendRadius
+      (candidate) =>
+        candidate.isMuck && candidate.distanceToLeader <= defendRadius
     )
   );
 }
@@ -335,6 +327,8 @@ export interface EscortPathProgressInput {
   lastProgressPosition?: ReadonlyVec3;
   lastProgressAtSeconds?: number;
   pathFailingSinceSeconds?: number;
+  distanceToLeader?: number;
+  lastProgressDistanceToLeader?: number;
   progressDistanceMeters?: number;
   stuckGraceSeconds?: number;
 }
@@ -343,12 +337,14 @@ export interface EscortPathProgressResult {
   lastProgressPosition: Vec3;
   lastProgressAtSeconds: number;
   pathFailingSinceSeconds: number | undefined;
+  lastProgressDistanceToLeader: number | undefined;
 }
 
 /**
- * Tracks actual locomotion progress while an escort is beyond its leash.
- * Distance from the leader alone is not navigation failure: a fast leader can
- * keep widening the gap while the escort is still moving correctly.
+ * Tracks useful catch-up progress while an escort is beyond its leash. Movement
+ * only resets recovery when it closes the leader gap; sliding along an obstacle
+ * or falling behind on steep terrain is treated as a path failure and eventually
+ * uses the terrain-validated warp fallback.
  */
 export function escortPathProgress(
   input: EscortPathProgressInput
@@ -359,6 +355,7 @@ export function escortPathProgress(
       lastProgressPosition: current,
       lastProgressAtSeconds: input.nowSeconds,
       pathFailingSinceSeconds: undefined,
+      lastProgressDistanceToLeader: input.distanceToLeader,
     };
   }
   if (
@@ -369,28 +366,40 @@ export function escortPathProgress(
       lastProgressPosition: current,
       lastProgressAtSeconds: input.nowSeconds,
       pathFailingSinceSeconds: undefined,
+      lastProgressDistanceToLeader: input.distanceToLeader,
     };
   }
   const moved = Math.hypot(
     current[0] - input.lastProgressPosition[0],
     current[2] - input.lastProgressPosition[2]
   );
-  if (moved >= (input.progressDistanceMeters ?? ESCORT_PROGRESS_DISTANCE_METERS)) {
+  const closedLeaderGap =
+    input.distanceToLeader === undefined ||
+    input.lastProgressDistanceToLeader === undefined ||
+    input.lastProgressDistanceToLeader - input.distanceToLeader >=
+      (input.progressDistanceMeters ?? ESCORT_PROGRESS_DISTANCE_METERS) * 0.5;
+  if (
+    moved >=
+      (input.progressDistanceMeters ?? ESCORT_PROGRESS_DISTANCE_METERS) &&
+    closedLeaderGap
+  ) {
     return {
       lastProgressPosition: current,
       lastProgressAtSeconds: input.nowSeconds,
       pathFailingSinceSeconds: undefined,
+      lastProgressDistanceToLeader: input.distanceToLeader,
     };
   }
   const grace = input.stuckGraceSeconds ?? ESCORT_STUCK_GRACE_SECONDS;
   const failingSince =
     input.nowSeconds - input.lastProgressAtSeconds >= grace
-      ? input.pathFailingSinceSeconds ?? input.lastProgressAtSeconds + grace
+      ? (input.pathFailingSinceSeconds ?? input.lastProgressAtSeconds + grace)
       : undefined;
   return {
     lastProgressPosition: [...input.lastProgressPosition] as Vec3,
     lastProgressAtSeconds: input.lastProgressAtSeconds,
     pathFailingSinceSeconds: failingSince,
+    lastProgressDistanceToLeader: input.lastProgressDistanceToLeader,
   };
 }
 
@@ -464,7 +473,9 @@ export function buildEscortState(input: {
       4,
       input.leashDistance ?? ESCORT_DEFAULT_LEASH_DISTANCE
     ),
-    destination: input.destination ? ([...input.destination] as Vec3) : undefined,
+    destination: input.destination
+      ? ([...input.destination] as Vec3)
+      : undefined,
     assignmentId: input.assignmentId,
   };
 }

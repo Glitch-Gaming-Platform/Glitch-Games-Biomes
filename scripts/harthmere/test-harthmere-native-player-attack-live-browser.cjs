@@ -18,6 +18,9 @@ const fs = require("fs");
 const path = require("path");
 const { chromium } = require("playwright");
 const {
+  acquireBrowserRuntimeLease,
+} = require("./browser-runtime-lease.cjs");
+const {
   Collideable,
   Health,
   Inventory,
@@ -77,6 +80,7 @@ const artifactsDir = path.resolve(
     path.join(root, "artifacts/harthmere-native-player-attack", runId)
 );
 const reportPath = path.join(artifactsDir, "report.json");
+let browserRuntimeLease;
 const basePosition = [895, 62, -197];
 const baseOrientation = [0, -Math.PI / 2]; // Positive X.
 const scenarioCooldownMs = Number(
@@ -1119,6 +1123,15 @@ async function runProjectileCatalog(page) {
 async function main() {
   assert(controlToken, "HARTHMERE_E2E_CONTROL_TOKEN is required");
   fs.mkdirSync(artifactsDir, { recursive: true });
+  browserRuntimeLease = acquireBrowserRuntimeLease({
+    runner: "harthmere-native-player-attack-live-browser",
+    runId,
+    baseUrl,
+    syncBaseUrl,
+    stackContainer: process.env.HARTHMERE_E2E_STACK_CONTAINER || "",
+    redisContainer: process.env.HARTHMERE_E2E_REDIS_CONTAINER || "",
+  });
+  report.browserRuntimeLane = browserRuntimeLease.laneId;
 
   const browser = await chromium.launch({
     headless: process.env.HARTHMERE_E2E_HEADLESS !== "0",
@@ -2678,7 +2691,7 @@ async function main() {
 
         // Screenshots are intentionally deferred until every follow-up press is
         // buffered. A synchronous capture between hit starts can consume most
-        // of the 160 ms authored link and turn a correct combo into a test-made
+        // of the 250 ms authored light link and turn a correct combo into a test-made
         // recovery pause.
         await capture("four-hits");
 
@@ -3790,5 +3803,5 @@ main().catch((error) => {
   persist();
   console.error(error?.stack || error);
   console.error(`REPORT ${reportPath}`);
-  process.exit(1);
-});
+  process.exitCode = 1;
+}).finally(() => browserRuntimeLease?.release());

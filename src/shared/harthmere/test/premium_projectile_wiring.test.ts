@@ -36,7 +36,7 @@ describe("premium projectile native wiring", () => {
   it("keeps a complete unique 31-projectile premium registry", () => {
     assert.equal(
       HARTHMERE_PROJECTILE_VISUAL_VERSION,
-      "harthmere-premium-projectiles-v2"
+      "harthmere-premium-projectiles-v3"
     );
     assert.equal(HARTHMERE_PROJECTILE_VISUALS.length, 31);
     assert.equal(

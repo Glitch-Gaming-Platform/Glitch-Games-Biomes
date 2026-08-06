@@ -380,6 +380,7 @@ export function updateHarthmereNpcStagger(
     nowSeconds,
     maxHp: npc.health.maxHp,
     level: profile?.level ?? 1,
+    isBoss: profile?.isBoss,
     damageTime: npc.health.lastDamageTime,
     damageAmount,
     damageIsAttack: npc.health.lastDamageSource?.kind === "attack",

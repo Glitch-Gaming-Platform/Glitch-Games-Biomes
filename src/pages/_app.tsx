@@ -16,6 +16,7 @@ import "@/client/styles/splash.css";
 import "@/client/styles/static.css";
 import { useInstallTrackers } from "@/client/util/ad_helpers";
 import { installHarthmereStorageHardening } from "@/client/util/harthmere_storage_hardening";
+import { installGlitchMutableHotfixClient } from "@/client/util/glitch_mutable_hotfix";
 import { reportFunnelStage } from "@/shared/funnel";
 import "leaflet/dist/leaflet.css";
 import type { AppProps } from "next/app";
@@ -29,6 +30,7 @@ import { HarthmereGlitchInstallBootstrap } from "@/client/game/glitch/harthmere_
 // iframe where the browser blocks/partitions storage. No-op on the server and
 // idempotent. See harthmere_storage_hardening.ts.
 installHarthmereStorageHardening();
+installGlitchMutableHotfixClient();
 
 export default function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -47,8 +49,10 @@ export default function MyApp({ Component, pageProps }: AppProps) {
     // TODO: Better Server Error Handling.
     return <></>;
   }
-  return <>
+  return (
+    <>
       <HarthmereGlitchInstallBootstrap />
       <Component {...pageProps} />
-    </>;
+    </>
+  );
 }

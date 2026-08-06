@@ -108,6 +108,7 @@ CH1=(
   'src/client/components/challenges/Chapter1PollingPerformance.test.ts'
   'src/shared/harthmere/test/material_acquisition_guidance.test.ts'
   'src/shared/harthmere/test/harthmere_business_storefront_purchase.test.ts'
+  'src/shared/harthmere/test/harthmere_black_anvil_vendor.test.ts'
 )
 QUESTS=(
   'src/shared/harthmere/test/ch1_live_fixes.test.ts'
@@ -264,6 +265,8 @@ PERF=(
 # stayed green. These are the contracts that would have caught it.
 COMBAT=(
   'src/client/components/challenges/harthmere_combat_lock_on.test.ts'
+  'src/client/components/challenges/useHarthmereNativeVitalsProjection.test.ts'
+  'src/client/game/util/harthmere_movement_stamina_fallback.test.ts'
   'src/client/game/renderers/local_dev/harthmere_combat_vfx_always_on.test.ts'
   'src/client/game/renderers/npc_stagger_effect.test.ts'
   'src/client/game/resources/melee_attack_region.test.ts'
@@ -273,6 +276,7 @@ COMBAT=(
   'src/shared/harthmere/test/native_player_attack_live_browser_runner_contract.test.ts'
   'src/shared/harthmere/test/premium_projectile_wiring.test.ts'
   'src/shared/harthmere/test/anima_hill_combat_e2e.test.ts'
+  'src/shared/harthmere/test/harthmere_native_movement_action.test.ts'
   'src/shared/npc/behavior/test/chase_attack_logic.test.ts'
   'src/shared/npc/behavior/test/npc_locomotion_selection.test.ts'
   'src/shared/npc/test/simulated_combat_state.test.ts'

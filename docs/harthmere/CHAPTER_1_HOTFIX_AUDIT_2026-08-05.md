@@ -413,7 +413,120 @@ combined artifact:
 - [x] Close all Playwright/Chromium processes and explicitly release shared
       artifact/browser ownership.
 
-Current status: **Chapter 1 functional acceptance complete.** Boss-marketing
-still composition remains tracked separately in
-`docs/harthmere/BOSS_MARKETING_SCREENSHOTS.md`; it is not a Chapter 1 quest
-completion blocker.
+## August 6 Grove acceptance reopening
+
+The later player HAR/screenshots and the focused live reruns invalidate the
+blanket “functional acceptance complete” verdict above for the Grove jobs and
+supplier slice. Preserve the earlier 31-quest checkpoint reports as historical
+coverage of unaffected objectives, but do not use them to sign off these newly
+exposed paths.
+
+Two exact live failures were reproduced:
+
+- `artifacts/harthmere-native-ecs-e2e/1786046681162-37500-report.json`:
+  the semantic Muck Rake and Wooden Hoe presentation donor were present in the
+  shipped client, but protected-region ACL handling removed the selected tool
+  before `itemAttachment.itemMeshInstance.three` existed;
+- `artifacts/harthmere-native-ecs-e2e/1786047638912-66886-report.json`:
+  Chapter 1 state correctly named `Rin the Forager` and returned Rin's exact
+  position/entity, while the world map and minimap retained the generic
+  `Meet the Suppliers` pin at `[510, 73, -155]`.
+
+The grouped source hotfix now:
+
+- preserves Muck Rake and Repair Mallet held meshes in protected regions while
+  leaving the normal action permission/server validation intact;
+- publishes an exact `chapter1_route:*` destination for every current stop in
+  `meet_the_suppliers`, `collect_testimonies`, and `the_three_answers`, and
+  prevents the generic native quest auto-anchor from overwriting it;
+- uses the authored Wooden Hoe donor for the Muck Rake instead of Muck Buster;
+- upgrades focused Jobs Board E2E so cleanup and repair require a selected
+  native tool, non-empty held mesh, visible field F prompt, server interaction
+  receipt, completed todo, board-return marker, turn-in, and native-wallet
+  reward; and
+- upgrades supplier E2E to perform six real NPC-dialogue vendor transactions
+  and verify the map and minimap advance after every transaction.
+
+Focused source evidence after the reopening:
+
+- 110 held-item, map-route, Chapter 1 prompt, Bikkie presentation, and job
+  objective tests passed;
+- 36 Chapter 1/native browser-runner contract tests passed;
+- all Jobs Board native-ECS static contracts passed, including non-fail-fast
+  focused cleanup/repair selection and field-use evidence. The final focused
+  lane now also starts without each tool, buys it through the real business
+  Shopfront, verifies the vendor marker returns to the field target, equips the
+  backpack purchase through Inventory, and then proves visible field use;
+- `tsconfig.ch1check.json` and `tsconfig.ch1renderer.json` passed;
+- runner syntax and scoped `git diff --check` passed.
+
+Remaining live acceptance is intentionally narrow and must run on the source-
+coherent final client artifact:
+
+- [ ] six real supplier transactions, each with exact world-map and minimap pin
+      progression;
+- [ ] Muck Rake front/left/right held-model visual approval;
+- [ ] `town_repair_fence` and `town_cleanup_muck_patch` together, non-fail-fast,
+      through real vendor purchase, marker return, hotbar equip, field use, and
+      final reward.
+
+Current status: **Grove Chapter 1 source hotfixes are focused-green; final live
+supplier/tool acceptance is reopened and pending.** Boss-marketing still
+composition remains tracked separately in
+`docs/harthmere/BOSS_MARKETING_SCREENSHOTS.md`.
+
+## August 6 wrap handoff
+
+The user ended this work before another artifact refresh or browser batch. Do
+not convert the source-green verdict above into a live-pass claim.
+
+Final source additions in this task:
+
+- focused repair/cleanup E2E now starts without the required tool, requires the
+  exact vendor marker, buys the Muck Rake or Repair Mallet through the real
+  business Shopfront, verifies the marker returns to the field objective,
+  equips the backpack purchase through Inventory/Hotbar 1, requires a visible
+  held mesh, performs the real field `F` interaction, and still requires todo
+  completion, board return, turn-in, and native-wallet reward;
+- the all-jobs static release contract requires that real purchase/equip/use
+  path, so a fixture grant or attached mesh alone cannot satisfy acceptance;
+- the fast-testing guide records the same rule and retains non-fail-fast,
+  two-job batch execution.
+
+Final focused checks run after those additions:
+
+- 110 held-item, dynamic-route, Chapter 1 prompt, Bikkie presentation, and job
+  objective tests passed;
+- 30 Chapter 1 native browser-runner contracts passed;
+- all Jobs Board native-ECS static contracts passed;
+- runner syntax, Prettier, scoped TypeScript checks, and scoped diff checks
+  passed.
+
+Runtime/artifact disposition at wrap:
+
+- mounted app build: `warm-20260806191329`, healthy, restart count 0, not OOM
+  killed, root HTTP 200;
+- the mounted build predates the final held-tool, dynamic-route, Muck Rake
+  presentation, and real tool-purchase acceptance source, so it is not a valid
+  final artifact for these gates;
+- mutable-hotfix support returned `mutable_hotfix_disabled`; no mutable client
+  manifest was applied or persisted by this task;
+- no new build, app remount, Redis mutation, Anima mutation, or browser launch
+  was performed after the user's wrap directive; ownership was explicitly
+  released.
+
+Only these affected live gates remain for a later task. Previously passed
+Chapter 1 rows should not be replayed:
+
+1. Continue the supplier route from the already-live-green Rin evidence and
+   prove the remaining named suppliers (including Gus) through real trade, with
+   exact world-map and minimap progression after each transaction.
+2. Approve the equipped Muck Rake from readable front/left/right gameplay
+   angles and require the model to remain visible in protected regions.
+3. Run `town_repair_fence` and `town_cleanup_muck_patch` together,
+   non-fail-fast, through real purchase, marker return, hotbar equip, visible
+   tool use, server receipt, turn-in, and reward.
+
+Status at handoff: **source and focused contracts pass; final affected live
+acceptance is incomplete because the user requested immediate wrap before a
+source-coherent client artifact and bounded browser reruns were produced.**

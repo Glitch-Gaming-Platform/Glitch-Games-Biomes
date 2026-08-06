@@ -3,8 +3,10 @@
 
 import assert from "assert";
 import {
+  harthmereJobsBoardFieldTargetFeetY,
   harthmereJobsBoardFieldTargets,
   harthmereJobsBoardFieldTargetForId,
+  harthmereJobsBoardFieldTargetsNearPosition,
   harthmereOutpostWorkStationForOutpost,
   isHarthmereJobsBoardFieldTargetId,
   validateHarthmereJobsBoardFieldTargets,
@@ -43,6 +45,11 @@ const AUTHORITATIVE_RECEIPT_KINDS = new Set([
 ]);
 
 describe("jobs board field targets", () => {
+  it("keeps permanent field props visible at authored Y while terrain streams", () => {
+    assert.equal(harthmereJobsBoardFieldTargetFeetY(undefined, 47), 47);
+    assert.equal(harthmereJobsBoardFieldTargetFeetY(52, 47), 52);
+  });
+
   it("declares one physical target per business template and per outpost", () => {
     assert.deepEqual(validateHarthmereJobsBoardFieldTargets(), []);
     assert.equal(
@@ -89,6 +96,27 @@ describe("jobs board field targets", () => {
       assert.ok(isHarthmereJobsBoardFieldTargetId(target.targetId));
       assert.ok(isHarthmereJobsBoardFieldTargetId(target.mapMarkerId));
     }
+  });
+
+  it("recovers the exact physical prop from a synthetic pin position without widening nearby targets", () => {
+    const watchPost = harthmereJobsBoardFieldTargetForId("trade_route_watch")!;
+    assert.deepEqual(
+      harthmereJobsBoardFieldTargetsNearPosition(watchPost.position).map(
+        (target) => target.targetId
+      ),
+      ["trade_route_watch"]
+    );
+    assert.deepEqual(
+      harthmereJobsBoardFieldTargetsNearPosition(
+        [
+          watchPost.position[0] + 2,
+          watchPost.position[1],
+          watchPost.position[2],
+        ],
+        1.75
+      ),
+      []
+    );
   });
 
   it("keeps each work station away from the outpost's own jobs board", () => {

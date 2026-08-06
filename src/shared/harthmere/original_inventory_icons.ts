@@ -35,6 +35,11 @@ const ORIGINAL_INVENTORY_ICON_ASSET_BY_ITEM_ID: Readonly<
   record_player: "icons/placeables/record_player",
   boombox: "icons/placeables/boombox",
   bench: "icons/placeables/furniture/bench",
+  // The native presentation donor for the Muck Rake is a Muck Buster, which
+  // made the sanitation storefront show an orange combat tool instead of a
+  // cleanup implement. This shipped Kenney hoe is the closest exact readable
+  // inventory/shop silhouette and preserves the semantic `muck_rake` item.
+  muck_rake: "/assets/harthmere/png/kenney/items/hoe_iron.png",
 };
 
 export function harthmereOriginalInventoryIconUrl(
@@ -54,5 +59,8 @@ export function harthmereOriginalInventoryIconUrl(
     (semanticId
       ? ORIGINAL_INVENTORY_ICON_ASSET_BY_ITEM_ID[semanticId]
       : undefined);
-  return assetPath ? resolveAssetUrlUntyped(assetPath) : undefined;
+  if (!assetPath) return undefined;
+  return assetPath.startsWith("/")
+    ? assetPath
+    : resolveAssetUrlUntyped(assetPath);
 }

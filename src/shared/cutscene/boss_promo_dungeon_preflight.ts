@@ -105,13 +105,14 @@ export function preflightBossPromoDungeonCamera(
   for (const {
     sample,
     camera,
+    target,
     distance,
     checkUntil,
   } of promoCameraSightlineSamples(input)) {
     for (let along = 0.5; along < checkUntil; along += 0.25) {
       const hit = voxelAt(
         input.dungeonId,
-        lerp(camera, input.target, along / distance)
+        lerp(camera, target, along / distance)
       );
       if (hit.material) {
         sightlineHits.push({

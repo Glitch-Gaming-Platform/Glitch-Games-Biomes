@@ -189,6 +189,15 @@ describe("Harthmere native item presentation", () => {
     }
   });
 
+  it("uses a readable rake silhouette for Muck Rake storefronts", () => {
+    const expected = "/assets/harthmere/png/kenney/items/hoe_iron.png";
+    assert.equal(harthmereOriginalInventoryIconUrl("muck_rake"), expected);
+    assert.equal(biomesInventoryItemIcon("muck_rake"), expected);
+    const nativeId = harthmereNativeBiomesIdForItemId("muck_rake");
+    assert.ok(nativeId);
+    assert.equal(biomesInventoryItemIcon(`b:${nativeId}`), expected);
+  });
+
   it("replaces only the legacy notebook-style seeds with physical crop-specific art", () => {
     const notebookSeedIds = [
       "7539420629350027",

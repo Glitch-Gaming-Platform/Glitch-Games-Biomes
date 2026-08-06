@@ -12,6 +12,10 @@ import { completeHarthmereDailyTask } from "@/client/components/challenges/harth
 import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
 import { HARTHMERE_LIVE_INVENTORY_SYNC_EVENT } from "@/client/components/challenges/harthmereEvents";
 import {
+  HARTHMERE_ESCORT_ARRIVAL_DIALOGUE_EVENT,
+  type HarthmereEscortArrivalDialogueDetail,
+} from "@/client/components/challenges/harthmereLiveModeClientEvents";
+import {
   HarthmereQuestActionError,
   harthmereQuestRejectionWarningsFromResponse,
 } from "@/client/components/challenges/questActionError";
@@ -21,6 +25,7 @@ export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID =
 export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_MARKER_ID =
   "harthmere_market_posting_board" as const;
 export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS = 3.25;
+export const HARTHMERE_BUSINESS_JOBS_BOARD_INTERACTION_RADIUS = 1.75;
 export const HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT =
   "biomes:harthmere-jobs-board-state-updated" as const;
 export const HARTHMERE_JOBS_BOARD_STATE_CACHE_TTL_MS = 15_000;
@@ -32,7 +37,7 @@ const HARTHMERE_BUSINESS_OUTPOST_PHYSICAL_JOB_BOARDS =
       boardId: `${outpost.outpostId}_jobs_board`,
       displayName: `${outpost.displayName} Jobs Board`,
       position,
-      radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
+      radius: HARTHMERE_BUSINESS_JOBS_BOARD_INTERACTION_RADIUS,
     };
   });
 
@@ -136,6 +141,7 @@ export interface HarthmereJobsBoardEscortCompanion {
   destination: { x: number; y: number; z: number };
   destinationTargetId?: string;
   destinationMarkerId?: string;
+  arrivalDialogue?: string;
   createdAtMs: number;
   updatedAtMs: number;
   arrivedAtMs?: number;
@@ -200,6 +206,7 @@ export interface HarthmereJobsBoardTodo {
   createdAtMs: number;
   dueAtMs: number;
   questBoardTodo: true;
+  serviceProgressBaseline?: Record<string, number>;
 }
 
 export interface HarthmereJobsBoardRecord {
@@ -289,6 +296,7 @@ export interface HarthmereJobsBoardSnapshot {
   };
   walletGold?: number;
   inventoryItems?: Record<string, number>;
+  serviceProgressCounts?: Record<string, number>;
   discoveredCollectibles?: Record<string, number>;
   myBusinesses?: Array<{
     businessId: string;
@@ -329,12 +337,84 @@ function rememberHarthmereJobsBoardState(
   const url = harthmereJobsBoardStateUrl(search);
   const cache = harthmereJobsBoardStateCacheFor(fetchImpl);
   const previous = cache.get(url);
+  dispatchHarthmereJobsBoardEscortArrivals(previous?.snapshot, snapshot);
   cache.set(url, {
     snapshot,
     cachedAtMs,
     inFlight: previous?.inFlight,
   });
   return snapshot;
+}
+
+export function harthmereJobsBoardHasFollowingEscortForTest(
+  snapshot: HarthmereJobsBoardSnapshot | undefined
+) {
+  return Boolean(
+    snapshot?.myAcceptedJobs.some(
+      (job) => job.escortCompanion?.status === "following"
+    )
+  );
+}
+
+export function harthmereJobsBoardEscortArrivalsForTest(
+  previous: HarthmereJobsBoardSnapshot | undefined,
+  next: HarthmereJobsBoardSnapshot
+): HarthmereEscortArrivalDialogueDetail[] {
+  const previousStatuses = new Map(
+    (previous?.myAcceptedJobs ?? []).flatMap((job) =>
+      job.escortCompanion
+        ? [
+            [
+              job.escortCompanion.companionId,
+              job.escortCompanion.status,
+            ] as const,
+          ]
+        : []
+    )
+  );
+  return next.myAcceptedJobs.flatMap((job) => {
+    const companion = job.escortCompanion;
+    if (
+      !companion ||
+      companion.status !== "arrived" ||
+      previousStatuses.get(companion.companionId) === "arrived"
+    ) {
+      return [];
+    }
+    const dialogue = String(companion.arrivalDialogue ?? "").trim();
+    if (!dialogue) return [];
+    return [
+      {
+        companionId: companion.companionId,
+        displayName: companion.displayName,
+        dialogue,
+        destinationName: job.requirements.find(
+          (requirement) => requirement.targetName
+        )?.targetName,
+        arrivedAtMs: companion.arrivedAtMs,
+      },
+    ];
+  });
+}
+
+function dispatchHarthmereJobsBoardEscortArrivals(
+  previous: HarthmereJobsBoardSnapshot | undefined,
+  next: HarthmereJobsBoardSnapshot
+) {
+  if (typeof window === "undefined" || typeof CustomEvent === "undefined") {
+    return;
+  }
+  for (const detail of harthmereJobsBoardEscortArrivalsForTest(
+    previous,
+    next
+  )) {
+    window.dispatchEvent(
+      new CustomEvent<HarthmereEscortArrivalDialogueDetail>(
+        HARTHMERE_ESCORT_ARRIVAL_DIALOGUE_EVENT,
+        { detail }
+      )
+    );
+  }
 }
 
 export function cachedHarthmereJobsBoardState(
@@ -553,6 +633,11 @@ export function normalizeHarthmereJobsBoardSnapshot(
     inventoryItems:
       raw?.inventoryItems && typeof raw.inventoryItems === "object"
         ? { ...raw.inventoryItems }
+        : undefined,
+    serviceProgressCounts:
+      raw?.serviceProgressCounts &&
+      typeof raw.serviceProgressCounts === "object"
+        ? { ...raw.serviceProgressCounts }
         : undefined,
     discoveredCollectibles:
       raw?.discoveredCollectibles &&
@@ -792,7 +877,7 @@ export function getHarthmereAvailableJobsPanel(
   if (
     (snapshot.cooldown.lastAcceptAtMs ?? 0) +
       HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS >
-      nowMs
+    nowMs
   ) {
     return [];
   }
@@ -802,6 +887,7 @@ export function getHarthmereAvailableJobsPanel(
         job.boardId === boardId &&
         job.status === "open" &&
         job.deadlineAtMs > nowMs &&
+        (options.chapter1Mode || !isCh1GroveJobPosting(job)) &&
         (!atRegularLimit ||
           (options.chapter1Mode && isCh1GroveJobPosting(job))) &&
         !(job.issuerKind === "player" && job.issuerId === snapshot.actorId)
@@ -1142,7 +1228,8 @@ export function createHarthmereJobsBoardAdapter(
   fetchImpl: typeof fetch = fetch
 ) {
   return {
-    fetchState: () => fetchHarthmereJobsBoardState(fetchImpl),
+    fetchState: (options: { force?: boolean } = {}) =>
+      fetchHarthmereJobsBoardState(fetchImpl, options),
     completeDailyTask: (activityId: string, requestId?: string) =>
       submitHarthmereDailyTaskCompleted(activityId, { fetchImpl, requestId }),
     postJob: (payload: Record<string, unknown>, requestId?: string) =>

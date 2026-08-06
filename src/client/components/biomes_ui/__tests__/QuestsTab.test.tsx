@@ -8,6 +8,7 @@ import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
 import { questObjectiveRowsForTest } from "../tabs/MapQuestsTab";
 import {
   QuestsTab,
+  activateQuestsTabMainQuestForTest,
   questsTabMarkerForQuestForTest,
   questsTabObjectiveHeadingForTest,
   questsTabStatusCountsForTest,
@@ -39,6 +40,33 @@ const failedQuest: MapTrackableQuest = {
 };
 
 describe("QuestsTab", () => {
+  it("moves the active HUD/map destination when a new main quest is selected", () => {
+    const calls: string[] = [];
+    const marker = {
+      id: "active-marker",
+      label: "Active destination",
+      x: 0.5,
+      y: 0.5,
+      kind: "objective" as const,
+      worldPosition: [501, 70, -140] as [number, number, number],
+      worldObjectId: "sealed_package_crate",
+      interactionTargetId: "sealed_package",
+    };
+    const selection = activateQuestsTabMainQuestForTest({
+      quest: activeQuest,
+      adapter: {
+        getMarkers: () => [marker],
+        setMainQuest: (quest) => {
+          calls.push(`main:${quest.questId}`);
+          return { questId: quest.questId, title: quest.title, setAtMs: 1 };
+        },
+        setActiveMapPin: (next) => calls.push(`pin:${next.id}`),
+      },
+    });
+    assert.equal(selection?.questId, activeQuest.questId);
+    assert.deepEqual(calls, ["main:active", "pin:active-marker"]);
+  });
+
   it("counts failed quests instead of hiding them inside All", () => {
     assert.deepEqual(
       questsTabStatusCountsForTest([activeQuest, availableQuest, failedQuest]),

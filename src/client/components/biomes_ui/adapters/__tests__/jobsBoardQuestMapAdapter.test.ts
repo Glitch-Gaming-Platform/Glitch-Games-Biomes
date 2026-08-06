@@ -7,6 +7,8 @@ import {
   jobsBoardTrackableQuestsForBiomesUI,
   activeJobsBoardMissionStepsForBiomesUI,
   firstActiveJobsBoardLandmarkForBiomesUI,
+  jobsBoardLandmarkForActivePinHandoffForTest,
+  jobsBoardTodoIdFromMarkerIdForTest,
   shouldClearStaleJobsBoardPin,
   BIOMES_UI_JOBS_BOARD_ITEM_SOURCE_MARKER_SOURCE,
   BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE,
@@ -123,6 +125,43 @@ function acceptedJobsBoardSnapshot() {
 }
 
 describe("BiomesUI jobs board quest map adapter", () => {
+  it("shows repeated cleanup progress from authoritative post-accept receipts", () => {
+    const snapshot = acceptedJobsBoardSnapshot();
+    snapshot.myAcceptedJobs = [
+      {
+        ...snapshot.myAcceptedJobs[0],
+        kind: "cleanup",
+        requirements: [
+          {
+            serviceKind: "cleanup_muck",
+            serviceUnits: 5,
+            targetId: "muckwad_patch",
+            targetName: "Muckwad Patch",
+            mapMarkerId: "muckwad_patch",
+          },
+        ],
+        mapMarkerId: "muckwad_patch",
+        targetId: "muckwad_patch",
+      },
+    ] as any;
+    snapshot.myTodos = [
+      {
+        ...snapshot.myTodos[0],
+        kind: "cleanup",
+        mapMarkerId: "muckwad_patch",
+        targetId: "muckwad_patch",
+        serviceProgressBaseline: { muckwad_patch: 10 },
+      },
+    ] as any;
+    (snapshot as any).serviceProgressCounts = { muckwad_patch: 14 };
+    const [landmark] = jobsBoardAcceptedJobLandmarksForBiomesUI(snapshot);
+    assert.match(landmark.description, /4\/5/);
+    const [quest] = jobsBoardTrackableQuestsForBiomesUI(snapshot, NOW_MS);
+    assert.match(quest.objective ?? "", /Clear 4\/5 muck/);
+    const [step] = activeJobsBoardMissionStepsForBiomesUI(snapshot, NOW_MS);
+    assert.match(step.objective, /4\/5/);
+  });
+
   it("turns accepted jobs board todos into active quest entries and target map markers", () => {
     const snapshot = acceptedJobsBoardSnapshot();
     const target = harthmereJobsBoardQuestMarkerRuntimePositionForId(
@@ -564,6 +603,26 @@ function repairJobSnapshot() {
 }
 
 describe("BiomesUI jobs board tool-source guidance", () => {
+  it("hands a completed tool-buy phase back to the same accepted todo", () => {
+    const snapshot = repairJobSnapshot();
+    const [accepted] = jobsBoardAcceptedJobLandmarksForBiomesUI(snapshot);
+    const [toolSource] = jobsBoardToolSourceLandmarksForBiomesUI(snapshot, {
+      repairToolOwned: false,
+      cleanupToolOwned: false,
+    });
+    assert.equal(
+      jobsBoardTodoIdFromMarkerIdForTest(toolSource.id),
+      "repair_todo_1"
+    );
+    assert.equal(
+      jobsBoardLandmarkForActivePinHandoffForTest({
+        activePinMarkerId: toolSource.id,
+        landmarks: [accepted],
+      })?.id,
+      accepted.id
+    );
+  });
+
   it("points a tool-requiring job at the vendor when the tool is NOT equipped", () => {
     const snapshot = repairJobSnapshot();
     const vendorMarkerId = HARTHMERE_TOOL_SOURCES.repair.vendorMarkerId;

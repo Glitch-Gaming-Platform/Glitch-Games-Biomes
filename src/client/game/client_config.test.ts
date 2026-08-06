@@ -76,7 +76,7 @@ describe("GPU tier detection", () => {
 
 describe("Harthmere desktop performance floor", () => {
   it("retains landmarks without pinning CPU-bound combat to the former 192m radius", () => {
-    assert.equal(HARTHMERE_DESKTOP_DYNAMIC_MIN_DRAW_DISTANCE, 128);
+    assert.equal(HARTHMERE_DESKTOP_DYNAMIC_MIN_DRAW_DISTANCE, 96);
   });
 });
 

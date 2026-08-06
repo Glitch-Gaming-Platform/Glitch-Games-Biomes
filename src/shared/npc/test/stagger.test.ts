@@ -1,6 +1,8 @@
 import { NpcCombatState } from "@/shared/ecs/gen/components";
 import type { HarthmereNativeNpcCombatProfile } from "@/shared/harthmere/harthmere_native_combat";
 import {
+  HARTHMERE_BOSS_STAGGER_DURATION_BONUS_SECONDS,
+  HARTHMERE_BOSS_STAGGER_TIMING,
   HARTHMERE_NPC_STAGGER_TIMING,
   activeHarthmereNpcStaggerPresentation,
   advanceHarthmereNpcStagger,
@@ -20,10 +22,10 @@ function profile(overrides: Partial<HarthmereNativeNpcCombatProfile> = {}) {
   } as HarthmereNativeNpcCombatProfile;
 }
 
-describe("non-boss enemy stagger", () => {
-  it("includes hostile creatures but excludes bosses and player-like NPCs", () => {
+describe("enemy stagger", () => {
+  it("includes hostile creatures and bosses but excludes player-like NPCs", () => {
     assert.equal(harthmereNpcStaggerEligible(profile()), true);
-    assert.equal(harthmereNpcStaggerEligible(profile({ isBoss: true })), false);
+    assert.equal(harthmereNpcStaggerEligible(profile({ isBoss: true })), true);
     assert.equal(
       harthmereNpcStaggerEligible(profile({ isPlayerLikeAppearance: true })),
       false
@@ -31,6 +33,49 @@ describe("non-boss enemy stagger", () => {
     assert.equal(
       harthmereNpcStaggerEligible(profile({ behaviorKind: "sentinel" })),
       false
+    );
+  });
+
+  it("gives bosses a larger poise pool and two-second extended windows", () => {
+    const ordinaryPoise = harthmereNpcPoiseMax({ maxHp: 5000, level: 12 });
+    const bossPoise = harthmereNpcPoiseMax({
+      maxHp: 5000,
+      level: 12,
+      isBoss: true,
+    });
+    assert.ok(bossPoise > ordinaryPoise);
+    assert.equal(HARTHMERE_BOSS_STAGGER_DURATION_BONUS_SECONDS, 2);
+    assert.equal(
+      HARTHMERE_BOSS_STAGGER_TIMING.light.durationSeconds,
+      14 / 24 + 2
+    );
+    assert.equal(
+      HARTHMERE_BOSS_STAGGER_TIMING.medium.durationSeconds,
+      30 / 24 + 2
+    );
+    assert.equal(
+      HARTHMERE_BOSS_STAGGER_TIMING.heavy.durationSeconds,
+      58 / 24 + 2
+    );
+
+    const result = advanceHarthmereNpcStagger({
+      state: { poise: 1, poiseMax: bossPoise, poiseUpdatedAt: 10 },
+      nowSeconds: 10,
+      maxHp: 5000,
+      level: 12,
+      isBoss: true,
+      damageTime: 10,
+      damageAmount: 1500,
+      damageIsAttack: true,
+      damageDirection: [0, 0, 1],
+    });
+    assert.equal(result.triggered?.kind, "heavy");
+    assert.ok(
+      Math.abs(
+        result.triggered!.expiryTime -
+          result.triggered!.startTime -
+          HARTHMERE_BOSS_STAGGER_TIMING.heavy.durationSeconds
+      ) < 1e-9
     );
   });
 
@@ -131,6 +176,51 @@ describe("non-boss enemy stagger", () => {
     });
     assert.equal(immune.ignoredReason, "immune");
     assert.equal(immune.active, false);
+    assert.ok((immune.state.poise ?? 0) > 0);
+  });
+
+  it("never refreshes or immediately retriggers an extended boss stagger", () => {
+    const first = advanceHarthmereNpcStagger({
+      state: { poise: 1, poiseMax: 420, poiseUpdatedAt: 30 },
+      nowSeconds: 30,
+      maxHp: 5000,
+      level: 12,
+      isBoss: true,
+      damageTime: 30,
+      damageAmount: 1500,
+      damageIsAttack: true,
+      damageDirection: [1, 0, 0],
+    });
+    assert.ok(first.triggered);
+    const fixedExpiry = first.triggered!.expiryTime;
+
+    const during = advanceHarthmereNpcStagger({
+      state: first.state,
+      nowSeconds: fixedExpiry - 0.01,
+      maxHp: 5000,
+      level: 12,
+      isBoss: true,
+      damageTime: fixedExpiry - 0.01,
+      damageAmount: 1500,
+      damageIsAttack: true,
+    });
+    assert.equal(during.ignoredReason, "active");
+    assert.equal(during.state.stagger?.expiryTime, fixedExpiry);
+
+    const immune = advanceHarthmereNpcStagger({
+      state: during.state,
+      nowSeconds: fixedExpiry + 0.01,
+      maxHp: 5000,
+      level: 12,
+      isBoss: true,
+      damageTime: fixedExpiry + 0.01,
+      damageAmount: 1500,
+      damageIsAttack: true,
+    });
+    assert.equal(immune.active, false);
+    assert.equal(immune.ignoredReason, "immune");
+    assert.equal(immune.state.stagger, undefined);
+    assert.ok(immune.state.immunityUntil! > fixedExpiry + 0.01);
     assert.ok((immune.state.poise ?? 0) > 0);
   });
 

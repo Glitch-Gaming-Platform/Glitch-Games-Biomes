@@ -45,7 +45,9 @@ const OUT_DIR = path.join(ROOT, "artifacts/cutscenes");
 const ORIGIN = process.env.HARTHMERE_E2E_URL || "http://localhost:3000";
 const SYNC_BASE_URL = process.env.HARTHMERE_E2E_SYNC_BASE_URL;
 const HEADED_CAPTURE = process.env.PROMO_CAPTURE_HEADED === "1";
-const DEFAULT_TIMEOUT_MS = Number(process.env.PROMO_CAPTURE_TIMEOUT_MS || 240_000);
+const DEFAULT_TIMEOUT_MS = Number(
+  process.env.PROMO_CAPTURE_TIMEOUT_MS || 240_000
+);
 const AUTH_STORAGE_KEY = "harthmere.biomesAuth";
 
 function isForbiddenLegacyHost(hostname) {
@@ -81,6 +83,7 @@ function parseArgs(argv) {
     cameraPreset: undefined,
     outputDir: undefined,
     printUrl: false,
+    authUser: process.env.PROMO_CAPTURE_AUTH_USER || "Chapter1Marketing",
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -89,6 +92,7 @@ function parseArgs(argv) {
     else if (a === "--run") out.run = argv[++i];
     else if (a === "--camera-preset") out.cameraPreset = argv[++i];
     else if (a === "--output-dir") out.outputDir = argv[++i];
+    else if (a === "--auth-user") out.authUser = argv[++i];
     else if (a === "--print-url") out.printUrl = true;
     else if (!a.startsWith("-") && !out.id) out.id = a;
   }
@@ -145,8 +149,10 @@ async function main() {
     for (const scene of registry.PROMO_SCENES) {
       console.log(`  ${scene.id}`);
       console.log(`      ${scene.brand.subtitle}`);
-      console.log(`      shot "${scene.shotId}" @ ${scene.captureAt}s ` +
-        `(0..${scene.captureAtMax}s)  -> ${scene.filename}`);
+      console.log(
+        `      shot "${scene.shotId}" @ ${scene.captureAt}s ` +
+          `(0..${scene.captureAtMax}s)  -> ${scene.filename}`
+      );
     }
     console.log("\nLegacy bespoke still: exotic-matter");
     process.exit(args.id ? 0 : 2);
@@ -180,9 +186,19 @@ async function main() {
     extra.syncBaseUrl = SYNC_BASE_URL;
     extra.glitch_auto_play = "1";
   }
-  const captureUrl = registry.promoCaptureUrl(scene, ORIGIN, extra);
+  let captureUrl = registry.promoCaptureUrl(scene, ORIGIN, extra);
+  if (scene.runtimeScenery) {
+    // Authenticated coordinate `/at/x/y/z` is a position-observer route. Its
+    // Sync-target swap can delete the entity the client table still considers
+    // local, which hard-fails before authored Underways scenery streams. Enter
+    // interactive `/at` instead; promo_capture.ts then moves the real player
+    // through the existing gated teleport hook before the director starts.
+    const playerRoute = new URL(captureUrl);
+    playerRoute.pathname = "/at";
+    captureUrl = playerRoute.toString();
+  }
   const authApiUrl = new URL("/api/harthmere/visual_test_auth", ORIGIN);
-  authApiUrl.searchParams.set("usernameOrId", "Chapter1Marketing");
+  authApiUrl.searchParams.set("usernameOrId", args.authUser);
 
   console.log(`scene   ${scene.id}`);
   console.log(`shot    ${scene.shotId} @ ${args.at ?? scene.captureAt}s`);
@@ -470,6 +486,7 @@ async function main() {
           shot: scene.shotId,
           captureAt: Number(args.at ?? scene.captureAt),
           captureRun: String(args.run),
+          authUser: args.authUser,
           cameraPreset: scene.cameraPreset ?? "baseline",
           cameraWaypoints,
           fov:
@@ -494,8 +511,10 @@ async function main() {
     console.log(`branded  ${path.relative(ROOT, branded)}`);
     console.log(`raw      ${path.relative(ROOT, raw)}`);
     console.log(`metadata ${path.relative(ROOT, metadata)}`);
-    console.log(`camera   ${JSON.stringify(state.cameraPosition)} ` +
-      `${JSON.stringify(state.cameraOrientation)}`);
+    console.log(
+      `camera   ${JSON.stringify(state.cameraPosition)} ` +
+        `${JSON.stringify(state.cameraOrientation)}`
+    );
     console.log("");
     console.log(
       "Before shipping the frame, verify by eye:\n" +

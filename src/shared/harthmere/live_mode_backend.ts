@@ -9085,6 +9085,7 @@ export function createHarthmereJobsBoardClientSnapshotFromBackend(
     ...snapshot,
     walletGold: state.inventory.gold,
     inventoryItems: state.inventory.items,
+    serviceProgressCounts: nativeJobsBoardServiceProgressCounts(state),
     discoveredCollectibles: state.collections.discovered,
     myBusinesses,
     lawSummary: createHarthmereJobsBoardLawSummaryFromBackend(state),

@@ -5,6 +5,10 @@ specific wrapper protections derived from every attempted rollout, read
 `docs/harthmere/PRODUCTION_DEPLOYMENT_INCIDENT_REVIEW_2026-07-23.md` before
 changing this deployment path.
 
+For the August 6, 2026 no-load/capacity incident, Azure log signatures, node
+metrics, live repair, and the six-node workload-profile guardrail, read
+`docs/production/biomes-containerapp-workload-profile-capacity-20260806.md`.
+
 ## Automatic additive Harthmere world extension
 
 Harthmere is regular production world content and is enabled by default. The
@@ -677,6 +681,15 @@ failure while preserving their shared Logic and Redis dependencies.
   path, preventing the oversized merged update seen when six plants produced a
   101-change batch.
 
+The shared `d4-prod` workload profile must have `minimumCount=6` and
+`maximumCount>=10`. The two apps consume four full nodes at steady state. The
+remaining two minimum nodes are replacement headroom, not spare capacity for
+new permanent workloads. On August 6, 2026, a four-node steady pool received
+three `TaintManagerEviction` events inside six minutes; replacement pods then
+logged repeated `AssigningReplicaFailed` capacity errors while Azure scaled out
+and pulled the multi-gigabyte image. The guarded deploy raises and verifies the
+profile before it creates a new web revision.
+
 This boundary is a correctness guardrail, not an optional optimization. The
 July 22, 2026 co-located revision used roughly 11-12 GiB before simulation
 startup, rose to approximately 15.1 GiB of its 16 GiB allocation after
@@ -693,11 +706,12 @@ binds internal port `3000` immediately but returns `503` until both
 waits for the simulation health marker (`anima=1 gaia=1 healthPort=<port>`,
 with or without the legacy `GLITCH_SIMULATION_ROLE_READY` prefix).
 
-The simulation app intentionally starts at one replica because the D4 workload
-profile currently has capacity for one additional node. For simulation HA,
-raise the managed environment's D4 maximum first, then increase both
-`AZURE_SIMULATION_MIN_REPLICAS` and `AZURE_SIMULATION_MAX_REPLICAS`; Anima and
-Gaia already use distributed shard ownership for that future topology.
+The simulation app intentionally starts at one replica. The two reserved nodes
+must remain available for web/simulation replacement during Azure maintenance.
+For simulation HA, raise both the managed environment's D4 minimum and maximum
+before increasing `AZURE_SIMULATION_MIN_REPLICAS` and
+`AZURE_SIMULATION_MAX_REPLICAS`; Anima and Gaia already use distributed shard
+ownership for that future topology.
 
 ### Why not `CMD ["dist/web.js"]`?
 
@@ -1301,6 +1315,62 @@ Keep `.github/workflows/azure-production-deploy.yml` on the bounded-cache path:
 - `Prune Docker after image push` clears duplicate builder/image storage before cache saves.
 - `MAX_DOCKER_LAYER_CACHE_MB` caps the saved Buildx cache; oversized caches are deleted instead of archived.
 
+### Problem: Glitch page loads but the embedded game stalls while the revision is still Healthy
+
+Cause:
+
+The dedicated `d4-prod` profile has no replacement headroom. Three full-node
+web replicas plus one full-node simulation replica require four D4 nodes. If
+the node-count metric is also four, a platform taint or eviction forces Azure
+to scale infrastructure before it can even schedule the replacement. The
+revision-level health label can remain green while individual players lose a
+WebSocket or wait through a multi-minute cold start.
+
+Confirm the signature:
+
+```bash
+RG=openai-resource-group
+ENV=glitch-prod-vnet-env
+APP=biomes-node-vnet
+
+az containerapp logs show -g "$RG" -n "$APP" --type system --tail 300
+
+az containerapp env show -g "$RG" -n "$ENV" \
+  --query 'properties.workloadProfiles[?name==`d4-prod`] | [0].{min:minimumCount,max:maximumCount}' \
+  -o json
+
+ENV_ID="$(az containerapp env show -g "$RG" -n "$ENV" --query id -o tsv)"
+az monitor metrics list \
+  --resource "$ENV_ID" \
+  --metric NodeCount \
+  --filter "workloadProfileName eq 'd4-prod'" \
+  --interval PT5M \
+  --aggregation Minimum Average Maximum \
+  -o table
+```
+
+Look for `TaintManagerEviction`, `AssigningReplicaFailed`, and `Insufficient
+capacity on workload profile 'd4-prod'`. `NodeCount=4` is the zero-headroom
+failure state for the current topology.
+
+Fix:
+
+```bash
+az containerapp env workload-profile update \
+  --resource-group openai-resource-group \
+  --name glitch-prod-vnet-env \
+  --workload-profile-name d4-prod \
+  --min-nodes 6 \
+  --max-nodes 10
+```
+
+The managed environment can remain `Updating` for several minutes while the
+current app revisions continue serving. Require the six-node floor, healthy
+three-replica web revision, healthy simulation revision, and a real Glitch game
+launch before closing the incident. See
+`docs/production/biomes-containerapp-workload-profile-capacity-20260806.md` for
+the full query and recovery runbook.
+
 ---
 
 ## 18. Deployment checklist
@@ -1333,6 +1403,7 @@ Before deploy:
 - [ ] Public Container App `biomes-node-vnet` exposes web `3000`; sync `4900` is internal/proxied.
 - [ ] Public scale is `minReplicas=3`, `maxReplicas=3` for the normal production path.
 - [ ] Internal Container App `biomes-simulation-vnet` uses workload profile `d4-prod`, `4 CPU`, `16Gi`, internal target port `3000`, and `minReplicas=maxReplicas=1`.
+- [ ] Managed environment `glitch-prod-vnet-env` has `d4-prod` `minimumCount=6` and `maximumCount>=10`; four nodes serve steady workloads and two remain replacement headroom.
 - [ ] The new revision's own FQDN serves `200 text/html` before traffic is shifted.
 - [ ] The one-replica terrain maintenance revision finishes before traffic is
       shifted, then is deactivated after the extension terrain audit passes.
@@ -1373,6 +1444,8 @@ After deploy:
 - [ ] Simulation logs show the local Logic helper ready, Anima ready, Gaia ready, and `anima=1 gaia=1 healthPort=<port>`.
 - [ ] Simulation logs show Gaia measured `20,188` missing terrain shard coordinates and do not contain `shard manager does not support weighted balancing` or `Farming update batch too large`.
 - [ ] Public replicas remain below their previous co-located memory peak and have zero worker-driven restarts.
+- [ ] Azure system logs contain no new `AssigningReplicaFailed`, `Insufficient capacity`, or `TaintManagerEviction` burst during rollout and post-deploy launch validation.
+- [ ] A real Glitch launch reaches the gameplay HUD; a healthy `/` response alone is not sufficient.
 - [ ] Production `/api/world_map/metadata` returns finite map bounds and no
       response-schema validation error.
 - [ ] Production `/api/glitch/harthmere` returns `valid:true`.
@@ -1386,6 +1459,9 @@ After deploy:
 Public Container App: biomes-node-vnet
 Resource Group: openai-resource-group
 Environment: glitch-prod-vnet-env
+Workload profile: d4-prod, minNodes=6, maxNodes=10
+Steady D4 demand: 4 nodes
+Reserved replacement headroom: 2 nodes
 Revision State: Running
 Health State: Healthy
 Traffic Weight: 100
@@ -1422,8 +1498,8 @@ title_id: 42de534c-600f-4228-af9e-b69faef94cce
 Use the guarded script. Do not hand-run `az containerapp update` for normal
 production deploys, because that bypasses the Redis NSG, persistence, snapshot,
 ingress target-port assertion, web/simulation role separation, native-worker
-readiness, HA web defaults, revision-specific smoke, traffic-pinning, rollback,
-and stale-revision checks.
+readiness, HA web defaults, workload-profile replacement headroom,
+revision-specific smoke, traffic-pinning, rollback, and stale-revision checks.
 
 ```bash
 cd /Users/devindixon/Development/biomes-game

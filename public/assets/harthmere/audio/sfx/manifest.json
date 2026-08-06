@@ -1,5 +1,5 @@
 {
-  "version": "harthmere-sound-effects-elevenlabs-v8-mobile-aac",
+  "version": "harthmere-sound-effects-elevenlabs-v10-projectile-lifecycles",
   "effects": [
     {
       "id": "melee_swing",
@@ -422,6 +422,60 @@
       "loop": false,
       "path": "/assets/harthmere/audio/sfx/flesh_hit.webm",
       "mobilePath": "/assets/harthmere/audio/sfx/flesh_hit.m4a",
+      "source": "elevenlabs",
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "melee_hit_unarmed_slap",
+      "label": "Bare-Handed Melee Hit",
+      "category": "combat",
+      "description": "A compact finger snap for a confirmed bare-handed melee hit.",
+      "authority": [
+        "client_presentation",
+        "native_ecs"
+      ],
+      "trigger": "Confirmed player melee damage with no held item.",
+      "durationSeconds": 0.15,
+      "prompt": "One single dry human finger snap at extremely close range, crisp thumb-and-middle-finger snap with a sharp skin click and tiny fleshy transient, exactly one snap, no hand clap, no slap, no repeated snaps, no percussion, no voice, no room reverb, no echo, isolated game combat sound.",
+      "loop": false,
+      "path": "/assets/harthmere/audio/sfx/melee_hit_unarmed_slap.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/melee_hit_unarmed_slap.m4a",
+      "source": "elevenlabs",
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "melee_hit_tool_wood",
+      "label": "Tool Melee Hit",
+      "category": "combat",
+      "description": "A compact axe-like wood strike for a confirmed hit with a tool.",
+      "authority": [
+        "client_presentation",
+        "native_ecs"
+      ],
+      "trigger": "Confirmed player melee damage with a held tool.",
+      "durationSeconds": 0.15,
+      "prompt": "One single axe head striking solid dry wood, short woody chop crack, tight hard transient, no swing, no debris, no voice, no reverb, no echo, no tail, isolated game combat sound.",
+      "loop": false,
+      "path": "/assets/harthmere/audio/sfx/melee_hit_tool_wood.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/melee_hit_tool_wood.m4a",
+      "source": "elevenlabs",
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "melee_hit_weapon_clink",
+      "label": "Weapon Melee Hit",
+      "category": "combat",
+      "description": "A compact steel sword-blade strike against a solid metal object for a confirmed weapon hit.",
+      "authority": [
+        "client_presentation",
+        "native_ecs"
+      ],
+      "trigger": "Confirmed player melee damage with a held weapon.",
+      "durationSeconds": 0.15,
+      "prompt": "One steel sword blade edge striking a solid iron or steel object at close range, unmistakable sword-on-metal clash, hard bright metallic impact with a dense blade clang and a very short high-frequency ring, not a coin clink, not cutlery, not glass, no sword swing whoosh, no voice, no reverb, isolated game combat sound.",
+      "loop": false,
+      "path": "/assets/harthmere/audio/sfx/melee_hit_weapon_clink.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/melee_hit_weapon_clink.m4a",
       "source": "elevenlabs",
       "promptInfluence": 0.72
     },
@@ -15787,6 +15841,1111 @@
       "prompt": "Singularity Lance Beam fantasy game projectile impact, contained gravity charge, rising white-violet harmonic, vacuum pull and immense focused release, decisive contact and short dissipating tail, no launch, no music, no intelligible speech.",
       "path": "/assets/harthmere/audio/sfx/singularity_lance_beam_impact.webm",
       "mobilePath": "/assets/harthmere/audio/sfx/singularity_lance_beam_impact.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "spark_flight",
+      "label": "Spark Flight",
+      "category": "magic",
+      "description": "Arcane electrical spark projectile. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Spark fantasy game projectile continuously moving through the air, white-purple electricity and crystalline arcane crackle, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/spark_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/spark_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "spark_explosion",
+      "label": "Spark Explosion",
+      "category": "magic",
+      "description": "Arcane electrical spark projectile. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Spark fantasy game explosion lifecycle, white-purple electricity and crystalline arcane crackle, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/spark_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/spark_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "fireball_flight",
+      "label": "Fireball Flight",
+      "category": "magic",
+      "description": "Burning magical fire projectile. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Fireball fantasy game projectile continuously moving through the air, hot flame, embers and a dense fire roar, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/fireball_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/fireball_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "fireball_explosion",
+      "label": "Fireball Explosion",
+      "category": "magic",
+      "description": "Burning magical fire projectile. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Fireball fantasy game explosion lifecycle, hot flame, embers and a dense fire roar, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/fireball_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/fireball_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "meteor_flight",
+      "label": "Meteor Flight",
+      "category": "magic",
+      "description": "Large falling fire-and-stone projectile. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Meteor fantasy game projectile continuously moving through the air, massive burning stone, deep air pressure and debris, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/meteor_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/meteor_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "meteor_explosion",
+      "label": "Meteor Explosion",
+      "category": "magic",
+      "description": "Large falling fire-and-stone projectile. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Meteor fantasy game explosion lifecycle, massive burning stone, deep air pressure and debris, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/meteor_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/meteor_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "lightning_bolt_flight",
+      "label": "Lightning Bolt Flight",
+      "category": "magic",
+      "description": "Instant jagged lightning projectile. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Lightning Bolt fantasy game projectile continuously moving through the air, extremely fast branching electricity and sharp thunder, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/lightning_bolt_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/lightning_bolt_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "lightning_bolt_explosion",
+      "label": "Lightning Bolt Explosion",
+      "category": "magic",
+      "description": "Instant jagged lightning projectile. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Lightning Bolt fantasy game explosion lifecycle, extremely fast branching electricity and sharp thunder, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/lightning_bolt_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/lightning_bolt_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "holy_light_flight",
+      "label": "Holy Light Flight",
+      "category": "magic",
+      "description": "Clean radiant holy projectile. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Holy Light fantasy game projectile continuously moving through the air, clean white-gold radiant energy and a small bell-like shimmer, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/holy_light_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/holy_light_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "holy_light_explosion",
+      "label": "Holy Light Explosion",
+      "category": "magic",
+      "description": "Clean radiant holy projectile. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Holy Light fantasy game explosion lifecycle, clean white-gold radiant energy and a small bell-like shimmer, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/holy_light_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/holy_light_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "smite_flight",
+      "label": "Smite Flight",
+      "category": "magic",
+      "description": "Forceful descending holy strike. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Smite fantasy game projectile continuously moving through the air, forceful white-gold holy energy with a hammer-like weight, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/smite_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/smite_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "smite_explosion",
+      "label": "Smite Explosion",
+      "category": "magic",
+      "description": "Forceful descending holy strike. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Smite fantasy game explosion lifecycle, forceful white-gold holy energy with a hammer-like weight, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/smite_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/smite_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "judgment_flight",
+      "label": "Judgment Flight",
+      "category": "magic",
+      "description": "Rune-bound holy weapon projectile. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Judgment fantasy game projectile continuously moving through the air, golden runes, holy metal resonance and focused force, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/judgment_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/judgment_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "judgment_explosion",
+      "label": "Judgment Explosion",
+      "category": "magic",
+      "description": "Rune-bound holy weapon projectile. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Judgment fantasy game explosion lifecycle, golden runes, holy metal resonance and focused force, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/judgment_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/judgment_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "consecrate_flight",
+      "label": "Consecrate Flight",
+      "category": "magic",
+      "description": "Holy ground-targeted rune impact. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Consecrate fantasy game projectile continuously moving through the air, descending sacred rune, radiant ground ring and holy pulse, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/consecrate_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/consecrate_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "consecrate_explosion",
+      "label": "Consecrate Explosion",
+      "category": "magic",
+      "description": "Holy ground-targeted rune impact. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Consecrate fantasy game explosion lifecycle, descending sacred rune, radiant ground ring and holy pulse, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/consecrate_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/consecrate_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "life_drain_flight",
+      "label": "Life Drain Flight",
+      "category": "magic",
+      "description": "Dark siphoning projectile and channel. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Life Drain fantasy game projectile continuously moving through the air, dark red-purple siphoning energy and reversed breath-like flow, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/life_drain_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/life_drain_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "life_drain_explosion",
+      "label": "Life Drain Explosion",
+      "category": "magic",
+      "description": "Dark siphoning projectile and channel. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Life Drain fantasy game explosion lifecycle, dark red-purple siphoning energy and reversed breath-like flow, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/life_drain_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/life_drain_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "entangling_roots_flight",
+      "label": "Entangling Roots Flight",
+      "category": "magic",
+      "description": "Nature seed projectile and erupting roots. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Entangling Roots fantasy game projectile continuously moving through the air, thorny seed magic, dirt rupture and twisting roots, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/entangling_roots_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/entangling_roots_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "entangling_roots_explosion",
+      "label": "Entangling Roots Explosion",
+      "category": "magic",
+      "description": "Nature seed projectile and erupting roots. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Entangling Roots fantasy game explosion lifecycle, thorny seed magic, dirt rupture and twisting roots, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/entangling_roots_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/entangling_roots_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "indisworm_poison_spit_flight",
+      "label": "Indisworm Poison Spit Flight",
+      "category": "ranged",
+      "description": "Pressurized corrosive venom launched by a cavern Indisworm. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Indisworm Poison Spit fantasy game projectile continuously moving through the air, pressurized wet venom, acidic bubbles, sticky membrane flutter and a sharp toxic hiss, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/indisworm_poison_spit_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/indisworm_poison_spit_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "indisworm_poison_spit_explosion",
+      "label": "Indisworm Poison Spit Explosion",
+      "category": "ranged",
+      "description": "Pressurized corrosive venom launched by a cavern Indisworm. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Indisworm Poison Spit fantasy game explosion lifecycle, pressurized wet venom, acidic bubbles, sticky membrane flutter and a sharp toxic hiss, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/indisworm_poison_spit_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/indisworm_poison_spit_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "mocking_verse_flight",
+      "label": "Mocking Verse Flight",
+      "category": "magic",
+      "description": "Bardic sonic projectile. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Mocking Verse fantasy game projectile continuously moving through the air, magical musical-note energy and oscillating sonic waves, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/mocking_verse_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/mocking_verse_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "mocking_verse_explosion",
+      "label": "Mocking Verse Explosion",
+      "category": "magic",
+      "description": "Bardic sonic projectile. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Mocking Verse fantasy game explosion lifecycle, magical musical-note energy and oscillating sonic waves, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/mocking_verse_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/mocking_verse_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "curse_of_weakness_flight",
+      "label": "Curse of Weakness Flight",
+      "category": "magic",
+      "description": "Dark weakening curse projectile. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Curse of Weakness fantasy game projectile continuously moving through the air, broken violet curse rune, shadow flutter and decaying energy, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/curse_of_weakness_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/curse_of_weakness_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "curse_of_weakness_explosion",
+      "label": "Curse of Weakness Explosion",
+      "category": "magic",
+      "description": "Dark weakening curse projectile. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Curse of Weakness fantasy game explosion lifecycle, broken violet curse rune, shadow flutter and decaying energy, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/curse_of_weakness_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/curse_of_weakness_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "polymorph_flight",
+      "label": "Polymorph Flight",
+      "category": "magic",
+      "description": "Whimsical transformation projectile. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Polymorph fantasy game projectile continuously moving through the air, teal whimsical transformation magic, soft woolly poof and rune shimmer, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/polymorph_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/polymorph_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "polymorph_explosion",
+      "label": "Polymorph Explosion",
+      "category": "magic",
+      "description": "Whimsical transformation projectile. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Polymorph fantasy game explosion lifecycle, teal whimsical transformation magic, soft woolly poof and rune shimmer, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/polymorph_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/polymorph_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "fear_flight",
+      "label": "Fear Flight",
+      "category": "magic",
+      "description": "Dread-filled spectral projectile. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Fear fantasy game projectile continuously moving through the air, dark horned spectral energy, reversed whisper texture and dread pulse, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/fear_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/fear_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "fear_explosion",
+      "label": "Fear Explosion",
+      "category": "magic",
+      "description": "Dread-filled spectral projectile. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Fear fantasy game explosion lifecycle, dark horned spectral energy, reversed whisper texture and dread pulse, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/fear_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/fear_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "charm_flight",
+      "label": "Charm Flight",
+      "category": "magic",
+      "description": "Warm swaying enchantment projectile. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Charm fantasy game projectile continuously moving through the air, pink arcane heart energy, warm pulse and swaying shimmer, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/charm_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/charm_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "charm_explosion",
+      "label": "Charm Explosion",
+      "category": "magic",
+      "description": "Warm swaying enchantment projectile. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Charm fantasy game explosion lifecycle, pink arcane heart energy, warm pulse and swaying shimmer, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/charm_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/charm_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "hex_bolt_flight",
+      "label": "Hex Bolt Flight",
+      "category": "magic",
+      "description": "Unstable corrupted arcane projectile. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Hex Bolt fantasy game projectile continuously moving through the air, corrupted green-purple crystalline energy with unstable crackle, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/hex_bolt_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/hex_bolt_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "hex_bolt_explosion",
+      "label": "Hex Bolt Explosion",
+      "category": "magic",
+      "description": "Unstable corrupted arcane projectile. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Hex Bolt fantasy game explosion lifecycle, corrupted green-purple crystalline energy with unstable crackle, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/hex_bolt_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/hex_bolt_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "thaedryn_resonance_flight",
+      "label": "Thaedryn Resonance Flight",
+      "category": "magic",
+      "description": "Boss-scale bell resonance shard. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Thaedryn Resonance fantasy game projectile continuously moving through the air, huge bronze bell resonance, orbiting stone shards and deep pressure wave, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/thaedryn_resonance_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/thaedryn_resonance_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "thaedryn_resonance_explosion",
+      "label": "Thaedryn Resonance Explosion",
+      "category": "magic",
+      "description": "Boss-scale bell resonance shard. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Thaedryn Resonance fantasy game explosion lifecycle, huge bronze bell resonance, orbiting stone shards and deep pressure wave, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/thaedryn_resonance_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/thaedryn_resonance_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "photon_sidearm_pulse_flight",
+      "label": "Photon Sidearm Pulse Flight",
+      "category": "ranged",
+      "description": "Compact coherent blue photon sidearm pulse. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Photon Sidearm Pulse fantasy game projectile continuously moving through the air, tight blue photon snap, compact capacitor chirp and precise military energy discharge, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/photon_sidearm_pulse_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/photon_sidearm_pulse_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "photon_sidearm_pulse_explosion",
+      "label": "Photon Sidearm Pulse Explosion",
+      "category": "magic",
+      "description": "Compact coherent blue photon sidearm pulse. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Photon Sidearm Pulse fantasy game explosion lifecycle, tight blue photon snap, compact capacitor chirp and precise military energy discharge, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/photon_sidearm_pulse_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/photon_sidearm_pulse_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "pulse_carbine_burst_flight",
+      "label": "Pulse Carbine Burst Flight",
+      "category": "ranged",
+      "description": "Rapid three-pulse cyan service-carbine burst. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Pulse Carbine Burst fantasy game projectile continuously moving through the air, three rapid cyan compressed-energy pulses, crisp cycling electronics and controlled recoil, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/pulse_carbine_burst_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/pulse_carbine_burst_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "pulse_carbine_burst_explosion",
+      "label": "Pulse Carbine Burst Explosion",
+      "category": "magic",
+      "description": "Rapid three-pulse cyan service-carbine burst. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Pulse Carbine Burst fantasy game explosion lifecycle, three rapid cyan compressed-energy pulses, crisp cycling electronics and controlled recoil, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/pulse_carbine_burst_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/pulse_carbine_burst_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "helix_projector_beam_flight",
+      "label": "Helix Projector Beam Flight",
+      "category": "ranged",
+      "description": "Twin-emitter green spiraling armor-piercing beam. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Helix Projector Beam fantasy game projectile continuously moving through the air, two rotating green emitters braiding into a spiraling beam with harmonic electrical texture, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/helix_projector_beam_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/helix_projector_beam_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "helix_projector_beam_explosion",
+      "label": "Helix Projector Beam Explosion",
+      "category": "magic",
+      "description": "Twin-emitter green spiraling armor-piercing beam. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Helix Projector Beam fantasy game explosion lifecycle, two rotating green emitters braiding into a spiraling beam with harmonic electrical texture, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/helix_projector_beam_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/helix_projector_beam_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "nova_cannon_bolt_flight",
+      "label": "Nova Cannon Bolt Flight",
+      "category": "ranged",
+      "description": "Dense orange plasma-laser siege bolt. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Nova Cannon Bolt fantasy game projectile continuously moving through the air, dense orange plasma-laser charge, heavy magnetic release and hot expanding pressure, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/nova_cannon_bolt_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/nova_cannon_bolt_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "nova_cannon_bolt_explosion",
+      "label": "Nova Cannon Bolt Explosion",
+      "category": "magic",
+      "description": "Dense orange plasma-laser siege bolt. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Nova Cannon Bolt fantasy game explosion lifecycle, dense orange plasma-laser charge, heavy magnetic release and hot expanding pressure, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/nova_cannon_bolt_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/nova_cannon_bolt_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "singularity_lance_beam_flight",
+      "label": "Singularity Lance Beam Flight",
+      "category": "ranged",
+      "description": "Fully charged white-violet gravitational lance. Dedicated in-flight lifecycle layer, separate from its cast and release.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Projectile renderer begins the authoritative visible flight interval.",
+      "durationSeconds": 1.4,
+      "prompt": "Singularity Lance Beam fantasy game projectile continuously moving through the air, contained gravity charge, rising white-violet harmonic, vacuum pull and immense focused release, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/singularity_lance_beam_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/singularity_lance_beam_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "singularity_lance_beam_explosion",
+      "label": "Singularity Lance Beam Explosion",
+      "category": "magic",
+      "description": "Fully charged white-violet gravitational lance. Dedicated explosion lifecycle layer, separate from target contact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact begins its authoritative explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Singularity Lance Beam fantasy game explosion lifecycle, contained gravity charge, rising white-violet harmonic, vacuum pull and immense focused release, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/singularity_lance_beam_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/singularity_lance_beam_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "hunters_mark_flight",
+      "label": "Hunter's Mark Flight",
+      "category": "magic",
+      "description": "A dedicated focused tracking pulse follows the mark projectile in flight.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Hunter's Mark begins its visible projectile flight.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy hunter tracking mark continuously moving through the air, narrow focused wind stream, subtle distant horn-colored resonance and a precise target-seeking shimmer, starts already in motion, no cast, no bow release, no collision, no explosion, no speech, no music.",
+      "path": "/assets/harthmere/audio/sfx/hunters_mark_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/hunters_mark_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "hunters_mark_explosion",
+      "label": "Hunter's Mark Explosion",
+      "category": "magic",
+      "description": "A dedicated target-lock burst and fading tracking aura for the mark impact.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "Hunter's Mark begins its successful magic impact visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy hunter tracking mark impact explosion, sharp focused target-lock burst, airy circular pulse and subtle horn-colored magical resonance that steadily fades to silence, no cast, no projectile flight, no bow release, no speech, no music.",
+      "path": "/assets/harthmere/audio/sfx/hunters_mark_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/hunters_mark_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "smoke_bomb_explosion",
+      "label": "Smoke Bomb Explosion",
+      "category": "ranged",
+      "description": "A dedicated alchemical smoke bloom follows the existing dart contact sound.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A smoke bomb begins its successful smoke explosion visual.",
+      "durationSeconds": 1.4,
+      "prompt": "Small fantasy alchemical smoke bomb explosion lifecycle, tight powder pop, rapidly expanding dense dark smoke, dry particulate rush and restrained chemical hiss that smoothly fades to silence, no throw, no dart flight, no separate impact tick, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/smoke_bomb_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/smoke_bomb_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "arcane_projectile_flight",
+      "label": "Arcane Projectile Flight",
+      "category": "magic",
+      "description": "A dedicated arcane lifecycle for magic attacks whose reusable projectile mesh belongs to another family.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A magic attack uses a physical or energy projectile visual with this authoritative damage family.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy arcane magic projectile continuously moving through the air, glassy violet-blue arcane current, crystalline harmonics and controlled rune energy, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/arcane_projectile_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/arcane_projectile_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "arcane_explosion",
+      "label": "Arcane Explosion",
+      "category": "magic",
+      "description": "A dedicated arcane explosion for magic attacks whose reusable projectile mesh belongs to another family.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact uses a physical or energy projectile visual with this authoritative damage family.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy arcane magic explosion lifecycle, glassy violet-blue arcane current, crystalline harmonics and controlled rune energy, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/arcane_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/arcane_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "fire_projectile_flight",
+      "label": "Fire Projectile Flight",
+      "category": "magic",
+      "description": "A dedicated fire lifecycle for magic attacks whose reusable projectile mesh belongs to another family.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A magic attack uses a physical or energy projectile visual with this authoritative damage family.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy fire magic projectile continuously moving through the air, roaring flame, hot embers and turbulent burning air, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/fire_projectile_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/fire_projectile_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "fire_explosion",
+      "label": "Fire Explosion",
+      "category": "magic",
+      "description": "A dedicated fire explosion for magic attacks whose reusable projectile mesh belongs to another family.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact uses a physical or energy projectile visual with this authoritative damage family.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy fire magic explosion lifecycle, roaring flame, hot embers and turbulent burning air, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/fire_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/fire_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "lightning_projectile_flight",
+      "label": "Lightning Projectile Flight",
+      "category": "magic",
+      "description": "A dedicated lightning lifecycle for magic attacks whose reusable projectile mesh belongs to another family.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A magic attack uses a physical or energy projectile visual with this authoritative damage family.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy lightning magic projectile continuously moving through the air, fast branching electricity, charged air and sharp high-voltage crackle, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/lightning_projectile_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/lightning_projectile_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "lightning_explosion",
+      "label": "Lightning Explosion",
+      "category": "magic",
+      "description": "A dedicated lightning explosion for magic attacks whose reusable projectile mesh belongs to another family.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact uses a physical or energy projectile visual with this authoritative damage family.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy lightning magic explosion lifecycle, fast branching electricity, charged air and sharp high-voltage crackle, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/lightning_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/lightning_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "holy_projectile_flight",
+      "label": "Holy Projectile Flight",
+      "category": "magic",
+      "description": "A dedicated holy lifecycle for magic attacks whose reusable projectile mesh belongs to another family.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A magic attack uses a physical or energy projectile visual with this authoritative damage family.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy holy magic projectile continuously moving through the air, clean white-gold radiant energy, warm power and restrained bell-like shimmer, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/holy_projectile_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/holy_projectile_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "holy_explosion",
+      "label": "Holy Explosion",
+      "category": "magic",
+      "description": "A dedicated holy explosion for magic attacks whose reusable projectile mesh belongs to another family.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact uses a physical or energy projectile visual with this authoritative damage family.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy holy magic explosion lifecycle, clean white-gold radiant energy, warm power and restrained bell-like shimmer, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/holy_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/holy_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "dark_projectile_flight",
+      "label": "Dark Projectile Flight",
+      "category": "magic",
+      "description": "A dedicated dark lifecycle for magic attacks whose reusable projectile mesh belongs to another family.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A magic attack uses a physical or energy projectile visual with this authoritative damage family.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy dark magic projectile continuously moving through the air, shadowy red-purple energy, reversed breath-like pull and decaying spectral texture, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/dark_projectile_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/dark_projectile_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "dark_explosion",
+      "label": "Dark Explosion",
+      "category": "magic",
+      "description": "A dedicated dark explosion for magic attacks whose reusable projectile mesh belongs to another family.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact uses a physical or energy projectile visual with this authoritative damage family.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy dark magic explosion lifecycle, shadowy red-purple energy, reversed breath-like pull and decaying spectral texture, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/dark_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/dark_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "nature_projectile_flight",
+      "label": "Nature Projectile Flight",
+      "category": "magic",
+      "description": "A dedicated nature lifecycle for magic attacks whose reusable projectile mesh belongs to another family.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A magic attack uses a physical or energy projectile visual with this authoritative damage family.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy nature magic projectile continuously moving through the air, thorny seed magic, twisting roots, leaves, soil and living green energy, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/nature_projectile_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/nature_projectile_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "nature_explosion",
+      "label": "Nature Explosion",
+      "category": "magic",
+      "description": "A dedicated nature explosion for magic attacks whose reusable projectile mesh belongs to another family.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact uses a physical or energy projectile visual with this authoritative damage family.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy nature magic explosion lifecycle, thorny seed magic, twisting roots, leaves, soil and living green energy, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/nature_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/nature_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "sonic_projectile_flight",
+      "label": "Sonic Projectile Flight",
+      "category": "magic",
+      "description": "A dedicated sonic lifecycle for magic attacks whose reusable projectile mesh belongs to another family.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A magic attack uses a physical or energy projectile visual with this authoritative damage family.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy sonic magic projectile continuously moving through the air, compressed musical resonance, oscillating pressure waves and bright harmonic vibration, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/sonic_projectile_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/sonic_projectile_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "sonic_explosion",
+      "label": "Sonic Explosion",
+      "category": "magic",
+      "description": "A dedicated sonic explosion for magic attacks whose reusable projectile mesh belongs to another family.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact uses a physical or energy projectile visual with this authoritative damage family.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy sonic magic explosion lifecycle, compressed musical resonance, oscillating pressure waves and bright harmonic vibration, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/sonic_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/sonic_explosion.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "gravity_projectile_flight",
+      "label": "Gravity Projectile Flight",
+      "category": "magic",
+      "description": "A dedicated gravity lifecycle for magic attacks whose reusable projectile mesh belongs to another family.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A magic attack uses a physical or energy projectile visual with this authoritative damage family.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy gravity magic projectile continuously moving through the air, white-violet spacetime tension, vacuum pull, deep pressure and contained singularity energy, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/gravity_projectile_flight.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/gravity_projectile_flight.m4a",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "gravity_explosion",
+      "label": "Gravity Explosion",
+      "category": "magic",
+      "description": "A dedicated gravity explosion for magic attacks whose reusable projectile mesh belongs to another family.",
+      "authority": [
+        "client_presentation"
+      ],
+      "trigger": "A successful magic impact uses a physical or energy projectile visual with this authoritative damage family.",
+      "durationSeconds": 1.4,
+      "prompt": "Fantasy gravity magic explosion lifecycle, white-violet spacetime tension, vacuum pull, deep pressure and contained singularity energy, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.",
+      "path": "/assets/harthmere/audio/sfx/gravity_explosion.webm",
+      "mobilePath": "/assets/harthmere/audio/sfx/gravity_explosion.m4a",
       "source": "elevenlabs",
       "loop": false,
       "promptInfluence": 0.72

@@ -8,6 +8,7 @@ import {
   tickHarthmereNativeVitals,
   writeHarthmereNativeVitals,
 } from "@/shared/harthmere/harthmere_native_vitals";
+import { applyHarthmereMovementActionStaminaReceipt } from "@/shared/harthmere/harthmere_native_movement_action";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { z } from "zod";
 
@@ -20,11 +21,16 @@ const zBody = z.discriminatedUnion("action", [
     underwater: z.boolean().optional(),
   }),
   z.object({ action: z.literal("respawn_grove") }),
+  z.object({
+    action: z.literal("movement_action_fallback"),
+    movementAction: z.enum(["dodge", "evade", "doubleJump"]),
+    nonce: z.number().finite(),
+  }),
 ]);
 
 const zResponse = z.object({
   ok: z.boolean(),
-  action: z.enum(["heartbeat", "respawn_grove"]),
+  action: z.enum(["heartbeat", "respawn_grove", "movement_action_fallback"]),
   mana: z.number(),
   maxMana: z.number(),
   stamina: z.number(),
@@ -35,10 +41,13 @@ const zResponse = z.object({
   maxHp: z.number(),
   damage: z.number(),
   deathCause: z.enum(["stamina", "drowning"]).optional(),
+  accepted: z.boolean().optional(),
+  duplicate: z.boolean().optional(),
+  reason: z.enum(["dead", "insufficient_stamina", "invalid_nonce"]).optional(),
 });
 
 function unavailableNativeVitalsResponse(
-  action: "heartbeat" | "respawn_grove"
+  action: "heartbeat" | "respawn_grove" | "movement_action_fallback"
 ) {
   return {
     ok: false,
@@ -114,8 +123,8 @@ export default biomesApiHandler(
       };
     }
 
-    // Respawn is the only mutating operation left on this route. Keep bounded
-    // retries for a normal overlap with combat, consumption, or the scheduler.
+    // Mutations share the bounded ECS retry path so movement fallback receipts
+    // and respawns cannot lose a normal overlap with combat or the scheduler.
     return editWorldWithRetry(
       worldApi,
       async (editor) => {
@@ -126,6 +135,33 @@ export default biomesApiHandler(
 
         const nowMs = Date.now();
         const health = player.mutableHealth();
+        if (body.action === "movement_action_fallback") {
+          const receipt = applyHarthmereMovementActionStaminaReceipt(
+            player.mutableTriggerState(),
+            {
+              action: body.movementAction,
+              nonce: body.nonce,
+              alive: health.hp > 0,
+            }
+          );
+          const vitals = readHarthmereNativeVitals(player.triggerState());
+          return {
+            ok: true,
+            action: body.action,
+            mana: vitals.mana,
+            maxMana: vitals.maxMana,
+            stamina: vitals.stamina,
+            maxStamina: vitals.maxStamina,
+            breath: vitals.breath,
+            maxBreath: vitals.maxBreath,
+            hp: health.hp,
+            maxHp: health.maxHp,
+            damage: 0,
+            accepted: receipt.accepted,
+            duplicate: receipt.duplicate,
+            reason: receipt.accepted ? undefined : receipt.reason,
+          };
+        }
         if (body.action === "respawn_grove") {
           health.hp = health.maxHp;
           health.lastDamageSource = undefined;

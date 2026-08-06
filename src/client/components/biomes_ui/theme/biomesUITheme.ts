@@ -1821,6 +1821,100 @@ button.biomes-ui-card:disabled {
   letter-spacing: 0.06em;
 }
 
+.biomes-ui-quest-complete {
+  position: fixed;
+  top: clamp(98px, 17vh, 190px);
+  left: 50%;
+  z-index: 10079;
+  width: min(500px, calc(100vw - 32px));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 36px 20px;
+  overflow: visible;
+  border: 1px solid rgba(116, 242, 201, 0.74);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(128, 255, 210, 0.3), transparent 54%),
+    linear-gradient(135deg, rgba(8, 45, 49, 0.97), rgba(18, 13, 52, 0.96));
+  box-shadow:
+    0 0 26px rgba(94, 255, 196, 0.48),
+    0 0 72px rgba(105, 231, 255, 0.25),
+    inset 0 0 30px rgba(255, 255, 255, 0.07);
+  color: white;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.74);
+  pointer-events: none;
+  isolation: isolate;
+}
+
+.biomes-ui-quest-complete::before,
+.biomes-ui-quest-complete::after {
+  content: "◆";
+  position: absolute;
+  top: 42%;
+  color: #9effd8;
+  font-size: 28px;
+  filter: drop-shadow(0 0 10px rgba(98, 255, 203, 0.9));
+  animation: biomes-ui-level-up-sparkle 880ms ease-in-out infinite alternate;
+}
+
+.biomes-ui-quest-complete::before { left: 22px; }
+.biomes-ui-quest-complete::after { right: 22px; animation-delay: 160ms; }
+
+.biomes-ui-quest-complete__burst {
+  position: absolute;
+  inset: -52px -96px;
+  z-index: -1;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(108, 255, 204, 0.32) 0deg 4deg,
+    transparent 4deg 19deg
+  );
+  mask-image: radial-gradient(circle, transparent 0 25%, #000 46%, transparent 73%);
+  animation: biomes-ui-level-up-burst 4.2s ease-out both;
+}
+
+.biomes-ui-quest-complete__eyebrow {
+  color: #9effd8;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.biomes-ui-quest-complete__title {
+  margin-top: 3px;
+  color: #f5fff9;
+  font-size: clamp(24px, 4.4vw, 40px);
+  font-weight: 1000;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  text-shadow:
+    0 2px 0 rgba(12, 92, 68, 0.9),
+    0 0 18px rgba(112, 255, 204, 0.72);
+}
+
+.biomes-ui-quest-complete__rewards {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px 10px;
+  color: rgba(235, 255, 247, 0.94);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.biomes-ui-quest-complete__rewards strong {
+  width: 100%;
+  color: #ffe9a3;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
 @keyframes biomes-ui-level-up-burst {
   0% { opacity: 0; transform: rotate(-12deg) scale(0.45); }
   18% { opacity: 1; transform: rotate(2deg) scale(1); }

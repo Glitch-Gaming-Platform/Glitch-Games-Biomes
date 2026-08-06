@@ -331,6 +331,7 @@ const getDeclineAction = (
 export const TalkToNpc: React.FunctionComponent<{
   id: BiomesId | number | string;
   talkingToNpcId: BiomesId;
+  focusCamera?: boolean;
   completeStep: () => unknown;
   dialogText: string;
   advanceText?: string;
@@ -342,6 +343,7 @@ export const TalkToNpc: React.FunctionComponent<{
 }> = ({
   id,
   talkingToNpcId,
+  focusCamera,
   dialogText,
   completeStep,
   advanceText,
@@ -353,7 +355,7 @@ export const TalkToNpc: React.FunctionComponent<{
 }) => {
   const clientContext = useClientContext();
   return (
-    <TalkDialogModal entityId={talkingToNpcId}>
+    <TalkDialogModal entityId={talkingToNpcId} focusCamera={focusCamera}>
       <TalkDialogModalStep
         id={id}
         entityId={talkingToNpcId}

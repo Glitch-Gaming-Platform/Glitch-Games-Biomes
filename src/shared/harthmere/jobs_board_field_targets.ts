@@ -46,8 +46,7 @@ export const HARTHMERE_JOBS_BOARD_FIELD_TARGET_LATERAL = 3.25;
 export const HARTHMERE_OUTPOST_WORK_STATION_LATERAL = -3.25;
 
 export type HarthmereJobsBoardFieldTargetSource =
-  | "business_template_target"
-  | "business_outpost_work_station";
+  "business_template_target" | "business_outpost_work_station";
 
 export interface HarthmereJobsBoardFieldTarget {
   /** The requirement/job `targetId` the completion flow matches on. */
@@ -60,6 +59,16 @@ export interface HarthmereJobsBoardFieldTarget {
   outpostId: string;
   position: Vec3;
   source: HarthmereJobsBoardFieldTargetSource;
+}
+
+// Permanent business fixtures must remain usable while their terrain shard is
+// still streaming. Their authored Y is the audited outpost apron height; once
+// the shared grounder resolves a real surface, that grounded value wins.
+export function harthmereJobsBoardFieldTargetFeetY(
+  groundedFeetY: number | undefined,
+  authoredFeetY: number
+): number {
+  return groundedFeetY ?? authoredFeetY;
 }
 
 /** targetId -> the physical prop label the player interacts with. */
@@ -272,6 +281,21 @@ export function harthmereJobsBoardFieldTargetForId(
   id: string | undefined
 ): HarthmereJobsBoardFieldTarget | undefined {
   return id ? fieldTargetIndex().get(id) : undefined;
+}
+
+/** Resolve old/synthetic map pins to their registered physical field prop. */
+export function harthmereJobsBoardFieldTargetsNearPosition(
+  position: readonly [number, number, number] | undefined,
+  radius = 1.75
+): readonly HarthmereJobsBoardFieldTarget[] {
+  if (!position || !position.every(Number.isFinite) || radius < 0) return [];
+  return harthmereJobsBoardFieldTargets().filter(
+    (target) =>
+      Math.hypot(
+        target.position[0] - position[0],
+        target.position[2] - position[2]
+      ) <= radius
+  );
 }
 
 export function isHarthmereJobsBoardFieldTargetId(id: string | undefined) {

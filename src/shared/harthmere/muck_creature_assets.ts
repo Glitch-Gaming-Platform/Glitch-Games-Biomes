@@ -1,5 +1,40 @@
 export const HARTHMERE_MUCK_CREATURE_NPC_ASSET_VERSION =
-  "harthmere-muck-creature-npc-asset" as const;
+  "harthmere-muck-creature-npc-asset-v3-stagger-polish" as const;
+
+export const HARTHMERE_INDISWORM_RUNTIME_ASSET_URL =
+  "/assets/harthmere/glb/creatures/indisworm.glb" as const;
+
+export const HARTHMERE_CREATURE_STAGGER_RUNTIME_ASSET_URLS = Object.freeze({
+  "npcs/mossy_mucker":
+    "/assets/harthmere/glb/creatures/stagger/mossy_mucker.glb",
+  "npcs/tree_mucker": "/assets/harthmere/glb/creatures/stagger/tree_mucker.glb",
+  "npcs/stone_mucker":
+    "/assets/harthmere/glb/creatures/stagger/stone_mucker.glb",
+  "npcs/jugger_mucker":
+    "/assets/harthmere/glb/creatures/stagger/jugger_mucker.glb",
+  "npcs/seedy_muckling":
+    "/assets/harthmere/glb/creatures/stagger/seedy_muckling.glb",
+  "npcs/brown_hexer": "/assets/harthmere/glb/creatures/stagger/brown_hexer.glb",
+  "npcs/purple_hexer":
+    "/assets/harthmere/glb/creatures/stagger/purple_hexer.glb",
+  "npcs/cow": "/assets/harthmere/glb/creatures/stagger/cow.glb",
+  "npcs/sheep": "/assets/harthmere/glb/creatures/stagger/sheep.glb",
+  "npcs/rabbit": "/assets/harthmere/glb/creatures/stagger/rabbit.glb",
+} as const);
+
+export function harthmereMuckCreatureRuntimeAssetUrl(
+  assetKey: string
+): string | undefined {
+  if (assetKey === "npcs/indisworm") {
+    return HARTHMERE_INDISWORM_RUNTIME_ASSET_URL;
+  }
+  return (
+    HARTHMERE_CREATURE_STAGGER_RUNTIME_ASSET_URLS as Record<
+      string,
+      string | undefined
+    >
+  )[assetKey];
+}
 
 export function harthmereMuckCreatureAssetKeyForLabel(
   label: string | undefined

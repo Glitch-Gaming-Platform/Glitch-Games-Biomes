@@ -11,6 +11,8 @@
 // Mount this container directly — it owns its own fetch, error, and refresh
 // states. Closing it via `onClose` is the only required outer wiring.
 import * as React from "react";
+import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { addToast } from "@/client/components/toast/helpers";
 import {
   createHarthmereJobsBoardAdapter,
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
@@ -26,6 +28,10 @@ import {
   CH1_JOBS_BOARD_STEP_ID,
   ch1InteractionSurfaceForStep,
 } from "@/shared/harthmere/ch1_interaction_surfaces";
+import {
+  announceHarthmereQuestCompletion,
+  playerReadableQuestRewardItemName,
+} from "@/client/components/biomes_ui/questCompletionCelebrationState";
 
 // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN:
 // Mirrors the authority module's constants. Hardcoded here so the container
@@ -53,6 +59,7 @@ export function HarthmereJobsBoardLiveContainer({
   worldContext?: HarthmereJobsBoardWorldContext;
   onClose?: () => void;
 }) {
+  const { resources } = useClientContext();
   const { state, loading, error, refresh } = useHarthmereJobsBoard();
   const [snapshot, setSnapshot] = React.useState<
     HarthmereJobsBoardSnapshot | undefined
@@ -114,12 +121,18 @@ export function HarthmereJobsBoardLiveContainer({
         const next = await op();
         setSnapshot(next);
       } catch (err) {
-        setMutationError(err instanceof Error ? err.message : String(err));
+        const message = err instanceof Error ? err.message : String(err);
+        setMutationError(message);
+        addToast(resources, {
+          kind: "basic",
+          id: `harthmere-jobs-board-error:${actionId}`,
+          message,
+        });
       } finally {
         setPendingActionId(undefined);
       }
     },
-    [pendingActionId]
+    [pendingActionId, resources]
   );
 
   const onAcceptJob = React.useCallback(
@@ -133,11 +146,30 @@ export function HarthmereJobsBoardLiveContainer({
       // then claim the payout. The current todo status decides whether the
       // verification step is still needed.
       const todo = snapshot?.myTodos.find((entry) => entry.jobId === jobId);
+      const job = snapshot?.myAcceptedJobs.find(
+        (entry) => entry.jobId === jobId
+      );
       return run(`complete:${jobId}`, async () => {
-        return adapter.completeJobFully(jobId, activeBoardId, {
+        const next = await adapter.completeJobFully(jobId, activeBoardId, {
           todoStatus: todo?.status,
           questTodoId: todo?.todoId,
         });
+        announceHarthmereQuestCompletion({
+          id: `jobs-board:${jobId}`,
+          title: job?.title ?? "Grove Job",
+          rewards: [
+            ...(Number(job?.rewardGold ?? 0) > 0
+              ? [`${job!.rewardGold} gold`]
+              : []),
+            ...(job?.rewardItems ?? []).map(
+              (reward) =>
+                `${reward.count} × ${playerReadableQuestRewardItemName(
+                  reward.itemId
+                )}`
+            ),
+          ],
+        });
+        return next;
       });
     },
     [adapter, activeBoardId, run, snapshot]
@@ -175,9 +207,9 @@ export function HarthmereJobsBoardLiveContainer({
               <p>
                 {loading
                   ? "Loading live board state…"
-                  : error ?? mutationError
-                  ? "Could not reach the jobs board."
-                  : "Connecting…"}
+                  : (error ?? mutationError)
+                    ? "Could not reach the jobs board."
+                    : "Connecting…"}
               </p>
             </div>
             <button onClick={onClose} aria-label="Close jobs board">
@@ -213,12 +245,12 @@ export function HarthmereJobsBoardLiveContainer({
   const statusLine = mutationError
     ? mutationError
     : error
-    ? error
-    : pendingActionId
-    ? "Sending request to live backend..."
-    : loading
-    ? "Refreshing from live backend…"
-    : `Live · ${snapshot.openJobs.length} open · ${snapshot.myAcceptedJobs.length} accepted by you`;
+      ? error
+      : pendingActionId
+        ? "Sending request to live backend..."
+        : loading
+          ? "Refreshing from live backend…"
+          : `Live · ${snapshot.openJobs.length} open · ${snapshot.myAcceptedJobs.length} accepted by you`;
 
   // HARTHMERE_JOBS_BOARD_PROXIMITY_GATE:
   // The player must be physically at a board (either via interaction prompt,

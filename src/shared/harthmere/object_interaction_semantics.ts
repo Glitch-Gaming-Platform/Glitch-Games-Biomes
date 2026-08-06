@@ -717,3 +717,16 @@ export function harthmereObjectInteractionForLabel(input: {
   }
   return { kind: "inspect", title: "Inspect", toastVerb: "Inspected" };
 }
+
+// HARTHMERE_AUTHORED_CONTAINER_FLOW:
+// A container-shaped noun is only presentation. Exact authored semantics own
+// the action: a Farm Supply Crate is a delivery hand-in, Rin's basket is a
+// gather target, and an ordinary Road Kit Crate is a real container. Keeping
+// this decision beside the resolver prevents cursor/UI callers from bypassing
+// those exact authored overrides with the broad noun classifier.
+export function harthmereObjectUsesContainerFlow(input: {
+  label?: string | null;
+  entityDescription?: string | null;
+}): boolean {
+  return harthmereObjectInteractionForLabel(input)?.kind === "open_container";
+}

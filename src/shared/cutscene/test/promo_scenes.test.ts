@@ -93,11 +93,36 @@ describe("promo scenes - registry", () => {
         `${scene.id}: boss capture must keep the already-bootstrapped camera interest set instead of reconnecting at the actor stage`
       );
       assert.deepEqual(scene.terrainProofs, spec.terrainProofs);
-      assert.ok(scene.terrainView, `${scene.id}: missing camera view corridor`);
-      assert.equal(scene.terrainView?.verticalFov, spec.fov);
-      assert.deepEqual(scene.terrainView?.camera, spec.cameraFar);
+      if (spec.runtimeSceneryDistrict) {
+        assert.equal(scene.terrainView, undefined);
+        assert.equal(scene.cameraClearance, undefined);
+        assert.deepEqual(scene.runtimeScenery, {
+          district: "Old Well / Underways",
+          minLoadedPlacements: 8,
+        });
+      } else {
+        assert.ok(
+          scene.terrainView,
+          `${scene.id}: missing camera view corridor`
+        );
+        assert.equal(scene.terrainView?.verticalFov, spec.fov);
+        assert.deepEqual(scene.terrainView?.camera, spec.cameraFar);
+        assert.equal(scene.terrainView?.farMeters, spec.terrainViewFarMeters);
+        assert.equal(
+          scene.cameraClearance?.sightlineTargets?.length,
+          3,
+          `${scene.id}: lower/middle/upper silhouette must stay visible`
+        );
+      }
       assert.ok(scene.filename.endsWith(`${spec.id.replaceAll("_", "-")}.png`));
     }
+  });
+
+  it("caps finite Elsewhen view corridors at authored terrain", () => {
+    const bull = promoSceneById("boss-gilded-bull")!;
+    const winter = promoSceneById("boss-ninth-winter")!;
+    assert.equal(bull.terrainView?.farMeters, 32);
+    assert.equal(winter.terrainView?.farMeters, 48);
   });
 
   it("keeps Underways boss staging in the running stack's unshifted authored space", () => {
@@ -203,8 +228,8 @@ describe("promo scenes - registry", () => {
   it("applies the logged first-attempt camera to a warm boss batch", () => {
     const base = promoSceneById("boss-muck-scarred-helix")!;
     const recommended = promoSceneWithRecommendedBossCamera(base);
-    assert.equal(recommended.cameraPreset, "reverse-inward");
-    assert.notDeepEqual(recommended.observer.position, base.observer.position);
+    assert.equal(recommended.cameraPreset, "baseline");
+    assert.deepEqual(recommended.observer.position, base.observer.position);
   });
 
   it("rejects camera presets for non-boss stills and unknown names", () => {

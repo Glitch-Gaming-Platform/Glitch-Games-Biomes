@@ -25,8 +25,11 @@ export interface HarthmereCombatComboState {
 export const HARTHMERE_COMBAT_COMBO_MAX_HITS = 4;
 export const HARTHMERE_COMBAT_COMBO_COOLDOWN_SECS = 3;
 export const HARTHMERE_COMBAT_COMBO_CONTEXT_SECS = 4;
-export const HARTHMERE_COMBAT_BASIC_AUTHORED_CONTACT_SECS = 0.16;
-export const HARTHMERE_COMBAT_HEAVY_AUTHORED_CONTACT_SECS = 0.72;
+export const HARTHMERE_COMBAT_ANIMATION_FPS = 24;
+export const HARTHMERE_COMBAT_BASIC_CONTACT_FRAME = 6;
+export const HARTHMERE_COMBAT_BASIC_END_FRAME = 17;
+export const HARTHMERE_COMBAT_HEAVY_CONTACT_FRAME = 10;
+export const HARTHMERE_COMBAT_HEAVY_END_FRAME = 26;
 
 export type HarthmereCombatComboDecision =
   | { allowed: true; state: HarthmereCombatComboState }
@@ -75,6 +78,19 @@ export const HARTHMERE_PLAYER_ATTACK_TIMINGS = Object.freeze({
   HarthmerePlayerAttackTiming
 >);
 
+// These values are presentation-facing exact frame times. Gameplay uses the
+// millisecond values above, rounded to the nearest millisecond. Keeping both
+// forms derived from the same frame contract prevents a combo link from
+// replacing the current pose before its visible blade contact.
+export const HARTHMERE_COMBAT_BASIC_AUTHORED_CONTACT_SECS =
+  HARTHMERE_COMBAT_BASIC_CONTACT_FRAME / HARTHMERE_COMBAT_ANIMATION_FPS;
+export const HARTHMERE_COMBAT_HEAVY_AUTHORED_CONTACT_SECS =
+  HARTHMERE_COMBAT_HEAVY_CONTACT_FRAME / HARTHMERE_COMBAT_ANIMATION_FPS;
+export const HARTHMERE_COMBAT_BASIC_AUTHORED_DURATION_SECS =
+  HARTHMERE_COMBAT_BASIC_END_FRAME / HARTHMERE_COMBAT_ANIMATION_FPS;
+export const HARTHMERE_COMBAT_HEAVY_AUTHORED_DURATION_SECS =
+  HARTHMERE_COMBAT_HEAVY_END_FRAME / HARTHMERE_COMBAT_ANIMATION_FPS;
+
 export const HARTHMERE_HEAVY_ATTACK_HOLD_SECS = 0.22;
 export const HARTHMERE_HEAVY_ATTACK_DAMAGE_MULTIPLIER = 1.5;
 export const HARTHMERE_HEAVY_ATTACK_TIME_MULTIPLIER = 1;
@@ -95,12 +111,10 @@ export function harthmerePlayerAttackCommitmentSeconds(
 export function harthmereCombatComboLinkSeconds(
   timingClass: HarthmerePlayerAttackTimingClass
 ) {
-  if (timingClass === "basic") {
-    return HARTHMERE_COMBAT_BASIC_AUTHORED_CONTACT_SECS;
-  }
-  if (timingClass === "heavy") {
-    return HARTHMERE_COMBAT_HEAVY_AUTHORED_CONTACT_SECS;
-  }
+  // Link on the gameplay contact clock, never the old pre-contact constants.
+  // The rounded millisecond value is intentionally a fraction later than the
+  // exact Blender sample for heavy attacks, so the next action cannot replace
+  // the current action before damage/contact has actually been evaluated.
   return HARTHMERE_PLAYER_ATTACK_TIMINGS[timingClass].impactMs / 1000;
 }
 

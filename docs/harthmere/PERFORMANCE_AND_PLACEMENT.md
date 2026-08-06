@@ -498,17 +498,22 @@ because the client is CPU-bound.
 For Glitch/embed sessions, `src/client/game/client_config.ts` sets:
 
 ```ts
-ret.dynamicMinDrawDistance = 128;
+ret.dynamicMinDrawDistance = 96;
 ```
 
 This has the following behavior:
 
-- Auto/dynamic graphics retain at least 128 m of terrain and synchronization
+- Auto/dynamic graphics retain at least 96 m of terrain and synchronization
   distance.
 - The former 192 m minimum is intentionally retired: a headed Apple M1 Max
   combat sample measured 26.5 ms CPU render time versus 4.535 ms GPU time and
   27.78 median FPS. The old floor prevented the adaptive controller from
   shedding the CPU-heavy terrain/ECS radius.
+- The interim 128 m minimum is also retired after the August 6 production
+  capture held 1,098-1,178 live block meshes, about 204 MB of flora vertex
+  buffers, and 1.5-1.6 GB JS heap while median reported FPS remained 12. The
+  96 m emergency floor reduces retained horizontal area by roughly 44% while
+  preserving the nearby fight and landmark context.
 - Dynamic quality can still lower render scale when the GPU is the bottleneck.
 - Explicit Low or Safe Mode remains allowed to select a shorter fixed distance.
 - `minDrawDistance` remains available as the hard URL/config override.
@@ -622,7 +627,7 @@ Current behavior:
 - meshes use normal Three.js frustum culling;
 - node groups beyond the active draw distance are hidden, which also removes
   their point lights from Three.js's global light collection;
-- the world itself retains the 128 m dynamic minimum described above;
+- the world itself retains the 96 m dynamic minimum described above;
 - static business/jobs-board debug bridges are installed once per renderer;
 - quest-marker debug snapshots publish at 2 Hz rather than every frame.
 
@@ -934,7 +939,7 @@ ECS, Redis, Anima, and Gaia upgrades can improve server tick throughput,
 replication latency, simulation capacity, or operational reliability. They do
 not reduce the browser's scene traversal and draw submission unless they also
 change how much data or how many visible entities the client receives. Any such
-change must preserve the 128 m render-distance contract and should use client
+change must preserve the 96 m render-distance contract and should use client
 LOD, aggregation, or lower update frequency rather than hiding the world.
 
 Current recommendation after the completed platform upgrade:
@@ -1042,11 +1047,13 @@ Keep these safeguards together:
   time is at least 50 ms. At 2 FPS this removes roughly 43 seconds of avoidable
   delay before the first quality reduction. The emergency window must never be
   used to raise quality.
-- Desktop Harthmere auto graphics use a 128 m dynamic minimum. The previous
+- Desktop Harthmere auto graphics use a 96 m dynamic minimum. The previous
   192 m floor kept the CPU-bound battle scene at 27.78 median FPS even though
   GPU time was only 4.535 ms; lowering render scale would not address that
-  bottleneck. Explicit Low/Safe modes and the mobile 64 m emergency ladder are
-  unchanged.
+  bottleneck. A later production fight proved that 128 m still retained over
+  1,100 block meshes at 10-14 FPS, so the adaptive ladder may now descend one
+  additional 32 m step. Explicit Low/Safe modes and the mobile 64 m emergency
+  ladder are unchanged.
 - Browser acceptance records median FPS plus the selected render scale and draw
   distance before and during combat, including both the requested adaptive
   value and the effective post-floor value. It also rejects the
@@ -1091,7 +1098,8 @@ Status at this document update:
 - The former 192 m dynamic view-distance floor and the earlier React/NPC
   performance batch were present in production revision
   `biomes-node-vnet--0000215` inspected on 2026-08-02. Current source replaces
-  only that auto-graphics floor with the measured 128 m contract.
+  first replaced that auto-graphics floor with a measured 128 m contract; the
+  August 6 production fight then narrowed the emergency floor to 96 m.
 - The final static-matrix, frame-setup, Chapter 1 polling, save-response, outbox,
   and renderer-cval changes described above are source-only until an explicitly
   authorized build/deployment includes them.

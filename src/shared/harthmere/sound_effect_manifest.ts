@@ -5,7 +5,7 @@ import {
 } from "@/shared/harthmere/creature_sound_profiles";
 
 export const HARTHMERE_SOUND_EFFECT_MANIFEST_VERSION =
-  "harthmere-sound-effects-elevenlabs-v8-mobile-aac" as const;
+  "harthmere-sound-effects-elevenlabs-v10-projectile-lifecycles" as const;
 
 export const HARTHMERE_SOUND_EFFECT_EVENT =
   "biomes:harthmere-sound-effect" as const;
@@ -22,11 +22,7 @@ export const HARTHMERE_CAMPFIRE_AMBIENCE_RADIUS_METERS = 22;
 export const HARTHMERE_CH1_PORTAL_AMBIENCE_RADIUS_METERS = 28;
 
 export type HarthmereSoundAuthority =
-  | "client_presentation"
-  | "native_ecs"
-  | "anima"
-  | "gaia"
-  | "server_receipt";
+  "client_presentation" | "native_ecs" | "anima" | "gaia" | "server_receipt";
 
 export type HarthmereSoundCategory =
   | "existing"
@@ -284,7 +280,7 @@ type GeneratedRow = readonly [
   trigger: string,
   durationSeconds: number,
   prompt: string,
-  loop?: boolean
+  loop?: boolean,
 ];
 
 const GENERATED_ROWS: readonly GeneratedRow[] = [
@@ -367,6 +363,36 @@ const GENERATED_ROWS: readonly GeneratedRow[] = [
     "Confirmed damage against unarmored target.",
     0.5,
     "Restrained non-gory fantasy melee impact on an unarmored body, dense cloth and body thud, short and game-ready, no music, no vocalization.",
+  ],
+  [
+    "melee_hit_unarmed_slap",
+    "Bare-Handed Melee Hit",
+    "combat",
+    "A compact finger snap for a confirmed bare-handed melee hit.",
+    ["client_presentation", "native_ecs"],
+    "Confirmed player melee damage with no held item.",
+    0.15,
+    "One single dry human finger snap at extremely close range, crisp thumb-and-middle-finger snap with a sharp skin click and tiny fleshy transient, exactly one snap, no hand clap, no slap, no repeated snaps, no percussion, no voice, no room reverb, no echo, isolated game combat sound.",
+  ],
+  [
+    "melee_hit_tool_wood",
+    "Tool Melee Hit",
+    "combat",
+    "A compact axe-like wood strike for a confirmed hit with a tool.",
+    ["client_presentation", "native_ecs"],
+    "Confirmed player melee damage with a held tool.",
+    0.15,
+    "One single axe head striking solid dry wood, short woody chop crack, tight hard transient, no swing, no debris, no voice, no reverb, no echo, no tail, isolated game combat sound.",
+  ],
+  [
+    "melee_hit_weapon_clink",
+    "Weapon Melee Hit",
+    "combat",
+    "A compact steel sword-blade strike against a solid metal object for a confirmed weapon hit.",
+    ["client_presentation", "native_ecs"],
+    "Confirmed player melee damage with a held weapon.",
+    0.15,
+    "One steel sword blade edge striking a solid iron or steel object at close range, unmistakable sword-on-metal clash, hard bright metallic impact with a dense blade clang and a very short high-frequency ring, not a coin clink, not cutlery, not glass, no sword swing whoosh, no voice, no reverb, isolated game combat sound.",
   ],
   [
     "dodge_roll",
@@ -2220,49 +2246,61 @@ const PROJECTILE_ROWS = [
   ],
 ] as const;
 
+const PROJECTILE_SOUND_IDENTITIES: Readonly<Record<string, string>> = {
+  spark: "white-purple electricity and crystalline arcane crackle",
+  fireball: "hot flame, embers and a dense fire roar",
+  meteor: "massive burning stone, deep air pressure and debris",
+  lightning_bolt: "extremely fast branching electricity and sharp thunder",
+  holy_light: "clean white-gold radiant energy and a small bell-like shimmer",
+  smite: "forceful white-gold holy energy with a hammer-like weight",
+  judgment: "golden runes, holy metal resonance and focused force",
+  consecrate: "descending sacred rune, radiant ground ring and holy pulse",
+  life_drain: "dark red-purple siphoning energy and reversed breath-like flow",
+  entangling_roots: "thorny seed magic, dirt rupture and twisting roots",
+  indisworm_poison_spit:
+    "pressurized wet venom, acidic bubbles, sticky membrane flutter and a sharp toxic hiss",
+  mocking_verse: "magical musical-note energy and oscillating sonic waves",
+  curse_of_weakness:
+    "broken violet curse rune, shadow flutter and decaying energy",
+  polymorph:
+    "teal whimsical transformation magic, soft woolly poof and rune shimmer",
+  fear: "dark horned spectral energy, reversed whisper texture and dread pulse",
+  charm: "pink arcane heart energy, warm pulse and swaying shimmer",
+  hex_bolt: "corrupted green-purple crystalline energy with unstable crackle",
+  thaedryn_resonance:
+    "huge bronze bell resonance, orbiting stone shards and deep pressure wave",
+  photon_sidearm_pulse:
+    "tight blue photon snap, compact capacitor chirp and precise military energy discharge",
+  pulse_carbine_burst:
+    "three rapid cyan compressed-energy pulses, crisp cycling electronics and controlled recoil",
+  helix_projector_beam:
+    "two rotating green emitters braiding into a spiraling beam with harmonic electrical texture",
+  nova_cannon_bolt:
+    "dense orange plasma-laser charge, heavy magnetic release and hot expanding pressure",
+  singularity_lance_beam:
+    "contained gravity charge, rising white-violet harmonic, vacuum pull and immense focused release",
+};
+
 function projectilePrompt(
   id: string,
   label: string,
   phase: "launch" | "impact"
 ) {
-  const identity: Record<string, string> = {
-    spark: "white-purple electricity and crystalline arcane crackle",
-    fireball: "hot flame, embers and a dense fire roar",
-    meteor: "massive burning stone, deep air pressure and debris",
-    lightning_bolt: "extremely fast branching electricity and sharp thunder",
-    holy_light: "clean white-gold radiant energy and a small bell-like shimmer",
-    smite: "forceful white-gold holy energy with a hammer-like weight",
-    judgment: "golden runes, holy metal resonance and focused force",
-    consecrate: "descending sacred rune, radiant ground ring and holy pulse",
-    life_drain:
-      "dark red-purple siphoning energy and reversed breath-like flow",
-    entangling_roots: "thorny seed magic, dirt rupture and twisting roots",
-    indisworm_poison_spit:
-      "pressurized wet venom, acidic bubbles, sticky membrane flutter and a sharp toxic hiss",
-    mocking_verse: "magical musical-note energy and oscillating sonic waves",
-    curse_of_weakness:
-      "broken violet curse rune, shadow flutter and decaying energy",
-    polymorph:
-      "teal whimsical transformation magic, soft woolly poof and rune shimmer",
-    fear: "dark horned spectral energy, reversed whisper texture and dread pulse",
-    charm: "pink arcane heart energy, warm pulse and swaying shimmer",
-    hex_bolt: "corrupted green-purple crystalline energy with unstable crackle",
-    thaedryn_resonance:
-      "huge bronze bell resonance, orbiting stone shards and deep pressure wave",
-    photon_sidearm_pulse:
-      "tight blue photon snap, compact capacitor chirp and precise military energy discharge",
-    pulse_carbine_burst:
-      "three rapid cyan compressed-energy pulses, crisp cycling electronics and controlled recoil",
-    helix_projector_beam:
-      "two rotating green emitters braiding into a spiraling beam with harmonic electrical texture",
-    nova_cannon_bolt:
-      "dense orange plasma-laser charge, heavy magnetic release and hot expanding pressure",
-    singularity_lance_beam:
-      "contained gravity charge, rising white-violet harmonic, vacuum pull and immense focused release",
-  };
+  const identity = PROJECTILE_SOUND_IDENTITIES[id];
   return phase === "launch"
-    ? `${label} fantasy game projectile launch, ${identity[id]}, compact cast charge and clear release, no impact, no music, no intelligible speech.`
-    : `${label} fantasy game projectile impact, ${identity[id]}, decisive contact and short dissipating tail, no launch, no music, no intelligible speech.`;
+    ? `${label} fantasy game projectile launch, ${identity}, compact cast charge and clear release, no impact, no music, no intelligible speech.`
+    : `${label} fantasy game projectile impact, ${identity}, decisive contact and short dissipating tail, no launch, no music, no intelligible speech.`;
+}
+
+function projectileLifecyclePrompt(
+  id: string,
+  label: string,
+  phase: "flight" | "explosion"
+) {
+  const identity = PROJECTILE_SOUND_IDENTITIES[id];
+  return phase === "flight"
+    ? `${label} fantasy game projectile continuously moving through the air, ${identity}, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.`
+    : `${label} fantasy game explosion lifecycle, ${identity}, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.`;
 }
 
 const PROJECTILE_SOUNDS: readonly HarthmereSoundEffectDefinition[] =
@@ -2304,6 +2342,138 @@ const PROJECTILE_SOUNDS: readonly HarthmereSoundEffectDefinition[] =
           ? 1.4
           : 1.0,
       prompt: projectilePrompt(id, label, "impact"),
+    }),
+  ]);
+
+const PROJECTILE_LIFECYCLE_SOUNDS: readonly HarthmereSoundEffectDefinition[] =
+  PROJECTILE_ROWS.flatMap(([id, label, description]) => [
+    generated({
+      id: `${id}_flight`,
+      label: `${label} Flight`,
+      category:
+        id.includes("sidearm") ||
+        id.includes("carbine") ||
+        id.includes("projector") ||
+        id.includes("cannon") ||
+        id.includes("lance") ||
+        id === "indisworm_poison_spit"
+          ? "ranged"
+          : "magic",
+      description: `${description} Dedicated in-flight lifecycle layer, separate from its cast and release.`,
+      authority: ["client_presentation"],
+      trigger:
+        "Projectile renderer begins the authoritative visible flight interval.",
+      durationSeconds: 1.4,
+      prompt: projectileLifecyclePrompt(id, label, "flight"),
+    }),
+    generated({
+      id: `${id}_explosion`,
+      label: `${label} Explosion`,
+      category: id === "indisworm_poison_spit" ? "ranged" : "magic",
+      description: `${description} Dedicated explosion lifecycle layer, separate from target contact.`,
+      authority: ["client_presentation"],
+      trigger:
+        "A successful magic impact begins its authoritative explosion visual.",
+      durationSeconds: 1.4,
+      prompt: projectileLifecyclePrompt(id, label, "explosion"),
+    }),
+  ]);
+
+const SPECIAL_PROJECTILE_LIFECYCLE_SOUNDS: readonly HarthmereSoundEffectDefinition[] =
+  [
+    generated({
+      id: "hunters_mark_flight",
+      label: "Hunter's Mark Flight",
+      category: "magic",
+      description:
+        "A dedicated focused tracking pulse follows the mark projectile in flight.",
+      authority: ["client_presentation"],
+      trigger: "Hunter's Mark begins its visible projectile flight.",
+      durationSeconds: 1.4,
+      prompt:
+        "Fantasy hunter tracking mark continuously moving through the air, narrow focused wind stream, subtle distant horn-colored resonance and a precise target-seeking shimmer, starts already in motion, no cast, no bow release, no collision, no explosion, no speech, no music.",
+    }),
+    generated({
+      id: "hunters_mark_explosion",
+      label: "Hunter's Mark Explosion",
+      category: "magic",
+      description:
+        "A dedicated target-lock burst and fading tracking aura for the mark impact.",
+      authority: ["client_presentation"],
+      trigger: "Hunter's Mark begins its successful magic impact visual.",
+      durationSeconds: 1.4,
+      prompt:
+        "Fantasy hunter tracking mark impact explosion, sharp focused target-lock burst, airy circular pulse and subtle horn-colored magical resonance that steadily fades to silence, no cast, no projectile flight, no bow release, no speech, no music.",
+    }),
+    generated({
+      id: "smoke_bomb_explosion",
+      label: "Smoke Bomb Explosion",
+      category: "ranged",
+      description:
+        "A dedicated alchemical smoke bloom follows the existing dart contact sound.",
+      authority: ["client_presentation"],
+      trigger: "A smoke bomb begins its successful smoke explosion visual.",
+      durationSeconds: 1.4,
+      prompt:
+        "Small fantasy alchemical smoke bomb explosion lifecycle, tight powder pop, rapidly expanding dense dark smoke, dry particulate rush and restrained chemical hiss that smoothly fades to silence, no throw, no dart flight, no separate impact tick, no voice, no music.",
+    }),
+  ];
+
+const MAGIC_FAMILY_LIFECYCLE_ROWS = [
+  [
+    "arcane",
+    "glassy violet-blue arcane current, crystalline harmonics and controlled rune energy",
+  ],
+  ["fire", "roaring flame, hot embers and turbulent burning air"],
+  [
+    "lightning",
+    "fast branching electricity, charged air and sharp high-voltage crackle",
+  ],
+  [
+    "holy",
+    "clean white-gold radiant energy, warm power and restrained bell-like shimmer",
+  ],
+  [
+    "dark",
+    "shadowy red-purple energy, reversed breath-like pull and decaying spectral texture",
+  ],
+  [
+    "nature",
+    "thorny seed magic, twisting roots, leaves, soil and living green energy",
+  ],
+  [
+    "sonic",
+    "compressed musical resonance, oscillating pressure waves and bright harmonic vibration",
+  ],
+  [
+    "gravity",
+    "white-violet spacetime tension, vacuum pull, deep pressure and contained singularity energy",
+  ],
+] as const;
+
+const MAGIC_FAMILY_LIFECYCLE_SOUNDS: readonly HarthmereSoundEffectDefinition[] =
+  MAGIC_FAMILY_LIFECYCLE_ROWS.flatMap(([family, identity]) => [
+    generated({
+      id: `${family}_projectile_flight`,
+      label: `${family[0].toUpperCase()}${family.slice(1)} Projectile Flight`,
+      category: "magic",
+      description: `A dedicated ${family} lifecycle for magic attacks whose reusable projectile mesh belongs to another family.`,
+      authority: ["client_presentation"],
+      trigger:
+        "A magic attack uses a physical or energy projectile visual with this authoritative damage family.",
+      durationSeconds: 1.4,
+      prompt: `Fantasy ${family} magic projectile continuously moving through the air, ${identity}, sustained forward motion with a stable readable body and subtle evolving texture, begins already in flight, no cast charge, no weapon release, no collision, no explosion, no voice, no music.`,
+    }),
+    generated({
+      id: `${family}_explosion`,
+      label: `${family[0].toUpperCase()}${family.slice(1)} Explosion`,
+      category: "magic",
+      description: `A dedicated ${family} explosion for magic attacks whose reusable projectile mesh belongs to another family.`,
+      authority: ["client_presentation"],
+      trigger:
+        "A successful magic impact uses a physical or energy projectile visual with this authoritative damage family.",
+      durationSeconds: 1.4,
+      prompt: `Fantasy ${family} magic explosion lifecycle, ${identity}, immediate energetic burst followed by a rich evolving dissipation that smoothly loses intensity and reaches silence at the end, no cast charge, no projectile flight, no separate weapon release, no voice, no music.`,
     }),
   ]);
 
@@ -2399,6 +2569,9 @@ const GENERATED_SOUNDS: readonly HarthmereSoundEffectDefinition[] = [
   ),
   ...HARTHMERE_CREATURE_SOUND_EFFECT_INPUTS.map((input) => generated(input)),
   ...PROJECTILE_SOUNDS,
+  ...PROJECTILE_LIFECYCLE_SOUNDS,
+  ...SPECIAL_PROJECTILE_LIFECYCLE_SOUNDS,
+  ...MAGIC_FAMILY_LIFECYCLE_SOUNDS,
   ...ENERGY_WEAPON_SPECIAL_SOUNDS,
 ];
 
@@ -2422,24 +2595,83 @@ export function getHarthmereSoundEffect(id: unknown) {
 }
 
 export const HARTHMERE_PROJECTILE_SOUND_MAP: Readonly<
-  Record<string, { launch: string; impact: string }>
+  Record<
+    string,
+    { launch: string; flight?: string; impact: string; explosion?: string }
+  >
 > = {
-  hunter_bow_shot: { launch: "bow_release", impact: "arrow_impact_flesh" },
-  quick_shot: { launch: "bow_release", impact: "arrow_impact_flesh" },
-  aimed_shot: { launch: "bow_release_heavy", impact: "arrow_impact_flesh" },
-  multi_shot: { launch: "bow_release_multi", impact: "arrow_impact_flesh" },
-  bandit_archer_shot: { launch: "bow_release", impact: "arrow_impact_flesh" },
-  ranged_shot: { launch: "crossbow_release", impact: "bolt_impact" },
-  smoke_bomb_throw: { launch: "dart_throw", impact: "dart_impact" },
-  hunters_mark: { launch: "hunters_mark", impact: "hunters_mark" },
-  hunter_mark: { launch: "hunters_mark", impact: "hunters_mark" },
+  hunter_bow_shot: {
+    launch: "bow_release",
+    flight: "arrow_flyby",
+    impact: "arrow_impact_flesh",
+  },
+  quick_shot: {
+    launch: "bow_release",
+    flight: "arrow_flyby",
+    impact: "arrow_impact_flesh",
+  },
+  aimed_shot: {
+    launch: "bow_release_heavy",
+    flight: "arrow_flyby",
+    impact: "arrow_impact_flesh",
+  },
+  multi_shot: {
+    launch: "bow_release_multi",
+    flight: "arrow_flyby",
+    impact: "arrow_impact_flesh",
+  },
+  bandit_archer_shot: {
+    launch: "bow_release",
+    flight: "arrow_flyby",
+    impact: "arrow_impact_flesh",
+  },
+  ranged_shot: {
+    launch: "crossbow_release",
+    flight: "bolt_flyby",
+    impact: "bolt_impact",
+  },
+  smoke_bomb_throw: {
+    launch: "dart_throw",
+    flight: "dart_flyby",
+    impact: "dart_impact",
+    explosion: "smoke_bomb_explosion",
+  },
+  hunters_mark: {
+    launch: "hunters_mark",
+    flight: "hunters_mark_flight",
+    impact: "hunters_mark",
+    explosion: "hunters_mark_explosion",
+  },
+  hunter_mark: {
+    launch: "hunters_mark",
+    flight: "hunters_mark_flight",
+    impact: "hunters_mark",
+    explosion: "hunters_mark_explosion",
+  },
   ...Object.fromEntries(
     PROJECTILE_ROWS.map(([id]) => [
       id,
-      { launch: `${id}_launch`, impact: `${id}_impact` },
+      {
+        launch: `${id}_launch`,
+        flight: `${id}_flight`,
+        impact: `${id}_impact`,
+        explosion: `${id}_explosion`,
+      },
     ])
   ),
 };
+
+export const HARTHMERE_MAGIC_FAMILY_LIFECYCLE_SOUND_MAP: Readonly<
+  Record<string, { flight: string; explosion: string }>
+> = Object.fromEntries(
+  MAGIC_FAMILY_LIFECYCLE_ROWS.map(([family]) => [
+    family,
+    {
+      flight: `${family}_projectile_flight`,
+      explosion: `${family}_explosion`,
+    },
+  ])
+);
 
 export const HARTHMERE_OBJECT_INTERACTION_SOUND_MAP: Readonly<
   Record<string, string>
@@ -2511,6 +2743,13 @@ export interface HarthmereSoundEffectEventDetail {
   id: string;
   position?: readonly number[];
   idempotent?: boolean;
+  preloadOnly?: boolean;
+  durationSeconds?: number;
+  fadeOutSeconds?: number;
+  volumeMultiplier?: number;
+  refDistance?: number;
+  maxDistance?: number;
+  rolloffFactor?: number;
 }
 
 export function emitHarthmereSoundEffect(
@@ -2525,6 +2764,10 @@ export function emitHarthmereSoundEffect(
       detail: { id, ...options } satisfies HarthmereSoundEffectEventDetail,
     })
   );
+}
+
+export function preloadHarthmereSoundEffect(id: string) {
+  emitHarthmereSoundEffect(id, { preloadOnly: true });
 }
 
 export function shouldPlayHarthmereWaterEntrySplash(input: {
@@ -2568,10 +2811,10 @@ export function harthmereNpcSoundIdForIdentity(
     return phase === "death"
       ? "boss_defeat"
       : phase === "hit"
-      ? "boss_stagger"
-      : phase === "attack"
-      ? "boss_phase"
-      : undefined;
+        ? "boss_stagger"
+        : phase === "attack"
+          ? "boss_phase"
+          : undefined;
   }
   if (/hex|hexer/.test(text)) return `hex_${phase}`;
   if (/undead|zombie|corpse|drowned/.test(text)) return `undead_${phase}`;
@@ -2588,15 +2831,15 @@ export function harthmereNpcSoundIdForIdentity(
     return phase === "idle"
       ? "deer_alert"
       : phase === "attack"
-      ? "animal_charge"
-      : `deer_${phase}`;
+        ? "animal_charge"
+        : `deer_${phase}`;
   }
   if (/horse/.test(text)) {
     return phase === "idle"
       ? "horse_neigh"
       : phase === "attack"
-      ? "animal_kick"
-      : `horse_${phase}`;
+        ? "animal_kick"
+        : `horse_${phase}`;
   }
   if (/cow|goat|sheep/.test(text)) {
     if (phase === "idle") {
@@ -2610,42 +2853,42 @@ export function harthmereNpcSoundIdForIdentity(
     return phase === "idle"
       ? "bird_chirp"
       : phase === "attack"
-      ? "animal_peck"
-      : `bird_${phase}`;
+        ? "animal_peck"
+        : `bird_${phase}`;
   }
   if (/snake/.test(text)) {
     return phase === "idle"
       ? "snake_hiss"
       : phase === "attack"
-      ? "snake_strike"
-      : `snake_${phase}`;
+        ? "snake_strike"
+        : `snake_${phase}`;
   }
   if (/cat/.test(text)) {
     return phase === "idle"
       ? "cat_meow"
       : phase === "attack"
-      ? "cat_hiss"
-      : phase === "death"
-      ? "small_animal_death"
-      : "small_animal_hit";
+        ? "cat_hiss"
+        : phase === "death"
+          ? "small_animal_death"
+          : "small_animal_hit";
   }
   if (/fox/.test(text)) {
     return phase === "idle"
       ? "fox_bark"
       : phase === "attack"
-      ? "animal_scratch"
-      : phase === "death"
-      ? "small_animal_death"
-      : "small_animal_hit";
+        ? "animal_scratch"
+        : phase === "death"
+          ? "small_animal_death"
+          : "small_animal_hit";
   }
   if (/rat|rabbit|mouse/.test(text)) {
     return phase === "idle"
       ? "rat_squeak"
       : phase === "attack"
-      ? "animal_scratch"
-      : phase === "death"
-      ? "small_animal_death"
-      : "small_animal_hit";
+        ? "animal_scratch"
+        : phase === "death"
+          ? "small_animal_death"
+          : "small_animal_hit";
   }
   if (/bandit|outlaw|trapper|ambusher|scout/.test(text)) {
     return phase === "idle" || phase === "attack"

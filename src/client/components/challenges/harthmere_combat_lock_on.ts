@@ -12,6 +12,10 @@ export const HARTHMERE_COMBAT_LOCK_ON_EVENT =
 export const HARTHMERE_COMBAT_LOCK_ACQUIRE_RANGE = 28;
 export const HARTHMERE_COMBAT_LOCK_HOLD_RANGE = 36;
 export const HARTHMERE_COMBAT_LOCK_LOST_GRACE_MS = 1_250;
+export const HARTHMERE_COMBAT_LOCK_TARGET_RESPONSE_PER_SECOND = 8;
+export const HARTHMERE_COMBAT_LOCK_MAX_YAW_RATE_RADIANS_PER_SECOND = 3.2;
+export const HARTHMERE_COMBAT_LOCK_MAX_PITCH_RATE_RADIANS_PER_SECOND = 1.8;
+export const HARTHMERE_COMBAT_LOCK_ANGLE_DEAD_ZONE_RADIANS = 0.006;
 
 export type HarthmereCombatLockCandidate = HarthmereCrosshairCombatActor & {
   world: Vec3;
@@ -438,19 +442,55 @@ export function harthmereCombatLockCameraFrame(input: {
   const desired = pitchAndYaw(sub(lookTarget, input.eye));
   desired[0] = clamp(desired[0], -0.34, 0.34);
   const blend = clamp(1 - Math.exp(-Math.max(0, input.dt) * 12), 0, 1);
+  const dt = Math.max(0, input.dt);
+  const pitchDelta = desired[0] - input.currentOrientation[0];
+  const yawDelta = normalizeAngle(desired[1] - input.currentOrientation[1]);
+  const pitchStep =
+    Math.abs(pitchDelta) <= HARTHMERE_COMBAT_LOCK_ANGLE_DEAD_ZONE_RADIANS
+      ? 0
+      : clamp(
+          pitchDelta * blend,
+          -HARTHMERE_COMBAT_LOCK_MAX_PITCH_RATE_RADIANS_PER_SECOND * dt,
+          HARTHMERE_COMBAT_LOCK_MAX_PITCH_RATE_RADIANS_PER_SECOND * dt
+        );
+  const yawStep =
+    Math.abs(yawDelta) <= HARTHMERE_COMBAT_LOCK_ANGLE_DEAD_ZONE_RADIANS
+      ? 0
+      : clamp(
+          yawDelta * blend,
+          -HARTHMERE_COMBAT_LOCK_MAX_YAW_RATE_RADIANS_PER_SECOND * dt,
+          HARTHMERE_COMBAT_LOCK_MAX_YAW_RATE_RADIANS_PER_SECOND * dt
+        );
   const orientation: Vec2 = [
-    input.currentOrientation[0] +
-      (desired[0] - input.currentOrientation[0]) * blend,
-    normalizeAngle(
-      input.currentOrientation[1] +
-        normalizeAngle(desired[1] - input.currentOrientation[1]) * blend
-    ),
+    input.currentOrientation[0] + pitchStep,
+    normalizeAngle(input.currentOrientation[1] + yawStep),
   ];
   return {
     orientation,
     pullbackMeters: clamp((input.distance - 4) * 0.14, 0.35, 3.4),
     fovBoostDegrees: clamp((input.distance - 5) * 0.22, 0, 7),
   };
+}
+
+export function smoothHarthmereCombatLockTarget(input: {
+  current: ReadonlyVec3;
+  target: ReadonlyVec3;
+  dt: number;
+}): Vec3 {
+  const blend = clamp(
+    1 -
+      Math.exp(
+        -Math.max(0, input.dt) *
+          HARTHMERE_COMBAT_LOCK_TARGET_RESPONSE_PER_SECOND
+      ),
+    0,
+    1
+  );
+  return [
+    input.current[0] + (input.target[0] - input.current[0]) * blend,
+    input.current[1] + (input.target[1] - input.current[1]) * blend,
+    input.current[2] + (input.target[2] - input.current[2]) * blend,
+  ];
 }
 
 export function pickHarthmereLockedCombatActor(input: {

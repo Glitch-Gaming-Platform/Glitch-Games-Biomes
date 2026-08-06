@@ -56,7 +56,10 @@ import type {
   HarthmereBusinessEmployeeCandidate,
   HarthmereBusinessEmployeeTaskRun,
 } from "../../../shared/harthmere/business_employee_ai";
-import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
+import {
+  fetchHarthmereLiveWithTimeout,
+  runHarthmereLiveMutationSerially,
+} from "@/client/components/harthmere_live_fetch";
 import { HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT } from "@/client/components/challenges/harthmereEvents";
 
 export type {
@@ -1197,74 +1200,123 @@ export async function submitHarthmereBusinessEconomyMutation(
     fetchImpl?: typeof fetch;
     requestId?: string;
     zoneId?: string;
+    timeoutMs?: number;
   } = {}
 ): Promise<HarthmereBusinessInterfaceResponse> {
   const requestId =
     options.requestId ??
     `business_ui_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  const fetchImpl = options.fetchImpl ?? fetch;
-  const response = await fetchHarthmereLiveWithTimeout(
-    fetchImpl,
-    "/api/harthmere/live_mode",
-    {
-      method: "POST",
-      credentials: "same-origin",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        requestId,
-        idempotencyKey: requestId,
-        actionKind: "request_economy_mutation",
-        subsystem: "economy",
-        clientSentAtMs: Date.now(),
-        actorEntityVersion: 1,
-        zoneId: options.zoneId ?? "the_grove",
-        payload: { operation, ...payload },
-        includeSnapshots: [
-          "economyState",
-          "inventoryLootState",
-          "playerStatusState",
-        ],
-      }),
-      timeoutMs: 30_000,
+  const backgroundTick = operation === "tick_business_customer_session";
+  const timeoutMs =
+    options.timeoutMs ??
+    (backgroundTick
+      ? HARTHMERE_BUSINESS_BACKGROUND_TICK_TIMEOUT_MS
+      : operation === "serve_business_customer"
+        ? HARTHMERE_BUSINESS_PLAYER_SERVICE_TIMEOUT_MS
+        : HARTHMERE_BUSINESS_DEFAULT_MUTATION_TIMEOUT_MS);
+  // Background reconciliation must never own the foreground action queue. A
+  // production tick remained unsent for 30 seconds and stranded the player's
+  // service selection on "Working…" behind it. HarthmereBusinessShiftHUD
+  // already permits only one tick in flight, while the server actor lock keeps
+  // the two bounded request classes authoritative.
+  const queueScope = backgroundTick
+    ? "business-economy-background"
+    : "business-economy";
+  return runHarthmereLiveMutationSerially(queueScope, async () => {
+    const fetchImpl = options.fetchImpl ?? fetch;
+    const controller =
+      typeof AbortController === "undefined"
+        ? undefined
+        : new AbortController();
+    const timeout = controller
+      ? setTimeout(() => controller.abort(), timeoutMs)
+      : undefined;
+    let response: Response;
+    try {
+      response = await fetchHarthmereLiveWithTimeout(
+        fetchImpl,
+        "/api/harthmere/live_mode",
+        {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            requestId,
+            idempotencyKey: requestId,
+            actionKind: "request_economy_mutation",
+            subsystem: "economy",
+            clientSentAtMs: Date.now(),
+            actorEntityVersion: 1,
+            zoneId: options.zoneId ?? "the_grove",
+            payload: { operation, ...payload },
+            includeSnapshots: [
+              "economyState",
+              "inventoryLootState",
+              "playerStatusState",
+            ],
+          }),
+          // A caller-owned signal makes this one bounded attempt instead of
+          // three long retries. The stable request/idempotency key still makes
+          // a deliberate player retry safe after a readable timeout message.
+          ...(controller ? { signal: controller.signal } : { timeoutMs }),
+        }
+      );
+    } catch (error) {
+      if (controller?.signal.aborted) {
+        throw new Error(
+          formatHarthmereBusinessPlayerWarning(
+            "business_economy_mutation_http_504"
+          )
+        );
+      }
+      throw error;
+    } finally {
+      if (timeout) clearTimeout(timeout);
     }
-  );
-  if (!response.ok) {
-    throw new Error(
-      formatHarthmereBusinessPlayerWarning(
-        `business_economy_mutation_http_${response.status}`
-      )
+    if (!response.ok) {
+      throw new Error(
+        formatHarthmereBusinessPlayerWarning(
+          `business_economy_mutation_http_${response.status}`
+        )
+      );
+    }
+    const body = await response.json();
+    const warnings: string[] =
+      body.backendMutation?.warnings ?? body.warnings ?? [];
+    const rejection = warnings.find((warning) =>
+      String(warning).includes("economy_rejected:")
     );
-  }
-  const body = await response.json();
-  const warnings: string[] =
-    body.backendMutation?.warnings ?? body.warnings ?? [];
-  const rejection = warnings.find((warning) =>
-    String(warning).includes("economy_rejected:")
-  );
-  if (rejection) {
-    throw new Error(formatHarthmereBusinessPlayerWarning(rejection));
-  }
-  const validationError = body.validation?.errors?.[0];
-  if (body.ok === false || validationError) {
-    throw new Error(
-      formatHarthmereBusinessPlayerWarning(
-        String(validationError ?? "business_economy_mutation_not_confirmed")
-      )
+    if (rejection) {
+      throw new Error(formatHarthmereBusinessPlayerWarning(rejection));
+    }
+    const validationError = body.validation?.errors?.[0];
+    if (body.ok === false || validationError) {
+      throw new Error(
+        formatHarthmereBusinessPlayerWarning(
+          String(validationError ?? "business_economy_mutation_not_confirmed")
+        )
+      );
+    }
+    const nativeMaterializationFailure = warnings.find((warning) =>
+      String(warning).includes("native_ecs_materialization_deferred:")
     );
-  }
-  const nativeMaterializationFailure = warnings.find((warning) =>
-    String(warning).includes("native_ecs_materialization_deferred:")
-  );
-  if (nativeMaterializationFailure) {
-    throw new Error(
-      formatHarthmereBusinessPlayerWarning(String(nativeMaterializationFailure))
-    );
-  }
-  return body;
+    if (nativeMaterializationFailure) {
+      throw new Error(
+        formatHarthmereBusinessPlayerWarning(
+          String(nativeMaterializationFailure)
+        )
+      );
+    }
+    return body;
+  });
 }
+
+export const HARTHMERE_BUSINESS_BACKGROUND_TICK_TIMEOUT_MS = 5_000;
+export const HARTHMERE_BUSINESS_PLAYER_SERVICE_TIMEOUT_MS = 8_000;
+export const HARTHMERE_BUSINESS_DEFAULT_MUTATION_TIMEOUT_MS = 30_000;
 
 export function isHarthmereBusinessInterfaceAvailable(
   state: HarthmereBusinessEconomySnapshot | undefined,

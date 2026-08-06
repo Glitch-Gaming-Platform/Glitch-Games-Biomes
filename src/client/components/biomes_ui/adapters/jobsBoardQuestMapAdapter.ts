@@ -164,6 +164,38 @@ export function shouldClearStaleJobsBoardPin(input: {
   return !input.activeJobsBoardMarkerIds.includes(id);
 }
 
+export function jobsBoardTodoIdFromMarkerIdForTest(
+  markerId: string | undefined
+): string | undefined {
+  const id = String(markerId ?? "");
+  for (const prefix of [
+    JOBS_BOARD_MARKER_ID_PREFIX,
+    JOBS_BOARD_ITEM_SOURCE_MARKER_ID_PREFIX,
+    JOBS_BOARD_TOOL_SOURCE_MARKER_ID_PREFIX,
+  ]) {
+    if (id.startsWith(prefix)) {
+      return id.slice(prefix.length) || undefined;
+    }
+  }
+  return undefined;
+}
+
+/** Preserve the player's selected todo while its current phase marker changes. */
+export function jobsBoardLandmarkForActivePinHandoffForTest(input: {
+  activePinMarkerId: string | undefined;
+  landmarks: readonly BiomesUIJobsBoardAcceptedJobLandmark[];
+}): BiomesUIJobsBoardAcceptedJobLandmark | undefined {
+  const exact = input.landmarks.find(
+    (landmark) => landmark.id === input.activePinMarkerId
+  );
+  if (exact) return exact;
+  const todoId = jobsBoardTodoIdFromMarkerIdForTest(input.activePinMarkerId);
+  if (!todoId) return undefined;
+  return input.landmarks.find(
+    (landmark) => landmark.jobsBoardTodoId === todoId
+  );
+}
+
 function jobsBoardTodoQuestId(todo: HarthmereJobsBoardTodo) {
   return `jobs_board:${todo.todoId}`;
 }
@@ -333,10 +365,32 @@ function jobsBoardTodoMarkerPlanForBiomesUI(
     if (kind === "delivery" && itemCount !== undefined) {
       progress.hasParcel = itemCount > 0;
     }
-    if (
-      kind === "escort" &&
-      job?.escortCompanion?.status === "arrived"
-    ) {
+    if (kind === "cleanup") {
+      const repeatedRequirement = job?.requirements.find(
+        (requirement) =>
+          !requirement.itemId &&
+          Boolean(requirement.targetId) &&
+          Math.max(1, Math.floor(Number(requirement.serviceUnits ?? 1))) > 1 &&
+          String(requirement.serviceKind ?? "").startsWith("cleanup")
+      );
+      const repeatedTargetId = repeatedRequirement?.targetId;
+      if (repeatedTargetId) {
+        const current = Math.max(
+          0,
+          Math.floor(
+            Number(snapshot.serviceProgressCounts?.[repeatedTargetId] ?? 0)
+          )
+        );
+        const baseline = Math.max(
+          0,
+          Math.floor(
+            Number(todo.serviceProgressBaseline?.[repeatedTargetId] ?? 0)
+          )
+        );
+        progress.cleanedCount = Math.max(0, current - baseline);
+      }
+    }
+    if (kind === "escort" && job?.escortCompanion?.status === "arrived") {
       progress.escortArrived = true;
     }
     if (
@@ -405,7 +459,8 @@ function jobsBoardTodoObjectiveForBiomesUI(
     plan &&
     (plan.phase !== "field" ||
       todo.kind === "gather" ||
-      todo.kind === "delivery")
+      todo.kind === "delivery" ||
+      todo.kind === "cleanup")
   ) {
     return plan.hint;
   }
@@ -451,14 +506,15 @@ export function jobsBoardAcceptedJobLandmarksForBiomesUI(
     const marker =
       jobsBoardEscortDestinationForBiomesUI(todo, job, plan) ??
       harthmereJobsBoardQuestMarkerRuntimePositionForTodo({
-        mapMarkerId: plan.activeMarkerId ?? todo.mapMarkerId ?? job?.mapMarkerId,
+        mapMarkerId:
+          plan.activeMarkerId ?? todo.mapMarkerId ?? job?.mapMarkerId,
         targetId: plan.activeMarkerId ?? todo.targetId ?? job?.targetId,
         fallbackPosition: jobsBoardTodoFallbackPosition(snapshot, todo),
       });
     const targetId =
       (todo.kind ?? job?.kind) === "escort"
         ? marker.markerId
-        : todo.targetId ?? job?.targetId;
+        : (todo.targetId ?? job?.targetId);
     return [
       {
         id: jobsBoardTodoMarkerId(todo),
@@ -504,8 +560,8 @@ export function jobsBoardToolSourceLandmarksForBiomesUI(
       todo.kind === "repair"
         ? "repair"
         : todo.kind === "cleanup"
-        ? "cleanup"
-        : undefined;
+          ? "cleanup"
+          : undefined;
     if (!action) return [];
     // Only guide to the shop when we KNOW the player does NOT own the tool, so a
     // player who already has it never sees a spurious "buy it" pin (they're sent
@@ -637,12 +693,12 @@ export function jobsBoardTrackableQuestsForBiomesUI(
           })
         : undefined;
     const itemSourceName = itemGuidance
-      ? (itemGuidance.markerId
+      ? ((itemGuidance.markerId
           ? harthmereJobsBoardQuestMarkerRuntimePositionForId(
               itemGuidance.markerId
             )?.label
           : undefined) ??
-        humanReadableHarthmereIdentifier(itemGuidance.sourceName)
+        humanReadableHarthmereIdentifier(itemGuidance.sourceName))
       : undefined;
     // Full-detail fields for the click-to-review quest panel. The tool-source
     // callout only shows for an active job whose tool the player does NOT own.
@@ -654,8 +710,8 @@ export function jobsBoardTrackableQuestsForBiomesUI(
               todo.kind === "repair"
                 ? "repair"
                 : todo.kind === "cleanup"
-                ? "cleanup"
-                : "",
+                  ? "cleanup"
+                  : "",
               toolOwned
             ),
           })

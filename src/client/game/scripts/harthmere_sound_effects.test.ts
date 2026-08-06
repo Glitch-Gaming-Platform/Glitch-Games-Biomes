@@ -6,7 +6,10 @@ import { serializeNpcCustomState } from "@/shared/npc/serde";
 import assert from "assert";
 
 class TestCustomEvent<T> extends Event {
-  constructor(type: string, readonly detail: T) {
+  constructor(
+    type: string,
+    readonly detail: T
+  ) {
     super(type);
   }
 }
@@ -102,6 +105,75 @@ describe("HarthmereSoundEffectsScript", () => {
     );
     assert.equal(played.length, 4);
 
+    script.clear();
+  });
+
+  it("prewarms cold explosion assets and forwards their production spatial profile", () => {
+    const windowTarget = new EventTarget();
+    (globalThis as any).window = windowTarget;
+    (globalThis as any).CustomEvent = TestCustomEvent;
+
+    const preloaded: string[] = [];
+    const played: Array<{
+      path: string;
+      position: readonly number[];
+      options: Record<string, number | undefined>;
+    }> = [];
+    const audioManager = {
+      preloadPath(path: string) {
+        preloaded.push(path);
+      },
+      playPath() {},
+      playPathAt(
+        path: string,
+        position: readonly number[],
+        options: Record<string, number | undefined>
+      ) {
+        played.push({ path, position, options });
+      },
+    } as unknown as AudioManager;
+    const script = new HarthmereSoundEffectsScript(
+      audioManager,
+      new GardenHose(),
+      emptyTable()
+    );
+
+    windowTarget.dispatchEvent(
+      new TestCustomEvent(HARTHMERE_SOUND_EFFECT_EVENT, {
+        id: "fireball_explosion",
+        preloadOnly: true,
+      })
+    );
+    windowTarget.dispatchEvent(
+      new TestCustomEvent(HARTHMERE_SOUND_EFFECT_EVENT, {
+        id: "fireball_explosion",
+        position: [7, 8, 9],
+        durationSeconds: 1.35,
+        fadeOutSeconds: 0.4,
+        volumeMultiplier: 1.15,
+        refDistance: 7,
+        maxDistance: 96,
+        rolloffFactor: 0.65,
+      })
+    );
+
+    assert.deepEqual(preloaded, [
+      "/assets/harthmere/audio/sfx/fireball_explosion.webm",
+    ]);
+    assert.deepEqual(played, [
+      {
+        path: "/assets/harthmere/audio/sfx/fireball_explosion.webm",
+        position: [7, 8, 9],
+        options: {
+          durationSeconds: 1.35,
+          fadeOutSeconds: 0.4,
+          volumeMultiplier: 1.15,
+          refDistance: 7,
+          maxDistance: 96,
+          rolloffFactor: 0.65,
+        },
+      },
+    ]);
     script.clear();
   });
 

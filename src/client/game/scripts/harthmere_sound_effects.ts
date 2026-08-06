@@ -1,6 +1,9 @@
 import { HARTHMERE_CRAFT_COMPLETED_EVENT } from "@/client/components/challenges/harthmereEvents";
 import type { GardenHose } from "@/client/events/api";
-import type { AudioManager } from "@/client/game/context_managers/audio_manager";
+import type {
+  AudioManager,
+  PathSpatialAudioOptions,
+} from "@/client/game/context_managers/audio_manager";
 import type { ClientTable } from "@/client/game/game";
 import type { AudioPath } from "@/client/game/resources/audio";
 import type { Script } from "@/client/game/scripts/script_controller";
@@ -82,7 +85,18 @@ export class HarthmereSoundEffectsScript implements Script {
   private readonly onSoundEffect = (event: Event) => {
     const detail = (event as CustomEvent<HarthmereSoundEffectEventDetail>)
       .detail;
-    this.play(detail?.id, detail?.position, detail?.idempotent);
+    if (detail?.preloadOnly) {
+      this.preload(detail.id);
+      return;
+    }
+    this.play(detail?.id, detail?.position, detail?.idempotent, {
+      durationSeconds: detail?.durationSeconds,
+      fadeOutSeconds: detail?.fadeOutSeconds,
+      volumeMultiplier: detail?.volumeMultiplier,
+      refDistance: detail?.refDistance,
+      maxDistance: detail?.maxDistance,
+      rolloffFactor: detail?.rolloffFactor,
+    });
   };
 
   private readonly onWorldObjectInteraction = (event: Event) => {
@@ -223,15 +237,26 @@ export class HarthmereSoundEffectsScript implements Script {
   private play(
     id: string | undefined,
     position?: readonly number[],
-    idempotent = false
+    idempotent = false,
+    spatialOptions: PathSpatialAudioOptions = {}
   ) {
     const definition = getHarthmereSoundEffect(id);
     if (!definition) return;
     if (position && position.length >= 3) {
-      this.audioManager.playPathAt(definition.path as AudioPath, position);
+      this.audioManager.playPathAt(
+        definition.path as AudioPath,
+        position,
+        spatialOptions
+      );
       return;
     }
     this.audioManager.playPath(definition.path as AudioPath, { idempotent });
+  }
+
+  private preload(id: string | undefined) {
+    const definition = getHarthmereSoundEffect(id);
+    if (!definition) return;
+    this.audioManager.preloadPath(definition.path as AudioPath);
   }
 
   tick() {}

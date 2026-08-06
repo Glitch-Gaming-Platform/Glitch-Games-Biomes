@@ -18,6 +18,7 @@ import { useWithUnseenEmptyTransition } from "@/client/util/hooks";
 import { TalkToNPCMultiQuestSelector } from "@/client/components/challenges/TalkToNPCMultiQuestSelector";
 import { JACKIE_ID } from "@/client/util/nux/state_machines";
 import { completeHarthmereDailyTaskSoon } from "@/client/components/challenges/harthmereDailyTasks";
+import { useLocalDevHarthmereDialog } from "@/client/components/challenges/LocalDevHarthmereQuests";
 import {
   CHAPTER1_OBJECTIVE_INTERACT_EVENT,
   readChapter1ObjectiveWorldProjection,
@@ -27,7 +28,10 @@ import { useHarthmereBusinessCustomerTalkTarget } from "@/client/components/hart
 import { HarthmereRequestBoardLiveContainer } from "@/client/components/harthmere_request_board/HarthmereRequestBoardLiveContainer";
 import { AdminDeleteEvent, AdminIceEvent } from "@/shared/ecs/gen/events";
 import { reportFunnelStage } from "@/shared/funnel";
-import { ch1ObjectiveOwnsNpcInteraction } from "@/shared/harthmere/ch1_interaction_surfaces";
+import {
+  ch1ObjectiveDelegatesToNpcTrade,
+  ch1ObjectiveOwnsNpcInteraction,
+} from "@/shared/harthmere/ch1_interaction_surfaces";
 import { isHarthmereRequestBoardEntityId } from "@/shared/harthmere/native_request_boards";
 import type { BiomesId } from "@/shared/ids";
 import { deserializeNpcCustomState } from "@/shared/npc/serde";
@@ -94,6 +98,39 @@ export const AdminNPCButtons: React.FunctionComponent<{
   );
 };
 
+const Chapter1SupplierTalkDialog: React.FunctionComponent<{
+  talkingToNPCId: BiomesId;
+  supplierLabel: string;
+  onClose: () => void;
+}> = ({ talkingToNPCId, supplierLabel, onClose }) => {
+  const vendorDialog = useLocalDevHarthmereDialog(talkingToNPCId, "");
+  const browseGoods = vendorDialog?.actions.find(
+    (action) => action.name === "Browse goods"
+  );
+  const tradeAction = browseGoods
+    ? {
+        ...browseGoods,
+        name: `Trade with ${supplierLabel}`,
+        type: "primary" as const,
+        tooltip:
+          "Buy or sell at least one item. Chapter 1 will then mark the next Grove supplier.",
+        closeAfterPerformed: true,
+      }
+    : undefined;
+
+  return (
+    <TalkToNpc
+      talkingToNpcId={talkingToNPCId}
+      id={`chapter1-supplier-${talkingToNPCId}`}
+      dialogText={`<text>For Chapter 1, trade with ${supplierLabel}. Choose the trade button and complete one real purchase or sale. Your objective and map marker will then move to the next supplier.</text>`}
+      advanceText="Close"
+      completeStep={onClose}
+      buttonLayout="vertical"
+      additionalActions={tradeAction ? [tradeAction] : []}
+    />
+  );
+};
+
 export const TalkToNPCScreen: React.FunctionComponent<{
   talkingToNPCId: BiomesId;
   onClose: () => void;
@@ -132,6 +169,10 @@ export const TalkToNPCScreen: React.FunctionComponent<{
   const requestBoard = isHarthmereRequestBoardEntityId(talkingToNPCId);
   const chapter1Objective = readChapter1ObjectiveWorldProjection();
   const chapter1OwnsThisNpc = ch1ObjectiveOwnsNpcInteraction(
+    chapter1Objective,
+    Number(talkingToNPCId)
+  );
+  const chapter1SupplierTrade = ch1ObjectiveDelegatesToNpcTrade(
     chapter1Objective,
     Number(talkingToNPCId)
   );
@@ -209,6 +250,14 @@ export const TalkToNPCScreen: React.FunctionComponent<{
         id="chapter1-story-routing"
         dialogText=""
         completeStep={() => {}}
+      />
+    );
+  } else if (chapter1SupplierTrade) {
+    dialogContent = (
+      <Chapter1SupplierTalkDialog
+        talkingToNPCId={talkingToNPCId}
+        supplierLabel={chapter1Objective?.label ?? "this Grove supplier"}
+        onClose={onClose}
       />
     );
   } else if (requestBoard) {

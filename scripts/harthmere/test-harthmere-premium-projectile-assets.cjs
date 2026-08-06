@@ -65,7 +65,7 @@ function parseGlb(filePath) {
 const manifest = JSON.parse(
   fs.readFileSync(path.join(glbRoot, "manifest.json"), "utf8")
 );
-assert.equal(manifest.version, "harthmere-premium-projectiles-v2");
+assert.equal(manifest.version, "harthmere-premium-projectiles-v3");
 assert.equal(manifest.count, expectedIds.length);
 assert.deepEqual(
   manifest.projectiles.map(({ id }) => id).sort(),
@@ -124,7 +124,7 @@ assert.equal(
 const manifestSource = read(
   "src/shared/harthmere/projectile_visual_manifest.ts"
 );
-assert.match(manifestSource, /harthmere-premium-projectiles-v2/);
+assert.match(manifestSource, /harthmere-premium-projectiles-v3/);
 assert.match(
   manifestSource,
   /HARTHMERE_TERRAIN_MUTATING_PROJECTILE_VISUAL_IDS = \[\]/
@@ -136,7 +136,7 @@ for (const id of expectedIds) {
 const runtimeSource = read(
   "src/client/game/renderers/local_dev/harthmere_projectiles.ts"
 );
-assert.match(runtimeSource, /premium-clean-room-v4-aaa-magic-impacts/);
+assert.match(runtimeSource, /premium-clean-room-v5-signature-impacts/);
 assert.match(runtimeSource, /FlightLoop_24/);
 assert.match(runtimeSource, /makePremiumImpact/);
 assert.match(runtimeSource, /makeAaaMagicImpact/);
@@ -162,7 +162,8 @@ assert.match(bossMagicPresentationSource, /chargeVisualScale/);
 assert.match(bossMagicPresentationSource, /projectileVisualScale/);
 
 const magicImpactSource = read("src/shared/harthmere/magic_impact.ts");
-assert.match(magicImpactSource, /harthmere-aaa-magic-impact-v1/);
+assert.match(magicImpactSource, /harthmere-aaa-magic-impact-v2/);
+assert.match(magicImpactSource, /HarthmereMagicImpactSilhouette/);
 assert.match(magicImpactSource, /HARTHMERE_MAGIC_IMPACT_MAX_DEBRIS/);
 assert.match(magicImpactSource, /HARTHMERE_MAGIC_IMPACT_MAX_SPARKS/);
 assert.match(magicImpactSource, /isHarthmereSuccessfulImpactResult/);

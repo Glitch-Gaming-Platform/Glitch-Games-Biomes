@@ -25,12 +25,15 @@ export interface PromoCameraClearanceSpec {
   cameraFar: CutsceneVec3;
   cameraNear: CutsceneVec3;
   target: CutsceneVec3;
+  /** Additional boss-body points that must remain visible from the dolly. */
+  sightlineTargets?: readonly CutsceneVec3[];
   bossBodyRadius: number;
 }
 
 export interface PromoCameraSightlineSample {
   sample: number;
   camera: CutsceneVec3;
+  target: CutsceneVec3;
   distance: number;
   checkUntil: number;
 }
@@ -52,24 +55,36 @@ export function promoCameraDollySamples(
 export function promoCameraSightlineSamples(
   spec: PromoCameraClearanceSpec
 ): PromoCameraSightlineSample[] {
-  return Array.from({ length: PROMO_CAMERA_SIGHTLINE_SAMPLES }, (_, sample) => {
-    const camera = samplePolyline(
-      [spec.cameraFar, spec.cameraNear],
-      sample / (PROMO_CAMERA_SIGHTLINE_SAMPLES - 1),
-      "easeInOut"
-    ).position;
-    const distance = Math.hypot(
-      spec.target[0] - camera[0],
-      spec.target[1] - camera[1],
-      spec.target[2] - camera[2]
-    );
-    return {
+  const cameras = Array.from(
+    { length: PROMO_CAMERA_SIGHTLINE_SAMPLES },
+    (_, sample) => ({
       sample,
-      camera,
-      distance,
-      checkUntil: Math.max(0, distance - spec.bossBodyRadius * 0.75),
-    };
-  });
+      camera: samplePolyline(
+        [spec.cameraFar, spec.cameraNear],
+        sample / (PROMO_CAMERA_SIGHTLINE_SAMPLES - 1),
+        "easeInOut"
+      ).position,
+    })
+  );
+  const targets = spec.sightlineTargets?.length
+    ? spec.sightlineTargets
+    : [spec.target];
+  return cameras.flatMap(({ sample, camera }) =>
+    targets.map((target) => {
+      const distance = Math.hypot(
+        target[0] - camera[0],
+        target[1] - camera[1],
+        target[2] - camera[2]
+      );
+      return {
+        sample,
+        camera,
+        target,
+        distance,
+        checkUntil: Math.max(0, distance - spec.bossBodyRadius * 0.75),
+      };
+    })
+  );
 }
 
 /**

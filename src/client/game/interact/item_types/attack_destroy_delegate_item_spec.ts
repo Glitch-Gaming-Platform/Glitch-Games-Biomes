@@ -108,6 +108,7 @@ import { fireAndForget } from "@/shared/util/async";
 import { readHarthmereCombatLockState } from "@/client/components/challenges/harthmere_combat_lock_on";
 import { readHarthmereCrosshairCombatActors } from "@/client/components/challenges/harthmereCrosshairCombatTarget";
 import { rankHarthmereMeleeSweepHits } from "@/client/game/interact/harthmere_melee_sweep";
+import { expandHarthmereNativeCreatureMeleeTargetAabb } from "@/shared/harthmere/harthmere_native_combat_catalog";
 
 export type AttackDestroyDelegateHandler = (
   itemInfo: ClickableItemInfo
@@ -177,13 +178,36 @@ export function harthmereMeleeImpactTargetInReach(
   target: ReadonlyEntity,
   reach: number
 ): boolean {
-  const targetAabb = getAabbForEntity(target);
+  const targetAabb = harthmereMeleeTargetAabb(target);
   return Boolean(
     targetAabb &&
     Number.isFinite(reach) &&
     reach >= 0 &&
     distSqToAABB(playerPosition, targetAabb) <= reach * reach
   );
+}
+
+function harthmereMeleeTargetAabb(
+  target: ReadonlyEntity,
+  renderedPosition?: ReadonlyVec3
+) {
+  const aabb = getAabbForEntity(
+    target,
+    renderedPosition
+      ? { motionOverrides: { position: [...renderedPosition] } }
+      : undefined
+  );
+  return aabb
+    ? expandHarthmereNativeCreatureMeleeTargetAabb(
+        {
+          entityId: target.id,
+          typeId: target.npc_metadata?.type_id,
+          displayName: target.label?.text,
+          maxHp: target.health?.maxHp,
+        },
+        aabb
+      )
+    : undefined;
 }
 
 export function harthmereMagicWeaponCharge(input: Item | undefined):
@@ -531,12 +555,7 @@ export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
         this.deps.resources
           .cached("/scene/npc/render_state", entity.id)
           ?.smoothedPosition();
-      const aabb = getAabbForEntity(
-        entity,
-        smoothedPosition
-          ? { motionOverrides: { position: [...smoothedPosition] } }
-          : undefined
-      );
+      const aabb = harthmereMeleeTargetAabb(entity, smoothedPosition);
       if (!aabb) {
         return;
       }

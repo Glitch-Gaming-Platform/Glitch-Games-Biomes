@@ -155,6 +155,34 @@ describe("promo terrain readiness", () => {
     assert.deepEqual(status.firstSightlineCollision, [12, 10, 2]);
   });
 
+  it("rejects a shelf that hides only the lower boss silhouette", () => {
+    const solid = new Set(["12,6,2"]);
+    const tensor = {
+      get(x: number, y: number, z: number) {
+        return solid.has(`${x},${y},${z}`) ? 1 : 0;
+      },
+    };
+    const resources = {
+      get(path: string) {
+        return path === "/terrain/tensor" ? tensor : undefined;
+      },
+    } as unknown as ClientResources;
+    const status = promoCameraTerrainStatus(resources, {
+      cameraFar: [2, 10, 2],
+      cameraNear: [4, 10, 2],
+      target: [20, 10, 2],
+      sightlineTargets: [
+        [20, 4, 2],
+        [20, 10, 2],
+        [20, 16, 2],
+      ],
+      bossBodyRadius: 1,
+    });
+    assert.equal(status.cameraCollisionVoxels, 0);
+    assert.ok(status.sightlineCollisionVoxels > 0);
+    assert.deepEqual(status.firstSightlineCollision, [12, 6, 2]);
+  });
+
   it("waits when the camera path terrain tensor is not loaded", () => {
     const resources = {
       get() {

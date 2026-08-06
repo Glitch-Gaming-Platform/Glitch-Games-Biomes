@@ -4,6 +4,7 @@ import type {
   ReadonlyTriggerState,
 } from "@/shared/ecs/gen/components";
 import {
+  HARTHMERE_NATIVE_VITALS_CLIENT_UPDATE_EVENT,
   readHarthmereNativeVitals,
   type HarthmereNativeVitals,
 } from "@/shared/harthmere/harthmere_native_vitals";
@@ -88,13 +89,22 @@ export function normalizeHarthmereNativeVitalsHeartbeatForTest(
 export function resolveHarthmereNativeVitalsProjectionForTest(input: {
   ecsVitals?: HarthmereNativeVitals;
   ecsHealth?: { hp: number; maxHp: number };
+  ecsReceivedAtMs?: number;
   heartbeat?: HarthmereNativeVitalsHeartbeatSnapshot;
 }): HarthmereNativeVitalsProjection {
-  const vitals =
-    input.ecsVitals ??
-    input.heartbeat?.vitals ??
-    readHarthmereNativeVitals(undefined);
-  const health = input.ecsHealth ?? input.heartbeat?.health;
+  const heartbeatIsNewer = Boolean(
+    input.heartbeat &&
+    input.ecsReceivedAtMs !== undefined &&
+    input.heartbeat.receivedAtMs > input.ecsReceivedAtMs
+  );
+  const vitals = heartbeatIsNewer
+    ? input.heartbeat!.vitals
+    : (input.ecsVitals ??
+      input.heartbeat?.vitals ??
+      readHarthmereNativeVitals(undefined));
+  const health = heartbeatIsNewer
+    ? (input.heartbeat?.health ?? input.ecsHealth)
+    : (input.ecsHealth ?? input.heartbeat?.health);
   const hasAuthoritativeVitals = Boolean(
     input.ecsVitals || input.heartbeat?.vitals
   );
@@ -148,8 +158,7 @@ async function refreshHarthmereNativeVitalsHeartbeat() {
         }
       );
       const body = (await response.json().catch(() => undefined)) as
-        | NativeVitalsHeartbeatBody
-        | undefined;
+        NativeVitalsHeartbeatBody | undefined;
       const next = body
         ? normalizeHarthmereNativeVitalsHeartbeatForTest(body)
         : undefined;
@@ -203,6 +212,26 @@ export function useHarthmereNativeVitalsProjection(
     if (!nativeBiomesEcsAuthorityEnabled()) return;
     return subscribeToHarthmereNativeVitalsHeartbeat(setHeartbeat);
   }, []);
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onUpdate = (event: Event) => {
+      const next = normalizeHarthmereNativeVitalsHeartbeatForTest(
+        (event as CustomEvent<NativeVitalsHeartbeatBody>).detail
+      );
+      if (!next) return;
+      latestHeartbeat = next;
+      setHeartbeat(next);
+    };
+    window.addEventListener(
+      HARTHMERE_NATIVE_VITALS_CLIENT_UPDATE_EVENT,
+      onUpdate
+    );
+    return () =>
+      window.removeEventListener(
+        HARTHMERE_NATIVE_VITALS_CLIENT_UPDATE_EVENT,
+        onUpdate
+      );
+  }, []);
 
   const ecsVitals = triggerState
     ? readHarthmereNativeVitals(triggerState)
@@ -210,9 +239,20 @@ export function useHarthmereNativeVitalsProjection(
   const ecsHealth = health
     ? { hp: Number(health.hp), maxHp: Number(health.maxHp) }
     : undefined;
+  const ecsSignature = ecsVitals
+    ? `${ecsVitals.mana}:${ecsVitals.maxMana}:${ecsVitals.stamina}:${ecsVitals.maxStamina}:${ecsVitals.breath}:${ecsVitals.maxBreath}:${ecsHealth?.hp ?? ""}:${ecsHealth?.maxHp ?? ""}`
+    : `none:${ecsHealth?.hp ?? ""}:${ecsHealth?.maxHp ?? ""}`;
+  const ecsFreshness = React.useRef({
+    signature: ecsSignature,
+    at: Date.now(),
+  });
+  if (ecsFreshness.current.signature !== ecsSignature) {
+    ecsFreshness.current = { signature: ecsSignature, at: Date.now() };
+  }
   return resolveHarthmereNativeVitalsProjectionForTest({
     ecsVitals,
     ecsHealth,
+    ecsReceivedAtMs: ecsFreshness.current.at,
     heartbeat,
   });
 }

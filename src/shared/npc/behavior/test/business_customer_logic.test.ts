@@ -6,13 +6,16 @@ import {
   harthmereBusinessCustomerSpawnPoint,
   harthmereBusinessInteriorInteractionPoints,
 } from "@/shared/harthmere/business_interior_runtime";
-import { dist } from "@/shared/math/linear";
+import { dist, yaw } from "@/shared/math/linear";
 import type { Vec2, Vec3 } from "@/shared/math/types";
 import {
   HARTHMERE_BUSINESS_CUSTOMER_BEHAVIOR_VERSION,
   type BusinessCustomerState,
 } from "@/shared/npc/behavior/business_customer";
-import { businessCustomerTick } from "@/shared/npc/behavior/business_customer_tick";
+import {
+  businessCustomerTick,
+  HARTHMERE_BUSINESS_CUSTOMER_DEPARTURE_SNAP_DISTANCE_METERS,
+} from "@/shared/npc/behavior/business_customer_tick";
 import { selectNpcLocomotion } from "@/shared/npc/logic";
 import {
   deserializeNpcCustomState,
@@ -226,6 +229,46 @@ describe("Anima business customer locomotion", () => {
     );
     assert.equal(settled.phase, "queued");
     assert.deepEqual(npc.position, customer.queueTarget);
+    assert.deepEqual(npc.velocity, [0, 0, 0]);
+  });
+
+  it("turns away from the player and faces the exit before departing", () => {
+    const customer = state("departing");
+    customer.waypoints = [
+      [4, 0, 0],
+      [0, 0, 0],
+      [0, 0, -10],
+    ];
+    const npc = npcFor(customer, [4, 0, 4]);
+    // A serving customer was facing the staff/player at positive Z.
+    npc.setOrientation([0, yaw([0, 0, 1])]);
+
+    businessCustomerTick({ resources: {} } as any, npc, 10, 0.1);
+
+    const expectedExitYaw = yaw([0, 0, -4]);
+    assert.ok(Math.abs(npc.orientation[1] - expectedExitYaw) < 1e-9);
+    assert.ok(npc.velocity[2] < 0, "departure must begin toward the exit");
+  });
+
+  it("finishes the invisible final exterior leg without waiting on a far tick", () => {
+    const customer = state("departing");
+    customer.entrance = [0, 0, 0];
+    customer.departure = [0, 0, -12];
+    customer.waypoints = [[0, 0, -12]];
+    const npc = npcFor(customer, [0, 0, -8.1]);
+    assert.ok(
+      dist(npc.position, customer.entrance) >= 8,
+      "fixture must already be safely outside"
+    );
+    assert.ok(
+      dist(npc.position, customer.departure) <
+        HARTHMERE_BUSINESS_CUSTOMER_DEPARTURE_SNAP_DISTANCE_METERS
+    );
+
+    const result = businessCustomerTick({ resources: {} } as any, npc, 10, 0.1);
+
+    assert.equal(result.phase, "despawn_ready");
+    assert.deepEqual(npc.position, customer.departure);
     assert.deepEqual(npc.velocity, [0, 0, 0]);
   });
 

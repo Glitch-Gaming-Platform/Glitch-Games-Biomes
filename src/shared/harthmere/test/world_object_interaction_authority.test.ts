@@ -8,6 +8,7 @@ import {
 import type { HarthmereLiveModeAuthorityEnvelope } from "../live_mode_readiness";
 import { snapshotGroveLandmarkById } from "../snapshot_grove_content";
 import { ensureHarthmereNativeItemCatalogue } from "../harthmere_native_bikkie_items";
+import { harthmereNativeBiomesIdForItemId } from "../harthmere_native_item_ids";
 
 const NOW_MS = 1_700_000_000_000;
 const ACTOR = "world_object_actor";
@@ -232,6 +233,39 @@ describe("authoritative authored world-object interactions", () => {
         (plan) => plan.kind === "inventory_exchange"
       ).length ?? 0,
       0
+    );
+  });
+
+  it("grants Gus's warm loaf tray with a checked-in native identity", () => {
+    const objectId = "econ_gus_loaf_tray";
+    const initial = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
+    initial.quests.active.econ_gus_fresh_loaves_to_fountain = {
+      stepId: "econ_gus_fresh_loaves_to_fountain:1:collect",
+      progress: 2,
+      source: "snapshot_grove",
+      title: "Fresh Loaves to the Fountain",
+    };
+
+    const pickedUp = reduceHarthmereLiveModeBackendState(
+      initial,
+      envelope({
+        objectId,
+        interactionKind: "gather",
+        label: "Gus's Marked Loaf Basket",
+        position: positionFor(objectId),
+      }),
+      NOW_MS
+    );
+
+    assert.deepEqual(pickedUp.summary.warnings, []);
+    assert.equal(pickedUp.state.inventory.items.grove_warm_loaf_tray, 1);
+    assert.ok(harthmereNativeBiomesIdForItemId("grove_warm_loaf_tray"));
+    assert.ok(
+      pickedUp.summary.nativeEcsMaterializationPlans?.some(
+        (plan) =>
+          plan.kind === "inventory_exchange" &&
+          plan.rewardItemStacks.grove_warm_loaf_tray === 1
+      )
     );
   });
 });

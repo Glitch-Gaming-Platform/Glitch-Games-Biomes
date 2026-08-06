@@ -36,4 +36,35 @@ describe("dedupeTrackableQuestProjections", () => {
     ]);
     assert.equal(deduped.length, 2);
   });
+
+  it("shows one helper quest per objective kind instead of duplicate giver rows", () => {
+    const deduped = dedupeTrackableQuestProjections([
+      {
+        questId: "live-helper:debtor-hul:hard_boss",
+        title: "Muck Breach Boss",
+        area: "West Muck Breach",
+        status: "active",
+        kind: "live_entity_helper_hard_boss",
+      },
+      {
+        questId: "live-helper:smitten-bly:hard_boss",
+        title: "Muck Breach Boss",
+        area: "West Muck Breach",
+        status: "active",
+        kind: "live_entity_helper_hard_boss",
+      },
+      {
+        questId: "live-helper:grove-aid:food_water",
+        title: "Food and Water",
+        area: "The Grove",
+        status: "active",
+        kind: "live_entity_helper_food_water",
+      },
+    ]);
+
+    assert.deepStrictEqual(
+      deduped.map((quest) => quest.questId),
+      ["live-helper:debtor-hul:hard_boss", "live-helper:grove-aid:food_water"]
+    );
+  });
 });

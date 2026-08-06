@@ -147,10 +147,10 @@ describe("future NPC and boss stagger animation assets", () => {
     }
   });
 
-  it("keeps future NPC and boss clip execution deliberately disabled", () => {
+  it("enables boss execution while keeping humanoid NPC clips reserved", () => {
     assert.deepEqual(HARTHMERE_FUTURE_STAGGER_RUNTIME_EXECUTION, {
       npc: false,
-      boss: false,
+      boss: true,
     });
     const runtimeSources = [
       "src/client/game/resources/npcs.ts",
@@ -158,13 +158,16 @@ describe("future NPC and boss stagger animation assets", () => {
     ].map((relativePath) =>
       fs.readFileSync(path.join(process.cwd(), relativePath), "utf8")
     );
-    for (const clip of [
-      ...HARTHMERE_FUTURE_NPC_STAGGER_CLIPS,
-      ...HARTHMERE_FUTURE_BOSS_STAGGER_CLIPS,
-    ]) {
+    for (const clip of HARTHMERE_FUTURE_NPC_STAGGER_CLIPS) {
       assert.ok(
         runtimeSources.every((source) => !source.includes(`"${clip}"`)),
-        `${clip} must remain an asset-only future clip`
+        `${clip} must remain an asset-only future humanoid clip`
+      );
+    }
+    for (const clip of HARTHMERE_FUTURE_BOSS_STAGGER_CLIPS) {
+      assert.ok(
+        runtimeSources.some((source) => source.includes(`"${clip}"`)),
+        `${clip} must be selected by the boss runtime`
       );
     }
   });

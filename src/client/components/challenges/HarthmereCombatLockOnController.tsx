@@ -183,7 +183,8 @@ export const HarthmereCombatLockOnController: React.FunctionComponent = () => {
         height: size,
         opacity: target.screenVisible ? 1 : 0.42,
         transform: "translate(-50%, -50%)",
-        transition: "left 80ms linear, top 80ms linear, opacity 120ms ease",
+        transition:
+          "left 120ms cubic-bezier(0.22, 1, 0.36, 1), top 120ms cubic-bezier(0.22, 1, 0.36, 1), opacity 120ms ease",
       }}
       data-harthmere-combat-lock-on={target.offset}
       data-harthmere-combat-lock-on-target-id={target.targetId ?? ""}

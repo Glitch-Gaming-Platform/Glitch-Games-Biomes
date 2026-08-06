@@ -43,7 +43,15 @@ import {
   resolveHarthmereNpcDialogueActor,
 } from "@/shared/harthmere/npc_dialogue_expressions";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
-import { ch1InteractionSurfaceForStep } from "@/shared/harthmere/ch1_interaction_surfaces";
+import {
+  ch1InteractionSurfaceForStep,
+  ch1ObjectiveUsesDynamicRouteDestination,
+} from "@/shared/harthmere/ch1_interaction_surfaces";
+import {
+  activeBiomesUIMapPinFromMarkerForTest,
+  readActiveBiomesUIMapPin,
+  writeActiveBiomesUIMapPin,
+} from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import type { HarthmereCinematicExpression } from "@/shared/cutscene/cinematic_expressions";
 import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
 import type { BiomesId } from "@/shared/ids";
@@ -473,6 +481,60 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
     state?.targetPosition?.[1],
     state?.targetPosition?.[2],
     state?.trigger,
+  ]);
+
+  useEffect(() => {
+    if (
+      state?.status !== "active" ||
+      !ch1ObjectiveUsesDynamicRouteDestination(state.authoredStepId) ||
+      !state.targetPosition ||
+      state.challengeId === undefined ||
+      state.stepId === undefined
+    ) {
+      return;
+    }
+    const routeStopIdentity =
+      state.targetEntityId ??
+      String(state.targetLabel ?? "route-stop")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+    const pin = activeBiomesUIMapPinFromMarkerForTest({
+      id: `chapter1_route:${state.challengeId}:${state.stepId}:${routeStopIdentity}`,
+      label: state.targetLabel || state.objective || "Chapter 1 destination",
+      kind: "npc",
+      worldPosition: [...state.targetPosition],
+      description: state.objective,
+      ownerQuestId: String(state.challengeId),
+      ownerStepId: String(state.stepId),
+      interactionTargetId:
+        state.targetEntityId === undefined
+          ? undefined
+          : String(state.targetEntityId),
+    });
+    if (!pin) return;
+    const existing = readActiveBiomesUIMapPin();
+    const unchanged =
+      existing?.markerId === pin.markerId &&
+      existing.label === pin.label &&
+      existing.worldPosition.every(
+        (value, index) => value === pin.worldPosition[index]
+      );
+    if (!unchanged) {
+      writeActiveBiomesUIMapPin(pin);
+    }
+  }, [
+    state?.authoredStepId,
+    state?.challengeId,
+    state?.objective,
+    state?.status,
+    state?.stepId,
+    state?.targetEntityId,
+    state?.targetLabel,
+    state?.targetPosition?.[0],
+    state?.targetPosition?.[1],
+    state?.targetPosition?.[2],
   ]);
 
   const recoveredUiObjectiveActive =

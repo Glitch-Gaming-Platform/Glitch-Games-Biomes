@@ -110,6 +110,7 @@ function jobsBoardBusinessTemplatesStub() {
 
 function jobsBoardMmoAuthorityStub() {
   return `
+    export const HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS = 0;
     export const HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION = [532, 70, -207];
     export function formatHarthmereJobTimeRemaining(deadlineAtMs, nowMs) {
       if (deadlineAtMs === undefined) return "";

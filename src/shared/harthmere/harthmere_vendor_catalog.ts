@@ -584,6 +584,10 @@ export const HARTHMERE_VENDOR_CATALOG: Record<number, HarthmereVendorProfile> =
       region: "harthmere",
       stocks: [
         { itemId: "training_dagger", quantity: 1, price: 22 },
+        // Luth is the Black Anvil counter players reach inside the smithy, so
+        // the starter ranged kit must not exist only on Osric's offset.
+        { itemId: "hunter_bow", quantity: 1, price: 81 },
+        { itemId: "hunting_arrow", quantity: 40, price: 40 },
         { itemId: "rusty_pickaxe", quantity: 1, price: 26 },
         { itemId: "woodcutters_axe", quantity: 1, price: 26 },
         { itemId: "repair_voucher", quantity: 1, price: 18 },

@@ -1,11 +1,13 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { log } from "@/shared/logging";
 import { exec as execWithCallback } from "child_process";
-import { createHash } from "crypto";
-import { mkdir, readFile, rm, stat, writeFile } from "fs/promises";
+import { createHash, randomUUID } from "crypto";
+import { mkdir, readFile, rename, rm, stat, writeFile } from "fs/promises";
 import path from "path";
 import { promisify } from "util";
 import vm from "vm";
+import type { GlitchMutableHotfixClientPayload } from "./mutable_hotfix_client";
+import { decodeGlitchMutableHotfixClientPayload } from "./mutable_hotfix_client";
 
 const exec = promisify(execWithCallback);
 
@@ -21,6 +23,8 @@ export type GlitchMutableHotfixOperation =
       contentBase64?: string;
       encoding?: BufferEncoding;
       mode?: number;
+      expectedPreviousSha256?: string;
+      expectedSha256?: string;
     }
   | {
       type: "replace";
@@ -32,6 +36,8 @@ export type GlitchMutableHotfixOperation =
       expectCount?: number;
       minCount?: number;
       allowNoop?: boolean;
+      expectedPreviousSha256?: string;
+      expectedSha256?: string;
     }
   | { type: "deleteFile"; path: string; allowMissing?: boolean }
   | { type: "mkdir"; path: string }
@@ -58,7 +64,11 @@ export interface GlitchMutableHotfixManifest {
   version: string;
   description?: string;
   createdAt?: string;
+  expiresAt?: string;
+  compatibleBuildIds?: string[];
+  targetRoles?: Array<"unified" | "web" | "simulation">;
   operations: GlitchMutableHotfixOperation[];
+  client?: GlitchMutableHotfixClientPayload;
   restart?: {
     exitProcess?: boolean;
     delayMs?: number;
@@ -79,11 +89,20 @@ export interface GlitchMutableHotfixOperationResult {
 
 export interface GlitchMutableHotfixApplyResult {
   ok: true;
+  applied: boolean;
   version: string;
   hash: string;
   appliedAtMs: number;
   operations: GlitchMutableHotfixOperationResult[];
+  skippedReason?: "expired" | "incompatible_build" | "incompatible_role";
   restartScheduled?: boolean;
+}
+
+export interface GlitchMutableHotfixCompatibility {
+  applicable: boolean;
+  reason?: GlitchMutableHotfixApplyResult["skippedReason"];
+  buildId: string;
+  role: string;
 }
 
 interface GlitchMutableHotfixRuntimeState {
@@ -116,6 +135,23 @@ function rootDir() {
   return process.env.GLITCH_MUTABLE_HOTFIX_ROOT || process.cwd();
 }
 
+function stateFilePath() {
+  return (
+    process.env.GLITCH_MUTABLE_HOTFIX_STATE_FILE ||
+    path.resolve(rootDir(), ".glitch-mutable-hotfix-state.json")
+  );
+}
+
+function currentBuildId() {
+  return String(
+    process.env.BIOMES_BUILD_ID ?? process.env.BUILD_ID ?? "unknown"
+  ).trim();
+}
+
+function currentRole() {
+  return String(process.env.GLITCH_STACK_ROLE ?? "unified").trim();
+}
+
 function resolveMutableHotfixPath(targetPath: string) {
   return path.isAbsolute(targetPath)
     ? path.normalize(targetPath)
@@ -126,12 +162,134 @@ function stableManifestString(manifest: GlitchMutableHotfixManifest) {
   return JSON.stringify(manifest);
 }
 
+function sha256(value: string | Buffer) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
 export function hashGlitchMutableHotfixManifest(
   manifest: GlitchMutableHotfixManifest
 ) {
-  return createHash("sha256")
-    .update(stableManifestString(manifest))
-    .digest("hex");
+  return sha256(stableManifestString(manifest));
+}
+
+export function glitchMutableHotfixCompatibility(
+  manifest: GlitchMutableHotfixManifest,
+  options: { ignoreRole?: boolean } = {}
+): GlitchMutableHotfixCompatibility {
+  const buildId = currentBuildId();
+  const role = currentRole();
+  if (manifest.expiresAt) {
+    const expiresAtMs = Date.parse(manifest.expiresAt);
+    if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) {
+      return { applicable: false, reason: "expired", buildId, role };
+    }
+  }
+  if (
+    manifest.compatibleBuildIds?.length &&
+    !manifest.compatibleBuildIds.includes(buildId)
+  ) {
+    return {
+      applicable: false,
+      reason: "incompatible_build",
+      buildId,
+      role,
+    };
+  }
+  if (
+    !options.ignoreRole &&
+    manifest.targetRoles?.length &&
+    !manifest.targetRoles.includes(role as "unified" | "web" | "simulation")
+  ) {
+    return {
+      applicable: false,
+      reason: "incompatible_role",
+      buildId,
+      role,
+    };
+  }
+  return { applicable: true, buildId, role };
+}
+
+export function assertGlitchMutableHotfixPersistable(
+  manifest: GlitchMutableHotfixManifest
+) {
+  const compatibility = glitchMutableHotfixCompatibility(manifest, {
+    ignoreRole: true,
+  });
+  if (!compatibility.applicable) {
+    throw new Error(
+      `mutable_hotfix_not_persistable:${compatibility.reason}:${compatibility.buildId}`
+    );
+  }
+}
+
+async function atomicWriteFile(
+  target: string,
+  content: string | Buffer,
+  options: { encoding?: BufferEncoding; mode?: number } = {}
+) {
+  const temporary = `${target}.mutable-hotfix-${randomUUID()}.tmp`;
+  try {
+    await writeFile(temporary, content, options as any);
+    await rename(temporary, target);
+  } finally {
+    await rm(temporary, { force: true }).catch(() => undefined);
+  }
+}
+
+async function persistRuntimeState(result: GlitchMutableHotfixApplyResult) {
+  const target = stateFilePath();
+  await mkdir(path.dirname(target), { recursive: true });
+  await atomicWriteFile(
+    target,
+    `${JSON.stringify(
+      {
+        version: result.version,
+        hash: result.hash,
+        result,
+      },
+      null,
+      2
+    )}\n`,
+    { encoding: "utf8" }
+  );
+}
+
+async function hydrateRuntimeState() {
+  const state = runtimeState();
+  try {
+    const stored = JSON.parse(await readFile(stateFilePath(), "utf8")) as {
+      version?: string;
+      hash?: string;
+      result?: GlitchMutableHotfixApplyResult;
+    };
+    if (
+      stored.version &&
+      stored.hash &&
+      stored.result?.version === stored.version &&
+      stored.result.hash === stored.hash
+    ) {
+      state.lastAppliedVersion = stored.version;
+      state.lastAppliedHash = stored.hash;
+      state.lastAppliedAtMs = stored.result.appliedAtMs;
+      state.lastResult = stored.result;
+    }
+  } catch {
+    // A fresh container has no state file. The startup apply will create it.
+  }
+}
+
+function scheduleGlitchMutableHotfixRestart(
+  manifest: GlitchMutableHotfixManifest,
+  result: GlitchMutableHotfixApplyResult
+) {
+  if (!manifest.restart?.exitProcess || !result.applied) {
+    return;
+  }
+  result.restartScheduled = true;
+  const delayMs = Math.max(0, manifest.restart.delayMs ?? 250);
+  const code = manifest.restart.code ?? 75;
+  setTimeout(() => process.exit(code), delayMs).unref();
 }
 
 function decodeHotfixContent(operation: {
@@ -223,56 +381,174 @@ function clearRequireCache(
   return cleared;
 }
 
+interface AppliedGlitchMutableHotfixOperation {
+  result: GlitchMutableHotfixOperationResult;
+  rollback?: () => Promise<void>;
+  commit?: () => Promise<void>;
+}
+
+async function targetExists(target: string) {
+  return stat(target)
+    .then(() => true)
+    .catch(() => false);
+}
+
+async function stageExistingTarget(target: string) {
+  if (!(await targetExists(target))) {
+    return {
+      existed: false,
+      rollback: async () => {
+        await rm(target, { force: true, recursive: true });
+      },
+      commit: async () => {},
+    };
+  }
+  const backup = `${target}.mutable-hotfix-${randomUUID()}.backup`;
+  await rename(target, backup);
+  return {
+    existed: true,
+    rollback: async () => {
+      await rm(target, { force: true, recursive: true });
+      await rename(backup, target);
+    },
+    commit: async () => {
+      await rm(backup, { force: true, recursive: true });
+    },
+  };
+}
+
+function assertContentHash(
+  label: "previous" | "result",
+  expected: string | undefined,
+  content: string | Buffer,
+  target: string
+) {
+  if (!expected) {
+    return;
+  }
+  const actual = sha256(content);
+  if (actual !== expected) {
+    throw new Error(
+      `mutable_hotfix_${label}_hash_mismatch:${target}:expected_${expected}:actual_${actual}`
+    );
+  }
+}
+
 async function applyOperation(
   operation: GlitchMutableHotfixOperation,
   index: number
-): Promise<GlitchMutableHotfixOperationResult> {
+): Promise<AppliedGlitchMutableHotfixOperation> {
   switch (operation.type) {
     case "writeFile": {
       const target = resolveMutableHotfixPath(operation.path);
       await mkdir(path.dirname(target), { recursive: true });
-      await writeFile(target, decodeHotfixContent(operation), {
-        encoding:
-          operation.contentBase64 === undefined
-            ? operation.encoding ?? "utf8"
-            : undefined,
-        mode: operation.mode,
-      } as any);
-      return { index, type: operation.type, target, changed: true };
+      if (operation.expectedPreviousSha256 !== undefined) {
+        const previous = await readFile(target);
+        assertContentHash(
+          "previous",
+          operation.expectedPreviousSha256,
+          previous,
+          target
+        );
+      }
+      const content = decodeHotfixContent(operation);
+      assertContentHash("result", operation.expectedSha256, content, target);
+      const staged = await stageExistingTarget(target);
+      try {
+        await atomicWriteFile(target, content, {
+          encoding:
+            operation.contentBase64 === undefined
+              ? (operation.encoding ?? "utf8")
+              : undefined,
+          mode: operation.mode,
+        });
+      } catch (error) {
+        await staged.rollback();
+        throw error;
+      }
+      return {
+        result: { index, type: operation.type, target, changed: true },
+        rollback: staged.rollback,
+        commit: staged.commit,
+      };
     }
     case "replace": {
       const target = resolveMutableHotfixPath(operation.path);
       const before = await readFile(target, "utf8");
+      assertContentHash(
+        "previous",
+        operation.expectedPreviousSha256,
+        before,
+        target
+      );
       const { output, count } = replaceContent(before, operation);
       assertExpectedReplacementCount(operation, count);
+      assertContentHash("result", operation.expectedSha256, output, target);
+      if (output === before) {
+        return {
+          result: {
+            index,
+            type: operation.type,
+            target,
+            changed: false,
+            count,
+          },
+        };
+      }
+      const staged = await stageExistingTarget(target);
       if (output !== before) {
-        await writeFile(target, output, "utf8");
+        try {
+          await atomicWriteFile(target, output, { encoding: "utf8" });
+        } catch (error) {
+          await staged.rollback();
+          throw error;
+        }
       }
       return {
-        index,
-        type: operation.type,
-        target,
-        changed: output !== before,
-        count,
+        result: {
+          index,
+          type: operation.type,
+          target,
+          changed: true,
+          count,
+        },
+        rollback: staged.rollback,
+        commit: staged.commit,
       };
     }
     case "deleteFile": {
       const target = resolveMutableHotfixPath(operation.path);
-      const exists = await stat(target)
-        .then(() => true)
-        .catch(() => false);
+      const exists = await targetExists(target);
       if (!exists && !operation.allowMissing) {
         throw new Error(`mutable_hotfix_delete_missing:${operation.path}`);
       }
-      if (exists) {
-        await rm(target, { force: true, recursive: true });
+      if (!exists) {
+        return {
+          result: { index, type: operation.type, target, changed: false },
+        };
       }
-      return { index, type: operation.type, target, changed: exists };
+      const staged = await stageExistingTarget(target);
+      return {
+        result: { index, type: operation.type, target, changed: true },
+        rollback: staged.rollback,
+        commit: staged.commit,
+      };
     }
     case "mkdir": {
       const target = resolveMutableHotfixPath(operation.path);
+      const exists = await targetExists(target);
       await mkdir(target, { recursive: true });
-      return { index, type: operation.type, target, changed: true };
+      return {
+        result: {
+          index,
+          type: operation.type,
+          target,
+          changed: !exists,
+        },
+        rollback: exists
+          ? undefined
+          : async () => rm(target, { force: true, recursive: true }),
+      };
     }
     case "exec": {
       const { stdout, stderr } = await exec(operation.command, {
@@ -284,12 +560,14 @@ async function applyOperation(
         maxBuffer: 10 * 1024 * 1024,
       });
       return {
-        index,
-        type: operation.type,
-        target: operation.command,
-        changed: true,
-        stdout,
-        stderr,
+        result: {
+          index,
+          type: operation.type,
+          target: operation.command,
+          changed: true,
+          stdout,
+          stderr,
+        },
       };
     }
     case "eval": {
@@ -309,16 +587,20 @@ async function applyOperation(
         filename: operation.filename ?? `glitch-mutable-hotfix-${index}.js`,
         timeout: operation.timeoutMs ?? 10_000,
       });
-      return { index, type: operation.type, changed: true };
+      return {
+        result: { index, type: operation.type, changed: true },
+      };
     }
     case "clearRequireCache": {
       const cleared = clearRequireCache(operation);
       return {
-        index,
-        type: operation.type,
-        target: operation.path ?? operation.match,
-        changed: cleared > 0,
-        cleared,
+        result: {
+          index,
+          type: operation.type,
+          target: operation.path ?? operation.match,
+          changed: cleared > 0,
+          cleared,
+        },
       };
     }
     default:
@@ -335,21 +617,75 @@ export function normalizeGlitchMutableHotfixManifest(
     throw new Error("mutable_hotfix_manifest_invalid:not_object");
   }
   const manifest = input as GlitchMutableHotfixManifest;
-  if (!manifest.version || typeof manifest.version !== "string") {
+  if (
+    !manifest.version ||
+    typeof manifest.version !== "string" ||
+    manifest.version.length > 200 ||
+    /[\r\n]/.test(manifest.version)
+  ) {
     throw new Error("mutable_hotfix_manifest_invalid:missing_version");
   }
   if (!Array.isArray(manifest.operations)) {
     throw new Error("mutable_hotfix_manifest_invalid:missing_operations");
   }
+  if (manifest.operations.length > 1_000) {
+    throw new Error("mutable_hotfix_manifest_invalid:too_many_operations");
+  }
+  for (const [index, operation] of manifest.operations.entries()) {
+    if (!operation || typeof operation !== "object") {
+      throw new Error(
+        `mutable_hotfix_manifest_invalid:operation_${index}_not_object`
+      );
+    }
+    if (
+      ![
+        "writeFile",
+        "replace",
+        "deleteFile",
+        "mkdir",
+        "exec",
+        "eval",
+        "clearRequireCache",
+      ].includes(operation.type)
+    ) {
+      throw new Error(
+        `mutable_hotfix_manifest_invalid:operation_${index}_unknown`
+      );
+    }
+  }
+  if (
+    manifest.compatibleBuildIds !== undefined &&
+    (!Array.isArray(manifest.compatibleBuildIds) ||
+      manifest.compatibleBuildIds.some((value) => typeof value !== "string"))
+  ) {
+    throw new Error("mutable_hotfix_manifest_invalid:compatible_build_ids");
+  }
+  if (
+    manifest.targetRoles !== undefined &&
+    (!Array.isArray(manifest.targetRoles) ||
+      manifest.targetRoles.some(
+        (value) => !["unified", "web", "simulation"].includes(value)
+      ))
+  ) {
+    throw new Error("mutable_hotfix_manifest_invalid:target_roles");
+  }
+  if (
+    manifest.expiresAt !== undefined &&
+    typeof manifest.expiresAt !== "string"
+  ) {
+    throw new Error("mutable_hotfix_manifest_invalid:expires_at");
+  }
+  decodeGlitchMutableHotfixClientPayload(manifest);
   return manifest;
 }
 
 export async function applyGlitchMutableHotfixManifest(
   rawManifest: unknown,
-  options: { force?: boolean } = {}
+  options: { force?: boolean; scheduleRestart?: boolean } = {}
 ): Promise<GlitchMutableHotfixApplyResult> {
   const manifest = normalizeGlitchMutableHotfixManifest(rawManifest);
   const state = runtimeState();
+  await hydrateRuntimeState();
   const hash = hashGlitchMutableHotfixManifest(manifest);
   if (
     !options.force &&
@@ -358,12 +694,56 @@ export async function applyGlitchMutableHotfixManifest(
   ) {
     return state.lastResult as GlitchMutableHotfixApplyResult;
   }
+  const compatibility = glitchMutableHotfixCompatibility(manifest);
+  if (!compatibility.applicable) {
+    const result: GlitchMutableHotfixApplyResult = {
+      ok: true,
+      applied: false,
+      version: manifest.version,
+      hash,
+      appliedAtMs: Date.now(),
+      operations: [],
+      skippedReason: compatibility.reason,
+    };
+    state.lastAppliedVersion = manifest.version;
+    state.lastAppliedHash = hash;
+    state.lastAppliedAtMs = result.appliedAtMs;
+    state.lastError = undefined;
+    state.lastResult = result;
+    await persistRuntimeState(result);
+    return result;
+  }
   const operations: GlitchMutableHotfixOperationResult[] = [];
-  for (const [index, operation] of manifest.operations.entries()) {
-    operations.push(await applyOperation(operation, index));
+  const appliedOperations: AppliedGlitchMutableHotfixOperation[] = [];
+  try {
+    for (const [index, operation] of manifest.operations.entries()) {
+      const applied = await applyOperation(operation, index);
+      appliedOperations.push(applied);
+      operations.push(applied.result);
+    }
+  } catch (error) {
+    for (const applied of appliedOperations.reverse()) {
+      await applied.rollback?.().catch((rollbackError) =>
+        log.error("GLITCH_MUTABLE_HOTFIX_ROLLBACK_FAILED", {
+          rollbackError,
+          operation: applied.result,
+        })
+      );
+    }
+    state.lastError = error instanceof Error ? error.message : String(error);
+    throw error;
+  }
+  for (const applied of appliedOperations) {
+    await applied.commit?.().catch((commitError) =>
+      log.warn("GLITCH_MUTABLE_HOTFIX_BACKUP_CLEANUP_FAILED", {
+        commitError,
+        operation: applied.result,
+      })
+    );
   }
   const result: GlitchMutableHotfixApplyResult = {
     ok: true,
+    applied: true,
     version: manifest.version,
     hash,
     appliedAtMs: Date.now(),
@@ -374,16 +754,14 @@ export async function applyGlitchMutableHotfixManifest(
   state.lastAppliedAtMs = result.appliedAtMs;
   state.lastError = undefined;
   state.lastResult = result;
+  await persistRuntimeState(result);
   log.warn("GLITCH_MUTABLE_HOTFIX_APPLIED", {
     version: result.version,
     hash: result.hash,
     operationCount: operations.length,
   });
-  if (manifest.restart?.exitProcess) {
-    result.restartScheduled = true;
-    const delayMs = Math.max(0, manifest.restart.delayMs ?? 250);
-    const code = manifest.restart.code ?? 75;
-    setTimeout(() => process.exit(code), delayMs).unref();
+  if (options.scheduleRestart !== false) {
+    scheduleGlitchMutableHotfixRestart(manifest, result);
   }
   return result;
 }
@@ -396,6 +774,9 @@ export function getGlitchMutableHotfixStatus() {
       process.env.GLITCH_MUTABLE_HOTFIX_REDIS_KEY ??
       GLITCH_MUTABLE_HOTFIX_REDIS_KEY,
     root: rootDir(),
+    stateFile: stateFilePath(),
+    buildId: currentBuildId(),
+    role: currentRole(),
     lastAppliedVersion: state.lastAppliedVersion,
     lastAppliedHash: state.lastAppliedHash,
     lastAppliedAtMs: state.lastAppliedAtMs,
@@ -435,6 +816,7 @@ export async function persistGlitchMutableHotfixManifestToRedis(
     GLITCH_MUTABLE_HOTFIX_REDIS_KEY
 ) {
   normalizeGlitchMutableHotfixManifest(manifest);
+  assertGlitchMutableHotfixPersistable(manifest);
   const redis = await mutableHotfixRedis();
   await redis.primary.set(redisKey, JSON.stringify(manifest));
   return {
@@ -443,6 +825,33 @@ export async function persistGlitchMutableHotfixManifestToRedis(
     version: manifest.version,
     hash: hashGlitchMutableHotfixManifest(manifest),
   };
+}
+
+export async function applyAndPersistGlitchMutableHotfixManifest(
+  rawManifest: unknown,
+  options: {
+    force?: boolean;
+    scheduleRestart?: boolean;
+    redisKey?: string;
+    persist?: (
+      manifest: GlitchMutableHotfixManifest,
+      redisKey?: string
+    ) => Promise<unknown>;
+  } = {}
+) {
+  const manifest = normalizeGlitchMutableHotfixManifest(rawManifest);
+  assertGlitchMutableHotfixPersistable(manifest);
+  const result = await applyGlitchMutableHotfixManifest(manifest, {
+    force: options.force,
+    scheduleRestart: false,
+  });
+  const persisted = await (
+    options.persist ?? persistGlitchMutableHotfixManifestToRedis
+  )(manifest, options.redisKey);
+  if (options.scheduleRestart !== false) {
+    scheduleGlitchMutableHotfixRestart(manifest, result);
+  }
+  return { result, persisted };
 }
 
 export async function clearGlitchMutableHotfixManifestFromRedis(
@@ -471,6 +880,7 @@ export function decodeGlitchMutableHotfixManifestBase64(value: string) {
 export async function applyConfiguredGlitchMutableHotfix(
   options: {
     force?: boolean;
+    scheduleRestart?: boolean;
   } = {}
 ) {
   if (!glitchMutableHotfixEnabled()) return undefined;
@@ -483,10 +893,10 @@ export async function applyConfiguredGlitchMutableHotfix(
             process.env.GLITCH_MUTABLE_HOTFIX_MANIFEST_BASE64
           )
         : process.env.GLITCH_MUTABLE_HOTFIX_MANIFEST_URL
-        ? await loadGlitchMutableHotfixManifestFromUrl(
-            process.env.GLITCH_MUTABLE_HOTFIX_MANIFEST_URL
-          )
-        : await readGlitchMutableHotfixManifestFromRedis();
+          ? await loadGlitchMutableHotfixManifestFromUrl(
+              process.env.GLITCH_MUTABLE_HOTFIX_MANIFEST_URL
+            )
+          : await readGlitchMutableHotfixManifestFromRedis();
       state.lastCheckedRedisAtMs = Date.now();
       if (!manifest) return undefined;
       return await applyGlitchMutableHotfixManifest(manifest, options);

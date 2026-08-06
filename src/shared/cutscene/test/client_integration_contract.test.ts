@@ -214,6 +214,34 @@ describe("cutscene client integration contract", () => {
     assert.match(promo, /waitForPromoCameraTerrainClearance/);
     assert.match(promo, /bossCameraPlan === "recommended"/);
     assert.match(promo, /promoSceneWithRecommendedBossCamera/);
+    assert.match(director, /waitForNativeCutsceneActors/);
+    assert.match(director, /publishHarthmereLiveCreatureSnapshot/);
+    assert.match(promo, /waitForPromoRuntimeScenery/);
+    assert.match(promo, /selectedDistrictCounts/);
+    assert.match(promo, /observerPosition !== undefined/);
+    assert.match(promo, /typeof observerDebug\?\.moveTo === "function"/);
+    assert.match(assets, /promoCaptureActive && finiteCamera/);
+  });
+
+  it("preserves Underways structures before either snapshot-built filter", () => {
+    const assets = read(
+      "src/client/game/renderers/local_dev/harthmere_assets.ts"
+    );
+    const serverFilter = assets.indexOf(
+      "function filterHarthmereServerVoxelOwnedStructuralPlacements"
+    );
+    const snapshotFilter = assets.indexOf(
+      "function isHarthmereSnapshotBuiltRuntimeOwnedPlacement"
+    );
+    assert.ok(serverFilter >= 0 && snapshotFilter >= 0);
+    assert.match(
+      assets.slice(serverFilter, serverFilter + 1800),
+      /shouldPreserveHarthmereUnderwaysRuntimeScenery\(placement\.district\)[\s\S]*kept\.push\(placement\)/
+    );
+    assert.match(
+      assets.slice(snapshotFilter, snapshotFilter + 1800),
+      /shouldPreserveHarthmereUnderwaysRuntimeScenery\(placement\.district\)/
+    );
   });
 
   it("waypoint camera override is still the first check in CameraScript.tick", () => {

@@ -37,7 +37,6 @@ import {
 import { resolveAvailableHeldItemAnimation } from "@/client/game/util/held_item_animation";
 import { playerHeldItemAttachmentParent } from "@/client/game/util/player_attachment";
 import { clonePlayerSkinnedMaterial } from "@/client/game/util/skinning";
-import { resolveAssetUrl } from "@/galois/interface/asset_paths";
 import {
   makeBasicMaterial,
   updateBasicMaterial,
@@ -52,6 +51,7 @@ import {
   harthmereCinematicExpressionRepeat,
   isHarthmereCinematicExpression,
 } from "@/shared/cutscene/cinematic_expressions";
+import { HARTHMERE_PLAYER_ANIMATION_RUNTIME_URL } from "@/shared/harthmere/attack_variation_polish";
 import {
   HARTHMERE_DEFAULT_HUMAN_ANCHORS,
   HARTHMERE_FACIAL_EXPRESSION_EVENT,
@@ -752,7 +752,11 @@ async function makeAnimatedMesh(
 }
 
 async function fetchPlayerAnimationsGLTF() {
-  const anims = await loadGltf(resolveAssetUrl("wearables/animations"));
+  // Keep the current authored combo clips in the tracked application bundle.
+  // The Galois logical asset remains the source/materialization contract, but
+  // this URL avoids pointing a deployed client at an unpublished content hash
+  // while still making the regenerated animation set active in-game.
+  const anims = await loadGltf(HARTHMERE_PLAYER_ANIMATION_RUNTIME_URL);
   anims.animations.forEach((x) => x.optimize());
 
   for (const anim of anims.animations) {

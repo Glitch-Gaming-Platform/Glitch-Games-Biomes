@@ -226,6 +226,12 @@ import {
 } from "@/shared/harthmere/live_creature_ecs_bridge";
 import { preserveAuthoredCutsceneGhostMaterials } from "@/client/game/cutscene/ghost_materials";
 import { groundCutsceneGhost } from "@/client/game/cutscene/ghost_grounding";
+import {
+  clearNativeCutsceneActorReadiness,
+  markNativeCutsceneActorFailed,
+  markNativeCutsceneActorLoaded,
+  markNativeCutsceneActorLoading,
+} from "@/client/game/cutscene/native_actor_readiness";
 import { harthmereLiveModeCombatTargetIdForVisibleActor } from "@/shared/harthmere/visible_combat_target";
 import type { Disposable } from "@/shared/disposable";
 import type { BiomesId } from "@/shared/ids";
@@ -5100,6 +5106,14 @@ function filterHarthmereServerVoxelOwnedStructuralPlacements(
   const kept: RuntimePlacement[] = [];
   const removed: RuntimePlacement[] = [];
   for (const placement of placements) {
+    // The unshifted Bellward/Underways dungeon has no server-voxel replacement
+    // in the retained snapshot. Preserve its authored walls and structures
+    // before applying the broad ordinary-town structural filter; the later
+    // snapshot-built policy already carries the same district exemption.
+    if (shouldPreserveHarthmereUnderwaysRuntimeScenery(placement.district)) {
+      kept.push(placement);
+      continue;
+    }
     const [x, _y, z] = placement.at;
     if (
       isHarthmereServerVoxelOwnedStructuralAsset(
@@ -28918,6 +28932,22 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     if (typeof window === "undefined") {
       return undefined;
     }
+    const finiteCamera =
+      camera &&
+      Number.isFinite(camera.position.x) &&
+      Number.isFinite(camera.position.z)
+        ? ([camera.position.x, camera.position.z] as [number, number])
+        : undefined;
+    // A promo camera is the actual authored point of view. The forward-arc
+    // bridge follows player combat/debug state and can lag behind a capture
+    // teleport, which previously streamed zero Underways placements around a
+    // stale town coordinate while the cinematic camera sat in Bellward.
+    const promoCaptureActive =
+      window.location.search.includes("cutscenePromo=") ||
+      window.location.search.includes("cutscenePromoBatch=");
+    if (promoCaptureActive && finiteCamera) {
+      return finiteCamera;
+    }
     const runtime = (
       window as typeof window & {
         __harthmereForwardArcRuntime?: {
@@ -28933,14 +28963,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     ) {
       return [position[0], position[2]];
     }
-    if (
-      camera &&
-      Number.isFinite(camera.position.x) &&
-      Number.isFinite(camera.position.z)
-    ) {
-      return [camera.position.x, camera.position.z];
-    }
-    return undefined;
+    return finiteCamera;
   }
 
   private updateHarthmerePlacementLod(dt: number, camera?: THREE.Camera) {
@@ -34656,6 +34679,11 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     record: HarthmereLiveCreatureBridgeRecord
   ) {
     if (this.nativeCutsceneActorLoads.has(record.id)) return;
+    markNativeCutsceneActorLoading({
+      id: record.id,
+      asset: record.asset,
+      label: record.label,
+    });
     const load = (async () => {
       let actor: NativeCutsceneActor;
       if (
@@ -34723,14 +34751,17 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       const latest = this.latestSyntheticCutsceneRecords.get(record.id);
       if (!latest) {
         actor.dispose();
+        clearNativeCutsceneActorReadiness(record.id);
         return;
       }
       this.nativeCutsceneActors.set(record.id, actor);
       this.harthmereEcsLiveCreatures.set(record.id, actor.object);
       this.root.add(actor.object);
       this.applyNativeCutsceneActorRecord(actor, latest);
+      markNativeCutsceneActorLoaded(record.id);
     })()
       .catch((error) => {
+        markNativeCutsceneActorFailed(record.id, error);
         log.error("HARTHMERE_NATIVE_CUTSCENE_ACTOR_REQUIRED", {
           entityId: record.id,
           label: record.label,
@@ -34909,6 +34940,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
 
   private removeHarthmereEcsLiveCreature(id: number) {
     this.latestSyntheticCutsceneRecords.delete(id);
+    clearNativeCutsceneActorReadiness(id);
     const nativeActor = this.nativeCutsceneActors.get(id);
     if (nativeActor) {
       this.nativeCutsceneActors.delete(id);
@@ -35052,6 +35084,15 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     const desiredIndexes = new Set(selection.indexes);
     const desiredAssets = new Set(selection.assetKeys);
 
+    const districtCounts = (indexes: Iterable<number>) => {
+      const counts: Record<string, number> = {};
+      for (const index of indexes) {
+        const district = this.mobileRuntimePlacements[index]?.district;
+        if (district) counts[district] = (counts[district] ?? 0) + 1;
+      }
+      return counts;
+    };
+
     for (const [index, object] of [...this.mobilePlacementObjects]) {
       if (!desiredIndexes.has(index)) {
         this.removeMobileRuntimePlacement(index, object);
@@ -35092,6 +35133,9 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
 
     const win = harthmereRendererDebugWindow();
     if (win) {
+      const failedIndexes = selection.indexes.filter((index) =>
+        this.failed.has(this.mobileRuntimePlacements[index]?.asset ?? "")
+      );
       win.__harthmereMobileRuntimeStreaming = {
         version: "harthmere-bounded-nearby-runtime-assets-v2",
         profile: this.mobileDevice ? "mobile" : "desktop",
@@ -35103,6 +35147,11 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         selectedAssets: selection.assetKeys.length,
         loadedPlacements: this.mobilePlacementObjects.size,
         loadedPrototypes: this.prototypes.size,
+        selectedDistrictCounts: districtCounts(selection.indexes),
+        loadedDistrictCounts: districtCounts(
+          this.mobilePlacementObjects.keys()
+        ),
+        failedDistrictCounts: districtCounts(failedIndexes),
         remainingPrototypeLoads: Math.max(
           0,
           missingAssets.length - streamingBudget.newPrototypesPerRefresh

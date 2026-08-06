@@ -108,6 +108,40 @@ export interface PathSpatialAudioOptions {
   refDistance?: number;
   maxDistance?: number;
   rolloffFactor?: number;
+  /** Fits the decoded source to an authoritative visual lifetime. */
+  durationSeconds?: number;
+  /** Linear gain ramp at the end of durationSeconds. */
+  fadeOutSeconds?: number;
+}
+
+export function resolvePathAudioEnvelope(
+  bufferDurationSeconds: number,
+  options: Pick<
+    PathSpatialAudioOptions,
+    "durationSeconds" | "fadeOutSeconds"
+  > = {}
+) {
+  const sourceDuration = Number(bufferDurationSeconds);
+  const requestedDuration = Number(options.durationSeconds);
+  if (
+    !Number.isFinite(sourceDuration) ||
+    sourceDuration <= 0 ||
+    !Number.isFinite(requestedDuration) ||
+    requestedDuration <= 0
+  ) {
+    return undefined;
+  }
+  const durationSeconds = Math.max(0.05, requestedDuration);
+  const requestedFade = Number(options.fadeOutSeconds);
+  const fadeOutSeconds = Number.isFinite(requestedFade)
+    ? Math.max(0, Math.min(durationSeconds, requestedFade))
+    : 0;
+  return {
+    durationSeconds,
+    playbackRate: sourceDuration / durationSeconds,
+    fadeOutSeconds,
+    fadeStartSeconds: durationSeconds - fadeOutSeconds,
+  };
 }
 
 export function resolvePathSpatialAudioOptions(
@@ -1337,6 +1371,13 @@ export class AudioManager {
     return this.resources.cached("/audio/buffer", assetPath);
   }
 
+  preloadPath(assetPath: AudioPath) {
+    if (this.resources.cached("/audio/buffer", assetPath)) {
+      return;
+    }
+    fireAndForget(this.resources.get("/audio/buffer", assetPath));
+  }
+
   playSound(
     assetType: AudioAssetType,
     options: {
@@ -1482,6 +1523,23 @@ export class AudioManager {
         sound.setBuffer(buffer);
         const spatial = resolvePathSpatialAudioOptions(volume, options);
         sound.setVolume(spatial.volume);
+        const envelope = resolvePathAudioEnvelope(buffer.duration, options);
+        if (envelope) {
+          sound.setPlaybackRate(envelope.playbackRate);
+          if (envelope.fadeOutSeconds > 0) {
+            const now = this.audioListener.context.currentTime;
+            sound.gain.gain.cancelScheduledValues(now);
+            sound.gain.gain.setValueAtTime(spatial.volume, now);
+            sound.gain.gain.setValueAtTime(
+              spatial.volume,
+              now + envelope.fadeStartSeconds
+            );
+            sound.gain.gain.linearRampToValueAtTime(
+              0.0001,
+              now + envelope.durationSeconds
+            );
+          }
+        }
         sound.position.set(position[0], position[1], position[2]);
         sound.setDistanceModel("exponential");
         sound.setRolloffFactor(spatial.rolloffFactor);

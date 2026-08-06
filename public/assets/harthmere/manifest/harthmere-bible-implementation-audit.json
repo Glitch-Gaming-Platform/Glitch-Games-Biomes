@@ -122,10 +122,6 @@
         {
           "path": "docs/harthmere/bibles/Harthmere_Wilds_Outside_Town_Narrative_Setting.pdf",
           "reason": "filename"
-        },
-        {
-          "path": ".harthmere-live-repeatable-placement-audit-25f687dd-9ebe-4c31-8810-719ddfafe66b-live-repeatable-placement-2026-06-25T22-51-53-248Z.json",
-          "reason": "content"
         }
       ],
       "present": true

@@ -15,10 +15,11 @@ if (!url) {
 }
 
 async function loadPlaywright() {
+  const { leasePlaywright } = require("./harthmere-live-runtime-probe.cjs");
   const candidates = ["playwright", "playwright-chromium"];
   for (const name of candidates) {
     try {
-      return require(name);
+      return leasePlaywright(require(name), { baseUrl: url });
     } catch (error) {
       // try next
     }

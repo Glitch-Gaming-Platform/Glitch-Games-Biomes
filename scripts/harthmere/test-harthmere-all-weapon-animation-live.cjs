@@ -2,6 +2,9 @@
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
+const {
+  acquireBrowserRuntimeLease,
+} = require("./browser-runtime-lease.cjs");
 
 const root = process.argv[2] || process.cwd();
 const url = process.env.HARTHMERE_E2E_URL;
@@ -45,5 +48,15 @@ const { chromium } = require('playwright');
   }
 })();
 `, "utf8");
-const result = spawnSync("node", [probe], { stdio: "inherit", cwd: root, env: process.env });
+const browserRuntimeLease = acquireBrowserRuntimeLease({
+  runner: path.basename(__filename),
+  baseUrl: url,
+  syncBaseUrl: process.env.HARTHMERE_E2E_SYNC_BASE_URL,
+});
+const result = spawnSync("node", [probe], {
+  stdio: "inherit",
+  cwd: root,
+  env: process.env,
+});
+browserRuntimeLease.release();
 process.exit(result.status ?? 1);

@@ -117,6 +117,12 @@ overhead cleave, broad sweep, backhand crusher, and rising finisher. Light
 contact is frame 6 (0.250 seconds) with a frame-17 endpoint; heavy contact is
 frame 10 (0.417 seconds) with a frame-26 endpoint.
 
+The exported metadata identifies combo step, combo role, handoff time, attack
+style, arc, and all five motion phases. Runtime combo selection consumes the
+four variation indices exactly once per chain, so a mixed light/heavy combo
+cannot replay the same body clip on two steps. The next action may cross-fade
+only when the shared gameplay contact clock has been reached.
+
 Run the author and merge pass with:
 
 ```bash
@@ -129,13 +135,16 @@ Then materialize the exact production artifact with:
 
 ```bash
 ./b galois assets export --filter '^wearables/animations$'
+node scripts/harthmere/sync-player-animation-runtime.cjs
 ```
 
-The content hash of `src/galois/data/exports/wearables/animations.glb` must be
-used for both the file under `public/buckets/biomes-static/asset_data/wearables/`
-and `src/galois/js/interface/gen/asset_versions.json`. Audits resolve that index
-and inspect the published GLB rather than treating body variants as the player
-runtime source.
+`src/galois/data/exports/wearables/animations.glb` remains the materialized
+Galois output. The sync step validates all eight melee combo clips and copies
+that exact GLB to the tracked runtime path
+`public/assets/harthmere/glb/animations/player_animations.glb`, avoiding an
+unpublished content-addressed pointer during local/deployment handoff. A formal
+Galois publication may later update `asset_versions.json`, but must upload the
+immutable object before changing that index.
 Blender inspection is an authoring check, not the visual acceptance gate. The
 final review must use the exact-current-source game renderer and the generated
 `harthmere-expression-showcase` cutscene described in `docs/cutscenes.md`,

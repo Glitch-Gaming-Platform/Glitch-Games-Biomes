@@ -5,6 +5,11 @@ import type { AuthManager } from "@/client/game/context_managers/auth_manager";
 import type { PermissionsManager } from "@/client/game/context_managers/permissions_manager";
 import type { ClientTable } from "@/client/game/game";
 import { BasePassMaterial } from "@/client/game/renderers/base_pass_material";
+import {
+  HarthmereMeleeHitSparkEffect,
+  harthmereMeleeHitSparkContactPosition,
+  shouldShowHarthmereMeleeHitSpark,
+} from "@/client/game/renderers/melee_hit_spark_effect";
 import type { Renderable } from "@/client/game/renderers/cull_entities";
 import {
   cullEntities,
@@ -19,7 +24,7 @@ import type { Camera } from "@/client/game/resources/camera";
 import { drawLimitValueWithTweak } from "@/client/game/resources/graphics_settings";
 import {
   harthmereHotbarHeldItemForAttachment,
-  isHarthmereChapter1DisplayOnlyHeldItem,
+  isHarthmereProtectedRegionVisibleHeldItem,
 } from "@/client/game/resources/harthmere_held_item";
 import { ItemMeshKey } from "@/client/game/resources/item_mesh";
 import type { LocalPlayer } from "@/client/game/resources/local_player";
@@ -59,8 +64,13 @@ import type {
 import { isFloraId } from "@/shared/game/ids";
 import { anItem } from "@/shared/game/item";
 import { isHarthmereBowWeapon } from "@/shared/harthmere/harthmere_ranged_resources";
+import {
+  harthmereMeleeHitItem,
+  harthmereMeleeHitSoundIdForItem,
+} from "@/shared/harthmere/melee_hit_sound";
 import { harthmereNativeItemIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
 import { getHarthmerePremiumWeapon } from "@/shared/harthmere/premium_weapon_catalog";
+import { emitHarthmereSoundEffect } from "@/shared/harthmere/sound_effect_manifest";
 import {
   movementActionYaw,
   playerMovementActionAnimationName,
@@ -99,6 +109,14 @@ const numRenderedPlayersCval = new Cval({
 
 export class PlayersRenderer implements Renderer {
   name = "player";
+  private readonly harthmereMeleeHitSparkEffects = new Map<
+    BiomesId,
+    HarthmereMeleeHitSparkEffect
+  >();
+  private readonly lastHarthmereMeleeHitSparkDamageTimes = new Map<
+    BiomesId,
+    number
+  >();
 
   constructor(
     private readonly clientConfig: ClientConfig,
@@ -398,6 +416,91 @@ export class PlayersRenderer implements Renderer {
     });
   }
 
+  private updateHarthmereMeleeHitSparkEffect(
+    renderablePlayer: RenderablePlayer,
+    scenes: Scenes
+  ) {
+    if (renderablePlayer.localPlayer) {
+      return;
+    }
+    const { ecsPlayer, player, scenePlayer } = renderablePlayer;
+    const health = ecsPlayer.health;
+    const damageTime = health?.lastDamageTime;
+    if (
+      health &&
+      damageTime !== undefined &&
+      damageTime !== this.lastHarthmereMeleeHitSparkDamageTimes.get(player.id)
+    ) {
+      this.lastHarthmereMeleeHitSparkDamageTimes.set(player.id, damageTime);
+      const damageSource = health.lastDamageSource;
+      const attacker =
+        damageSource?.kind === "attack"
+          ? this.table.get(damageSource.attacker)
+          : undefined;
+      if (
+        shouldShowHarthmereMeleeHitSpark({
+          damageSource,
+          damageTime,
+          attackerIsPlayer: Boolean(attacker?.player_status),
+          attackerEmote: attacker?.emote,
+        })
+      ) {
+        this.harthmereMeleeHitSparkEffects.get(player.id)?.dispose();
+        this.harthmereMeleeHitSparkEffects.set(
+          player.id,
+          new HarthmereMeleeHitSparkEffect(
+            this.resources.get("/clock").time,
+            1.8 * player.scale
+          )
+        );
+        const contactPosition = harthmereMeleeHitSparkContactPosition({
+          center: [
+            scenePlayer.position[0],
+            scenePlayer.position[1] + 0.9 * player.scale,
+            scenePlayer.position[2],
+          ],
+          bodyHeight: 1.8 * player.scale,
+          damageDirection:
+            damageSource?.kind === "attack" ? damageSource.dir : undefined,
+        });
+        emitHarthmereSoundEffect(
+          harthmereMeleeHitSoundIdForItem(
+            harthmereMeleeHitItem(
+              attacker?.emote,
+              attacker?.selected_item?.item?.item
+            )
+          ),
+          { position: contactPosition }
+        );
+      }
+    }
+
+    const effect = this.harthmereMeleeHitSparkEffects.get(player.id);
+    if (!effect) {
+      return;
+    }
+    effect.setContactPosition(
+      harthmereMeleeHitSparkContactPosition({
+        center: [
+          scenePlayer.position[0],
+          scenePlayer.position[1] + 0.9 * player.scale,
+          scenePlayer.position[2],
+        ],
+        bodyHeight: 1.8 * player.scale,
+        damageDirection:
+          health?.lastDamageSource?.kind === "attack"
+            ? health.lastDamageSource.dir
+            : undefined,
+      })
+    );
+    if (effect.tick(this.resources.get("/clock").time)) {
+      addToScenes(scenes, effect.three);
+    } else {
+      effect.dispose();
+      this.harthmereMeleeHitSparkEffects.delete(player.id);
+    }
+  }
+
   updateParticleEffects(renderablePlayer: RenderablePlayer) {
     const { player, playerMesh } = renderablePlayer;
     const commonEffects = this.resources.cached("/scene/player/common_effects");
@@ -531,6 +634,21 @@ export class PlayersRenderer implements Renderer {
     const renderablePlayers = this.getRenderablePlayers(
       remotePlayerRenderLimit
     );
+    const currentPlayerIds = new Set(
+      renderablePlayers.map(({ player }) => player.id)
+    );
+    const nowSeconds = this.resources.get("/clock").time;
+    for (const [playerId, effect] of this.harthmereMeleeHitSparkEffects) {
+      if (!currentPlayerIds.has(playerId) || !effect.tick(nowSeconds)) {
+        effect.dispose();
+        this.harthmereMeleeHitSparkEffects.delete(playerId);
+      }
+    }
+    for (const playerId of this.lastHarthmereMeleeHitSparkDamageTimes.keys()) {
+      if (!currentPlayerIds.has(playerId)) {
+        this.lastHarthmereMeleeHitSparkDamageTimes.delete(playerId);
+      }
+    }
 
     renderablePlayers.forEach((x) =>
       this.updatePlayerThree(x.player, x.playerMesh, dt, camera, x.localPlayer)
@@ -685,6 +803,8 @@ export class PlayersRenderer implements Renderer {
             this.updateParticleEffects(x);
             this.updateSkinColorEffects(x);
           }
+
+          this.updateHarthmereMeleeHitSparkEffect(x, scenes);
 
           if (
             shouldRenderPlayerAvatar(
@@ -897,7 +1017,7 @@ export class PlayersRenderer implements Renderer {
 
     const selectedItemActionAllowed =
       !localPlayer ||
-      isHarthmereChapter1DisplayOnlyHeldItem(selectedItem) ||
+      isHarthmereProtectedRegionVisibleHeldItem(selectedItem) ||
       this.permissionsManager.itemActionAllowed(
         selectedItem,
         ...this.resources.get("/player/effective_acl").acls

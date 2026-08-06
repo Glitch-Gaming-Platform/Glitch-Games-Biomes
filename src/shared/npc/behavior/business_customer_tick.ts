@@ -14,6 +14,12 @@ export const HARTHMERE_BUSINESS_CUSTOMER_TICK_VERSION =
 
 const ARRIVAL_DISTANCE = 0.85;
 const SLOW_DISTANCE = 2.4;
+// The final departure anchor is twelve metres beyond the real door. Once a
+// customer has walked all but the last four metres they are already safely
+// outside and usually outside the player's high-rate simulation radius. Snap
+// that invisible final exterior segment so a reduced tick rate cannot leave an
+// actor-owned shift waiting forever on an off-screen body.
+export const HARTHMERE_BUSINESS_CUSTOMER_DEPARTURE_SNAP_DISTANCE_METERS = 4;
 export function businessCustomerStateOf(
   npc: SimulatedNpc
 ): BusinessCustomerState | undefined {
@@ -134,9 +140,26 @@ export function businessCustomerTick(
   // server movement, but cannot be zeroed by a curb, terrain shard seam, or a
   // graph voxel two metres above the visible combined interior.
   mutable.pathfinding = undefined;
+  // The serving pose faces the player across the counter. As soon as the
+  // economy changes this customer to a leaving phase, turn them toward the
+  // first exit waypoint before applying translation. Without this explicit
+  // turn, the first visible departure frame can look like the customer is
+  // walking backward away from the counter.
+  if (
+    (state.phase === "departing" || state.phase === "cancelled") &&
+    mutable.waypointIndex < state.waypoints.length
+  ) {
+    faceBusinessCustomerToward(npc, state.waypoints[mutable.waypointIndex]);
+  }
   while (mutable.waypointIndex < state.waypoints.length) {
     const target = state.waypoints[mutable.waypointIndex];
-    if (dist(npc.position, target) > ARRIVAL_DISTANCE) break;
+    const finalDepartureWaypoint =
+      (state.phase === "departing" || state.phase === "cancelled") &&
+      mutable.waypointIndex === state.waypoints.length - 1;
+    const arrivalDistance = finalDepartureWaypoint
+      ? HARTHMERE_BUSINESS_CUSTOMER_DEPARTURE_SNAP_DISTANCE_METERS
+      : ARRIVAL_DISTANCE;
+    if (dist(npc.position, target) > arrivalDistance) break;
     npc.setPosition([target[0], target[1], target[2]]);
     mutable.waypointIndex += 1;
   }

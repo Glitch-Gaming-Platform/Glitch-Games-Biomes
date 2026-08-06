@@ -163,11 +163,14 @@ import {
 import {
   jobsBoardAcceptedJobLandmarksForBiomesUI,
   jobsBoardItemSourceLandmarksForBiomesUI,
+  jobsBoardLandmarkForActivePinHandoffForTest,
+  jobsBoardTodoIdFromMarkerIdForTest,
   jobsBoardToolSourceLandmarksForBiomesUI,
   shouldClearStaleJobsBoardPin,
 } from "./jobsBoardQuestMapAdapter";
 import {
   fetchHarthmereJobsBoardState,
+  harthmereJobsBoardHasFollowingEscortForTest,
   HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT,
   harthmereJobsBoardStateFromUpdatedEventDetail,
   jobsBoardSnapshotWithLiveInventoryForTest,
@@ -2701,8 +2704,12 @@ export function useBiomesUILiveAdapters({
       const nextInventoryLootState =
         detail.inventoryLootState ?? body?.inventoryLootState;
       if (nextInventoryLootState) {
+        recordHarthmereLiveInventoryItemsSnapshot({
+          inventoryLootState: nextInventoryLootState,
+        });
         setInventoryLootState(nextInventoryLootState);
         setInventoryLootHydrated(true);
+        window.dispatchEvent(new Event(HARTHMERE_INVENTORY_EVENT));
         window.dispatchEvent(
           new CustomEvent("biomes:live-mode-wallet-updated", {
             detail: { gold: (nextInventoryLootState as any)?.actor?.gold },
@@ -2774,9 +2781,9 @@ export function useBiomesUILiveAdapters({
     void refreshFarmingFoodState();
   }, [refreshFarmingFoodState]);
 
-  const refreshJobsBoardState = React.useCallback(async () => {
+  const refreshJobsBoardState = React.useCallback(async (force = false) => {
     try {
-      setJobsBoardState(await fetchHarthmereJobsBoardState());
+      setJobsBoardState(await fetchHarthmereJobsBoardState(fetch, { force }));
     } catch {
       setJobsBoardState(undefined);
     }
@@ -2786,6 +2793,31 @@ export function useBiomesUILiveAdapters({
     if (typeof window === "undefined") return;
     void refreshJobsBoardState();
   }, [refreshJobsBoardState]);
+
+  const jobsBoardHasFollowingEscort =
+    harthmereJobsBoardHasFollowingEscortForTest(jobsBoardState);
+  React.useEffect(() => {
+    if (
+      !jobsBoardHasFollowingEscort ||
+      typeof window === "undefined" ||
+      typeof document === "undefined"
+    ) {
+      return;
+    }
+    const refreshIfVisible = () => {
+      if (document.visibilityState !== "hidden") {
+        void refreshJobsBoardState(true);
+      }
+    };
+    const intervalId = window.setInterval(refreshIfVisible, 2_000);
+    window.addEventListener("focus", refreshIfVisible);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshIfVisible);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+    };
+  }, [jobsBoardHasFollowingEscort, refreshJobsBoardState]);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2802,6 +2834,13 @@ export function useBiomesUILiveAdapters({
       ),
     ];
     let existing = readActiveBiomesUIMapPin();
+    const existingJobsBoardTodoId = jobsBoardTodoIdFromMarkerIdForTest(
+      existing?.markerId
+    );
+    const handoffLandmark = jobsBoardLandmarkForActivePinHandoffForTest({
+      activePinMarkerId: existing?.markerId,
+      landmarks,
+    });
     // Drop a jobs-board pin whose job is no longer active (completed/abandoned)
     // so it stops driving the HUD aid and suppressing other quest beacons.
     if (
@@ -2810,8 +2849,35 @@ export function useBiomesUILiveAdapters({
         activeJobsBoardMarkerIds: landmarks.map((landmark) => landmark.id),
       })
     ) {
-      writeActiveBiomesUIMapPin(undefined);
-      existing = undefined;
+      if (!handoffLandmark) {
+        writeActiveBiomesUIMapPin(undefined);
+        return;
+      }
+    }
+    if (existingJobsBoardTodoId && handoffLandmark) {
+      const nextPin = activeBiomesUIMapPinFromMarkerForTest({
+        id: handoffLandmark.id,
+        label: handoffLandmark.label,
+        kind: handoffLandmark.kind,
+        worldPosition: handoffLandmark.position,
+        description: handoffLandmark.description,
+        worldObjectId: handoffLandmark.mapMarkerId,
+        interactionTargetId: handoffLandmark.targetId,
+      });
+      if (
+        nextPin &&
+        (existing?.markerId !== nextPin.markerId ||
+          existing.label !== nextPin.label ||
+          existing.description !== nextPin.description ||
+          existing.worldObjectId !== nextPin.worldObjectId ||
+          existing.interactionTargetId !== nextPin.interactionTargetId ||
+          existing.worldPosition.some(
+            (value, index) => value !== nextPin.worldPosition[index]
+          ))
+      ) {
+        writeActiveBiomesUIMapPin(nextPin);
+      }
+      return;
     }
     // A player-selected destination always wins. The previous implementation
     // reset a selected jobs-board marker whenever Road Ahead was active and
@@ -2834,6 +2900,8 @@ export function useBiomesUILiveAdapters({
       kind: landmark.kind,
       worldPosition: landmark.position,
       description: landmark.description,
+      worldObjectId: landmark.mapMarkerId,
+      interactionTargetId: landmark.targetId,
     });
     if (pin) {
       writeActiveBiomesUIMapPin(pin);

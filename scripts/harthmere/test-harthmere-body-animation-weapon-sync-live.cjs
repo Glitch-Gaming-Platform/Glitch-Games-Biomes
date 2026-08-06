@@ -12,7 +12,10 @@ if (!url) {
   process.exit(0);
 }
 let chromium;
-try { ({ chromium } = require("playwright")); }
+try {
+  const { leasePlaywright } = require("./harthmere-live-runtime-probe.cjs");
+  ({ chromium } = leasePlaywright(require("playwright"), { baseUrl: url }));
+}
 catch { console.log("INFO live body animation sync test skipped because playwright is not installed"); console.log("\nRESULT: PASS"); process.exit(0); }
 let ok = true;
 function check(label, condition, detail) { if (condition) console.log(`OK ${label}`); else { ok = false; console.error(`FAIL ${label}`); if (detail) console.error(`  - ${detail}`); } }

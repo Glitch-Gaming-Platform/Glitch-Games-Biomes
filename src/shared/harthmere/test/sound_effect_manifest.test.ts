@@ -33,7 +33,8 @@ describe("Harthmere sound-effect manifest", () => {
           `prompt too long for ${definition.id}`
         );
         assert.ok(
-          definition.durationSeconds >= 0.5 && definition.durationSeconds <= 30,
+          definition.durationSeconds >= 0.05 &&
+            definition.durationSeconds <= 30,
           `unsupported ElevenLabs duration for ${definition.id}`
         );
         assert.equal(

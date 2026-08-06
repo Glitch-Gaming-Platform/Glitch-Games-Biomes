@@ -95,6 +95,8 @@ function playerMessageForReason(
       return `That quest${namedQuest} is already active.`;
     case "seeker_active_job_limit":
       return "Finish or cancel an active job before accepting another one.";
+    case "chapter1_active_job_limit":
+      return "You already have all three Chapter 1 Grove jobs. Complete them, then return to this board.";
     case "cannot_accept_own_job":
       return "You cannot accept a job that you posted yourself.";
     case "job_expired":

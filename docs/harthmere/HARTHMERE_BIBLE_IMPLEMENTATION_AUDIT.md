@@ -17,7 +17,7 @@ Warnings to review: **0**. Missing critical records: **0**.
 | Harthmere Expanded Medieval MMO Town Design Bible | FOUND | docs/harthmere/bibles/Harthmere_Medieval_MMO_Town_Design_Bible_Complete.pdf (filename) |
 | Harthmere Bellbound Dragon Story Bible | FOUND | docs/harthmere/bibles/Harthmere_Bellbound_Dragon_Story_Bible (3).md (filename), HARTHMERE_SYSTEMS_AUDIT_2026-07-14.md (content) |
 | MMO Rules | FOUND | docs/harthmere/BIOMES_HUD_UI_REFERENCES.md (content), docs/harthmere/BIOMES_HUD_UI_SCREEN_REVIEW.md (content), docs/harthmere/bibles/MMO_RULES.txt (filename) |
-| Harthmere Wilds Outside Town Narrative Setting | FOUND | docs/harthmere/HARTHMERE_BRIDGE_WILDS_IMPLEMENTATION_AUDIT.md (content), docs/harthmere/HARTHMERE_NPC_CONVERSATION_TONE_MAP.md (content), docs/harthmere/bibles/Harthmere_Bellbound_Dragon_Story_Bible (3).md (content), docs/harthmere/bibles/Harthmere_Wilds_Outside_Town_Narrative_Setting.pdf (filename), .harthmere-live-repeatable-placement-audit-25f687dd-9ebe-4c31-8810-719ddfafe66b-live-repeatable-placement-2026-06-25T22-51-53-248Z.json (content) |
+| Harthmere Wilds Outside Town Narrative Setting | FOUND | docs/harthmere/HARTHMERE_BRIDGE_WILDS_IMPLEMENTATION_AUDIT.md (content), docs/harthmere/HARTHMERE_NPC_CONVERSATION_TONE_MAP.md (content), docs/harthmere/bibles/Harthmere_Bellbound_Dragon_Story_Bible (3).md (content), docs/harthmere/bibles/Harthmere_Wilds_Outside_Town_Narrative_Setting.pdf (filename) |
 
 ## Building Implementation
 

@@ -18,6 +18,7 @@ import {
   isHarthmereJobsBoardFieldTargetAliasId,
   isHarthmereJobsBoardFieldTargetMarkerId,
   harthmereResolveWorldQuestBeaconMarkerId,
+  harthmereWorldObjectMarkerIdForActiveMapPinForTest,
   harthmereMobileQuestObjectMarkerIds,
   HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY,
   activeHarthmereQuestMarkerId,
@@ -58,6 +59,26 @@ import * as THREE from "three";
 import { publishChapter1ObjectiveWorldProjection } from "@/client/components/challenges/Chapter1ObjectiveWorldState";
 
 describe("harthmereResolveWorldQuestBeaconMarkerId (cross-system eclipse)", () => {
+  it("allows permanent business fixtures to ground beneath authored awnings", () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, "../harthmere_quest_object_markers.ts"),
+      "utf8"
+    );
+    assert.match(
+      source,
+      /const isFieldTarget = isHarthmereJobsBoardFieldTargetMarkerId\(id\)/
+    );
+    assert.match(
+      source,
+      /harthmereGroundedFeetYWithMemory\([\s\S]*!isFieldTarget\s*\)/
+    );
+    assert.match(
+      source,
+      /isFieldTarget\s*\? harthmereJobsBoardFieldTargetFeetY\(groundedFeetY, hintY\)/,
+      "field props must stay visible at their authored apron height while terrain streams"
+    );
+  });
+
   it("shows the helper/grove beacon when there is no active pin", () => {
     assert.equal(
       harthmereResolveWorldQuestBeaconMarkerId({
@@ -107,6 +128,34 @@ describe("harthmereResolveWorldQuestBeaconMarkerId (cross-system eclipse)", () =
         activePinMarkerId: "vendor_marker:smith",
       }),
       "boss_marker"
+    );
+  });
+});
+
+describe("jobs-board active pin physical prop resolution", () => {
+  it("reveals the exact sealed-package pickup prop behind a synthetic todo pin", () => {
+    assert.equal(
+      harthmereWorldObjectMarkerIdForActiveMapPinForTest({
+        markerId: "jobs_board_marker:delivery_todo",
+        worldPosition: [0, 0, 0],
+        worldObjectId: "coop_supply_box",
+        interactionTargetId: "sealed_package_pickup",
+      }),
+      "coop_supply_box"
+    );
+  });
+
+  it("recovers old persisted job pins by matching the physical marker position", () => {
+    const marker = HARTHMERE_QUEST_OBJECT_MARKERS.find(
+      (candidate) => candidate.id === "coop_supply_box"
+    );
+    assert.ok(marker);
+    assert.equal(
+      harthmereWorldObjectMarkerIdForActiveMapPinForTest({
+        markerId: "jobs_board_marker:legacy_delivery_todo",
+        worldPosition: [...marker!.position],
+      }),
+      "coop_supply_box"
     );
   });
 });
@@ -174,6 +223,35 @@ describe("Luis repair cart authored asset", () => {
       replaceHarthmereRepairCartFallbackWithAsset(marker, prototype),
       undefined,
       "asset replacement must be idempotent"
+    );
+  });
+});
+
+describe("Grove berry source visibility", () => {
+  it("renders a waist-high berry thicket instead of an invisible ground cluster", () => {
+    const marker = HARTHMERE_QUEST_OBJECT_MARKERS.find(
+      (candidate) => candidate.id === "grove_garden_edge_berries"
+    );
+    assert.ok(marker, "Garden Edge Berries marker should exist");
+    const berryThicket = createHarthmereQuestObjectMarkerMesh(marker!);
+    assert.equal(
+      berryThicket.userData.harthmereQuestObjectVisualKind,
+      "berry_thicket"
+    );
+    const bounds = new THREE.Box3().setFromObject(berryThicket);
+    const size = new THREE.Vector3();
+    bounds.getSize(size);
+    assert.ok(
+      size.x >= 1.2,
+      `berry thicket width should be visible, got ${size.x}`
+    );
+    assert.ok(
+      size.y >= 1.5,
+      `berry thicket should rise above flowers, got ${size.y}`
+    );
+    assert.ok(
+      size.z >= 1.0,
+      `berry thicket depth should be visible, got ${size.z}`
     );
   });
 });

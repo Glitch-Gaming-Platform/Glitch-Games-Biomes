@@ -1,10 +1,12 @@
 import {
   harthmereHotbarHeldItemForAttachment,
   isHarthmereChapter1DisplayOnlyHeldItem,
+  isHarthmereProtectedRegionVisibleHeldItem,
   readHarthmereCompatibilityHeldItemId,
   setHarthmereCompatibilityHeldItemId,
 } from "@/client/game/resources/harthmere_held_item";
 import { anItem } from "@/shared/game/item";
+import { BikkieIds } from "@/shared/bikkie/ids";
 import { CH1_ITEMS } from "@/shared/harthmere/ch1_items";
 import { harthmereNativeBiomesIdForItemId } from "@/shared/harthmere/harthmere_native_item_ids";
 import assert from "assert";
@@ -40,5 +42,21 @@ describe("Harthmere authoritative held-item bridge", () => {
         chapter1Item.id
       );
     }
+  });
+
+  it("keeps Grove cleanup and repair tools visible when their action is protected", () => {
+    for (const itemId of ["muck_rake", "repair_mallet"]) {
+      const nativeId = harthmereNativeBiomesIdForItemId(itemId);
+      assert(nativeId, `${itemId} has no native item id`);
+      assert.equal(
+        isHarthmereProtectedRegionVisibleHeldItem(anItem(nativeId)),
+        true,
+        itemId
+      );
+    }
+    assert.equal(
+      isHarthmereProtectedRegionVisibleHeldItem(anItem(BikkieIds.dirt)),
+      false
+    );
   });
 });

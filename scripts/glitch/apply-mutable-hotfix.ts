@@ -3,7 +3,10 @@ import {
   closeGlitchMutableHotfixRedis,
   getGlitchMutableHotfixStatus,
   glitchMutableHotfixEnabled,
+  maybeApplyGlitchMutableHotfixFromRedis,
 } from "@/server/glitch/mutable_hotfix";
+
+const watchMode = process.argv.includes("--watch");
 
 async function main() {
   if (!glitchMutableHotfixEnabled()) {
@@ -12,7 +15,9 @@ async function main() {
   }
 
   console.log("GLITCH_MUTABLE_HOTFIX startup apply begin");
-  const result = await applyConfiguredGlitchMutableHotfix({ force: true });
+  const result = await applyConfiguredGlitchMutableHotfix({
+    scheduleRestart: false,
+  });
   console.log(
     JSON.stringify(
       {
@@ -26,6 +31,26 @@ async function main() {
   );
 }
 
+async function watch() {
+  if (!glitchMutableHotfixEnabled()) {
+    console.log("GLITCH_MUTABLE_HOTFIX watcher disabled");
+    return;
+  }
+  const pollMs = Math.max(
+    250,
+    Number(process.env.GLITCH_MUTABLE_HOTFIX_POLL_MS ?? 5_000)
+  );
+  console.log(`GLITCH_MUTABLE_HOTFIX watcher started pollMs=${pollMs}`);
+  while (true) {
+    try {
+      await maybeApplyGlitchMutableHotfixFromRedis();
+    } catch (error) {
+      console.error("GLITCH_MUTABLE_HOTFIX watcher apply failed", error);
+    }
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+  }
+}
+
 async function closeStartupResources() {
   try {
     await closeGlitchMutableHotfixRedis();
@@ -34,9 +59,12 @@ async function closeStartupResources() {
   }
 }
 
-main()
-  .finally(closeStartupResources)
-  .catch((error) => {
-    console.error("GLITCH_MUTABLE_HOTFIX startup apply failed", error);
-    process.exit(72);
-  });
+const run = watchMode ? watch() : main().finally(closeStartupResources);
+
+run.catch((error) => {
+  console.error(
+    `GLITCH_MUTABLE_HOTFIX ${watchMode ? "watch" : "startup apply"} failed`,
+    error
+  );
+  process.exit(72);
+});

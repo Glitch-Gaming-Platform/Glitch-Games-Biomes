@@ -43,6 +43,7 @@ Cell = Tuple[int, int, int]
 
 FPS = 24
 BASE_BOX = (0.6, 0.6, 1.8)  # Blender X/Y/Z; Three receives X/Z/Y.
+BOSS_ANIMATION_POLISH_VERSION = "harthmere-boss-animation-polish-v1"
 
 BOSS_STAGGER_CLIPS = (
     "BossStaggerLight",
@@ -4647,6 +4648,249 @@ def reset_pose(armature_obj: bpy.types.Object) -> None:
         bone.scale = (1, 1, 1)
 
 
+def _add_frame_transform(
+    frames: Dict[int, FramePose],
+    frame: int,
+    bone: Optional[str],
+    *,
+    location: Optional[Vec3] = None,
+    rotation: Optional[Vec3] = None,
+    scale: Optional[Vec3] = None,
+) -> None:
+    """Layer a subtle polish transform over an already-authored pose."""
+    if not bone:
+        return
+    entry = frames.setdefault(frame, {}).setdefault(bone, {})
+    if location is not None:
+        current = entry.get("location", (0.0, 0.0, 0.0))
+        entry["location"] = tuple(current[i] + location[i] for i in range(3))
+    if rotation is not None:
+        current = entry.get("rotation", (0.0, 0.0, 0.0))
+        entry["rotation"] = tuple(current[i] + rotation[i] for i in range(3))
+    if scale is not None:
+        current = entry.get("scale", (1.0, 1.0, 1.0))
+        entry["scale"] = tuple(current[i] * scale[i] for i in range(3))
+
+
+def polish_boss_action_frames(
+    definition: BossDefinition,
+    armature_obj: bpy.types.Object,
+    name: str,
+    frame_end: int,
+    frames: Dict[int, FramePose],
+) -> Dict[int, FramePose]:
+    """Apply a rig-aware final animation pass without replacing bespoke motion.
+
+    The source clips already encode each mechanic. This pass gives every boss
+    the production qualities that should be consistent across the roster:
+    grounded root motion, head counter-motion, delayed appendages, readable
+    anticipation, and exact loop closure for locomotion.
+    """
+
+    root = first_bone(armature_obj, ("Root",))
+    body = first_bone(
+        armature_obj,
+        ("Body", "Chest", "Torso", "Singer.B.Body", "Singer.A.Body"),
+    )
+    head = first_bone(
+        armature_obj,
+        ("Head", "Neck", "Singer.A.Head", "Singer.B.Head", "Singer.C.Head"),
+    )
+    names = [bone.name for bone in armature_obj.pose.bones]
+
+    def matching(*tokens: str) -> List[str]:
+        return [
+            bone_name
+            for bone_name in names
+            if bone_name not in {root, body, head}
+            and any(token.lower() in bone_name.lower() for token in tokens)
+        ]
+
+    tails = matching("tail", "chain", "cloak", "strip", "skirt")
+    wings = matching("wing", "canopy", "branch", "roofbeam")
+    ornaments = matching(
+        "crown",
+        "bell",
+        "ring",
+        "helix",
+        "spore",
+        "shard",
+        "horn",
+        "carapace",
+        "mantle",
+        "emitter",
+        "core",
+        "guard",
+    )
+    seed = sum((index + 1) * ord(char) for index, char in enumerate(definition.slug))
+    side = -1.0 if seed % 2 else 1.0
+    base_name = SPECIAL_BASES.get(name, name)
+    keyed_frames = sorted(frames)
+    if 1 not in frames:
+        frames[1] = {}
+    if frame_end not in frames:
+        frames[frame_end] = {}
+    keyed_frames = sorted(frames)
+
+    looping = base_name in {"Idle", "Walk", "Run", "Sprint", "Fly"}
+    locomotion = base_name in {"Walk", "Run", "Sprint", "Fly"}
+    physical_attack = base_name in {"Attack", "HeavyAttack", "Jump"}
+    spell_attack = base_name in {
+        "RangedAttack",
+        "AreaAttack",
+        "Summon",
+        "Roar",
+        "PhaseTransition",
+        "Enrage",
+    }
+    reaction = base_name in {
+        "HitReact",
+        "Stunned",
+        "BossStaggerLight",
+        "BossStaggerMedium",
+        "BossStaggerHeavy",
+    }
+
+    for frame in keyed_frames:
+        t = (frame - 1) / max(1, frame_end - 1)
+        phase = math.tau * t
+        if looping:
+            sway = math.sin(phase)
+            lift = 0.5 - 0.5 * math.cos(phase * (2 if locomotion else 1))
+            pace = 1.0 if base_name == "Idle" else 1.35 if base_name == "Walk" else 1.8
+            _add_frame_transform(
+                frames,
+                frame,
+                root,
+                location=(side * sway * 0.006 * pace, 0, lift * 0.012 * pace),
+                rotation=(0, sway * 0.55 * pace, side * sway * 0.45 * pace),
+            )
+            _add_frame_transform(
+                frames,
+                frame,
+                body,
+                rotation=(2.2 * pace if locomotion else math.sin(phase * 2) * 1.2,
+                          -sway * 1.25 * pace, side * sway * 1.1 * pace),
+                scale=(1.0 + lift * 0.008, 1.0 - lift * 0.004, 1.0 + lift * 0.012),
+            )
+            _add_frame_transform(
+                frames,
+                frame,
+                head,
+                rotation=(-1.2 * pace if locomotion else -math.sin(phase * 2) * 0.8,
+                          sway * 1.9 * pace, -side * sway * 1.45 * pace),
+            )
+            for index, bone in enumerate(tails):
+                lag = math.sin(phase - 0.45 - index * 0.22)
+                _add_frame_transform(
+                    frames,
+                    frame,
+                    bone,
+                    rotation=(0, lag * 1.2 * pace, -side * lag * (2.4 + index * 0.35) * pace),
+                )
+            for index, bone in enumerate(wings):
+                wing_side = -1.0 if index % 2 == 0 else 1.0
+                _add_frame_transform(
+                    frames,
+                    frame,
+                    bone,
+                    rotation=(lift * 1.8 * pace, wing_side * sway * 1.6 * pace,
+                              wing_side * lift * 2.0 * pace),
+                )
+            for index, bone in enumerate(ornaments):
+                lag = math.sin(phase - 0.3 - (index % 5) * 0.16)
+                _add_frame_transform(
+                    frames,
+                    frame,
+                    bone,
+                    rotation=(lag * 0.6, -lag * 0.8, side * lag * 1.15),
+                    scale=(1.0 + lift * 0.006,) * 3,
+                )
+            continue
+
+        envelope = math.sin(math.pi * t)
+        follow = math.sin(math.pi * min(1.0, max(0.0, (t - 0.12) / 0.88)))
+        if physical_attack:
+            windup = -math.sin(math.pi * min(1.0, t / 0.48)) if t <= 0.48 else 0.0
+            strike = math.sin(math.pi * min(1.0, max(0.0, (t - 0.32) / 0.42)))
+            twist = side * (-4.5 * max(0.0, -windup) + 7.5 * strike)
+            _add_frame_transform(
+                frames,
+                frame,
+                root,
+                location=(side * envelope * 0.008, strike * -0.018, -strike * 0.012),
+                rotation=(strike * 1.3, twist * 0.18, twist * 0.24),
+            )
+            _add_frame_transform(frames, frame, body, rotation=(-strike * 4.2, twist, twist * 0.35))
+            _add_frame_transform(frames, frame, head, rotation=(strike * 3.1, -twist * 0.5, -twist * 0.42))
+        elif spell_attack:
+            charge = math.sin(math.pi * min(1.0, t / 0.72))
+            release = math.sin(math.pi * min(1.0, max(0.0, (t - 0.48) / 0.42)))
+            _add_frame_transform(
+                frames,
+                frame,
+                root,
+                location=(0, release * -0.008, charge * 0.012),
+                rotation=(-release * 1.2, side * charge * 0.7, side * charge * 0.8),
+            )
+            _add_frame_transform(
+                frames,
+                frame,
+                body,
+                rotation=(-charge * 3.0 + release * 4.5, side * charge * 2.1, side * release * 1.6),
+                scale=(1.0 + charge * 0.012, 1.0 + charge * 0.012, 1.0 - charge * 0.008),
+            )
+            _add_frame_transform(frames, frame, head, rotation=(charge * 2.4 - release * 3.4, -side * charge * 2.6, 0))
+        elif reaction:
+            recoil = math.sin(math.pi * t)
+            _add_frame_transform(frames, frame, root, location=(side * recoil * 0.012, 0, -recoil * 0.01))
+            _add_frame_transform(frames, frame, body, rotation=(-recoil * 2.5, 0, side * recoil * 3.2))
+            _add_frame_transform(frames, frame, head, rotation=(recoil * 2.8, 0, -side * recoil * 4.0))
+        elif base_name == "Death":
+            collapse = t * t
+            _add_frame_transform(frames, frame, root, location=(side * collapse * 0.012, 0, -collapse * 0.018))
+            _add_frame_transform(frames, frame, head, rotation=(collapse * 5.0, 0, side * collapse * 5.5))
+
+        secondary_amount = envelope if base_name != "Death" else t
+        for index, bone in enumerate(tails):
+            lag = secondary_amount * (1.0 + index * 0.1)
+            _add_frame_transform(
+                frames,
+                frame,
+                bone,
+                rotation=(-follow * 0.8, side * follow * 1.1, -side * lag * (3.0 + index * 0.35)),
+            )
+        for index, bone in enumerate(wings):
+            wing_side = -1.0 if index % 2 == 0 else 1.0
+            _add_frame_transform(
+                frames,
+                frame,
+                bone,
+                rotation=(follow * 1.8, wing_side * follow * 3.0, wing_side * secondary_amount * 3.6),
+            )
+        for index, bone in enumerate(ornaments):
+            lag = secondary_amount * math.sin(
+                math.pi * min(1.0, max(0.0, t - index % 4 * 0.025))
+            )
+            _add_frame_transform(
+                frames,
+                frame,
+                bone,
+                rotation=(lag * 0.8, -side * lag * 1.1, side * lag * 1.6),
+                scale=(1.0 + secondary_amount * 0.008,) * 3,
+            )
+
+    # Looping clips must return to precisely the same authored pose. Copying
+    # frame one after the additive pass removes the tiny end-frame hitch that
+    # becomes very obvious on giant bosses and long tails.
+    if looping:
+        frames[frame_end] = {
+            bone: {channel: tuple(value) for channel, value in transform.items()}
+            for bone, transform in frames[1].items()
+        }
+    return frames
+
+
 def create_action(
     definition: BossDefinition,
     armature_obj: bpy.types.Object,
@@ -4663,6 +4907,13 @@ def create_action(
         )
     else:
         frame_end, frames = animation_pose(name, armature_obj, definition.archetype)
+    frames = polish_boss_action_frames(
+        definition,
+        armature_obj,
+        name,
+        frame_end,
+        frames,
+    )
     if definition.archetype == "thaedryn":
         # These meshes are gameplay telegraphs, not permanent facial parts.
         # Keep them collapsed in locomotion and non-ranged actions; their
@@ -4674,8 +4925,18 @@ def create_action(
             for frame in (1, frame_end):
                 transform = frames.setdefault(frame, {}).setdefault(transient, {})
                 transform.setdefault("scale", (0.02, 0.02, 0.02))
+    # Blender derives an Action's exported time span per animated channel.
+    # Keying the whole rig at both endpoints prevents an appendage's first or
+    # last authored value from being extrapolated through empty anticipation
+    # and recovery frames. Existing bespoke endpoint transforms win.
+    for bone in armature_obj.pose.bones:
+        frames.setdefault(1, {}).setdefault(bone.name, {})
+        frames.setdefault(frame_end, {}).setdefault(bone.name, {})
     action = bpy.data.actions.new(name=name)
     action.use_fake_user = True
+    action["harthmereAnimationPolishVersion"] = BOSS_ANIMATION_POLISH_VERSION
+    action["harthmereAuthoredFps"] = FPS
+    action["harthmereClipRole"] = SPECIAL_BASES.get(name, name)
     if name in BOSS_STAGGER_CLIPS:
         action["harthmereProfile"] = f"boss-{name.removeprefix('BossStagger').lower()}-stagger-v1"
         action["harthmereFamily"] = "boss"
@@ -5179,6 +5440,7 @@ def generate_boss(
         "materialCount": len(material_order(builder)),
         "clips": exported_clips,
         "specialClips": list(definition.special_clips),
+        "animationPolishVersion": BOSS_ANIMATION_POLISH_VERSION,
         "rawVoxelBounds": {
             "min": list(min_corner),
             "max": list(max_corner),
@@ -5227,7 +5489,8 @@ def main() -> None:
     manifest_path.write_text(
         json.dumps(
             {
-                "version": 2,
+                "version": 3,
+                "animationPolishVersion": BOSS_ANIMATION_POLISH_VERSION,
                 "generator": "scripts/harthmere/generate_boss_voxel_assets.py",
                 "normalizedNpcBox": [BASE_BOX[0], BASE_BOX[2], BASE_BOX[1]],
                 "bosses": manifest_bosses,

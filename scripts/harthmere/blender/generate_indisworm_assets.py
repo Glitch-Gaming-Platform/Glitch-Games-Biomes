@@ -46,6 +46,7 @@ FrameTransform = Dict[str, Dict[str, Vec3]]
 
 WORLD_SIZE: Vec3 = (1.05, 1.9, 1.05)
 CLIPS = ("Idle", "Walk", "Run", "Attack", "RangedAttack", "HitReact", "Death")
+INDISWORM_ANIMATION_POLISH_VERSION = "harthmere-indisworm-animation-polish-v1"
 
 
 def build_indisworm() -> VoxelBuilder:
@@ -186,9 +187,34 @@ def create_action(
     armature_obj: bpy.types.Object, name: str, frames: Mapping[int, FrameTransform]
 ):
     reset_pose(armature_obj)
+    frames = {
+        frame: {
+            bone_name: dict(transform)
+            for bone_name, transform in pose.items()
+        }
+        for frame, pose in frames.items()
+    }
+    first_frame = min(frames)
+    last_frame = max(frames)
+    # Key the whole rig at both endpoints. A Root-only sentinel preserves the
+    # Action range, but Blender otherwise extrapolates each bone's first/last
+    # authored value through the empty anticipation and recovery frames.
+    for bone in armature_obj.pose.bones:
+        frames.setdefault(first_frame, {}).setdefault(bone.name, {})
+        frames.setdefault(last_frame, {}).setdefault(bone.name, {})
     action = bpy.data.actions.new(name=name)
     action.use_fake_user = True
     action["harthmereCreatureClip"] = name
+    action["harthmereAnimationPolishVersion"] = INDISWORM_ANIMATION_POLISH_VERSION
+    action["harthmereAuthoredFps"] = 24
+    contact_frames = {
+        "Attack": 23,
+        "RangedAttack": 29,
+        "HitReact": 5,
+        "Death": 43,
+    }
+    if name in contact_frames:
+        action["harthmereImpactFrame"] = contact_frames[name]
     armature_obj.animation_data_create()
     armature_obj.animation_data.action = action
     for frame, pose in sorted(frames.items()):
@@ -201,28 +227,47 @@ def create_action(
             bone.keyframe_insert("location", frame=frame, group=bone_name)
             bone.keyframe_insert("rotation_euler", frame=frame, group=bone_name)
             bone.keyframe_insert("scale", frame=frame, group=bone_name)
-    action.frame_start = min(frames)
-    action.frame_end = max(frames)
+    action.frame_start = first_frame
+    action.frame_end = last_frame
     reset_pose(armature_obj)
     return action
 
 
 def wave_pose(
-    frame_index: int, frame_count: int, amplitude: float, compression: float = 0.0
+    phase: float,
+    amplitude: float,
+    compression: float = 0.0,
+    forward_lean: float = 0.0,
 ):
-    phase = math.tau * frame_index / frame_count
     pose: FrameTransform = {
-        "Root": {"location": (0, 0, 0.025 * math.sin(phase * 2))},
+        "Root": {
+            "location": (
+                math.sin(phase) * 0.006,
+                0,
+                (0.5 - 0.5 * math.cos(phase * 2)) * 0.018,
+            ),
+            "rotation": (forward_lean, math.sin(phase) * 0.8, math.sin(phase) * 0.65),
+        },
     }
     chain = ("Tail", "Body01", "Body02", "Body03", "Neck", "Head")
     for index, bone in enumerate(chain):
-        sway = math.sin(phase - index * 0.7) * amplitude
-        pitch = math.cos(phase - index * 0.55) * amplitude * 0.28
+        lagged = phase - index * 0.58
+        sway = math.sin(lagged) * amplitude
+        pitch = math.cos(lagged) * amplitude * 0.3 - forward_lean * (index / 7)
+        roll = -math.sin(lagged - 0.22) * amplitude * 0.2
         pose[bone] = {
-            "rotation": (pitch, sway, -sway * 0.16),
-            "scale": (1.0 + compression * math.sin(phase - index * 0.8), 1.0, 1.0),
+            "rotation": (pitch, sway, roll),
+            "scale": (
+                1.0 + compression * math.sin(lagged),
+                1.0 + compression * math.sin(lagged),
+                1.0 - compression * 0.65 * math.sin(lagged),
+            ),
         }
-    pose["AcidSac"] = {"scale": (1.0, 1.0, 1.0 + 0.045 * math.sin(phase * 2))}
+    breath = math.sin(phase * 2 - 0.4)
+    pose["AcidSac"] = {
+        "rotation": (breath * 1.4, -math.sin(phase) * 2.0, 0),
+        "scale": (1.0 + breath * 0.028, 1.0 + breath * 0.028, 1.0 + breath * 0.055),
+    }
     return pose
 
 
@@ -231,22 +276,35 @@ def build_actions(armature_obj: bpy.types.Object):
     actions["Idle"] = create_action(
         armature_obj,
         "Idle",
-        {frame: wave_pose(i, 4, 4.5) for i, frame in enumerate((1, 19, 37, 55, 73))},
+        {
+            frame: wave_pose(math.tau * index / 6, 3.8)
+            for index, frame in enumerate((1, 17, 33, 49, 65, 81, 97))
+        },
     )
     actions["Walk"] = create_action(
         armature_obj,
         "Walk",
         {
-            frame: wave_pose(i, 4, 10.5, 0.045)
-            for i, frame in enumerate((1, 10, 19, 28, 37))
+            frame: wave_pose(
+                math.tau * index / 8,
+                11.5,
+                0.05,
+                forward_lean=3.5,
+            )
+            for index, frame in enumerate((1, 7, 13, 19, 25, 31, 37, 43, 49))
         },
     )
     actions["Run"] = create_action(
         armature_obj,
         "Run",
         {
-            frame: wave_pose(i, 4, 17.0, 0.075)
-            for i, frame in enumerate((1, 7, 13, 19, 25))
+            frame: wave_pose(
+                math.tau * index / 8,
+                19.0,
+                0.085,
+                forward_lean=7.0,
+            )
+            for index, frame in enumerate((1, 5, 9, 13, 17, 21, 25, 29, 33))
         },
     )
     actions["Attack"] = create_action(
@@ -254,21 +312,48 @@ def build_actions(armature_obj: bpy.types.Object):
         "Attack",
         {
             1: {},
-            10: {
-                "Body03": {"rotation": (12, -8, 0)},
-                "Neck": {"rotation": (18, 10, 0)},
-                "Head": {"scale": (0.94, 0.94, 0.96)},
+            8: {
+                "Root": {"location": (0, 0.025, -0.015)},
+                "Body01": {"scale": (1.04, 1.04, 0.96)},
+                "Body02": {"rotation": (8, -5, -3), "scale": (1.06, 1.06, 0.94)},
+                "Body03": {"rotation": (15, -10, -4)},
+                "Neck": {"rotation": (24, 12, 5)},
+                "Head": {"rotation": (10, -8, -4), "scale": (0.9, 0.9, 0.94)},
+                "AcidSac": {"scale": (1.08, 1.08, 0.9)},
             },
-            18: {
-                "Body03": {"rotation": (-18, 9, 0)},
-                "Neck": {"rotation": (-42, -12, 0)},
-                "Head": {"rotation": (-24, 0, 0), "scale": (1.16, 1.12, 1.1)},
+            16: {
+                "Root": {"location": (0.015, -0.015, 0.015)},
+                "Body01": {"rotation": (6, 8, 4), "scale": (1.08, 1.08, 0.93)},
+                "Body02": {"rotation": (10, 14, 6), "scale": (1.1, 1.1, 0.9)},
+                "Body03": {"rotation": (18, 15, 7)},
+                "Neck": {"rotation": (28, 12, 6)},
+                "Head": {"rotation": (20, 8, 4), "scale": (0.86, 0.86, 0.91)},
             },
-            27: {
-                "Neck": {"rotation": (14, 7, 0)},
-                "Head": {"rotation": (10, 0, 0), "scale": (1.04, 1.04, 1.02)},
+            # Frame 23 is 0.95 seconds at 24 fps: the authoritative melee
+            # receipt and the mouth strike now share the same contact frame.
+            23: {
+                "Root": {"location": (0, -0.105, -0.025)},
+                "Tail": {"rotation": (12, -10, -5)},
+                "Body01": {"rotation": (-10, -8, -4), "scale": (0.96, 0.96, 1.06)},
+                "Body02": {"rotation": (-20, 8, 4), "scale": (0.94, 0.94, 1.1)},
+                "Body03": {"rotation": (-28, -10, -5)},
+                "Neck": {"rotation": (-48, 8, 4)},
+                "Head": {"rotation": (-30, 0, 0), "scale": (1.22, 1.18, 1.14)},
+                "AcidSac": {"scale": (0.84, 0.84, 0.78)},
             },
-            43: {},
+            30: {
+                "Root": {"location": (-0.012, -0.045, -0.01)},
+                "Body02": {"rotation": (8, -12, -5)},
+                "Body03": {"rotation": (12, -14, -6)},
+                "Neck": {"rotation": (22, 12, 5)},
+                "Head": {"rotation": (15, 8, 4), "scale": (1.08, 1.06, 1.04)},
+            },
+            39: {
+                "Body03": {"rotation": (-5, 7, 3)},
+                "Neck": {"rotation": (-8, -8, -3)},
+                "Head": {"rotation": (-5, -5, -2)},
+            },
+            49: {},
         },
     )
     actions["RangedAttack"] = create_action(
@@ -276,11 +361,20 @@ def build_actions(armature_obj: bpy.types.Object):
         "RangedAttack",
         {
             1: {},
-            14: {
+            10: {
+                "Root": {"location": (0, 0.018, -0.012)},
+                "Body01": {"scale": (1.04, 1.04, 0.97)},
+                "Body02": {"scale": (1.06, 1.06, 0.95)},
+                "Neck": {"rotation": (8, -5, -2)},
+                "AcidSac": {"scale": (1.12, 1.12, 1.18)},
+            },
+            20: {
                 "Body01": {"scale": (1.08, 1.08, 0.94)},
                 "Body02": {"scale": (1.1, 1.1, 0.91)},
                 "Body03": {"rotation": (10, 0, 0)},
-                "AcidSac": {"scale": (1.18, 1.18, 1.25)},
+                "Neck": {"rotation": (15, 5, 2)},
+                "Head": {"scale": (0.94, 0.94, 0.96)},
+                "AcidSac": {"scale": (1.28, 1.28, 1.4)},
             },
             28: {
                 "Body01": {"scale": (1.12, 1.12, 0.9)},
@@ -290,13 +384,28 @@ def build_actions(armature_obj: bpy.types.Object):
                 "Head": {"rotation": (14, 0, 0), "scale": (1.08, 1.08, 1.05)},
                 "AcidSac": {"scale": (1.48, 1.48, 1.62)},
             },
-            36: {
-                "Body03": {"rotation": (-10, 0, 0)},
-                "Neck": {"rotation": (-24, 0, 0)},
-                "Head": {"rotation": (-18, 0, 0), "scale": (1.18, 1.14, 1.1)},
-                "AcidSac": {"scale": (0.72, 0.72, 0.78)},
+            # The 1.15-second cast releases between frames 28 and 29.
+            29: {
+                "Root": {"location": (0, -0.055, -0.018)},
+                "Body01": {"scale": (0.96, 0.96, 1.05)},
+                "Body02": {"rotation": (-12, 0, 0), "scale": (0.94, 0.94, 1.08)},
+                "Body03": {"rotation": (-22, 0, 0)},
+                "Neck": {"rotation": (-34, 0, 0)},
+                "Head": {"rotation": (-24, 0, 0), "scale": (1.24, 1.18, 1.13)},
+                "AcidSac": {"scale": (0.66, 0.66, 0.7)},
             },
-            54: {},
+            37: {
+                "Body03": {"rotation": (9, -6, -3)},
+                "Neck": {"rotation": (18, 7, 3)},
+                "Head": {"rotation": (12, 5, 2), "scale": (1.08, 1.06, 1.04)},
+                "AcidSac": {"scale": (0.88, 0.88, 0.9)},
+            },
+            49: {
+                "Body03": {"rotation": (-4, 4, 2)},
+                "Neck": {"rotation": (-6, -4, -2)},
+                "AcidSac": {"scale": (1.04, 1.04, 1.06)},
+            },
+            61: {},
         },
     )
     actions["HitReact"] = create_action(
@@ -304,18 +413,28 @@ def build_actions(armature_obj: bpy.types.Object):
         "HitReact",
         {
             1: {},
-            7: {
-                "Body02": {"rotation": (-9, 16, 6)},
-                "Body03": {"rotation": (-12, 20, 8)},
-                "Neck": {"rotation": (14, -18, -10)},
-                "Head": {"rotation": (18, -24, -12)},
+            5: {
+                "Root": {"location": (-0.018, 0, -0.012)},
+                "Body01": {"rotation": (-7, 12, 5)},
+                "Body02": {"rotation": (-12, 22, 9)},
+                "Body03": {"rotation": (-17, 28, 11)},
+                "Neck": {"rotation": (19, -25, -13)},
+                "Head": {"rotation": (24, -32, -16)},
+                "AcidSac": {"scale": (1.12, 1.08, 0.9)},
             },
-            14: {
-                "Body03": {"rotation": (6, -10, -4)},
-                "Neck": {"rotation": (-8, 12, 5)},
-                "Head": {"rotation": (-10, 14, 7)},
+            11: {
+                "Root": {"location": (0.01, 0, -0.006)},
+                "Body02": {"rotation": (8, -14, -6)},
+                "Body03": {"rotation": (11, -17, -7)},
+                "Neck": {"rotation": (-13, 16, 7)},
+                "Head": {"rotation": (-16, 20, 9)},
             },
-            24: {},
+            19: {
+                "Body03": {"rotation": (-4, 7, 3)},
+                "Neck": {"rotation": (6, -8, -3)},
+                "Head": {"rotation": (7, -9, -4)},
+            },
+            31: {},
         },
     )
     actions["Death"] = create_action(
@@ -323,18 +442,19 @@ def build_actions(armature_obj: bpy.types.Object):
         "Death",
         {
             1: {},
-            18: {
-                "Root": {"rotation": (0, 18, -8)},
-                "Body02": {"rotation": (10, 16, 8)},
-                "Neck": {"rotation": (-14, -12, 8)},
+            12: {
+                "Root": {"rotation": (0, 12, -6), "location": (0, 0, -0.02)},
+                "Body02": {"rotation": (8, 12, 6)},
+                "Neck": {"rotation": (-10, -9, 6)},
+                "AcidSac": {"scale": (1.18, 1.18, 1.1)},
             },
-            36: {
-                "Root": {"rotation": (0, 52, -22)},
+            26: {
+                "Root": {"rotation": (0, 46, -18), "location": (0.02, 0, -0.09)},
                 "Body01": {"rotation": (18, 14, 10)},
                 "Body03": {"rotation": (-22, -18, -12)},
                 "Head": {"rotation": (24, 20, 18)},
             },
-            54: {
+            43: {
                 "Root": {"rotation": (0, 82, -34)},
                 "Body01": {"rotation": (26, 18, 14)},
                 "Body02": {"rotation": (-18, -16, -12)},
@@ -343,7 +463,7 @@ def build_actions(armature_obj: bpy.types.Object):
                 "Head": {"rotation": (32, 24, 22), "scale": (0.96, 0.96, 0.92)},
                 "AcidSac": {"scale": (0.7, 0.7, 0.62)},
             },
-            72: {
+            60: {
                 "Root": {"rotation": (0, 86, -36)},
                 "Body01": {"rotation": (24, 16, 12)},
                 "Body02": {"rotation": (-16, -15, -10)},
@@ -402,7 +522,7 @@ def look_at(obj, target: Vec3):
     )
 
 
-def render_preview(armature_obj, action, output: Path):
+def render_preview(armature_obj, action, output: Path, frame: int):
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_EEVEE"
     scene.render.resolution_x = 768
@@ -416,12 +536,15 @@ def render_preview(armature_obj, action, output: Path):
     scene.view_settings.exposure = -1.0
 
     armature_obj.animation_data.action = action
-    scene.frame_set(28)
+    scene.frame_set(frame)
 
-    bpy.ops.object.camera_add(location=(2.85, -4.9, 2.15))
-    camera = bpy.context.object
-    camera.data.lens = 64
-    look_at(camera, (0, 0, 0.98))
+    camera = bpy.data.objects.get("IndiswormPreviewCamera")
+    if camera is None:
+        bpy.ops.object.camera_add(location=(2.85, -4.9, 2.15))
+        camera = bpy.context.object
+        camera.name = "IndiswormPreviewCamera"
+        camera.data.lens = 64
+        look_at(camera, (0, 0, 0.98))
     scene.camera = camera
 
     for name, location, energy, color, size in (
@@ -429,26 +552,30 @@ def render_preview(armature_obj, action, output: Path):
         ("ToxicRim", (-2.7, 0.8, 2.8), 280, (0.42, 1.0, 0.18), 2.1),
         ("MouthFill", (0.0, -3.3, 1.45), 110, (0.5, 1.0, 0.34), 1.2),
     ):
-        bpy.ops.object.light_add(type="AREA", location=location)
-        light = bpy.context.object
-        light.name = name
-        light.data.energy = energy
-        light.data.color = color
-        light.data.shape = "DISK"
-        light.data.size = size
-        look_at(light, (0, 0, 1.0))
+        light = bpy.data.objects.get(name)
+        if light is None:
+            bpy.ops.object.light_add(type="AREA", location=location)
+            light = bpy.context.object
+            light.name = name
+            light.data.energy = energy
+            light.data.color = color
+            light.data.shape = "DISK"
+            light.data.size = size
+            look_at(light, (0, 0, 1.0))
 
-    bpy.ops.mesh.primitive_plane_add(size=8, location=(0, 0, -0.025))
-    ground = bpy.context.object
-    ground.name = "CavePreviewGround"
-    material = bpy.data.materials.new("CavePreviewGround")
-    material.diffuse_color = (0.025, 0.032, 0.038, 1)
-    material.use_nodes = True
-    bsdf = material.node_tree.nodes.get("Principled BSDF")
-    if bsdf:
-        bsdf.inputs["Base Color"].default_value = (0.012, 0.018, 0.022, 1)
-        bsdf.inputs["Roughness"].default_value = 0.94
-    ground.data.materials.append(material)
+    ground = bpy.data.objects.get("CavePreviewGround")
+    if ground is None:
+        bpy.ops.mesh.primitive_plane_add(size=8, location=(0, 0, -0.025))
+        ground = bpy.context.object
+        ground.name = "CavePreviewGround"
+        material = bpy.data.materials.new("CavePreviewGround")
+        material.diffuse_color = (0.025, 0.032, 0.038, 1)
+        material.use_nodes = True
+        bsdf = material.node_tree.nodes.get("Principled BSDF")
+        if bsdf:
+            bsdf.inputs["Base Color"].default_value = (0.012, 0.018, 0.022, 1)
+            bsdf.inputs["Roughness"].default_value = 0.94
+        ground.data.materials.append(material)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     scene.render.filepath = str(output)
@@ -515,15 +642,44 @@ def main():
         source_dir / "indisworm_source.gltf",
     )
     export_rig(mesh_obj, armature_obj, source_dir / "indisworm.glb", "GLB")
+    runtime_glb = (
+        repo_root / "public/assets/harthmere/glb/creatures/indisworm.glb"
+    )
+    runtime_glb.parent.mkdir(parents=True, exist_ok=True)
+    runtime_glb.write_bytes((source_dir / "indisworm.glb").read_bytes())
     bpy.ops.wm.save_as_mainfile(filepath=str(source_dir / "indisworm.blend"))
 
-    preview_path = preview_dir / "indisworm_ranged_attack.png"
-    render_preview(armature_obj, actions["RangedAttack"], preview_path)
+    preview_frames = {
+        "Idle": 33,
+        "Walk": 13,
+        "Run": 9,
+        "Attack": 23,
+        "RangedAttack": 29,
+        "HitReact": 5,
+        "Death": 43,
+    }
+    preview_paths = {}
+    for action_name, frame in preview_frames.items():
+        preview_path = preview_dir / "animation_previews" / f"{action_name.lower()}.png"
+        render_preview(armature_obj, actions[action_name], preview_path, frame)
+        preview_paths[action_name] = str(preview_path.relative_to(repo_root))
+    # Preserve the stable historical path used by the focused asset gate.
+    stable_preview_path = preview_dir / "indisworm_ranged_attack.png"
+    stable_preview_path.write_bytes(
+        (preview_dir / "animation_previews" / "rangedattack.png").read_bytes()
+    )
     report = {
         "id": "indisworm",
         "displayName": "Indisworm",
         "worldSize": list(WORLD_SIZE),
         "clips": list(CLIPS),
+        "animationPolishVersion": INDISWORM_ANIMATION_POLISH_VERSION,
+        "impactFrames": {
+            "Attack": 23,
+            "RangedAttack": 29,
+            "HitReact": 5,
+            "Death": 43,
+        },
         "socket": "Socket_Mouth",
         "voxelCount": len(builder.cells),
         "surfaceTriangleCount": len(mesh_obj.data.polygons) * 2,
@@ -534,8 +690,10 @@ def main():
                 (source_dir / "indisworm_source.gltf").relative_to(repo_root)
             ),
             "glb": str((source_dir / "indisworm.glb").relative_to(repo_root)),
+            "runtimeGlb": str(runtime_glb.relative_to(repo_root)),
             "blend": str((source_dir / "indisworm.blend").relative_to(repo_root)),
-            "preview": str(preview_path.relative_to(repo_root)),
+            "preview": str(stable_preview_path.relative_to(repo_root)),
+            "animationPreviews": preview_paths,
         },
     }
     (preview_dir / "asset-report.json").write_text(json.dumps(report, indent=2) + "\n")

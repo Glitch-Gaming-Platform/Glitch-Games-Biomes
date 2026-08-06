@@ -30,6 +30,9 @@ describe("universal AAA magic impacts", () => {
       });
       assert.ok(profile, definition.id);
       assert.equal(profile.version, HARTHMERE_MAGIC_IMPACT_VERSION);
+      assert.ok(profile.silhouette, definition.id);
+      assert.equal(profile.coreStretch.length, 3, definition.id);
+      assert.ok(profile.ringSpread > 0, definition.id);
       assert.ok(profile.ringCount >= 2, definition.id);
       assert.ok(profile.debrisCount >= 16, definition.id);
       assert.ok(profile.sparkCount >= 18, definition.id);
@@ -158,5 +161,10 @@ describe("universal AAA magic impacts", () => {
     assert.ok(lightning.sparkCount > nature.sparkCount);
     assert.ok(nature.dustCount > fire.dustCount);
     assert.ok(gravity.ringCount > nature.ringCount);
+    assert.equal(fire.silhouette, "eruption");
+    assert.equal(lightning.silhouette, "crackle");
+    assert.equal(nature.silhouette, "root_burst");
+    assert.equal(gravity.silhouette, "singularity");
+    assert.equal(gravity.implosion, true);
   });
 });

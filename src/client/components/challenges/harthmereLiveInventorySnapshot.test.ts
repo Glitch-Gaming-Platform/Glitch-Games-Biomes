@@ -28,10 +28,15 @@ const localStorageMock = {
 };
 
 import {
+  harthmereJobToolOwnedState,
   readHarthmereLiveInventoryItemCount,
   recordHarthmereLiveInventoryItemsSnapshot,
   resetHarthmereLiveInventoryItemsSnapshotForTest,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import {
+  markHarthmereLiveSnapshotSeen,
+  resetHarthmereLiveSnapshotForTest,
+} from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import {
   snapshotRoadAheadHasLocalMuckClearingToolForTest,
   snapshotRoadAheadMuckClearingToolItemIds,
@@ -41,7 +46,10 @@ describe("HARTHMERE_LIVE_INVENTORY_SNAPSHOT", () => {
   beforeEach(() => {
     storage.clear();
     resetHarthmereLiveInventoryItemsSnapshotForTest();
+    resetHarthmereLiveSnapshotForTest();
   });
+
+  afterEach(() => resetHarthmereLiveSnapshotForTest());
 
   it("records actor item counts from a live-mode response body", () => {
     recordHarthmereLiveInventoryItemsSnapshot({
@@ -79,6 +87,30 @@ describe("HARTHMERE_LIVE_INVENTORY_SNAPSHOT", () => {
       inventoryLootState: { actor: { items: { wild_berries: 2 } } },
     });
     assert.strictEqual(readHarthmereLiveInventoryItemCount("muck_buster"), 0);
+  });
+
+  it("uses the live inventory to advance repair and cleanup tool map guidance", () => {
+    markHarthmereLiveSnapshotSeen();
+    recordHarthmereLiveInventoryItemsSnapshot({
+      inventoryLootState: {
+        actor: {
+          items: { muck_rake: 1, repair_mallet: 1 },
+          equipment: {},
+        },
+      },
+    });
+    assert.deepStrictEqual(harthmereJobToolOwnedState(), {
+      repairToolOwned: true,
+      cleanupToolOwned: true,
+    });
+
+    recordHarthmereLiveInventoryItemsSnapshot({
+      inventoryLootState: { actor: { items: {}, equipment: {} } },
+    });
+    assert.deepStrictEqual(harthmereJobToolOwnedState(), {
+      repairToolOwned: false,
+      cleanupToolOwned: false,
+    });
   });
 
   describe("Road Ahead muck-buster step (soft-lock fix)", () => {

@@ -61,6 +61,11 @@ export interface PromoSceneDef {
   terrainView?: PromoTerrainViewSpec;
   /** Streamed terrain must not intersect the camera dolly or subject sightline. */
   cameraClearance?: PromoCameraClearanceSpec;
+  /** Client-authored scenery that must finish bounded runtime streaming. */
+  runtimeScenery?: {
+    district: string;
+    minLoadedPlacements: number;
+  };
   build: () => Promise<CutsceneDef> | CutsceneDef;
   /** Warm-page capture groups, e.g. chapter1-sectors or chapter1-all. */
   groups?: readonly string[];
@@ -693,6 +698,10 @@ export interface HarthmereBossPromoSpec {
   emoteAt?: number;
   animation?: "attack1" | "attack2";
   terrainProofs?: readonly CutsceneVec3[];
+  /** Runtime-authored district used where no ECS terrain shell exists. */
+  runtimeSceneryDistrict?: string;
+  /** Finite authored horizon depth for enclosed Elsewhen scenes. */
+  terrainViewFarMeters?: number;
   /** Ordered live-review candidates; geometry preflight is not visual approval. */
   cameraPresetPriority: readonly BossPromoCameraPresetId[];
 }
@@ -702,22 +711,24 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
     {
       id: "muck_scarred_helix",
       area: "West Muck Breach",
-      stage: [238, 32.05, -500],
-      // Keep the camera on the proven encounter-level lane. The rejected high
-      // angle exposed only one nearby terrain slab and uncullable runtime props
-      // instead of reading as a continuous West Muck Breach landscape.
-      cameraFar: [222, 36, -496],
-      cameraNear: [225, 35, -499],
+      // Read-only retained-world terrain/NPC survey selected a boss-sized pad
+      // inside the same West Muck Breach encounter, away from the cow, lesser
+      // mobs, town props, and bright eastern map edge. Y uses the highest
+      // support voxel under the complete Helix footprint so no leg can enter
+      // the one-block slope.
+      stage: [218, 38.05, -492],
+      cameraFar: [233.373, 42.37, -492],
+      cameraNear: [229.373, 41.17, -492],
       timeOfDay: 0.78,
-      fov: 44,
+      fov: 40,
       framingBias: 1.2,
       yaw: 0,
       emoteAt: 2.65,
       animation: "attack2",
       cameraPresetPriority: [
-        "reverse-inward",
+        "baseline",
         "three-quarter-left",
-        "environment-wide",
+        "three-quarter-right",
       ],
       terrainProofs: [
         [200, 32, -538],
@@ -745,6 +756,7 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
       yaw: -Math.PI / 8,
       emoteAt: 2.65,
       animation: "attack2",
+      terrainViewFarMeters: 32,
       cameraPresetPriority: [
         "three-quarter-left",
         "three-quarter-right",
@@ -765,6 +777,7 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
       yaw: -Math.PI / 4,
       emoteAt: 2.65,
       animation: "attack2",
+      terrainViewFarMeters: 48,
       cameraPresetPriority: [
         "three-quarter-left",
         "three-quarter-right",
@@ -785,6 +798,7 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
       yaw: Math.PI / 4,
       emoteAt: 2.65,
       animation: "attack2",
+      runtimeSceneryDistrict: "Old Well / Underways",
       cameraPresetPriority: [
         "environment-wide",
         "three-quarter-left",
@@ -804,6 +818,7 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
       yaw: Math.PI / 4,
       emoteAt: 2.65,
       animation: "attack2",
+      runtimeSceneryDistrict: "Old Well / Underways",
       cameraPresetPriority: [
         "environment-wide",
         "three-quarter-left",
@@ -823,6 +838,7 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
       yaw: -Math.PI / 4,
       emoteAt: 2.65,
       animation: "attack2",
+      runtimeSceneryDistrict: "Old Well / Underways",
       cameraPresetPriority: [
         "three-quarter-left",
         "three-quarter-right",
@@ -842,6 +858,7 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
       yaw: Math.PI,
       emoteAt: 2.65,
       animation: "attack1",
+      runtimeSceneryDistrict: "Old Well / Underways",
       cameraPresetPriority: [
         "baseline",
         "three-quarter-right",
@@ -863,6 +880,7 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
       yaw: 0,
       emoteAt: 2.65,
       animation: "attack2",
+      runtimeSceneryDistrict: "Old Well / Underways",
       cameraPresetPriority: [
         "environment-wide",
         "baseline",
@@ -872,29 +890,30 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
     {
       id: "hex_wraith",
       area: "Gravewood Pale Muck",
-      // Exact grounded legacy bounty marker in Gravewood Pale Muck. The
-      // rejected frame used a Watchtower Muck Patch seed from a different
-      // encounter family and therefore photographed the wrong scenery.
-      stage: [632.924, 47, 146.321],
-      cameraFar: [620, 53, 159],
-      cameraNear: [624, 51, 155],
+      // Keep the wraith in Gravewood Pale Muck, but move it to the surveyed
+      // upper pad north-east of the legacy marker. The original marker put a
+      // giant terrain shelf across the body and a sheep in the alternate shot.
+      // This camera looks west into the biome with no NPC in the capture cone.
+      stage: [628.924, 56.05, 170.321],
+      cameraFar: [638.924, 59.85, 170.321],
+      cameraNear: [634.924, 58.65, 170.321],
       timeOfDay: 0.74,
-      fov: 30,
+      fov: 35,
       framingBias: 0.9,
       yaw: -Math.PI / 4,
       emoteAt: 2.65,
       animation: "attack2",
       cameraPresetPriority: [
-        "reverse-inward",
+        "baseline",
         "three-quarter-left",
-        "environment-wide",
+        "three-quarter-right",
       ],
       terrainProofs: [
-        [608, 47, 122],
-        [608, 47, 170],
-        [632.924, 47, 146.321],
-        [656, 47, 122],
-        [656, 47, 170],
+        [608, 56, 146],
+        [608, 56, 194],
+        [628.924, 56, 170.321],
+        [656, 56, 146],
+        [656, 56, 194],
       ],
     },
     {
@@ -992,6 +1011,20 @@ export function bossFrameFocus(
   ];
 }
 
+function bossSilhouetteSightlineTargets(
+  spec: HarthmereBossPromoSpec,
+  visual: HarthmereBossVisualAsset
+): readonly CutsceneVec3[] {
+  return [0.12, 0.5, 0.88].map(
+    (heightFraction) =>
+      [
+        spec.stage[0],
+        spec.stage[1] + visual.worldSize[1] * heightFraction,
+        spec.stage[2],
+      ] as CutsceneVec3
+  );
+}
+
 function bossPromoScene(spec: HarthmereBossPromoSpec): CutsceneDef {
   const visual = bossVisual(spec.id);
   const bossRole = `boss_${spec.id}`;
@@ -1081,20 +1114,32 @@ const HARTHMERE_BOSS_PROMO_SCENES: readonly PromoSceneDef[] =
         orientation: [-0.1, 0],
       },
       terrainProofs: spec.terrainProofs,
-      terrainView: {
-        // The observer interest set is centered on cameraFar. Build the view
-        // corridor from the same point so all 112m lateral samples remain
-        // inside the existing 128m Sync/draw-distance contract.
-        camera: spec.cameraFar,
-        target: frameFocus,
-        verticalFov: spec.fov,
-      },
-      cameraClearance: {
-        cameraFar: spec.cameraFar,
-        cameraNear: spec.cameraNear,
-        target: frameFocus,
-        bossBodyRadius: Math.hypot(...visual.worldSize) / 2,
-      },
+      terrainView: spec.runtimeSceneryDistrict
+        ? undefined
+        : {
+            // The observer interest set is centered on cameraFar. Build the view
+            // corridor from the same point so all 112m lateral samples remain
+            // inside the existing 128m Sync/draw-distance contract.
+            camera: spec.cameraFar,
+            target: frameFocus,
+            verticalFov: spec.fov,
+            farMeters: spec.terrainViewFarMeters,
+          },
+      cameraClearance: spec.runtimeSceneryDistrict
+        ? undefined
+        : {
+            cameraFar: spec.cameraFar,
+            cameraNear: spec.cameraNear,
+            target: frameFocus,
+            sightlineTargets: bossSilhouetteSightlineTargets(spec, visual),
+            bossBodyRadius: Math.hypot(...visual.worldSize) / 2,
+          },
+      runtimeScenery: spec.runtimeSceneryDistrict
+        ? {
+            district: spec.runtimeSceneryDistrict,
+            minLoadedPlacements: 8,
+          }
+        : undefined,
       build: () => bossPromoScene(spec),
       groups: ["boss-marketing"],
     };
@@ -1220,17 +1265,29 @@ export function promoSceneWithBossCameraPreset(
   return {
     ...scene,
     observer: { ...scene.observer, position: plan.cameraFar },
-    terrainView: {
-      camera: plan.cameraFar,
-      target: frameFocus,
-      verticalFov: plan.fov,
-    },
-    cameraClearance: {
-      cameraFar: plan.cameraFar,
-      cameraNear: plan.cameraNear,
-      target: frameFocus,
-      bossBodyRadius: Math.hypot(...visual.worldSize) / 2,
-    },
+    terrainView: adjusted.runtimeSceneryDistrict
+      ? undefined
+      : {
+          camera: plan.cameraFar,
+          target: frameFocus,
+          verticalFov: plan.fov,
+          farMeters: adjusted.terrainViewFarMeters,
+        },
+    cameraClearance: adjusted.runtimeSceneryDistrict
+      ? undefined
+      : {
+          cameraFar: plan.cameraFar,
+          cameraNear: plan.cameraNear,
+          target: frameFocus,
+          sightlineTargets: bossSilhouetteSightlineTargets(adjusted, visual),
+          bossBodyRadius: Math.hypot(...visual.worldSize) / 2,
+        },
+    runtimeScenery: adjusted.runtimeSceneryDistrict
+      ? {
+          district: adjusted.runtimeSceneryDistrict,
+          minLoadedPlacements: 8,
+        }
+      : undefined,
     build: () => bossPromoScene(adjusted),
     cameraPreset: requested,
   };

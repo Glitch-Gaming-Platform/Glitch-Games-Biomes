@@ -29,14 +29,21 @@ import {
   harthmereJobsBoardQuestMarkerRuntimePosition,
   harthmereJobsBoardQuestMarkerRuntimePositionForId,
 } from "@/shared/harthmere/jobs_board_quest_marker_positions";
-import { harthmereJobsBoardFieldTargets } from "@/shared/harthmere/jobs_board_field_targets";
+import {
+  harthmereJobsBoardFieldTargetFeetY,
+  harthmereJobsBoardFieldTargets,
+} from "@/shared/harthmere/jobs_board_field_targets";
 import {
   activeSnapshotGroveQuestMarkerIds,
   readSnapshotGroveQuestState,
   snapshotGroveObjectiveIndexForQuest,
   type SnapshotGroveQuestState,
 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
-import { readActiveBiomesUIMapPin } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
+import {
+  readActiveBiomesUIMapPin,
+  type BiomesUIActiveMapPin,
+} from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
+import { HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MATCH_RADIUS } from "@/shared/harthmere/harthmere_world_object_inspectable";
 import { readChapter1ObjectiveWorldProjection } from "@/client/components/challenges/Chapter1ObjectiveWorldState";
 import {
   SNAPSHOT_GROVE_LANDMARKS,
@@ -76,6 +83,12 @@ export type HarthmereRepairCartAssetLoader = {
 export const HARTHMERE_JOBS_BOARD_ACTIVE_PIN_MARKER_PREFIX =
   "jobs_board_marker:";
 
+function isHarthmereJobsBoardActivePinMarkerId(markerId: string | undefined) {
+  return /^(?:jobs_board_marker|jobs_board_item_source|jobs_board_tool_source):/.test(
+    String(markerId ?? "")
+  );
+}
+
 export function harthmereResolveWorldQuestBeaconMarkerId(input: {
   liveEntityHelperMarkerId?: string;
   snapshotGroveMarkerId?: string;
@@ -90,7 +103,7 @@ export function harthmereResolveWorldQuestBeaconMarkerId(input: {
   if (
     pinId &&
     pinId !== questBeacon &&
-    pinId.startsWith(HARTHMERE_JOBS_BOARD_ACTIVE_PIN_MARKER_PREFIX)
+    isHarthmereJobsBoardActivePinMarkerId(pinId)
   ) {
     return undefined;
   }
@@ -272,6 +285,39 @@ export const HARTHMERE_QUEST_OBJECT_MARKERS: readonly HarthmereQuestObjectMarker
 const HARTHMERE_QUEST_OBJECT_MARKER_BY_ID = new Map(
   HARTHMERE_QUEST_OBJECT_MARKERS.map((marker) => [marker.id, marker])
 );
+
+/** Resolve a synthetic jobs-board todo pin to the physical prop it represents. */
+export function harthmereWorldObjectMarkerIdForActiveMapPinForTest(
+  pin:
+    | Pick<
+        BiomesUIActiveMapPin,
+        "markerId" | "worldPosition" | "worldObjectId" | "interactionTargetId"
+      >
+    | undefined
+): string | undefined {
+  if (!pin || !isHarthmereJobsBoardActivePinMarkerId(pin.markerId)) {
+    return undefined;
+  }
+  for (const id of [pin.worldObjectId, pin.interactionTargetId, pin.markerId]) {
+    if (id && HARTHMERE_QUEST_OBJECT_MARKER_BY_ID.has(id)) return id;
+  }
+  const position = pin.worldPosition;
+  if (!Array.isArray(position)) return undefined;
+  let best: { id: string; distance: number } | undefined;
+  for (const marker of HARTHMERE_QUEST_OBJECT_MARKERS) {
+    const distance = Math.hypot(
+      marker.position[0] - position[0],
+      marker.position[2] - position[2]
+    );
+    if (
+      distance <= HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MATCH_RADIUS &&
+      (!best || distance < best.distance)
+    ) {
+      best = { id: marker.id, distance };
+    }
+  }
+  return best?.id;
+}
 
 export function harthmereMobileQuestObjectMarkerIds(
   position: THREE.Vector3,
@@ -466,6 +512,50 @@ const addStoneCluster = (group: THREE.Group, accent: number, seed = 0) => {
   }
 };
 
+const addBerryThicket = (group: THREE.Group) => {
+  const leafDark = 0x21633f;
+  const leaf = 0x3f9b56;
+  const leafBright = 0x75c95c;
+  const berry = 0xd92f6f;
+  const berryBright = 0xff6a9d;
+
+  // The former fallback was four stones only 20–30 cm tall. In the Grove's
+  // flower beds that made the valid F target look completely invisible. Build
+  // a waist-high, broad thicket with berries above the surrounding plants so
+  // the resource reads as a gatherable object from every approach angle.
+  addBox(group, [0.26, 0.76, 0.26], [0, 0.42, 0], 0x65452d);
+  for (const [index, position] of [
+    [-0.42, 0.72, -0.18],
+    [0.38, 0.82, -0.12],
+    [-0.18, 1.02, 0.24],
+    [0.26, 1.12, 0.26],
+    [0, 1.28, -0.06],
+  ].entries()) {
+    const crown = addBox(
+      group,
+      [0.68, 0.54, 0.62],
+      position as [number, number, number],
+      [leafDark, leaf, leafBright][index % 3]
+    );
+    crown.rotation.y = index * 0.47;
+  }
+  for (const [index, position] of [
+    [-0.5, 1.0, -0.5],
+    [0.48, 1.08, -0.36],
+    [-0.3, 1.4, 0.3],
+    [0.34, 1.48, 0.2],
+    [0.02, 1.6, -0.24],
+    [0.58, 1.32, 0.34],
+  ].entries()) {
+    addBox(
+      group,
+      [0.18, 0.18, 0.18],
+      position as [number, number, number],
+      index % 2 ? berryBright : berry
+    );
+  }
+};
+
 export function createHarthmereQuestObjectMarkerMesh(
   marker: HarthmereQuestObjectMarker
 ): THREE.Group {
@@ -651,7 +741,10 @@ export function createHarthmereQuestObjectMarkerMesh(
     addBox(group, [0.28, 0.28, 0.28], [0.28, 1.22, 0.18], 0xffffff);
     addBox(group, [0.18, 0.18, 0.18], [0.4, 1.24, 0.32], 0xff7a7a);
     addStoneCluster(group, accent, marker.id.length);
-  } else if (/berry|muck|stone|material|food|aid|drop/.test(text)) {
+  } else if (/berr/.test(text)) {
+    group.userData.harthmereQuestObjectVisualKind = "berry_thicket";
+    addBerryThicket(group);
+  } else if (/muck|stone|material|food|aid|drop/.test(text)) {
     addStoneCluster(group, accent, marker.id.length);
   } else if (/firefly|dim/.test(text)) {
     addCylinder(group, 0.38, 0.12, [0, 0.18, 0], darkWood, 12);
@@ -876,7 +969,10 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
     for (const id of this.visibleSnapshotGroveMarkerIds) {
       requiredMarkerIds.add(id);
     }
-    const activePinMarkerId = readActiveBiomesUIMapPin()?.markerId;
+    const activePinMarkerId =
+      harthmereWorldObjectMarkerIdForActiveMapPinForTest(
+        readActiveBiomesUIMapPin()
+      );
     if (activePinMarkerId) requiredMarkerIds.add(activePinMarkerId);
     const desiredMarkerIds = new Set(
       harthmereMobileQuestObjectMarkerIds(
@@ -975,14 +1071,21 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
       // and dropped/quest items use (npcs.ts / drops.ts): one tri-state probe +
       // keep-last-surface memory. A defined feetY is the real (or last-known
       // real) surface; undefined means terrain is genuinely unknown here.
-      const feetY = harthmereGroundedFeetYWithMemory(
+      const isFieldTarget = isHarthmereJobsBoardFieldTargetMarkerId(id);
+      const groundedFeetY = harthmereGroundedFeetYWithMemory(
         this.resources,
         this.groundedFeetYByColumn,
         xz[0],
         xz[1],
         hintY,
-        true
+        // Permanent business fixtures may be under an authored awning. Other
+        // outdoor quest props retain open-sky grounding so cave ceilings do
+        // not pull them away from their intended surface.
+        !isFieldTarget
       );
+      const feetY = isFieldTarget
+        ? harthmereJobsBoardFieldTargetFeetY(groundedFeetY, hintY)
+        : groundedFeetY;
       if (feetY !== undefined) {
         // Rest on the (remembered) real surface and (re)show the active marker.
         mesh.position.y = feetY;
@@ -1032,12 +1135,16 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
     this.visibleSnapshotGroveMarkerIds = new Set(
       activeHarthmereQuestMarkerIds(snapshotGroveState)
     );
+    const activePin = readActiveBiomesUIMapPin();
+    const activePinWorldObjectMarkerId =
+      harthmereWorldObjectMarkerIdForActiveMapPinForTest(activePin);
     this.applyActiveQuestMarkerId(
-      harthmereResolveWorldQuestBeaconMarkerId({
-        liveEntityHelperMarkerId,
-        snapshotGroveMarkerId,
-        activePinMarkerId: readActiveBiomesUIMapPin()?.markerId,
-      })
+      activePinWorldObjectMarkerId ??
+        harthmereResolveWorldQuestBeaconMarkerId({
+          liveEntityHelperMarkerId,
+          snapshotGroveMarkerId,
+          activePinMarkerId: activePin?.markerId,
+        })
     );
     this.refreshChapter1ObjectiveWorldMarker();
   }

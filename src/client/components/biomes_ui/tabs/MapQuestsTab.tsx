@@ -70,18 +70,14 @@ export interface MapMarker {
   active?: boolean;
   description?: string;
   worldPosition?: [number, number, number];
+  worldObjectId?: string;
+  interactionTargetId?: string;
 }
 
 type MapBounds = { minX: number; maxX: number; minZ: number; maxZ: number };
 
 type MapTerrainKind =
-  | "water"
-  | "muck"
-  | "road"
-  | "town"
-  | "resource"
-  | "safe_zone"
-  | "highland";
+  "water" | "muck" | "road" | "town" | "resource" | "safe_zone" | "highland";
 
 export interface MapTerrainFeature {
   id: string;
@@ -178,12 +174,7 @@ export interface MapAdapter {
 }
 
 type MapPanelTab =
-  | "quests"
-  | "people"
-  | "buildings"
-  | "properties"
-  | "crops"
-  | "geography";
+  "quests" | "people" | "buildings" | "properties" | "crops" | "geography";
 
 const MAP_PANEL_TABS: Array<{ id: MapPanelTab; label: string }> = [
   { id: "quests", label: "Quests" },
@@ -1333,8 +1324,7 @@ export const MapQuestsTab: React.FunctionComponent<{
     if (typeof window === "undefined") return;
     const handler = (event: Event) => {
       const pin = (event as CustomEvent).detail as
-        | BiomesUIActiveMapPin
-        | undefined;
+        BiomesUIActiveMapPin | undefined;
       if (pin?.markerId) {
         setActiveMapPin(pin);
         setPendingLocateMarkerId(pin.markerId);
@@ -1649,14 +1639,14 @@ export const MapQuestsTab: React.FunctionComponent<{
                     boxShadow: visual.isPlayer
                       ? "0 0 14px rgba(255,255,255,0.7)"
                       : visual.isActive
-                      ? "0 0 14px rgba(252,211,77,0.9)"
-                      : "0 0 8px rgba(74,222,255,0.65)",
+                        ? "0 0 14px rgba(252,211,77,0.9)"
+                        : "0 0 8px rgba(74,222,255,0.65)",
                     cursor: "pointer",
                     animation: visual.isPlayer
                       ? "biomesMapPlayerPulse 1.6s ease-in-out infinite"
                       : visual.isActive
-                      ? "biomesMapActivePing 1.4s ease-in-out infinite"
-                      : undefined,
+                        ? "biomesMapActivePing 1.4s ease-in-out infinite"
+                        : undefined,
                     zIndex: visual.zIndex,
                   }}
                 >
@@ -1930,10 +1920,10 @@ export const MapQuestsTab: React.FunctionComponent<{
                       const accent = isMainQuest
                         ? "var(--biomes-warn-amber)"
                         : quest.status === "active"
-                        ? "var(--biomes-warn-amber)"
-                        : quest.status === "completed"
-                        ? "#78e68c"
-                        : "var(--biomes-edge-cyan-soft)";
+                          ? "var(--biomes-warn-amber)"
+                          : quest.status === "completed"
+                            ? "#78e68c"
+                            : "var(--biomes-edge-cyan-soft)";
                       return (
                         <li key={quest.questId}>
                           <div style={questListItemStyle(isTracked, accent)}>
@@ -1981,8 +1971,8 @@ export const MapQuestsTab: React.FunctionComponent<{
                                   isMainQuest
                                     ? "Stop tracking this as your main quest"
                                     : canSetMain
-                                    ? "Track this as your main quest"
-                                    : "Only active quests can be tracked"
+                                      ? "Track this as your main quest"
+                                      : "Only active quests can be tracked"
                                 }
                                 onClick={() =>
                                   isMainQuest

@@ -79,6 +79,7 @@ BUILD_ID.bob
 /_wtest
 scripts/harthmere/.artifacts/
 harthmere-auto-survey-*.json
+/.harthmere-live-*.json
 *.log
 
 ### Patch/back-up leftovers

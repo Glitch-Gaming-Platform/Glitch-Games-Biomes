@@ -1,5 +1,5 @@
 {
-  "version": "harthmere-premium-projectiles-v2",
+  "version": "harthmere-premium-projectiles-v3",
   "blenderVersion": "5.2.0 LTS",
   "count": 30,
   "projectiles": [
@@ -12,12 +12,12 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/hunter_bow_shot.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/hunter_bow_shot.png",
-      "triangleCount": 2212,
+      "triangleCount": 2472,
       "bounds": {
         "min": [
           -0.17310591042041779,
           -0.058385275304317474,
-          -0.5029705762863159
+          -0.5878735780715942
         ],
         "max": [
           0.17310591042041779,
@@ -25,7 +25,7 @@
           0.6333073377609253
         ]
       },
-      "bytes": 26056
+      "bytes": 29260
     },
     {
       "id": "quick_shot",
@@ -36,20 +36,20 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/quick_shot.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/quick_shot.png",
-      "triangleCount": 2428,
+      "triangleCount": 2604,
       "bounds": {
         "min": [
           -0.18893104791641235,
-          -0.058385275304317474,
-          -0.6805705428123474
+          -0.06629807502031326,
+          -0.7992560267448425
         ],
         "max": [
           0.18893104791641235,
-          0.05838526785373688,
+          0.06983879953622818,
           0.8257073163986206
         ]
       },
-      "bytes": 28452
+      "bytes": 31568
     },
     {
       "id": "aimed_shot",
@@ -60,7 +60,7 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/aimed_shot.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/aimed_shot.png",
-      "triangleCount": 3184,
+      "triangleCount": 3364,
       "bounds": {
         "min": [
           -0.21896427869796753,
@@ -70,10 +70,10 @@
         "max": [
           0.21896427869796753,
           0.17496643960475922,
-          0.9867804050445557
+          0.9980624914169312
         ]
       },
-      "bytes": 49572
+      "bytes": 52456
     },
     {
       "id": "multi_shot",
@@ -84,20 +84,20 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/multi_shot.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/multi_shot.png",
-      "triangleCount": 11444,
+      "triangleCount": 7244,
       "bounds": {
         "min": [
-          -0.651423454284668,
-          -0.5683197379112244,
-          -0.8144243955612183
+          -0.5092172622680664,
+          -0.4759266972541809,
+          -0.7110841274261475
         ],
         "max": [
-          0.651423454284668,
-          0.5683197379112244,
-          0.7373073101043701
+          0.5092172622680664,
+          0.4759266972541809,
+          0.7873073220252991
         ]
       },
-      "bytes": 124912
+      "bytes": 83368
     },
     {
       "id": "bandit_archer_shot",
@@ -121,7 +121,7 @@
           0.8569072484970093
         ]
       },
-      "bytes": 42236
+      "bytes": 42240
     },
     {
       "id": "ranged_shot",
@@ -132,20 +132,20 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/ranged_shot.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/ranged_shot.png",
-      "triangleCount": 2500,
+      "triangleCount": 912,
       "bounds": {
         "min": [
-          -0.1731058955192566,
-          -0.13330349326133728,
-          -0.7285705208778381
+          -0.2105170488357544,
+          -0.14496643841266632,
+          -0.5645357370376587
         ],
         "max": [
-          0.1731058955192566,
-          0.13330349326133728,
-          0.8777073621749878
+          0.2105170488357544,
+          0.14496643841266632,
+          0.7960987687110901
         ]
       },
-      "bytes": 33848
+      "bytes": 18096
     },
     {
       "id": "spark",
@@ -156,20 +156,20 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/spark.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/spark.png",
-      "triangleCount": 2020,
+      "triangleCount": 2668,
       "bounds": {
         "min": [
-          -0.3639337420463562,
-          -0.3081294298171997,
-          -0.23822292685508728
+          -0.41507023572921753,
+          -0.37539365887641907,
+          -0.43026044964790344
         ],
         "max": [
-          0.3639337420463562,
-          0.3081294298171997,
-          0.3982229232788086
+          0.41507023572921753,
+          0.37539365887641907,
+          0.530260443687439
         ]
       },
-      "bytes": 30316
+      "bytes": 44552
     },
     {
       "id": "fireball",
@@ -180,20 +180,20 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/fireball.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/fireball.png",
-      "triangleCount": 2848,
+      "triangleCount": 3372,
       "bounds": {
         "min": [
-          -0.3927449882030487,
-          -0.3618878126144409,
-          -0.6177189350128174
+          -0.4068566858768463,
+          -0.36736589670181274,
+          -0.7432218194007874
         ],
         "max": [
-          0.3927449584007263,
-          0.3618878126144409,
-          0.4099999964237213
+          0.4068566858768463,
+          0.36736589670181274,
+          0.5743072628974915
         ]
       },
-      "bytes": 48076
+      "bytes": 55504
     },
     {
       "id": "meteor",
@@ -204,12 +204,12 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/meteor.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/meteor.png",
-      "triangleCount": 1832,
+      "triangleCount": 2364,
       "bounds": {
         "min": [
           -0.6865032315254211,
           -0.6097363233566284,
-          -1.0431578159332275
+          -1.2681338787078857
         ],
         "max": [
           0.6865032315254211,
@@ -217,7 +217,7 @@
           0.9152637124061584
         ]
       },
-      "bytes": 34004
+      "bytes": 42972
     },
     {
       "id": "lightning_bolt",
@@ -228,12 +228,12 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/lightning_bolt.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/lightning_bolt.png",
-      "triangleCount": 2012,
+      "triangleCount": 2728,
       "bounds": {
         "min": [
           -0.4229275584220886,
           -0.12329452484846115,
-          -0.7432747483253479
+          -0.9412859678268433
         ],
         "max": [
           0.46292755007743835,
@@ -241,7 +241,7 @@
           0.7895143032073975
         ]
       },
-      "bytes": 28280
+      "bytes": 39748
     },
     {
       "id": "holy_light",
@@ -252,12 +252,12 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/holy_light.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/holy_light.png",
-      "triangleCount": 812,
+      "triangleCount": 988,
       "bounds": {
         "min": [
           -0.4065519869327545,
           -0.36081790924072266,
-          -0.7081730961799622
+          -0.7912859320640564
         ],
         "max": [
           0.4065519869327545,
@@ -265,7 +265,7 @@
           0.9201249480247498
         ]
       },
-      "bytes": 17760
+      "bytes": 20840
     },
     {
       "id": "smite",
@@ -276,7 +276,7 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/smite.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/smite.png",
-      "triangleCount": 636,
+      "triangleCount": 896,
       "bounds": {
         "min": [
           -0.46220552921295166,
@@ -286,10 +286,10 @@
         "max": [
           0.46220552921295166,
           0.29160910844802856,
-          0.7630202770233154
+          0.7794569134712219
         ]
       },
-      "bytes": 16388
+      "bytes": 19572
     },
     {
       "id": "judgment",
@@ -300,12 +300,12 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/judgment.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/judgment.png",
-      "triangleCount": 1244,
+      "triangleCount": 1420,
       "bounds": {
         "min": [
           -0.36000001430511475,
           -0.18078671395778656,
-          -0.6200000047683716
+          -0.7352421879768372
         ],
         "max": [
           0.36000001430511475,
@@ -313,7 +313,7 @@
           0.42000001668930054
         ]
       },
-      "bytes": 21880
+      "bytes": 25264
     },
     {
       "id": "consecrate",
@@ -328,16 +328,16 @@
       "bounds": {
         "min": [
           -0.5033160448074341,
-          -0.1531975269317627,
-          -0.483316034078598
+          -0.5033160448074341,
+          -0.1550000011920929
         ],
         "max": [
           0.5033160448074341,
-          0.14499999582767487,
-          0.5233160257339478
+          0.5033160448074341,
+          0.1728062480688095
         ]
       },
-      "bytes": 36532
+      "bytes": 36332
     },
     {
       "id": "life_drain",
@@ -348,20 +348,20 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/life_drain.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/life_drain.png",
-      "triangleCount": 3204,
+      "triangleCount": 3688,
       "bounds": {
         "min": [
-          -0.2828925549983978,
-          -0.2623898983001709,
-          -0.5751949548721313
+          -0.31902071833610535,
+          -0.3023983836174011,
+          -0.8714707493782043
         ],
         "max": [
-          0.2828925549983978,
-          0.26450973749160767,
-          0.5966929793357849
+          0.31902071833610535,
+          0.30239835381507874,
+          0.5938330292701721
         ]
       },
-      "bytes": 42112
+      "bytes": 56172
     },
     {
       "id": "entangling_roots",
@@ -372,7 +372,7 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/entangling_roots.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/entangling_roots.png",
-      "triangleCount": 2768,
+      "triangleCount": 3028,
       "bounds": {
         "min": [
           -0.4464462995529175,
@@ -382,10 +382,10 @@
         "max": [
           0.4464462995529175,
           0.48779910802841187,
-          0.5085681080818176
+          0.5385681390762329
         ]
       },
-      "bytes": 44656
+      "bytes": 47292
     },
     {
       "id": "indisworm_poison_spit",
@@ -396,20 +396,20 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/indisworm_poison_spit.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/indisworm_poison_spit.png",
-      "triangleCount": 5572,
+      "triangleCount": 4716,
       "bounds": {
         "min": [
-          -0.5364783406257629,
-          -0.409087598323822,
+          -0.43134739995002747,
+          -0.37301263213157654,
           -0.6509079933166504
         ],
         "max": [
-          0.5364783406257629,
+          0.43134739995002747,
           0.41539016366004944,
-          0.451210081577301
+          0.5197149515151978
         ]
       },
-      "bytes": 77296
+      "bytes": 64340
     },
     {
       "id": "mocking_verse",
@@ -420,20 +420,20 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/mocking_verse.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/mocking_verse.png",
-      "triangleCount": 1624,
+      "triangleCount": 1464,
       "bounds": {
         "min": [
-          -0.6345913410186768,
-          -0.41487956047058105,
-          -0.6838160753250122
+          -0.5433767437934875,
+          -0.40466344356536865,
+          -0.6979212164878845
         ],
         "max": [
-          0.6345913410186768,
-          0.41487956047058105,
+          0.5433767437934875,
+          0.40466344356536865,
           0.5799999833106995
         ]
       },
-      "bytes": 39620
+      "bytes": 35108
     },
     {
       "id": "curse_of_weakness",
@@ -444,12 +444,12 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/curse_of_weakness.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/curse_of_weakness.png",
-      "triangleCount": 1780,
+      "triangleCount": 2044,
       "bounds": {
         "min": [
           -0.4781525731086731,
           -0.23218193650245667,
-          -0.37200772762298584
+          -0.666686475276947
         ],
         "max": [
           0.4470968544483185,
@@ -457,7 +457,7 @@
           0.42638641595840454
         ]
       },
-      "bytes": 20020
+      "bytes": 24616
     },
     {
       "id": "hunters_mark",
@@ -481,7 +481,7 @@
           0.5207774639129639
         ]
       },
-      "bytes": 26444
+      "bytes": 26452
     },
     {
       "id": "polymorph",
@@ -492,20 +492,20 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/polymorph.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/polymorph.png",
-      "triangleCount": 2072,
+      "triangleCount": 2756,
       "bounds": {
         "min": [
-          -0.4448721706867218,
-          -0.38275790214538574,
+          -0.4407494366168976,
+          -0.37847235798835754,
           -0.332378089427948
         ],
         "max": [
-          0.4448721706867218,
-          0.38275790214538574,
-          0.3229416608810425
+          0.4407494366168976,
+          0.37847235798835754,
+          0.3047620356082916
         ]
       },
-      "bytes": 30540
+      "bytes": 39824
     },
     {
       "id": "fear",
@@ -516,20 +516,20 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/fear.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/fear.png",
-      "triangleCount": 1176,
+      "triangleCount": 1440,
       "bounds": {
         "min": [
-          -0.5280280709266663,
-          -0.47102004289627075,
-          -0.49717170000076294
+          -0.522140383720398,
+          -0.464734822511673,
+          -0.7460507750511169
         ],
         "max": [
-          0.5280280709266663,
-          0.47102004289627075,
+          0.522140383720398,
+          0.464734822511673,
           0.6682522296905518
         ]
       },
-      "bytes": 23196
+      "bytes": 28092
     },
     {
       "id": "charm",
@@ -540,20 +540,20 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/charm.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/charm.png",
-      "triangleCount": 908,
+      "triangleCount": 1168,
       "bounds": {
         "min": [
           -0.5369182825088501,
-          -0.42785727977752686,
+          -0.42348700761795044,
           -0.45998847484588623
         ],
         "max": [
           0.5369182825088501,
-          0.42785727977752686,
-          0.390824556350708
+          0.42348700761795044,
+          0.4898097515106201
         ]
       },
-      "bytes": 17712
+      "bytes": 20604
     },
     {
       "id": "hex_bolt",
@@ -564,20 +564,20 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/hex_bolt.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/hex_bolt.png",
-      "triangleCount": 1948,
+      "triangleCount": 2124,
       "bounds": {
         "min": [
-          -0.5098675489425659,
+          -0.5057113170623779,
           -0.4675461947917938,
-          -0.2326173633337021
+          -0.6386318206787109
         ],
         "max": [
-          0.5098675489425659,
+          0.5057113170623779,
           0.5052930116653442,
           0.4677712619304657
         ]
       },
-      "bytes": 35912
+      "bytes": 39008
     },
     {
       "id": "thaedryn_resonance",
@@ -588,7 +588,7 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/thaedryn_resonance.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/thaedryn_resonance.png",
-      "triangleCount": 2640,
+      "triangleCount": 2900,
       "bounds": {
         "min": [
           -0.8152116537094116,
@@ -598,10 +598,10 @@
         "max": [
           0.8152116537094116,
           0.8326783776283264,
-          0.6932464838027954
+          0.7105665802955627
         ]
       },
-      "bytes": 48780
+      "bytes": 51428
     },
     {
       "id": "photon_sidearm_pulse",
@@ -612,12 +612,12 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/photon_sidearm_pulse.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/photon_sidearm_pulse.png",
-      "triangleCount": 1406,
+      "triangleCount": 1582,
       "bounds": {
         "min": [
           -0.15764054656028748,
           -0.15764054656028748,
-          -0.37144580483436584
+          -0.6053069233894348
         ],
         "max": [
           0.15764054656028748,
@@ -625,7 +625,7 @@
           0.5997360348701477
         ]
       },
-      "bytes": 30656
+      "bytes": 33776
     },
     {
       "id": "pulse_carbine_burst",
@@ -636,12 +636,12 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/pulse_carbine_burst.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/pulse_carbine_burst.png",
-      "triangleCount": 2026,
+      "triangleCount": 2202,
       "bounds": {
         "min": [
           -0.26245319843292236,
           -0.1069493219256401,
-          -0.4599999785423279
+          -0.6675488948822021
         ],
         "max": [
           0.26245319843292236,
@@ -649,7 +649,7 @@
           0.6246868371963501
         ]
       },
-      "bytes": 36812
+      "bytes": 39940
     },
     {
       "id": "helix_projector_beam",
@@ -660,12 +660,12 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/helix_projector_beam.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/helix_projector_beam.png",
-      "triangleCount": 4758,
+      "triangleCount": 4934,
       "bounds": {
         "min": [
           -0.2316405475139618,
           -0.2316405475139618,
-          -0.6000000238418579
+          -0.8900186419487
         ],
         "max": [
           0.2316405475139618,
@@ -673,7 +673,7 @@
           0.8408323526382446
         ]
       },
-      "bytes": 75280
+      "bytes": 78404
     },
     {
       "id": "nova_cannon_bolt",
@@ -684,7 +684,7 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/nova_cannon_bolt.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/nova_cannon_bolt.png",
-      "triangleCount": 2302,
+      "triangleCount": 2562,
       "bounds": {
         "min": [
           -0.48581790924072266,
@@ -694,10 +694,10 @@
         "max": [
           0.48581790924072266,
           0.5208178162574768,
-          0.7620207071304321
+          0.9120503067970276
         ]
       },
-      "bytes": 53432
+      "bytes": 56352
     },
     {
       "id": "singularity_lance_beam",
@@ -708,12 +708,12 @@
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/singularity_lance_beam.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/singularity_lance_beam.png",
-      "triangleCount": 3658,
+      "triangleCount": 3922,
       "bounds": {
         "min": [
           -0.6140446066856384,
           -0.4481571614742279,
-          -0.8896874785423279
+          -1.1135351657867432
         ],
         "max": [
           0.6140446066856384,
@@ -721,7 +721,7 @@
           1.1470929384231567
         ]
       },
-      "bytes": 82904
+      "bytes": 87460
     }
   ]
 }

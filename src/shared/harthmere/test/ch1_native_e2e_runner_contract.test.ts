@@ -216,8 +216,12 @@ describe("Chapter 1 native browser-runner contracts", () => {
     assert.match(runner, /button\[aria-label="Read Jobs Board"\]/);
     assert.match(runner, /installChapter1CompletedGroveJobEvidence/);
     assert.match(runner, /CH1_GROVE_SUPPLIER_ROUTE\.find\(/);
-    assert.match(runner, /supplier evidence advanced after/);
-    assert.match(runner, /installChapter1SupplierTransactionEvidence/);
+    assert.match(runner, /Trade with \$\{supplier\.label\}/);
+    assert.match(runner, /data-harthmere-vendor-trade-panel/);
+    assert.match(runner, /request_vendor_transaction/);
+    assert.match(runner, /real supplier transaction advanced after/);
+    assert.match(runner, /data-biomes-ui-active-minimap-pin/);
+    assert.doesNotMatch(runner, /installChapter1SupplierTransactionEvidence/);
     assert.match(runner, /external evidence reaches Chapter 1/);
     assert.match(runner, /state\.body\.requirement\?\.ready === true/);
     assert.match(
@@ -237,8 +241,11 @@ describe("Chapter 1 native browser-runner contracts", () => {
     assert.match(runner, /kind: "talk_to_npc"/);
     assert.match(runner, /stock\/default quest surface/);
     assert.ok(
-      (runner.match(/invokeChapter1ObjectiveInteraction\(first, state, step\)/g) ?? [])
-        .length >= 4,
+      (
+        runner.match(
+          /invokeChapter1ObjectiveInteraction\(first, state, step\)/g
+        ) ?? []
+      ).length >= 4,
       "normal dialogue, choices, deferrals, and special interactions must share NPC routing"
     );
   });
@@ -247,7 +254,7 @@ describe("Chapter 1 native browser-runner contracts", () => {
     assert.match(runner, /FOCUSED_E2E_SAFE_START/);
     assert.match(
       runner,
-      /if \(\s*chapter1Only \|\|\s*chapter1CaptureOnly \|\|\s*chapter1NpcAuditOnly \|\|\s*robotStoryOnly\s*\) \{\s*\/\/ A freshly allocated visual-test id can collide with a live snapshot NPC/
+      /if \(\s*chapter1Only \|\|\s*chapter1CaptureOnly \|\|\s*chapter1NpcAuditOnly \|\|\s*robotStoryOnly \|\|\s*jobsOnly \|\|\s*remainingJobsOnly \|\|\s*escortOnly \|\|\s*hoePurchaseOnly\s*\) \{\s*\/\/ A freshly allocated visual-test id can collide with a live snapshot NPC/
     );
     assert.match(
       runner,
@@ -342,7 +349,10 @@ describe("Chapter 1 native browser-runner contracts", () => {
   it("keeps Chapter 1 escort acceptance under Anima authority", () => {
     assert.doesNotMatch(runner, /LockedInPlace/);
     assert.match(runner, /completes the live escort route/);
-    assert.match(runner, /distance3\(entity\.position\.v, escort\.target\) <= 22/);
+    assert.match(
+      runner,
+      /distance3\(entity\.position\.v, escort\.target\) <= 22/
+    );
     assert.match(
       fastGuide,
       /Do not lock or teleport Chapter 1 companions for release acceptance/
@@ -500,8 +510,14 @@ describe("Chapter 1 native browser-runner contracts", () => {
     assert.match(runner, /geometry\.computeBoundingBox\?\.\(\)/);
     assert.match(runner, /child\.matrixWorld\?\.elements/);
     assert.match(runner, /snapshot\.vertexCount > 0/);
-    assert.match(runner, /const reviewTarget = \[\.\.\.bounds\.value\.center\]/);
-    assert.match(runner, /const maxExtent = Math\.max\(\.\.\.bounds\.value\.size\)/);
+    assert.match(
+      runner,
+      /const reviewTarget = \[\.\.\.bounds\.value\.center\]/
+    );
+    assert.match(
+      runner,
+      /const maxExtent = Math\.max\(\.\.\.bounds\.value\.size\)/
+    );
     assert.match(runner, /maxExtent \* 2\.35/);
     assert.match(runner, /heldWorldBounds = bounds\.value/);
     assert.match(runner, /heldReviewCamera/);
@@ -519,7 +535,10 @@ describe("Chapter 1 native browser-runner contracts", () => {
   });
 
   it("does not require a world map pin when the next objective is Recovered UI", () => {
-    assert.match(runner, /const nextStepUiOwned = nextStep\.id === "open_the_tab"/);
+    assert.match(
+      runner,
+      /const nextStepUiOwned = nextStep\.id === "open_the_tab"/
+    );
     assert.match(runner, /const exactNativeStep/);
     assert.match(runner, /const correctSurface = nextStepUiOwned/);
   });
@@ -538,13 +557,13 @@ describe("Chapter 1 native browser-runner contracts", () => {
     assert.match(pins, /Math\.hypot\(/);
     assert.match(pins, /ownerQuestId: input\.quest\.questId/);
     assert.match(pins, /ownerStepId: input\.quest\.currentStepId/);
-    assert.match(runner, /const activeQuestMarker = projection\.markers\?\.find/);
-    assert.match(runner, /marker\.label === projection\.activeMapPin\?\.label/);
-    assert.match(runner, /distanceXZ\(/);
     assert.match(
       runner,
-      /\) <= CHAPTER1_E2E_WARP_VERTICAL_TOLERANCE_METERS/
+      /const activeQuestMarker = projection\.markers\?\.find/
     );
+    assert.match(runner, /marker\.label === projection\.activeMapPin\?\.label/);
+    assert.match(runner, /distanceXZ\(/);
+    assert.match(runner, /\) <= CHAPTER1_E2E_WARP_VERTICAL_TOLERANCE_METERS/);
     assert.match(runner, /Boolean\(activeQuestMarker\)/);
     assert.match(
       fastGuide,
@@ -554,7 +573,10 @@ describe("Chapter 1 native browser-runner contracts", () => {
 
   it("releases only the failed test actor's dungeon slot before a checkpoint rerun", () => {
     assert.match(runner, /async function releaseFailedChapter1DungeonFixture/);
-    assert.match(runner, /await releaseCh1Slot\(redis, dungeonId, partyId, actorId\)/);
+    assert.match(
+      runner,
+      /await releaseCh1Slot\(redis, dungeonId, partyId, actorId\)/
+    );
     assert.match(runner, /activeDungeonRunId: undefined/);
     assert.match(runner, /chapter1-test-dungeon-slot-released/);
     assert.match(runner, /if \(questScenario\.status === "fail"\)/);
@@ -583,8 +605,14 @@ describe("Chapter 1 native browser-runner contracts", () => {
   it("runs the authored long escort through Anima instead of teleporting companions", () => {
     assert.match(runner, /completes the live escort route/);
     assert.match(runner, /180_000,\s+180_000/);
-    assert.match(runner, /distance3\(entity\.position\.v, escort\.target\) <= 22/);
-    assert.doesNotMatch(runner, /position: Position\.create\(\{ v: escort\.position \}\)/);
+    assert.match(
+      runner,
+      /distance3\(entity\.position\.v, escort\.target\) <= 22/
+    );
+    assert.doesNotMatch(
+      runner,
+      /position: Position\.create\(\{ v: escort\.position \}\)/
+    );
     assert.match(
       fastGuide,
       /A 400-metre escort is not a 40-second interaction transition/

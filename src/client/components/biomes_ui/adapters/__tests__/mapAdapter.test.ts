@@ -335,16 +335,16 @@ function buildAdapter(playerWorldPos?: [number, number, number]) {
         kind: isObjective
           ? "objective"
           : /board|kiosk/.test(lm.id)
-          ? "quest"
-          : /banker|merl/.test(lm.id)
-          ? "bank"
-          : /muckwad/.test(lm.id)
-          ? "resource"
-          : /business/.test(lm.id)
-          ? "business"
-          : /jackie/.test(lm.id)
-          ? "vendor"
-          : "safe_zone",
+            ? "quest"
+            : /banker|merl/.test(lm.id)
+              ? "bank"
+              : /muckwad/.test(lm.id)
+                ? "resource"
+                : /business/.test(lm.id)
+                  ? "business"
+                  : /jackie/.test(lm.id)
+                    ? "vendor"
+                    : "safe_zone",
         active: isActive,
         worldPosition: [lm.position[0], lm.position[1], lm.position[2]],
         description: lm.description,
@@ -374,8 +374,8 @@ function buildAdapter(playerWorldPos?: [number, number, number]) {
       status: state?.completedQuestIds?.includes(q.id)
         ? "completed"
         : q.id === state?.activeQuestId
-        ? "active"
-        : "available",
+          ? "active"
+          : "available",
       firstMarkerId: Array.isArray(q.markerIds) ? q.markerIds[0] : undefined,
       reward: q.reward,
     }));
@@ -1242,6 +1242,12 @@ describe("biomes_ui map adapter (V141)", () => {
       .find((marker) => marker.id === "live_helper_muck_scarred_helix");
     assert.equal(helperMarker?.kind, "objective");
     assert.equal(helperMarker?.active, true);
+    const jobMarker = adapter
+      .getMarkers()
+      .find(
+        (marker) => marker.id === "jobs_board_marker:todo_patch_safe_fence"
+      );
+    assert.equal(jobMarker?.worldObjectId, "muckwad_patch");
   });
 
   it("routes a server-backed ready helper quest to the giver across missions, quests, and map", () => {

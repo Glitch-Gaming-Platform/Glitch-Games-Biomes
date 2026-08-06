@@ -45,6 +45,17 @@ describe("Chapter1NativeObjectivePrompt input ownership", () => {
     );
   });
 
+  it("replaces normal supplier chatter with one explicit Chapter 1 trade action", () => {
+    assert.match(talkScreenSource, /ch1ObjectiveDelegatesToNpcTrade/);
+    assert.match(talkScreenSource, /Chapter1SupplierTalkDialog/);
+    assert.match(talkScreenSource, /Trade with \$\{supplierLabel\}/);
+    assert.match(talkScreenSource, /one real purchase or sale/);
+    assert.match(
+      talkScreenSource,
+      /map marker will then move to the next supplier/
+    );
+  });
+
   it("registers only active, in-range, non-proximity objectives", () => {
     assert.match(source, /state\?\.status === "active"/);
     assert.match(source, /state\.withinRange/);
@@ -77,6 +88,9 @@ describe("Chapter1NativeObjectivePrompt input ownership", () => {
     assert.match(source, /position: \[\.\.\.state\.targetPosition\]/);
     assert.match(source, /publishChapter1ObjectiveWorldProjection/);
     assert.match(source, /label: state\.targetLabel \|\| state\.objective/);
+    assert.match(source, /ch1ObjectiveUsesDynamicRouteDestination/);
+    assert.match(source, /chapter1_route:\$\{state\.challengeId\}/);
+    assert.match(source, /writeActiveBiomesUIMapPin\(pin\)/);
   });
 
   it("coalesces state polls and synchronously excludes completion races", () => {

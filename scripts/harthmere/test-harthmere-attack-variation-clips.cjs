@@ -21,15 +21,8 @@ function readGlb(filePath) {
   );
 }
 
-const versions = JSON.parse(
-  fs.readFileSync(
-    path.join(root, "src/galois/js/interface/gen/asset_versions.json"),
-    "utf8"
-  )
-);
 const relativePublished = path.join(
-  "public/buckets/biomes-static",
-  versions.paths["wearables/animations"]
+  "public/assets/harthmere/glb/animations/player_animations.glb"
 );
 const publishedPath = path.join(root, relativePublished);
 check(fs.existsSync(publishedPath), `${relativePublished} exists`);
@@ -39,10 +32,10 @@ const clips = new Map(
 );
 
 const directions = [
-  [1, "forehand", "wide_forehand", "horizontal_right_to_left"],
-  [2, "backhand", "backhand_return", "horizontal_left_to_right"],
-  [3, "descending", "descending_cleave", "high_right_to_low_left"],
-  [4, "rising", "rising_cut", "low_left_to_high_right"],
+  [1, "backhand", "left_to_right_opener", "horizontal_left_to_right"],
+  [2, "forehand", "right_to_left_return", "horizontal_right_to_left"],
+  [3, "descending", "overhead_cleave", "vertical_overhead_to_low"],
+  [4, "rising", "rising_cut", "diagonal_low_left_to_high_right"],
 ];
 
 for (const [family, impactSeconds, durationSeconds] of [
@@ -53,10 +46,15 @@ for (const [family, impactSeconds, durationSeconds] of [
     family === "Basic"
       ? directions
       : [
-          [1, "overhead", "overhead_cleave", "vertical_high_to_low"],
-          [2, "sweep", "broad_side_sweep", "horizontal_left_to_right"],
-          [3, "crusher", "backhand_crusher", "high_left_to_low_right"],
-          [4, "uppercut", "rising_finisher", "low_right_to_high_left"],
+          [1, "sweep", "left_to_right_power_sweep", "horizontal_left_to_right"],
+          [
+            2,
+            "reverse_sweep",
+            "right_to_left_power_return",
+            "horizontal_right_to_left",
+          ],
+          [3, "overhead", "overhead_crusher", "vertical_overhead_to_low"],
+          [4, "uppercut", "rising_finisher", "diagonal_low_right_to_high_left"],
         ];
   for (const [index, style, direction, weaponArc] of expected) {
     const name = `HarthmereBodyWeapon${family}_Variation${index}_24`;
@@ -65,8 +63,15 @@ for (const [family, impactSeconds, durationSeconds] of [
     if (!clip) continue;
     check(clip.channels?.length === 48, `${name} keys all 16 player bones`);
     check(
-      clip.extras?.harthmereCombatProfile === "aaa-voxel-sword-v2",
+      clip.extras?.harthmereCombatProfile ===
+        "aaa-voxel-sword-v4-distinct-trajectory-combo",
       `${name} identifies the authored AAA voxel profile`
+    );
+    check(clip.extras?.comboStep === index, `${name} owns combo step ${index}`);
+    check(
+      clip.extras?.harthmereAnimationPolishVersion ===
+        "harthmere-player-combo-animation-polish-v4-trajectories",
+      `${name} carries the current animation polish version`
     );
     check(
       clip.extras?.direction === direction &&
@@ -119,14 +124,13 @@ const runtime = fs.readFileSync(
   "utf8"
 );
 check(
-  runtime.includes('resolveAssetUrl("wearables/animations")') ||
-    fs
-      .readFileSync(
-        path.join(root, "src/client/game/resources/player_mesh.ts"),
-        "utf8"
-      )
-      .includes('resolveAssetUrl("wearables/animations")'),
-  "the player client resolves the same canonical wearables/animations artifact"
+  fs
+    .readFileSync(
+      path.join(root, "src/client/game/resources/player_mesh.ts"),
+      "utf8"
+    )
+    .includes("HARTHMERE_PLAYER_ANIMATION_RUNTIME_URL"),
+  "the player client loads the tracked exact-current animation artifact"
 );
 check(
   /notArms:\s*"ifIdle"/.test(runtime),

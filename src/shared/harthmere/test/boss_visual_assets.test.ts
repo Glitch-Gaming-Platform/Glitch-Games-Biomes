@@ -417,13 +417,21 @@ describe("Harthmere boss visual assets", () => {
       "public/assets/harthmere/glb/bosses/manifest.json"
     );
     const generated = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
+      version: number;
+      animationPolishVersion: string;
       bosses: Array<{
         id: string;
         clips: string[];
         voxelCount: number;
         surfaceTriangleCount: number;
+        animationPolishVersion: string;
       }>;
     };
+    assert.equal(generated.version, 3);
+    assert.equal(
+      generated.animationPolishVersion,
+      "harthmere-boss-animation-polish-v1"
+    );
     assert.equal(generated.bosses.length, EXPECTED_BOSSES.length);
     for (const visual of HARTHMERE_BOSS_VISUAL_ASSETS) {
       assert.ok(visual.worldSize.every((dimension) => dimension > 0));
@@ -458,6 +466,11 @@ describe("Harthmere boss visual assets", () => {
       assert.ok(
         entry.surfaceTriangleCount >= 500,
         `${visual.displayName} surface is too simple`
+      );
+      assert.equal(
+        entry.animationPolishVersion,
+        generated.animationPolishVersion,
+        `${visual.displayName} is missing the polished motion contract`
       );
       for (const clip of HARTHMERE_BOSS_REQUIRED_ANIMATION_CLIPS) {
         assert.ok(

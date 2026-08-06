@@ -21,6 +21,13 @@ function authoritativeQuestId(quest: MapTrackableQuest) {
   return undefined;
 }
 
+function liveHelperProjectionKey(quest: MapTrackableQuest) {
+  const match = /^live-helper:[^:]+:(exotic_matter|food_water|hard_boss)$/.exec(
+    quest.questId
+  );
+  return match?.[1];
+}
+
 function projectionPriority(quest: MapTrackableQuest) {
   if (String(quest.kind ?? "").startsWith("native_ecs_")) return 100;
   if (quest.status === "active") return 50;
@@ -40,9 +47,12 @@ export function dedupeTrackableQuestProjections(
   const indexByKey = new Map<string, number>();
   for (const quest of quests) {
     const authorityId = authoritativeQuestId(quest);
+    const helperKind = liveHelperProjectionKey(quest);
     const key = authorityId
       ? `native:${authorityId}`
-      : `projection:${quest.kind ?? "unknown"}:${quest.questId}`;
+      : helperKind
+        ? `live-helper-kind:${helperKind}`
+        : `projection:${quest.kind ?? "unknown"}:${quest.questId}`;
     const existingIndex = indexByKey.get(key);
     if (existingIndex === undefined) {
       indexByKey.set(key, output.length);

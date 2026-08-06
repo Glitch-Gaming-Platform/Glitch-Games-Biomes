@@ -1,6 +1,7 @@
 /// <reference types="mocha" />
 
 import {
+  HARTHMERE_COMBAT_LOCK_MAX_YAW_RATE_RADIANS_PER_SECOND,
   HARTHMERE_COMBAT_LOCK_LOST_GRACE_MS,
   chooseHarthmereCombatLockCandidate,
   cycleHarthmereCombatLockCandidate,
@@ -14,6 +15,7 @@ import {
   scoreHarthmereCombatLockCandidate,
   setHarthmereCombatLockCandidates,
   shouldToggleHarthmereCombatLockForKey,
+  smoothHarthmereCombatLockTarget,
   switchHarthmereCombatLock,
   toggleHarthmereCombatLock,
   type HarthmereCombatLockCandidate,
@@ -227,6 +229,36 @@ describe("Harthmere combat lock-on", () => {
     assert.ok(far.pullbackMeters > near.pullbackMeters);
     assert.ok(far.fovBoostDegrees > near.fovBoostDegrees);
     assert.ok(Math.abs(far.orientation[0]) <= 0.34);
+    assert.ok(
+      Math.abs(near.orientation[1] - Math.PI) <=
+        HARTHMERE_COMBAT_LOCK_MAX_YAW_RATE_RADIANS_PER_SECOND / 60 + 1e-9,
+      "one frame must never snap farther than the bounded yaw rate"
+    );
+  });
+
+  it("smooths staircase target samples without lagging a new acquisition", () => {
+    const first = smoothHarthmereCombatLockTarget({
+      current: [0, 1, -5],
+      target: [0.8, 1, -5],
+      dt: 1 / 60,
+    });
+    assert.ok(first[0] > 0 && first[0] < 0.8);
+    const second = smoothHarthmereCombatLockTarget({
+      current: first,
+      target: [0.8, 1, -5],
+      dt: 1 / 60,
+    });
+    assert.ok(second[0] > first[0] && second[0] < 0.8);
+
+    const cameraSource = fs.readFileSync(
+      path.join(process.cwd(), "src/client/game/scripts/camera.ts"),
+      "utf8"
+    );
+    assert.match(
+      cameraSource,
+      /if \(!combatLock\) \{\s*this\.tickCameraOrientation/
+    );
+    assert.match(cameraSource, /smoothHarthmereCombatLockTarget/);
   });
 
   it("claims only an unmodified non-repeating Tab outside text fields", () => {

@@ -207,6 +207,18 @@ AZURE_SIMULATION_MAX_REPLICAS="${AZURE_SIMULATION_MAX_REPLICAS:-1}"
 AZURE_SIMULATION_CPU="${AZURE_SIMULATION_CPU:-4.0}"
 AZURE_SIMULATION_MEMORY="${AZURE_SIMULATION_MEMORY:-16Gi}"
 AZURE_SIMULATION_WORKLOAD_PROFILE="${AZURE_SIMULATION_WORKLOAD_PROFILE:-d4-prod}"
+AZURE_WORKLOAD_PROFILE_NAME="${AZURE_WORKLOAD_PROFILE_NAME:-$AZURE_SIMULATION_WORKLOAD_PROFILE}"
+# Each D4 replica consumes the full 4 vCPU / 16 GiB node. Production normally
+# needs three public replicas plus one simulation replica, and Azure has
+# repeatedly tainted multiple nodes before the 4.9 GB replacement image could
+# become ready. Keep two already-provisioned replacement slots so platform
+# maintenance cannot collapse the title to a single serving replica while the
+# workload-profile autoscaler catches up.
+AZURE_WORKLOAD_PROFILE_REPLACEMENT_HEADROOM_NODES="${AZURE_WORKLOAD_PROFILE_REPLACEMENT_HEADROOM_NODES:-2}"
+AZURE_WORKLOAD_PROFILE_MIN_NODES="${AZURE_WORKLOAD_PROFILE_MIN_NODES:-$((AZURE_MIN_REPLICAS + AZURE_SIMULATION_MIN_REPLICAS + AZURE_WORKLOAD_PROFILE_REPLACEMENT_HEADROOM_NODES))}"
+AZURE_WORKLOAD_PROFILE_MAX_NODES="${AZURE_WORKLOAD_PROFILE_MAX_NODES:-10}"
+AZURE_WORKLOAD_PROFILE_READY_POLLS="${AZURE_WORKLOAD_PROFILE_READY_POLLS:-180}"
+AZURE_WORKLOAD_PROFILE_READY_POLL_SECONDS="${AZURE_WORKLOAD_PROFILE_READY_POLL_SECONDS:-5}"
 HARTHMERE_WORLD_SYNC_RUNNER_MODE="${HARTHMERE_WORLD_SYNC_RUNNER_MODE:-auto}"
 HARTHMERE_WORLD_SYNC_JOB_NAME="${HARTHMERE_WORLD_SYNC_JOB_NAME:-biomes-harthmere-sync}"
 HARTHMERE_WORLD_SYNC_JOB_CONTAINER_NAME="${HARTHMERE_WORLD_SYNC_JOB_CONTAINER_NAME:-harthmere-sync}"
@@ -271,6 +283,16 @@ fi
 
 if [ "$AZURE_MIN_REPLICAS" -gt "$AZURE_MAX_REPLICAS" ]; then
   echo "ERROR AZURE_MIN_REPLICAS=$AZURE_MIN_REPLICAS is greater than AZURE_MAX_REPLICAS=$AZURE_MAX_REPLICAS." >&2
+  exit 2
+fi
+
+AZURE_REQUIRED_WORKLOAD_PROFILE_NODES="$((AZURE_MIN_REPLICAS + AZURE_SIMULATION_MIN_REPLICAS + AZURE_WORKLOAD_PROFILE_REPLACEMENT_HEADROOM_NODES))"
+if [ "$AZURE_WORKLOAD_PROFILE_MIN_NODES" -lt "$AZURE_REQUIRED_WORKLOAD_PROFILE_NODES" ]; then
+  echo "ERROR AZURE_WORKLOAD_PROFILE_MIN_NODES=$AZURE_WORKLOAD_PROFILE_MIN_NODES cannot host the steady web/simulation replicas plus $AZURE_WORKLOAD_PROFILE_REPLACEMENT_HEADROOM_NODES replacement nodes (required=$AZURE_REQUIRED_WORKLOAD_PROFILE_NODES)." >&2
+  exit 2
+fi
+if [ "$AZURE_WORKLOAD_PROFILE_MAX_NODES" -lt "$AZURE_WORKLOAD_PROFILE_MIN_NODES" ]; then
+  echo "ERROR AZURE_WORKLOAD_PROFILE_MAX_NODES=$AZURE_WORKLOAD_PROFILE_MAX_NODES is below AZURE_WORKLOAD_PROFILE_MIN_NODES=$AZURE_WORKLOAD_PROFILE_MIN_NODES." >&2
   exit 2
 fi
 
@@ -992,6 +1014,96 @@ archive_production_mutable_hotfix_manifest() {
   fi
 
   log "Archived and cleared production mutable hotfix manifest before $phase: $archive_key (${size} bytes)."
+}
+
+wait_for_azure_workload_profile_nodes() {
+  local required_nodes="$1"
+  local current_nodes=""
+  local i=0
+
+  while [ "$i" -lt "$AZURE_WORKLOAD_PROFILE_READY_POLLS" ]; do
+    current_nodes="$(az containerapp env workload-profile list \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$AZURE_CONTAINER_APP_ENVIRONMENT" \
+      --query "[?name=='$AZURE_WORKLOAD_PROFILE_NAME'] | [0].properties.currentCount" \
+      -o tsv)"
+    if printf '%s\n' "$current_nodes" | grep -Eq '^[0-9]+$' &&
+       [ "$current_nodes" -ge "$required_nodes" ]; then
+      log "Azure workload profile $AZURE_WORKLOAD_PROFILE_NAME has $current_nodes ready nodes (required=$required_nodes)."
+      return
+    fi
+    if [ "$i" -eq 0 ] || [ $((i % 12)) -eq 0 ]; then
+      log "Waiting for Azure workload profile $AZURE_WORKLOAD_PROFILE_NAME nodes: current=${current_nodes:-unknown} required=$required_nodes."
+    fi
+    sleep "$AZURE_WORKLOAD_PROFILE_READY_POLL_SECONDS"
+    i=$((i + 1))
+  done
+
+  echo "ERROR Azure workload profile $AZURE_WORKLOAD_PROFILE_NAME did not reach $required_nodes ready nodes; last currentCount=${current_nodes:-unknown}." >&2
+  return 1
+}
+
+ensure_azure_workload_profile_capacity() {
+  local current_min current_max target_min target_max actual_min actual_max
+
+  current_min="$(az containerapp env show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP_ENVIRONMENT" \
+    --query "properties.workloadProfiles[?name=='$AZURE_WORKLOAD_PROFILE_NAME'] | [0].minimumCount" \
+    -o tsv)"
+  current_max="$(az containerapp env show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP_ENVIRONMENT" \
+    --query "properties.workloadProfiles[?name=='$AZURE_WORKLOAD_PROFILE_NAME'] | [0].maximumCount" \
+    -o tsv)"
+  if [ -z "$current_min" ] || [ -z "$current_max" ]; then
+    echo "ERROR Azure workload profile $AZURE_WORKLOAD_PROFILE_NAME was not found in $AZURE_CONTAINER_APP_ENVIRONMENT." >&2
+    return 1
+  fi
+
+  target_min="$current_min"
+  target_max="$current_max"
+  if [ "$target_min" -lt "$AZURE_WORKLOAD_PROFILE_MIN_NODES" ]; then
+    target_min="$AZURE_WORKLOAD_PROFILE_MIN_NODES"
+  fi
+  if [ "$target_max" -lt "$AZURE_WORKLOAD_PROFILE_MAX_NODES" ]; then
+    target_max="$AZURE_WORKLOAD_PROFILE_MAX_NODES"
+  fi
+  if [ "$target_max" -lt "$target_min" ]; then
+    target_max="$target_min"
+  fi
+
+  if [ "$target_min" = "$current_min" ] && [ "$target_max" = "$current_max" ]; then
+    log "Azure workload profile $AZURE_WORKLOAD_PROFILE_NAME already has replacement headroom min=$current_min max=$current_max."
+    wait_for_azure_workload_profile_nodes "$target_min"
+    return
+  fi
+
+  log "Raising Azure workload profile $AZURE_WORKLOAD_PROFILE_NAME capacity from min=$current_min max=$current_max to min=$target_min max=$target_max."
+  az containerapp env workload-profile update \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP_ENVIRONMENT" \
+    --workload-profile-name "$AZURE_WORKLOAD_PROFILE_NAME" \
+    --min-nodes "$target_min" \
+    --max-nodes "$target_max" \
+    >/dev/null
+
+  actual_min="$(az containerapp env show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP_ENVIRONMENT" \
+    --query "properties.workloadProfiles[?name=='$AZURE_WORKLOAD_PROFILE_NAME'] | [0].minimumCount" \
+    -o tsv)"
+  actual_max="$(az containerapp env show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP_ENVIRONMENT" \
+    --query "properties.workloadProfiles[?name=='$AZURE_WORKLOAD_PROFILE_NAME'] | [0].maximumCount" \
+    -o tsv)"
+  if [ "$actual_min" -lt "$AZURE_WORKLOAD_PROFILE_MIN_NODES" ] ||
+     [ "$actual_max" -lt "$AZURE_WORKLOAD_PROFILE_MAX_NODES" ]; then
+    echo "ERROR Azure workload profile capacity verification failed: expected at least min=$AZURE_WORKLOAD_PROFILE_MIN_NODES max=$AZURE_WORKLOAD_PROFILE_MAX_NODES, got min=$actual_min max=$actual_max." >&2
+    return 1
+  fi
+  wait_for_azure_workload_profile_nodes "$target_min"
 }
 
 wait_for_azure_revision_ready() {
@@ -3543,6 +3655,7 @@ push_and_deploy() {
     log "Production image was already pushed by Docker Buildx: $IMAGE."
   fi
 
+  ensure_azure_workload_profile_capacity
   check_production_redis_aof_health "Azure Container App update"
   check_production_redis_snapshot_hash "Azure Container App update"
   archive_production_mutable_hotfix_manifest "Azure Container App update"

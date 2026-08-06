@@ -1,16 +1,13 @@
 // eslint-disable-next-line @next/next/no-document-import-in-page
 import Document, { Head, Html, Main, NextScript } from "next/document";
+import Script from "next/script";
 
 class MyDocument extends Document {
   render() {
     return (
       <Html translate="no">
         <Head>
-          <link
-            rel="icon"
-            type="image/x-icon"
-            href="/favicon.ico"
-          />
+          <link rel="icon" type="image/x-icon" href="/favicon.ico" />
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link
             rel="preconnect"
@@ -65,6 +62,12 @@ class MyDocument extends Document {
           )}
         </Head>
         <body id="biomes-app">
+          {process.env.NODE_ENV === "production" && (
+            <Script
+              src="/api/mutable_hotfix?asset=script&bootstrap=1"
+              strategy="beforeInteractive"
+            />
+          )}
           <Main />
           <NextScript />
         </body>

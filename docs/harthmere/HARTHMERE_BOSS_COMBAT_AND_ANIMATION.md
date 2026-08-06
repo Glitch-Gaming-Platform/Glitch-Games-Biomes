@@ -64,6 +64,28 @@ registered globally for every NPC. While a special attack is active it owns the
 body pose; locomotion and generic attack actions are muted until the one-shot
 finishes.
 
+## Boss poise breaks and stun windows
+
+All eleven live boss profiles participate in the authoritative NPC poise
+system. Boss poise is scaled above ordinary Mucker/Hex poise and is depleted
+only by accepted attack damage. When it reaches zero, the boss enters a
+replicated light, medium, or heavy stagger window. During that window Anima
+selects no locomotion or attack behavior, pending melee contact is cancelled,
+an unreleased ranged/magic cast resolves as a miss, and evade movement ends.
+Already-released projectiles remain authoritative and are not erased.
+
+The renderer selects `BossStaggerLight` (14 frames), `BossStaggerMedium` (30
+frames), or `BossStaggerHeavy` (58 frames) from the concrete boss GLB. Entering
+stagger also fades any active bespoke special-attack action so the stun pose
+owns the body. Recovery restores AI control only after the shared replicated
+expiry time. Each boss-only window adds two seconds after its authored clip,
+making the full light, medium, and heavy disables 2.58, 3.25, and 4.42 seconds.
+The completed reaction remains clamped in its recovery pose during that extra
+hold. A boss-specific immunity tail prevents repeated parties from chaining
+breaks into a permanent lock. Damage received during an active stagger never
+refreshes its fixed expiry time, and damage received during the following
+immunity tail cannot start another stagger.
+
 The browser visual audit uses the same `AnimationSystem` track pruning as the
 game and independently measures body pixels before attack graphics are added.
 It then loads the real projectile or attack-shape GLB and also spawns the same

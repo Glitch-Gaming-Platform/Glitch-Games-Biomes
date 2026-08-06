@@ -34,6 +34,15 @@ describe("quest action player errors", () => {
     assert.ok(!error.message.includes("jobs_board_rejected"));
   });
 
+  it("explains the separate three-job Chapter 1 allowance", () => {
+    const error = new HarthmereQuestActionError(
+      ["jobs_board_rejected:chapter1_active_job_limit"],
+      { action: "accept", questTitle: "Clear the Muckwad Patch" }
+    );
+    assert.match(error.message, /all three Chapter 1 Grove jobs/i);
+    assert.doesNotMatch(error.message, /chapter1_active_job_limit/);
+  });
+
   it("collects quest rejections from successful HTTP response bodies", () => {
     assert.deepEqual(
       harthmereQuestRejectionWarningsFromResponse({

@@ -18,6 +18,7 @@ const TEMP_ROOT = path.join(ROOT, "artifacts/harthmere-sound-effects-temp");
 const DEFAULT_CONCURRENCY = 3;
 const ELEVENLABS_API_PATH = "/v1/sound-generation";
 const OUTPUT_FORMAT = "mp3_44100_128";
+const ELEVENLABS_MIN_GENERATION_DURATION_SECONDS = 0.5;
 
 interface GenerationRecord {
   id: string;
@@ -104,6 +105,10 @@ async function transcode(
   durationSeconds: number
 ) {
   await fs.mkdir(path.dirname(webmPath), { recursive: true });
+  const audioFilter =
+    durationSeconds < ELEVENLABS_MIN_GENERATION_DURATION_SECONDS
+      ? `silenceremove=start_periods=1:start_duration=0.005:start_threshold=-50dB,atrim=duration=${durationSeconds},asetpts=N/SR/TB,loudnorm=I=-18:TP=-1.5:LRA=11`
+      : "loudnorm=I=-18:TP=-1.5:LRA=11";
   await execFileAsync("ffmpeg", [
     "-y",
     "-nostdin",
@@ -115,7 +120,7 @@ async function transcode(
     "-t",
     String(durationSeconds),
     "-af",
-    "loudnorm=I=-18:TP=-1.5:LRA=11",
+    audioFilter,
     "-ac",
     "1",
     "-ar",
@@ -150,7 +155,13 @@ async function generateMp3(
       },
       body: JSON.stringify({
         text: definition.prompt,
-        duration_seconds: definition.durationSeconds,
+        // ElevenLabs currently rejects sub-half-second generation requests.
+        // Generate the shortest accepted source and trim the transient to the
+        // exact authored game duration during the ffmpeg normalization pass.
+        duration_seconds: Math.max(
+          ELEVENLABS_MIN_GENERATION_DURATION_SECONDS,
+          definition.durationSeconds
+        ),
         prompt_influence: definition.promptInfluence,
         loop: definition.loop,
       }),

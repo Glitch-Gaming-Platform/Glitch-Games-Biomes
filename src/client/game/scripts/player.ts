@@ -27,6 +27,15 @@ import {
   submitHarthmereFallDamageLiveMode,
 } from "@/client/game/util/harthmere_live_environment_damage";
 import {
+  confirmHarthmereMovementActionStamina,
+  dispatchHarthmereNativeVitalsClientUpdate,
+  reconcileHarthmereMovementFallbackResponse,
+  reconcileHarthmereMovementStaminaProjection,
+  reserveHarthmereMovementStamina,
+  type HarthmereMovementActionFallbackBody,
+  type HarthmereMovementStaminaProjection,
+} from "@/client/game/util/harthmere_movement_stamina_fallback";
+import {
   MOBILE_JOYSTICK_CROUCH_SOURCE,
   MOBILE_JOYSTICK_RUN_SOURCE,
   mobileJoystickCrouchRequestedForTest,
@@ -50,7 +59,12 @@ import {
   UpdatePlayerHealthEvent,
 } from "@/shared/ecs/gen/events";
 import { DropSelector, PlaceableSelector } from "@/shared/ecs/gen/selectors";
-import type { EmoteType, OptionalDamageSource } from "@/shared/ecs/gen/types";
+import type {
+  EmoteType,
+  MovementActionType,
+  OptionalDamageSource,
+  ReadonlyVec3f,
+} from "@/shared/ecs/gen/types";
 import type { CollisionCallback } from "@/shared/game/collision";
 import { CollisionHelper } from "@/shared/game/collision";
 import {
@@ -1664,6 +1678,8 @@ export class PlayerScript implements Script {
   private crouchCollisionReadyAt: number | undefined;
   private localMovementActionCooldownUntil = 0;
   private lastEvadeLateralSide: -1 | 1 = 1;
+  private movementStaminaProjection:
+    HarthmereMovementStaminaProjection | undefined;
   lastHp: number | undefined;
 
   // Jump state
@@ -2337,6 +2353,7 @@ export class PlayerScript implements Script {
     });
     this.crouchCollisionReadyAt = undefined;
     this.localMovementActionCooldownUntil = 0;
+    this.movementStaminaProjection = undefined;
     this.publishCrouching(false, firstDeathReset);
     const ruleset = this.resources.get("/ruleset/current");
     switch (ruleset.death.type) {
@@ -2416,6 +2433,102 @@ export class PlayerScript implements Script {
     return clear;
   }
 
+  private currentHarthmereMovementStaminaProjection() {
+    const vitals = readHarthmereNativeVitals(
+      this.resources.get("/ecs/c/trigger_state", this.userId)
+    );
+    this.movementStaminaProjection =
+      reconcileHarthmereMovementStaminaProjection(
+        this.movementStaminaProjection,
+        vitals
+      );
+    return { vitals, projection: this.movementStaminaProjection };
+  }
+
+  private harthmereMovementStaminaAvailable() {
+    if (!nativeBiomesEcsAuthorityEnabled()) {
+      return readHarthmereNativeVitals(
+        this.resources.get("/ecs/c/trigger_state", this.userId)
+      ).stamina;
+    }
+    return this.currentHarthmereMovementStaminaProjection().projection.stamina;
+  }
+
+  private dispatchHarthmereMovementStaminaProjection(
+    body: HarthmereMovementActionFallbackBody
+  ) {
+    dispatchHarthmereNativeVitalsClientUpdate(body);
+  }
+
+  private reserveHarthmereMovementActionStamina(action: MovementActionType) {
+    const { vitals, projection } =
+      this.currentHarthmereMovementStaminaProjection();
+    this.movementStaminaProjection = reserveHarthmereMovementStamina(
+      projection,
+      movementActionStaminaCost(action)
+    );
+    const health = this.resources.get("/ecs/c/health", this.userId);
+    this.dispatchHarthmereMovementStaminaProjection({
+      ok: true,
+      action: "movement_action_fallback",
+      mana: vitals.mana,
+      maxMana: vitals.maxMana,
+      stamina: this.movementStaminaProjection.stamina,
+      maxStamina: this.movementStaminaProjection.maxStamina,
+      breath: vitals.breath,
+      maxBreath: vitals.maxBreath,
+      hp: health?.hp ?? 0,
+      maxHp: health?.maxHp ?? 1,
+      damage: 0,
+      accepted: true,
+      duplicate: false,
+    });
+  }
+
+  private reconcileHarthmereMovementActionStamina(
+    body: HarthmereMovementActionFallbackBody
+  ) {
+    const current = this.currentHarthmereMovementStaminaProjection().projection;
+    this.movementStaminaProjection = reconcileHarthmereMovementFallbackResponse(
+      current,
+      body
+    );
+    this.dispatchHarthmereMovementStaminaProjection({
+      ...body,
+      stamina: this.movementStaminaProjection.stamina,
+      maxStamina: this.movementStaminaProjection.maxStamina,
+    });
+  }
+
+  private publishHarthmereMovementAction(
+    action: MovementActionType,
+    direction: ReadonlyVec3f,
+    nonce: number
+  ) {
+    const publish = this.events.publish(
+      new MovementActionEvent({
+        id: this.userId,
+        action,
+        direction,
+        nonce,
+      })
+    );
+    if (!nativeBiomesEcsAuthorityEnabled()) {
+      fireAndForget(publish);
+      return;
+    }
+    this.reserveHarthmereMovementActionStamina(action);
+    fireAndForget(
+      confirmHarthmereMovementActionStamina({
+        publish,
+        action,
+        direction,
+        nonce,
+        onVitals: (body) => this.reconcileHarthmereMovementActionStamina(body),
+      })
+    );
+  }
+
   private tryStartMovementAction({
     player,
     action,
@@ -2444,9 +2557,8 @@ export class PlayerScript implements Script {
         standingHeadroomClear:
           !player.crouching || this.standingHeadroomClear(player),
       }) ||
-      readHarthmereNativeVitals(
-        this.resources.get("/ecs/c/trigger_state", this.userId)
-      ).stamina < movementActionStaminaCost(action)
+      this.harthmereMovementStaminaAvailable() <
+        movementActionStaminaCost(action)
     ) {
       return false;
     }
@@ -2497,16 +2609,7 @@ export class PlayerScript implements Script {
     // the integrated movement curve launch after the authored load-up instead
     // of producing one constant-speed frame before the animation catches up.
     player.velocity = [0, player.velocity[1], 0];
-    fireAndForget(
-      this.events.publish(
-        new MovementActionEvent({
-          id: this.userId,
-          action,
-          direction,
-          nonce,
-        })
-      )
-    );
+    this.publishHarthmereMovementAction(action, direction, nonce);
     emitHarthmereSoundEffect("dodge_roll");
     return true;
   }
@@ -2524,9 +2627,8 @@ export class PlayerScript implements Script {
       player.isMovementActionActive(now) ||
       now < this.localMovementActionCooldownUntil ||
       movementActionIsOnCooldown(replicatedMovementState, now) ||
-      readHarthmereNativeVitals(
-        this.resources.get("/ecs/c/trigger_state", this.userId)
-      ).stamina < movementActionStaminaCost(action)
+      this.harthmereMovementStaminaAvailable() <
+        movementActionStaminaCost(action)
     ) {
       return false;
     }
@@ -2544,16 +2646,7 @@ export class PlayerScript implements Script {
       direction,
       nonce
     );
-    fireAndForget(
-      this.events.publish(
-        new MovementActionEvent({
-          id: this.userId,
-          action,
-          direction,
-          nonce,
-        })
-      )
-    );
+    this.publishHarthmereMovementAction(action, direction, nonce);
     return true;
   }
 
@@ -3428,6 +3521,7 @@ export class PlayerScript implements Script {
       player.cancelMovementAction();
       this.crouchCollisionReadyAt = undefined;
       this.localMovementActionCooldownUntil = 0;
+      this.movementStaminaProjection = undefined;
       this.publishCrouching(false, true);
       if (!approxEquals(player.position, pos.position)) {
         beginOrUpdateWarpEffect(this.resources, () => {

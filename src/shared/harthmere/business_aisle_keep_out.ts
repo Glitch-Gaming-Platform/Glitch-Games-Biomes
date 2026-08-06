@@ -64,6 +64,18 @@ export const HARTHMERE_BUSINESS_AISLE_KEEP_OUT_MARGIN_METERS = 0.75;
  */
 export const HARTHMERE_BUSINESS_SERVICE_POINT_KEEP_OUT_METERS = 1.5;
 
+/**
+ * Player bodies are not points. The authoritative ECS position is the centre
+ * of the player's capsule, while the visible feet can already be touching the
+ * staff-side floor beside a thick counter. Accept a small overlap across the
+ * mathematical counter centre so ordinary collision/contact jitter does not
+ * tell a correctly positioned player to go behind the counter again.
+ *
+ * Every audited customer point is at least 1.675 m beyond the boundary, so this
+ * tolerance cannot admit a customer standing in the queue lane.
+ */
+export const HARTHMERE_BUSINESS_STAFF_SIDE_TOLERANCE_METERS = 0.75;
+
 export interface HarthmereBusinessKeepOutVolume {
   outpostId: string;
   xMin: number;
@@ -177,8 +189,8 @@ export function harthmereBusinessPointIsStaffSide(
   const points = harthmereBusinessInteriorInteractionPoints(record);
   const boundary = (points.customer[2] + points.staff[2]) / 2;
   return points.staff[2] > points.customer[2]
-    ? point[2] > boundary
-    : point[2] < boundary;
+    ? point[2] >= boundary - HARTHMERE_BUSINESS_STAFF_SIDE_TOLERANCE_METERS
+    : point[2] <= boundary + HARTHMERE_BUSINESS_STAFF_SIDE_TOLERANCE_METERS;
 }
 
 /**

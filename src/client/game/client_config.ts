@@ -42,7 +42,11 @@ export enum WasmSimd {
 // CPU-bound combat scene to recover. The adaptive controller still owns values
 // above this floor; explicit Low/Safe settings remain fixed and mobile removes
 // the desktop floor entirely.
-export const HARTHMERE_DESKTOP_DYNAMIC_MIN_DRAW_DISTANCE = 128;
+// Production battle captures at the previous 128 m floor retained more than
+// 1,100 live block meshes and ~204 MB of flora vertex buffers while an M1 Max
+// remained at 10-14 FPS. A 96 m emergency floor preserves nearby combat and
+// landmark readability while reducing the retained terrain area by ~44%.
+export const HARTHMERE_DESKTOP_DYNAMIC_MIN_DRAW_DISTANCE = 96;
 
 export interface WasmBinary {
   simd: WasmSimd;

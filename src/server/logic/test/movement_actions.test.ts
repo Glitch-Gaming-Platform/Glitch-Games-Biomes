@@ -22,6 +22,7 @@ import {
   readHarthmereNativeVitals,
   writeHarthmereNativeVitals,
 } from "@/shared/harthmere/harthmere_native_vitals";
+import { applyHarthmereMovementActionStaminaReceipt } from "@/shared/harthmere/harthmere_native_movement_action";
 import { generateTestId } from "@/shared/test_helpers";
 import type { VoxelooModule } from "@/shared/wasm/types";
 import assert from "assert";
@@ -135,6 +136,39 @@ describe("native ECS movement actions", () => {
     assert.equal(
       readHarthmereNativeVitals(player.trigger_state).stamina,
       50 - EVADE_MOVEMENT_ACTION_STAMINA_COST
+    );
+  });
+
+  it("does not double-charge a Sync event already committed by REST fallback", async () => {
+    const playerId = (await addGameUser(logic.world, generateTestId(), {})).id;
+    editEntity(logic.world, playerId, (player) => {
+      writeHarthmereNativeVitals(player.mutableTriggerState(), {
+        stamina: 50,
+      });
+      applyHarthmereMovementActionStaminaReceipt(player.mutableTriggerState(), {
+        action: "dodge",
+        nonce: 77,
+        alive: true,
+      });
+    });
+
+    await logic.publish(
+      new GameEvent(
+        playerId,
+        new MovementActionEvent({
+          id: playerId,
+          action: "dodge",
+          direction: [1, 0, 0],
+          nonce: 77,
+        })
+      )
+    );
+
+    const player = logic.world.table.get(playerId)!;
+    assert.equal(player.movement_state?.action, undefined);
+    assert.equal(
+      readHarthmereNativeVitals(player.trigger_state).stamina,
+      50 - MOVEMENT_ACTION_STAMINA_COST
     );
   });
 

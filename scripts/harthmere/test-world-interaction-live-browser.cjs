@@ -28,6 +28,9 @@ const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
 const { chromium } = require("playwright");
+const {
+  acquireBrowserRuntimeLease,
+} = require("./browser-runtime-lease.cjs");
 const { lookAtOrientation } = require("../../src/shared/cutscene/math");
 const {
   Health,
@@ -97,6 +100,7 @@ const artifactsDir = path.resolve(
     path.join(root, "artifacts/harthmere-world-interaction-live-browser")
 );
 const reportPath = path.join(artifactsDir, `${runId}-report.json`);
+let browserRuntimeLease;
 const resumeReportPath = process.env.HARTHMERE_E2E_RESUME_REPORT
   ? path.resolve(process.env.HARTHMERE_E2E_RESUME_REPORT)
   : undefined;
@@ -1069,6 +1073,15 @@ async function runDiagnosticStep(page, scope, id, operation, options = {}) {
 
 async function main() {
   fs.mkdirSync(artifactsDir, { recursive: true });
+  browserRuntimeLease = acquireBrowserRuntimeLease({
+    runner: "harthmere-world-interaction-live-browser",
+    runId,
+    baseUrl,
+    syncBaseUrl,
+    stackContainer,
+    redisContainer,
+  });
+  report.browserRuntimeLane = browserRuntimeLease.laneId;
   lifecyclePreflight();
   const browser = await chromium.launch({
     headless: process.env.HARTHMERE_E2E_HEADLESS !== "0",
@@ -1259,4 +1272,4 @@ async function main() {
 main().catch((error) => {
   console.error(error?.stack || error);
   process.exitCode = 1;
-});
+}).finally(() => browserRuntimeLease?.release());

@@ -22,14 +22,16 @@ blocked during the roll, queued during landing, and allowed to take over during
 recovery. This preserves a readable defensive animation while still rewarding
 deliberate counterattacks.
 
-Attack input is also buffered against attack commitment itself. A press landing
-within `HARTHMERE_ATTACK_INPUT_BUFFER_SECS` (0.18 s) of the end of the current
-attack is held and spent the moment recovery finishes. Committing the character
-and discarding the player's input are different things: the swing stays
-uncancellable and the recovery stays punishable, but a player who reads the
-opening does not have to also guess the exact frame to press on. Presses earlier
-than the buffer window are still dropped, so one input cannot queue an
-exchange.
+Attack input is also buffered against attack commitment itself. The first real
+follow-up press during commitment is retained, including its selected target
+and light/heavy intent. `HARTHMERE_ATTACK_INPUT_BUFFER_SECS` provides a 0.5 s
+post-readiness grace for a slow render/input tick; it is not a second attack
+delay. A melee combo spends that press on the current contact clock, while a
+non-combo action waits for commitment/recovery to finish. Committing the
+character and discarding the player's input are different things: the swing
+stays uncancellable and the recovery stays punishable, but a player who reads
+the opening does not have to guess one exact render frame. Repeated presses do
+not replace the retained target or queue an unbounded exchange.
 
 ## Attack timelines
 
@@ -40,18 +42,52 @@ the same values.
 
 | Attack class | Windup | Contact frame | Recovery | Extra stamina cost | Movement scale |
 | ------------ | -----: | ------------: | -------: | -----------------: | -------------: |
-| Basic/light  | 135 ms |        160 ms |   458 ms |                  0 |           0.38 |
-| Heavy        | 480 ms |        720 ms |   920 ms |                  0 |           0.18 |
+| Basic/light  | 135 ms |        250 ms |   458 ms |                  0 |           0.38 |
+| Heavy        | 229 ms |        417 ms |   666 ms |                  0 |           0.18 |
 | Ranged       | 340 ms |        520 ms |   680 ms |                  0 |           0.30 |
 | Magic        | 460 ms |        700 ms |   860 ms |                  0 |           0.24 |
 
 `Contact frame` is when the game re-reads the target and is allowed to publish
-damage. `Recovery` is added after contact, so a basic attack remains committed
-for 1.02 seconds and a heavy attack for 1.64 seconds. A visible swing that
+damage. The melee values are frame-authored at 24 fps: light contact is frame 6
+(0.250 s) with a frame-17 endpoint (0.708 s), and heavy contact is frame 10
+(0.417 s after millisecond rounding) with a frame-26 endpoint (1.083 s).
+`Recovery` is added after contact. A visible swing that
 misses still consumes its local commitment plus any authored mana, durability,
 or cooldown budget; a target is never reserved as a future hit merely because
 it was under the cursor when the button was pressed. Attacks do not spend
 stamina.
+
+### Four-hit melee combo animation contract
+
+Combat-targeted light and heavy attacks share one four-hit chain. The chain is
+presentation-aware but remains damage-authority neutral: the server still
+derives item, range, cadence, and damage, while the client selects one authored
+body animation for the accepted combo step.
+
+Each chain consumes all four variation indices exactly once, including mixed
+light/heavy input. A chain may rotate its opening direction between exchanges,
+but within one exchange the visible clip and emote pair must be unique:
+
+| Combo step | Required weapon path | Light animation | Heavy animation  |
+| ---------- | -------------------- | --------------- | ---------------- |
+| Opener     | left to right        | quick crosscut  | power sweep      |
+| Return     | right to left        | forehand return | power return     |
+| Power      | overhead to low      | overhead cleave | overhead crusher |
+| Finisher   | low to high          | rising cut      | rising finisher  |
+
+The path belongs to the combo step, not to the light/heavy input. A mixed
+combo therefore cannot accidentally repeat a trajectory: step one always
+crosses left-to-right, step two reverses it, step three drops vertically from
+overhead, and step four rises from a low guard. Light and heavy clips change
+commitment, reach, and follow-through inside that path family while preserving
+the four-step visual grammar.
+
+A buffered follow-up becomes eligible on the current attack's gameplay contact
+clock—250 ms for light and 417 ms for heavy—never on a separate earlier or later
+combo timer. The outgoing contact pose eases into the next variation while a
+stopped chain continues through follow-through and recovery. Ranged attacks,
+magic releases, mining, and empty exploration swings do not consume this
+four-hit melee budget.
 
 ## Weapon and tool identity
 
@@ -120,6 +156,13 @@ authoritative target body, damage profile, and replay identity before changing
 native `Health`. NPC receipts are also rechecked against their committed facing
 and the giant-back exclusion. Damage cannot be accepted merely because a client
 played an animation or requested a large HP delta.
+
+Native non-boss creature bodies receive a 0.18 m horizontal melee-contact
+allowance. It expands only the client/server combat target AABB for Muckers,
+Hexes, eligible livestock, and other hostile/retaliating creatures. It does not
+change physics collision, vertical reach, authored weapon reach, bosses, or
+player-like NPCs. This makes a visible blade/fist brushing the creature's outer
+body count without enabling attacks through floors or distant targets.
 
 NPC melee uses a receipt containing the authored attack start, impact time,
 distance, field of view, vertical reach, and damage. The player-health handler
@@ -212,6 +255,10 @@ several multipliers on top:
 - horned variants use `max(0.8, interval * 0.7)` or `interval * 1.45`;
 - night muckers and hexers scale the interval and multiply
   `attackAnimationMultiplier` by 1.35.
+- hostile creature pursuit retains the earlier 30% slowdown and applies the
+  August 6 follow-up 10% reduction cumulatively (`0.7 * 0.9 = 0.63` of the
+  previously boosted speed). The pursuit cap and minimum effective speed use
+  the same factor so fast or slow creature classes cannot bypass it.
 
 The animation multiplier shortens the tell, because the strike delay is the
 authored strike moment divided by it. That is intentional and internally
@@ -231,6 +278,10 @@ mirroring the protection bosses get from their shape telegraph floors.
   pressing after impact is too late.
 - Moving behind an attacker during windup is a valid positional defense because
   the hit cone does not snap to the attacker's last-frame orientation.
+- Night Mucker/Hex pressure no longer widens ordinary melee to 175 degrees.
+  Non-boss creature melee is capped at 125 degrees around the committed cast
+  yaw, so circling to the rear is consistently defensive in daytime and at
+  night.
 - Standing on a giant's back is not valid contact for feet-level directional
   melee. A visibly telegraphed area or projectile attack can still connect if
   its authored shape covers the player.
@@ -347,11 +398,71 @@ a HAR or browser report can distinguish a committed whiff from a networking
 failure. Asset request counts are not attack counts because the browser caches
 audio and GLB files.
 
+Confirmed player melee damage also spawns one compact, text-free white-gold
+contact spark on the attacker-facing surface of the target's upper body. Its
+bright core and short radial streaks expand and fade for exactly 0.2 seconds.
+The spark is driven by the replicated health mutation plus the attacker's
+active `attack1`/`attack2` emote, so an animation contact, whiff, ranged release,
+magic cast, heal, fire tick, or environmental damage cannot display it. NPC and
+remote-player targets share the same cue.
+
+That same confirmed contact emits one 0.15-second positional impact sound. A
+bare-handed hit uses a dry slap, a held tool uses a compact axe-on-wood chop,
+and a held weapon uses a bright high-pitched metal clink. Classification uses
+the item captured on the attack emote before falling back to the current
+selected item, so changing equipment after commitment cannot change the sound
+of an already-authored hit. Desktop and capable Android browsers use normalized
+mono Opus; iOS/mobile WebKit uses the generated AAC-LC `.m4a` variant.
+
+### Creature and boss stun/stagger presentation
+
+Eligible non-boss Muckers, Hexers, and huntable wildlife select a distinct
+full-body clip for each native poise reaction:
+
+| Reaction | Authored length | Visual behavior                                                       |
+| -------- | --------------: | --------------------------------------------------------------------- |
+| Light    |       10 frames | sharp recoil and immediate balance recovery                           |
+| Medium   |       23 frames | larger body turn, foot/limb brace, and delayed settle                 |
+| Heavy    |       52 frames | full balance loss, secondary-part lag, brace, and controlled recovery |
+
+The animation family is rig-aware. Muckers use head/body counter-rotation and
+leg bracing; Hexers drop their hands while the lantern and cloak strips lag;
+cows and sheep redistribute all four legs; rabbits fold the body while ears,
+tail, feet, and hind legs react independently. Assets without these authored
+clips retain `HitReact` as a compatibility fallback. All eleven live bosses now
+participate in the same authoritative poise-break state machine with a larger
+boss poise pool. A break cancels pending melee contact, interrupts an unreleased
+ranged or magical cast, ends an active evade, stops AI-authored movement, and
+holds the boss disabled until the replicated stagger window expires. Bosses use
+their rig-specific `BossStaggerLight`, `BossStaggerMedium`, or
+`BossStaggerHeavy` clip. Boss-only recovery extends each authored clip by two
+seconds, producing 2.58-second light, 3.25-second medium, and 4.42-second heavy
+disable windows. Longer post-stagger immunity prevents coordinated players from
+permanently locking a boss. Indisworm retains its polished bespoke `HitReact`
+because it is not one of the eleven boss profiles.
+
 ### Projectiles must stay visible
 
 A projectile the player cannot see is not a mechanic they can answer, so flight
 time is floored at `HARTHMERE_PROJECTILE_MIN_FLIGHT_SECS` (0.4 s) regardless of
 which timing source is used.
+
+Projectile audio follows the same visible lifecycle without replacing true
+lifecycle sounds that already exist. Arrows, bolts, and darts layer their
+existing flyby whoosh over the flight interval. Every magical, elemental,
+energy, Hex, mark, and boss projectile instead has a newly authored in-flight
+sound that is distinct from its cast/release sound. Contact keeps the existing
+short projectile-specific impact, while a separately authored explosion layer
+is time-fit to the actual magic explosion duration and linearly fades during
+its final portion so it ends with the visible particles and light. Boss attacks
+that reuse a physical or energy projectile mesh resolve the flight and
+explosion layers from their authoritative magic damage family, preventing a
+nature, sonic, or arcane attack from inheriting an arrow or energy-beam
+lifecycle merely because it shares a visual mesh. The explosion asset is
+prefetched when visible flight begins so a cold production CDN/decode cannot
+push first-use audio behind the impact. Explosion playback also uses a bounded
+7-metre reference distance and gentler positional falloff; ordinary contact
+ticks retain the tighter default profile.
 
 This matters because the authoritative path supplies the impact time
 _remaining_, measured against the client's clock when it observes the release.
@@ -373,9 +484,10 @@ worst case for projectile readability and the right place to check it.
 
 This pass establishes attack commitment, survival-resource pressure, movement
 commitment, authoritative i-frames, precise impact-frame contact, enemy tells,
-and recovery openings. A dedicated shield block/parry posture and a generalized
-poise/hyper-armor meter are not part of this contract yet; they should be added
-as explicit state machines rather than hidden random hit outcomes.
+ordinary-creature poise reactions, and recovery openings. A dedicated shield
+block/parry posture and generalized boss/player hyper-armor are not part of
+this contract yet; they should be added as explicit state machines rather than
+hidden random hit outcomes.
 
 There is no separate server resource charge for swinging into empty air.
 Empty-air swings are still locally committed through windup and recovery, while

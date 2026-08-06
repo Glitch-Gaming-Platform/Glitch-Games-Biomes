@@ -4,6 +4,7 @@ import { GROVE_ECONOMY_STARTER_LANDMARKS } from "@/shared/harthmere/grove_econom
 import { isHarthmereInspectableWorldObject } from "@/shared/harthmere/harthmere_world_object_inspectable";
 import {
   harthmereObjectInteractionForLabel,
+  harthmereObjectUsesContainerFlow,
   isHarthmereContainerObjectLabel,
 } from "@/shared/harthmere/object_interaction_semantics";
 
@@ -129,6 +130,42 @@ describe("world-object F interaction: all prop types", () => {
         );
       }
     }
+  });
+
+  it("lets authored Jobs Board and Grove actions override container-shaped nouns", () => {
+    for (const label of [
+      "Farm Supply Crate",
+      "Forge Material Bin",
+      "Safe Ruin Cache",
+      "Property Material Crate",
+      "Trader Ration Crate",
+      "Sanitation Barrels",
+      "Clinic Delivery Lockbox",
+      "Tool Order Bin",
+      "Gus's Marked Loaf Basket",
+      "Rin's Forage Basket",
+    ]) {
+      assert.equal(
+        isHarthmereContainerObjectLabel({ label }),
+        true,
+        `${label} should retain container-shaped presentation`
+      );
+      assert.notEqual(
+        harthmereObjectInteractionForLabel({ label })?.kind,
+        "open_container",
+        `${label} should retain its authored action`
+      );
+      assert.equal(
+        harthmereObjectUsesContainerFlow({ label }),
+        false,
+        `${label} must not enter the generic container UI flow`
+      );
+    }
+    assert.equal(
+      harthmereObjectUsesContainerFlow({ label: "Road Kit Crate" }),
+      true,
+      "ordinary authored containers still open normally"
+    );
   });
 
   it("does NOT treat living/NPC labels as world objects", () => {

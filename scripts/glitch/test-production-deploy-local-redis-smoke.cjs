@@ -697,6 +697,28 @@ ok(
 );
 ok(
   script.includes(
+    'AZURE_WORKLOAD_PROFILE_NAME="${AZURE_WORKLOAD_PROFILE_NAME:-$AZURE_SIMULATION_WORKLOAD_PROFILE}"'
+  ) &&
+    script.includes(
+      'AZURE_WORKLOAD_PROFILE_REPLACEMENT_HEADROOM_NODES="${AZURE_WORKLOAD_PROFILE_REPLACEMENT_HEADROOM_NODES:-2}"'
+    ) &&
+    script.includes("AZURE_REQUIRED_WORKLOAD_PROFILE_NODES") &&
+    script.includes("ensure_azure_workload_profile_capacity") &&
+    script.includes("wait_for_azure_workload_profile_nodes") &&
+    script.includes("properties.currentCount") &&
+    script.includes("az containerapp env workload-profile update") &&
+    deployWorkflow.includes("AZURE_WORKLOAD_PROFILE_NAME: d4-prod") &&
+    deployWorkflow.includes(
+      'AZURE_WORKLOAD_PROFILE_REPLACEMENT_HEADROOM_NODES: "2"'
+    ) &&
+    deployWorkflow.includes('AZURE_WORKLOAD_PROFILE_MIN_NODES: "6"') &&
+    deployWorkflow.includes('AZURE_WORKLOAD_PROFILE_MAX_NODES: "10"') &&
+    deployWorkflow.includes('AZURE_WORKLOAD_PROFILE_READY_POLLS: "180"') &&
+    deployWorkflow.includes('AZURE_WORKLOAD_PROFILE_READY_POLL_SECONDS: "5"'),
+  "production deploy reserves and waits for two full-node replacement slots before updating the public app"
+);
+ok(
+  script.includes(
     "--command ./scripts/glitch/run-glitch-local-game-stack.sh"
   ) && script.includes('--args ""'),
   "production updates replace stale Azure startup command overrides with the role-aware stack runner"

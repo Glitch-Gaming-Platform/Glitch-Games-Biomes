@@ -159,6 +159,10 @@ describe("escort: follow pacing", () => {
         runSpeedMultiplier: ESCORT_CATCH_UP_RUN_SPEED_MULTIPLIER,
       }
     );
+    assert.ok(
+      ESCORT_CATCH_UP_RUN_SPEED_MULTIPLIER > 2,
+      "catch-up pace must exceed player sprint after terrain/collision losses"
+    );
   });
 
   it("stops on arrival at the destination, which the leash cannot override", () => {
@@ -270,7 +274,9 @@ describe("escort: combat policy", () => {
     assert.equal(
       evaluateEscortCombatTarget({
         policy: "fight_muck",
-        candidates: [hostile({ id: id(10), alive: false, distanceToLeader: 1 })],
+        candidates: [
+          hostile({ id: id(10), alive: false, distanceToLeader: 1 }),
+        ],
       }),
       undefined
     );
@@ -360,7 +366,10 @@ describe("escort: recovery", () => {
       ...first,
     });
     assert.equal(moving.pathFailingSinceSeconds, undefined);
-    assert.equal(moving.lastProgressAtSeconds, NOW + ESCORT_STUCK_GRACE_SECONDS + 1);
+    assert.equal(
+      moving.lastProgressAtSeconds,
+      NOW + ESCORT_STUCK_GRACE_SECONDS + 1
+    );
   });
 
   it("marks failure only after sustained lack of movement", () => {
@@ -380,19 +389,47 @@ describe("escort: recovery", () => {
       NOW + ESCORT_STUCK_GRACE_SECONDS
     );
   });
+
+  it("marks sideways obstacle movement as failure when the leader gap does not close", () => {
+    const first = escortPathProgress({
+      catchingUp: true,
+      position: [0, 35, 0],
+      distanceToLeader: 40,
+      nowSeconds: NOW,
+    });
+    const blocked = escortPathProgress({
+      catchingUp: true,
+      position: [3, 35, 0],
+      distanceToLeader: 41,
+      nowSeconds: NOW + ESCORT_STUCK_GRACE_SECONDS,
+      ...first,
+    });
+    assert.equal(
+      blocked.pathFailingSinceSeconds,
+      NOW + ESCORT_STUCK_GRACE_SECONDS
+    );
+  });
 });
 
 describe("escort: status and defaults", () => {
   it("reports fighting above every locomotion state", () => {
     assert.equal(
-      escortStatusFor({ hasCombatTarget: true, alive: true, action: "catch_up" }),
+      escortStatusFor({
+        hasCombatTarget: true,
+        alive: true,
+        action: "catch_up",
+      }),
       "fighting"
     );
   });
 
   it("reports down when the escort dies", () => {
     assert.equal(
-      escortStatusFor({ hasCombatTarget: true, alive: false, action: "follow" }),
+      escortStatusFor({
+        hasCombatTarget: true,
+        alive: false,
+        action: "follow",
+      }),
       "down"
     );
   });

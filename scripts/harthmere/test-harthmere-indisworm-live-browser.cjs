@@ -23,6 +23,9 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 const { chromium } = require("playwright");
+const {
+  acquireBrowserRuntimeLease,
+} = require("./browser-runtime-lease.cjs");
 
 const {
   Collideable,
@@ -90,6 +93,10 @@ const artifactsDir = path.resolve(
 );
 const reportPath = path.join(artifactsDir, "report.json");
 const gameUrl = new URL(rawGameUrl);
+const syncBaseUrl =
+  process.env.HARTHMERE_E2E_SYNC_BASE_URL ||
+  gameUrl.searchParams.get("syncBaseUrl") ||
+  baseUrl;
 gameUrl.searchParams.set("harthmere_native_ecs_e2e", "1");
 gameUrl.searchParams.set("e2e_run", `indisworm-live-${runId}`);
 // The standard 16m/0.25 fast profile can cull a 12-14m creature root after
@@ -123,6 +130,7 @@ const report = {
     requestFailures: [],
   },
 };
+let browserRuntimeLease;
 
 function persistReport() {
   fs.writeFileSync(
@@ -565,6 +573,15 @@ async function webglSnapshot(page) {
 }
 
 async function run() {
+  browserRuntimeLease = acquireBrowserRuntimeLease({
+    runner: "harthmere-indisworm-live-browser",
+    runId,
+    baseUrl,
+    syncBaseUrl,
+    stackContainer: process.env.HARTHMERE_E2E_STACK_CONTAINER || "",
+    redisContainer: process.env.HARTHMERE_E2E_REDIS_CONTAINER || "",
+  });
+  report.browserRuntimeLane = browserRuntimeLease.laneId;
   const world = await createWorld();
   const browser = await chromium.launch({
     headless: process.env.HARTHMERE_E2E_HEADLESS !== "0",
@@ -1301,4 +1318,4 @@ run().catch((error) => {
   console.error(`FAIL ${report.error}`);
   console.error(`REPORT ${reportPath}`);
   process.exitCode = 1;
-});
+}).finally(() => browserRuntimeLease?.release());

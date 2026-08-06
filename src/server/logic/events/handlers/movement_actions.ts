@@ -6,13 +6,12 @@ import {
   PLAYER_MOVEMENT_ACTION_TIMING,
   createMovementActionState,
   movementActionIsOnCooldown,
-  movementActionStaminaCost,
   normalizeMovementActionDirection,
 } from "@/shared/game/movement_actions";
 import {
-  readHarthmereNativeVitals,
-  spendHarthmereNativeStamina,
-} from "@/shared/harthmere/harthmere_native_vitals";
+  applyHarthmereMovementActionStaminaReceipt,
+  hasHarthmereMovementActionReceipt,
+} from "@/shared/harthmere/harthmere_native_movement_action";
 import { yawVector } from "@/shared/physics/utils";
 
 export const setCrouchingEventHandler = makeEventHandler("setCrouchingEvent", {
@@ -49,6 +48,11 @@ export const movementActionEventHandler = makeEventHandler(
 
       const nowSeconds = secondsSinceEpoch();
       const previous = delta.movementState();
+      if (
+        hasHarthmereMovementActionReceipt(delta.triggerState(), event.nonce)
+      ) {
+        return;
+      }
       if (movementActionIsOnCooldown(previous, nowSeconds)) {
         return;
       }
@@ -58,9 +62,15 @@ export const movementActionEventHandler = makeEventHandler(
       // the component below is replaced atomically, so only the new action's
       // displacement and i-frame window remain authoritative.
 
-      const vitals = readHarthmereNativeVitals(delta.triggerState());
-      const staminaCost = movementActionStaminaCost(event.action);
-      if (vitals.stamina < staminaCost) {
+      const receipt = applyHarthmereMovementActionStaminaReceipt(
+        delta.mutableTriggerState(),
+        {
+          action: event.action,
+          nonce: event.nonce,
+          alive: true,
+        }
+      );
+      if (!receipt.accepted) {
         return;
       }
 
@@ -81,7 +91,6 @@ export const movementActionEventHandler = makeEventHandler(
           cooldownSeconds: timing.cooldownSeconds,
         })
       );
-      spendHarthmereNativeStamina(delta.mutableTriggerState(), staminaCost);
     },
   }
 );

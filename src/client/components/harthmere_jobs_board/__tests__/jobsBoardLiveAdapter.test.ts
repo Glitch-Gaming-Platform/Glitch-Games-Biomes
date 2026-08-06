@@ -12,6 +12,7 @@ import {
   HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT,
   HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS,
   HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
+  HARTHMERE_BUSINESS_JOBS_BOARD_INTERACTION_RADIUS,
   buildHarthmereJobsBoardPostPayload,
   displayNameForHarthmereJobsBoard,
   createHarthmereJobsBoardAdapter,
@@ -24,6 +25,8 @@ import {
   getHarthmereJobsBoardTabs,
   getHarthmereMyJobsPanel,
   getHarthmerePostedJobsPanel,
+  harthmereJobsBoardEscortArrivalsForTest,
+  harthmereJobsBoardHasFollowingEscortForTest,
   harthmereJobsBoardStateFromUpdatedEventDetail,
   isHarthmereJobsBoardAvailable,
   jobsBoardSnapshotWithLiveInventoryForTest,
@@ -565,12 +568,9 @@ describe("Harthmere universal jobs board live adapter", () => {
       autoPosted: true,
     });
     assert.deepEqual(
-      getHarthmereAvailableJobsPanel(
-        snapshot,
-        snapshot.defaultBoardId,
-        NOW,
-        { chapter1Mode: true }
-      ).map((job) => job.jobId),
+      getHarthmereAvailableJobsPanel(snapshot, snapshot.defaultBoardId, NOW, {
+        chapter1Mode: true,
+      }).map((job) => job.jobId),
       ["chapter1_rations"],
       "unrelated accepted work must not hide the active Chapter 1 job set"
     );
@@ -661,6 +661,104 @@ describe("Harthmere universal jobs board live adapter", () => {
     const prompt = nearestHarthmereJobsBoardPhysicalPrompt(boardPosition);
     assert.equal(prompt?.boardId, boardId);
     assert.equal(prompt?.displayName, `${outpost.displayName} Jobs Board`);
+    const physicalBoard = HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS.find(
+      (board) => board.boardId === boardId
+    );
+    assert.equal(
+      physicalBoard?.radius,
+      HARTHMERE_BUSINESS_JOBS_BOARD_INTERACTION_RADIUS
+    );
+    assert.notEqual(
+      nearestHarthmereJobsBoardPhysicalPrompt({
+        ...boardPosition,
+        x:
+          boardPosition.x +
+          HARTHMERE_BUSINESS_JOBS_BOARD_INTERACTION_RADIUS +
+          0.1,
+      })?.boardId,
+      boardId,
+      "a nearby patron must own interaction once the player steps away from the board"
+    );
+  });
+
+  it("shows Chapter 1 Grove jobs only during the Chapter 1 board step", () => {
+    const snapshot = sampleSnapshot();
+    snapshot.openJobs = [
+      {
+        ...snapshot.openJobs[0],
+        jobId: "chapter1_rations",
+        templateId: "town_gather_road_rations",
+        issuerKind: "town",
+        issuerId: "harthmere_grove",
+        townId: "harthmere_grove",
+        autoPosted: true,
+      },
+    ];
+    assert.deepEqual(
+      getHarthmereAvailableJobsPanel(snapshot, snapshot.defaultBoardId, NOW),
+      []
+    );
+    assert.deepEqual(
+      getHarthmereAvailableJobsPanel(snapshot, snapshot.defaultBoardId, NOW, {
+        chapter1Mode: true,
+      }).map((job) => job.jobId),
+      ["chapter1_rations"]
+    );
+  });
+
+  it("detects scheduler-driven escort arrival exactly once", () => {
+    const previous = sampleSnapshot();
+    const escortJob = {
+      ...previous.myAcceptedJobs[0],
+      jobId: "escort_job",
+      kind: "escort" as const,
+      requirements: [{ targetName: "Old Road Post" }],
+      escortCompanion: {
+        companionId: "escort:one",
+        entityId: 8810000000000001,
+        jobId: "escort_job",
+        actorId: previous.actorId,
+        displayName: "Newcomer",
+        status: "following" as const,
+        position: { x: 0, y: 0, z: 0 },
+        destination: { x: 5, y: 0, z: 5 },
+        arrivalDialogue: "We made it safely.",
+        createdAtMs: NOW,
+        updatedAtMs: NOW,
+      },
+    };
+    previous.myAcceptedJobs = [escortJob];
+    assert.equal(harthmereJobsBoardHasFollowingEscortForTest(previous), true);
+    const arrived = normalizeHarthmereJobsBoardSnapshot({
+      ...previous,
+      myAcceptedJobs: [
+        {
+          ...escortJob,
+          escortCompanion: {
+            ...escortJob.escortCompanion,
+            status: "arrived",
+            arrivedAtMs: NOW + 2000,
+          },
+        },
+      ],
+    });
+    assert.equal(harthmereJobsBoardHasFollowingEscortForTest(arrived), false);
+    assert.deepEqual(
+      harthmereJobsBoardEscortArrivalsForTest(previous, arrived),
+      [
+        {
+          companionId: "escort:one",
+          displayName: "Newcomer",
+          dialogue: "We made it safely.",
+          destinationName: "Old Road Post",
+          arrivedAtMs: NOW + 2000,
+        },
+      ]
+    );
+    assert.deepEqual(
+      harthmereJobsBoardEscortArrivalsForTest(arrived, arrived),
+      []
+    );
   });
 
   it("normalizes available jobs, accepted jobs, posted jobs, tabs, and safety panel", () => {

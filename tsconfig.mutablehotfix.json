@@ -1,0 +1,24 @@
+// Focused no-rebuild mutable-hotfix typecheck.
+//
+// The mutable hotfix lane spans the startup watcher, public client bootstrap,
+// and admin API but does not justify paying for the complete game type graph.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false,
+    "types": ["node"]
+  },
+  "include": [
+    "modules.d.ts",
+    "next-env.d.ts",
+    "scripts/glitch/apply-mutable-hotfix.ts",
+    "src/client/util/glitch_mutable_hotfix.ts",
+    "src/pages/_app.tsx",
+    "src/pages/_document.tsx",
+    "src/pages/api/admin/mutable_hotfix.ts",
+    "src/pages/api/mutable_hotfix.ts",
+    "src/server/glitch/mutable_hotfix.ts",
+    "src/server/glitch/mutable_hotfix_client.ts"
+  ]
+}

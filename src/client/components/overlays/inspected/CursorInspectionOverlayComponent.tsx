@@ -18,7 +18,7 @@ import type { GlobalKeyCode } from "@/client/game/util/keyboard";
 import { INVALID_BIOMES_ID } from "@/shared/ids";
 import {
   harthmereObjectInteractionForLabel,
-  isHarthmereContainerObjectLabel,
+  harthmereObjectUsesContainerFlow,
   isHarthmereNonLivingObjectLabel,
 } from "@/shared/harthmere/object_interaction_semantics";
 import { nativeQuestGiverUsesEcsDialogue } from "@/shared/harthmere/native_road_ahead_contract";
@@ -122,12 +122,6 @@ export const CursorInspectionComponent: React.FunctionComponent<
     isNativeDialogueQuestObject,
     canUseObjectSemantics,
   });
-  const isHarthmereObjectContainer =
-    useHarthmereObjectSemantics &&
-    isHarthmereContainerObjectLabel({
-      label: harthmereObjectLabel,
-      entityDescription: harthmereObjectDescription,
-    });
   const isHarthmereWorldObject =
     useHarthmereObjectSemantics &&
     isHarthmereNonLivingObjectLabel({
@@ -140,6 +134,12 @@ export const CursorInspectionComponent: React.FunctionComponent<
         entityDescription: harthmereObjectDescription,
       })
     : undefined;
+  const isHarthmereObjectContainer =
+    useHarthmereObjectSemantics &&
+    harthmereObjectUsesContainerFlow({
+      label: harthmereObjectLabel,
+      entityDescription: harthmereObjectDescription,
+    });
   // Procedural world props use INVALID_BIOMES_ID (0, falsy), so a plain
   // `overlay?.entityId` truthiness gate would hide their prompt. Treat the
   // harthmere_object overlay as an actionable target explicitly.

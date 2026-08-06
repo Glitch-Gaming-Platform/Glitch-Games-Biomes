@@ -9,39 +9,18 @@ import { log } from "@/shared/logging";
 import { collectAll, defaultCvalDatabase } from "@/shared/util/cvals";
 import { jsonPost } from "@/shared/util/fetch_helpers";
 
-function shouldSkipWakeUpScreenshotUpload() {
-  return (
-    process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
-    process.env.NEXT_PUBLIC_GLITCH_DISABLE_GCP === "1" ||
-    process.env.GLITCH_DISABLE_GCP === "1"
-  );
-}
-
 export async function makeWakeUpScreenshot(
   deps: {
     rendererController?: RendererController;
   },
   report: WakeUpScreenshotRequest
 ) {
-  if (shouldSkipWakeUpScreenshotUpload()) {
-    return { ok: true, skipped: true };
-  }
-
-  let dataURI: string | undefined;
-  if (deps.rendererController) {
-    dataURI = deps.rendererController.captureScreenshot()?.screenshotDataUri;
-  }
-  const request = {
-    clientCvals:
-      report.clientCvals ??
-      getClientCvals({
-        kind: "wakeUp",
-      }),
-    buildId: process.env.BUILD_ID,
-    buildTimestamp: buildTimestamp(),
-    screenshotDataURI: dataURI,
-  };
-  return jsonPost("/api/upload/wake_up", request as any);
+  // The endpoint is intentionally a no-op in this deployment. Avoid capturing
+  // and posting a multi-megabyte screenshot/cval body only to receive `skipped`;
+  // those requests were rejected by Next's 1 MB parser before reaching it.
+  void deps;
+  void report;
+  return { ok: true, skipped: true, local_assets_noop: true };
 }
 
 export async function makeReport(

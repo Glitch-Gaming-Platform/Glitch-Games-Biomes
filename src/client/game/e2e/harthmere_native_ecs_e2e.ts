@@ -1224,7 +1224,10 @@ export function installHarthmereNativeEcsE2E(
       const adapter = createHarthmereJobsBoardAdapter(fetch);
       let snapshot;
       if (input.operation === "fetch") {
-        snapshot = await adapter.fetchState();
+        // E2E fixtures are installed after the page has booted. Bypass the
+        // normal short-lived UI cache so each assertion observes the current
+        // authoritative jobs-board state instead of the boot snapshot.
+        snapshot = await adapter.fetchState({ force: true });
       } else {
         if (!input.jobId || !input.boardId) {
           throw new Error("jobs_board_e2e_missing_job_or_board");

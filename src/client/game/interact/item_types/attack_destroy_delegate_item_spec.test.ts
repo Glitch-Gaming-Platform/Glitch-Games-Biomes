@@ -131,6 +131,38 @@ describe("Attack and Destroy Spec", () => {
     );
   });
 
+  it("adds only the small native creature body allowance at the reach edge", () => {
+    const muckerTypeId = harthmereNativeBiomesIdForNpcType(
+      "monster_road_pack_muckling"
+    );
+    assert.ok(muckerTypeId);
+    const edgeMucker = {
+      ...target(62),
+      position: { v: [4.1, 0, 0] },
+      label: { text: "Road Pack Muckling" },
+      npc_metadata: {
+        ...target(62).npc_metadata,
+        type_id: muckerTypeId,
+        spawn_position: [4.1, 0, 0],
+      },
+    } as any;
+    const edgeHuman = {
+      ...target(63),
+      position: { v: [4.1, 0, 0] },
+      label: { text: "Town Civilian" },
+    } as any;
+    assert.equal(
+      harthmereMeleeImpactTargetInReach([0, 0, 0], edgeMucker, 3.5),
+      true,
+      "0.18 m horizontal creature padding should include the visible flank"
+    );
+    assert.equal(
+      harthmereMeleeImpactTargetInReach([0, 0, 0], edgeHuman, 3.5),
+      false,
+      "player-like NPCs must keep their exact authored body bound"
+    );
+  });
+
   it("charges native magic weapons while leaving physical weapons immediate", () => {
     const staffId = harthmereNativeBiomesIdForItemId("arcane_staff");
     const swordId = harthmereNativeBiomesIdForItemId("iron_longsword");

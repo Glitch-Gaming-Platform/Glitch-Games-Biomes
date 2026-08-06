@@ -202,6 +202,55 @@ describe("Harthmere exact native Bikkie overlay", function () {
     assert.ok(augmented.contents.get(ingredientId));
   });
 
+  it("publishes every Grove carried quest item through native ECS", () => {
+    const breadDonorId = 2_071_428_426_278_062 as BiomesId;
+    const augmented = withHarthmereNativeBikkieItems(
+      tray(
+        new Map([
+          [
+            breadDonorId,
+            {
+              id: breadDonorId,
+              name: "Bread",
+              displayName: "Bread",
+              stackable: 99n,
+              isDroppable: true,
+              galoisPath: "items/bread",
+            } as Biscuit,
+          ],
+        ])
+      )
+    );
+
+    for (const itemId of Object.values(SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS)) {
+      const nativeId = harthmereNativeBiomesIdForItemId(itemId);
+      assert.ok(nativeId, `${itemId} needs a checked-in native item id`);
+      const definition = getHarthmereItemDefinition(itemId);
+      assert.ok(definition, `${itemId} needs an inventory definition`);
+      const biscuit = augmented.contents.get(nativeId);
+      assert.ok(biscuit, `${itemId} needs a native Bikkie biscuit`);
+      assert.ok((biscuit.stackable ?? 0n) > 0n, `${itemId} must be storable`);
+    }
+
+    for (const itemId of [
+      SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.warmLoafTray,
+      SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.heavyParcel,
+      SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.boltCrate,
+    ]) {
+      const nativeId = harthmereNativeBiomesIdForItemId(itemId)!;
+      assert.equal(getHarthmereItemDefinition(itemId)?.isQuestItem, true, itemId);
+      assert.equal(augmented.contents.get(nativeId)?.isDroppable, undefined, itemId);
+    }
+
+    const warmTrayId = harthmereNativeBiomesIdForItemId(
+      SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.warmLoafTray
+    );
+    assert.equal(
+      augmented.contents.get(warmTrayId!)?.galoisPath,
+      "items/bread"
+    );
+  });
+
   it("publishes every Chapter 1 plot item with native quest-item rules", () => {
     const augmented = withHarthmereNativeBikkieItems(tray());
     for (const item of CH1_ITEMS) {
@@ -653,6 +702,9 @@ describe("Harthmere exact native Bikkie overlay", function () {
       BikkieIds.muckBuster,
       BikkieIds.camera,
       SNAPSHOT_FISHING_RODS[1].id,
+      // The cleanup Muck Rake deliberately borrows the real long-handled
+      // Wooden Hoe presentation instead of the robot-like Muck Buster.
+      1_534_621_126_189_388 as BiomesId,
     ]) {
       presentationDonors.set(id, {
         id,
@@ -739,6 +791,8 @@ describe("Harthmere exact native Bikkie overlay", function () {
       stackable: 1n,
       isDroppable: true,
       galoisPath: "items/wooden_hoe",
+      mesh: { hash: "legacy-compact-mesh" },
+      vox: { hash: "legacy-compact-vox" },
     } as unknown as Biscuit;
     const sparseHoe = {
       id: harthmereNativeBiomesIdForItemId("7539420629350046")!,
@@ -757,6 +811,42 @@ describe("Harthmere exact native Bikkie overlay", function () {
     // Borrowing art must never rewrite the donor or the tool's own action.
     assert.equal(hoe?.action, "till");
     assert.equal(augmented.contents.get(woodenHoe.id)?.action, undefined);
+  });
+
+  it("renders the equipped Muck Rake as a long-handled hoe, not a Muck Buster robot", () => {
+    const woodenHoe = {
+      id: 1_534_621_126_189_388 as BiomesId,
+      name: "woodenHoe",
+      displayName: "Wooden Hoe",
+      stackable: 1n,
+      isDroppable: true,
+      galoisPath: "items/wooden_hoe",
+    } as unknown as Biscuit;
+    const muckBuster = {
+      id: BikkieIds.muckBuster,
+      name: "muckBuster",
+      displayName: "Muck Buster",
+      stackable: 1n,
+      isDroppable: true,
+      galoisPath: "items/muck_buster",
+    } as unknown as Biscuit;
+    const augmented = withHarthmereNativeBikkieItems(
+      tray(
+        new Map([
+          [Number(woodenHoe.id), woodenHoe],
+          [Number(muckBuster.id), muckBuster],
+        ])
+      )
+    );
+    const muckRake = augmented.contents.get(
+      harthmereNativeBiomesIdForItemId("muck_rake")!
+    );
+
+    assert.equal(muckRake?.galoisPath, "items/wooden_hoe");
+    assert.equal(muckRake?.mesh, undefined);
+    assert.equal(muckRake?.vox, undefined);
+    assert.notEqual(muckRake?.galoisPath, muckBuster.galoisPath);
+    assert.equal(muckRake?.displayName, "Muck Rake");
   });
 
   it("copies only presentation assets while preserving exact wearable ids", () => {

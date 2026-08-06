@@ -33,7 +33,8 @@ if (!url) {
 
 let chromium;
 try {
-  chromium = require("playwright").chromium;
+  const { leasePlaywright } = require("./harthmere-live-runtime-probe.cjs");
+  chromium = leasePlaywright(require("playwright"), { baseUrl: url }).chromium;
   pass("Playwright is installed");
 } catch (error) {
   fail("Playwright is installed", "Run: npm install --save-dev playwright --legacy-peer-deps && npx playwright install chromium");

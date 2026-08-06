@@ -14,6 +14,7 @@ import {
   type NavigationAid,
 } from "@/client/game/helpers/navigation_aids";
 import { ch1NativeQuestId } from "@/shared/harthmere/ch1_native_quests";
+import { ch1ObjectiveUsesDynamicRouteDestination } from "@/shared/harthmere/ch1_interaction_surfaces";
 
 // HARTHMERE active-pin directional indicator
 // Locks the P0 fix: a user-set destination pin must show its directional
@@ -41,6 +42,48 @@ describe("active map pin navigation aid", () => {
     firstMarkerId: mossyMarker.id,
   };
 
+  it("uses authenticated moving targets for every multi-person Chapter 1 route", () => {
+    for (const stepId of [
+      "collect_testimonies",
+      "the_three_answers",
+      "meet_the_suppliers",
+    ]) {
+      assert.equal(ch1ObjectiveUsesDynamicRouteDestination(stepId), true);
+    }
+    assert.equal(ch1ObjectiveUsesDynamicRouteDestination("take_jobs"), false);
+  });
+
+  it("does not replace an exact current Chapter 1 route stop with the generic step anchor", () => {
+    const questId = String(ch1NativeQuestId("ch1_a2_q02_work_the_board"));
+    const stepId = "8762100000000602";
+    assert.equal(
+      automaticQuestDestinationMarkerForTest({
+        existingPin: {
+          markerId: `chapter1_route:${questId}:${stepId}:rin`,
+          label: "Rin the Forager",
+          ownerQuestId: questId,
+          ownerStepId: stepId,
+          worldPosition: [515, 62, -171],
+        },
+        quest: {
+          questId,
+          status: "active",
+          currentStepId: stepId,
+          firstMarkerId: `native_quest:${questId}:${stepId}`,
+        },
+        markers: [
+          {
+            id: `native_quest:${questId}:${stepId}`,
+            label: "Meet the Suppliers",
+            kind: "objective",
+            worldPosition: [510, 73, -155],
+          },
+        ],
+      }),
+      undefined
+    );
+  });
+
   it("automatically pins a newly active native story destination", () => {
     assert.deepEqual(
       automaticQuestDestinationMarkerForTest({
@@ -56,7 +99,9 @@ describe("active map pin navigation aid", () => {
   });
 
   it("refreshes a reused quest anchor when the active objective changes", () => {
-    const questId = String(ch1NativeQuestId("ch1_a3_d1_the_sand_that_remembers"));
+    const questId = String(
+      ch1NativeQuestId("ch1_a3_d1_the_sand_that_remembers")
+    );
     const marker = {
       id: `native_quest:${questId}:${questId}`,
       label: "The Salt-Cured Muckers block the bazaar route forward.",
@@ -88,7 +133,9 @@ describe("active map pin navigation aid", () => {
   });
 
   it("refreshes a reused quest anchor when its async destination resolves", () => {
-    const questId = String(ch1NativeQuestId("ch1_a3_d1_the_sand_that_remembers"));
+    const questId = String(
+      ch1NativeQuestId("ch1_a3_d1_the_sand_that_remembers")
+    );
     const marker = {
       id: `native_quest:${questId}:${questId}`,
       label: "The Long Walk",
@@ -181,9 +228,7 @@ describe("active map pin navigation aid", () => {
   });
 
   it("replaces an unrelated destination at a Chapter 1 objective handoff", () => {
-    const chapter1QuestId = String(
-      ch1NativeQuestId("ch1_a1_q03_stand_him_up")
-    );
+    const chapter1QuestId = String(ch1NativeQuestId("ch1_a1_q03_stand_him_up"));
     const chapter1Marker = {
       id: `native_quest:${chapter1QuestId}:seat_the_core`,
       label: "Return to AUGUR-9 and install the Core Cell",

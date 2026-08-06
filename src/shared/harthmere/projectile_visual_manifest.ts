@@ -1,5 +1,5 @@
 export const HARTHMERE_PROJECTILE_VISUAL_VERSION =
-  "harthmere-premium-projectiles-v2" as const;
+  "harthmere-premium-projectiles-v3" as const;
 
 export const HARTHMERE_PROJECTILE_VISUAL_EVENT =
   "biomes:harthmere-projectile-visual" as const;

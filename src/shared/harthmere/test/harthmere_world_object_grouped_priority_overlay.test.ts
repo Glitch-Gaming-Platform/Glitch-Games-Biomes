@@ -35,6 +35,26 @@ describe("grouped native quest-prop overlay priority", () => {
     );
   });
 
+  it("gives the active Jobs Board field target the same shallow-hit and occlusion protection", () => {
+    assert.match(source, /harthmereJobsBoardFieldTargetsNearPosition/);
+    assert.match(source, /HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MATCH_RADIUS/);
+    assert.match(
+      source,
+      /activePin\?\.worldObjectId[\s\S]*priorityCandidateIds\.add\(activePin\.worldObjectId\)/
+    );
+    assert.match(
+      source,
+      /activePin\?\.interactionTargetId[\s\S]*priorityCandidateIds\.add\(activePin\.interactionTargetId\)/
+    );
+  });
+
+  it("grounds permanent business fixtures beneath awnings instead of requiring open sky", () => {
+    assert.match(
+      source,
+      /harthmereFieldTargetGroundedFeetYByColumn[\s\S]*candidate\.position\[1\],[\s\S]*false/
+    );
+  });
+
   it("redirects direct hits on legacy duplicate inscriptions to canonical source ids", () => {
     assert.match(source, /NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_ENTITY_ID_SET/);
     assert.ok(source.includes("/\\binscriptions?\\b/i"));

@@ -1,4 +1,5 @@
 import {
+  applyAndPersistGlitchMutableHotfixManifest,
   applyConfiguredGlitchMutableHotfix,
   applyGlitchMutableHotfixManifest,
   clearGlitchMutableHotfixManifestFromRedis,
@@ -124,19 +125,29 @@ export default async function handler(
     }
 
     const manifest = await manifestFromBody(req.body);
-    const persisted =
-      action === "persist" || action === "apply_and_persist"
-        ? await persistGlitchMutableHotfixManifestToRedis(
-            manifest,
-            req.body?.redisKey
-          )
-        : undefined;
-    const result =
-      action === "persist"
-        ? undefined
-        : await applyGlitchMutableHotfixManifest(manifest, {
-            force: Boolean(req.body?.force),
-          });
+    let persisted;
+    let result;
+    if (action === "apply_and_persist") {
+      ({ persisted, result } = await applyAndPersistGlitchMutableHotfixManifest(
+        manifest,
+        {
+          force: Boolean(req.body?.force),
+          redisKey: req.body?.redisKey,
+        }
+      ));
+    } else if (action === "persist") {
+      persisted = await persistGlitchMutableHotfixManifestToRedis(
+        manifest,
+        req.body?.redisKey
+      );
+    } else if (action === "apply") {
+      result = await applyGlitchMutableHotfixManifest(manifest, {
+        force: Boolean(req.body?.force),
+      });
+    } else {
+      res.status(400).json({ ok: false, error: "bad_action" });
+      return;
+    }
 
     res.status(200).json({
       ok: true,

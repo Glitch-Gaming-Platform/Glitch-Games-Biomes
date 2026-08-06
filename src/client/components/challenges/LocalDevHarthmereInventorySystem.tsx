@@ -4325,18 +4325,32 @@ function ownsHarthmereToolMatching(
   return state.backpack.items.some((item) => matches(item.itemId));
 }
 
+function liveInventoryOwnsHarthmereToolMatching(
+  matches: (itemId: string | undefined) => boolean
+): boolean {
+  return (
+    Object.entries(lastKnownHarthmereLiveInventoryItems).some(
+      ([itemId, count]) => Number(count) > 0 && matches(itemId)
+    ) || Object.values(lastKnownHarthmereLiveEquipment).some(matches)
+  );
+}
+
 export function harthmereJobToolOwnedState(
   state: HarthmereInventoryState = readHarthmereInventoryState()
 ): HarthmereJobToolOwnedState {
+  // Purchases and equipment mutations are server-authoritative in the live
+  // game. Reading only the local fallback inventory leaves the map pin stuck
+  // on "Buy Muck Rake" even after the shop has returned the owned tool in its
+  // live inventory snapshot. Use the same sticky authority choice as the
+  // equipment checks above so a slow follow-up poll cannot resurrect the old
+  // vendor destination.
+  const owns = harthmereLiveServerAuthoritative()
+    ? liveInventoryOwnsHarthmereToolMatching
+    : (matches: (itemId: string | undefined) => boolean) =>
+        ownsHarthmereToolMatching(state, matches);
   return {
-    repairToolOwned: ownsHarthmereToolMatching(
-      state,
-      isHarthmereRepairToolItemId
-    ),
-    cleanupToolOwned: ownsHarthmereToolMatching(
-      state,
-      isHarthmereCleanupToolItemId
-    ),
+    repairToolOwned: owns(isHarthmereRepairToolItemId),
+    cleanupToolOwned: owns(isHarthmereCleanupToolItemId),
   };
 }
 
