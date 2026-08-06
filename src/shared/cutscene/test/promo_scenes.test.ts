@@ -19,10 +19,13 @@ import {
   promoCaptureAuthUrl,
   promoCaptureUrl,
   promoSceneById,
+  promoSceneWithBossCameraPreset,
+  promoSceneWithRecommendedBossCamera,
   promoScenesInGroup,
   validatePromoScenes,
 } from "../promo_scenes";
 import { validateCutsceneDef } from "../schema";
+import { HARTHMERE_BOSS_VISUAL_ASSETS } from "@/shared/harthmere/boss_visual_assets";
 
 const REPO_ROOT = path.resolve(__dirname, "../../../..");
 
@@ -84,12 +87,23 @@ describe("promo scenes - registry", () => {
         assert.deepEqual(boss!.binding.spawnAt, spec.stage);
       }
       assert.deepEqual(scene.observer.position, spec.cameraFar);
+      assert.equal(
+        scene.streamingFocus,
+        undefined,
+        `${scene.id}: boss capture must keep the already-bootstrapped camera interest set instead of reconnecting at the actor stage`
+      );
+      assert.deepEqual(scene.terrainProofs, spec.terrainProofs);
+      assert.ok(scene.terrainView, `${scene.id}: missing camera view corridor`);
+      assert.equal(scene.terrainView?.verticalFov, spec.fov);
+      assert.deepEqual(scene.terrainView?.camera, spec.cameraFar);
       assert.ok(scene.filename.endsWith(`${spec.id.replaceAll("_", "-")}.png`));
     }
   });
 
   it("keeps Underways boss staging in the running stack's unshifted authored space", () => {
-    const expectedX: Readonly<Partial<Record<(typeof HARTHMERE_BOSS_PROMO_SPECS)[number]["id"], number>>> = {
+    const expectedX: Readonly<
+      Partial<Record<(typeof HARTHMERE_BOSS_PROMO_SPECS)[number]["id"], number>>
+    > = {
       failed_apprentice: 354,
       first_choir: 356,
       echo_singer: 632,
@@ -106,6 +120,110 @@ describe("promo scenes - registry", () => {
         );
       }
     }
+  });
+
+  it("requires multi-shard native terrain proofs for ordinary-map boss landscapes", () => {
+    for (const id of [
+      "muck_scarred_helix",
+      "hex_wraith",
+      "alpha_mucker",
+      "root_crowned_dead",
+    ] as const) {
+      const spec = HARTHMERE_BOSS_PROMO_SPECS.find(
+        (candidate) => candidate.id === id
+      );
+      assert.ok(spec?.terrainProofs && spec.terrainProofs.length >= 5, id);
+    }
+  });
+
+  it("keeps every boss camera outside the authored body and captures before combat motion", async () => {
+    const scenes = promoScenesInGroup("boss-marketing");
+    for (const [index, spec] of HARTHMERE_BOSS_PROMO_SPECS.entries()) {
+      const visual = HARTHMERE_BOSS_VISUAL_ASSETS.find(
+        (candidate) => candidate.id === spec.id
+      );
+      assert.ok(visual, `${spec.id}: missing boss visual bounds`);
+      const distance = Math.hypot(
+        spec.cameraNear[0] - spec.stage[0],
+        spec.cameraNear[1] - spec.stage[1],
+        spec.cameraNear[2] - spec.stage[2]
+      );
+      const bodyRadius = Math.hypot(...visual!.worldSize) / 2;
+      assert.ok(
+        distance > bodyRadius * 1.35,
+        `${spec.id}: near camera intersects the authored boss envelope`
+      );
+
+      const scene = scenes[index]!;
+      const def = await scene.build();
+      const teleport = def.shots[0]!.actions.find(
+        (action) => action.kind === "teleport"
+      );
+      assert.equal(
+        teleport?.kind === "teleport" ? teleport.faceYaw : undefined,
+        spec.yaw,
+        `${spec.id}: turntable-selected yaw must reach the puppet`
+      );
+      assert.equal(
+        def.shots[0]!.actions.some((action) => action.kind === "face"),
+        false,
+        `${spec.id}: generic auto-facing must not overwrite the authored angle`
+      );
+      const emote = def.shots[0]!.actions.find(
+        (action) => action.kind === "emote"
+      );
+      assert.ok(
+        emote?.kind === "emote" && emote.at > scene.captureAt,
+        `${spec.id}: combat animation must begin after the marketing still`
+      );
+    }
+  });
+
+  it("builds deterministic boss camera presets through the same registry path", async () => {
+    const base = promoSceneById("boss-gilded-bull")!;
+    const left = promoSceneWithBossCameraPreset(base, "three-quarter-left");
+    const repeated = promoSceneWithBossCameraPreset(base, "three-quarter-left");
+    assert.equal(left.id, base.id);
+    assert.equal(left.cameraPreset, "three-quarter-left");
+    assert.deepEqual(left.observer, repeated.observer);
+    assert.notDeepEqual(left.observer.position, base.observer.position);
+    const definition = await left.build();
+    const shot = definition.shots[0]!;
+    assert.equal(shot.camera.kind, "dolly");
+    if (shot.camera.kind === "dolly") {
+      assert.deepEqual(
+        shot.camera.waypoints[0]!.position,
+        left.observer.position
+      );
+    }
+    const fov = shot.actions.find((action) => action.kind === "fov");
+    assert.equal(fov?.kind === "fov" ? fov.fov : undefined, 35);
+  });
+
+  it("applies the logged first-attempt camera to a warm boss batch", () => {
+    const base = promoSceneById("boss-muck-scarred-helix")!;
+    const recommended = promoSceneWithRecommendedBossCamera(base);
+    assert.equal(recommended.cameraPreset, "reverse-inward");
+    assert.notDeepEqual(recommended.observer.position, base.observer.position);
+  });
+
+  it("rejects camera presets for non-boss stills and unknown names", () => {
+    assert.throws(
+      () =>
+        promoSceneWithBossCameraPreset(
+          promoSceneById("dungeon-portal")!,
+          "three-quarter-left"
+        ),
+      /only available for boss marketing stills/
+    );
+    assert.throws(
+      () =>
+        promoSceneWithBossCameraPreset(
+          promoSceneById("boss-gilded-bull")!,
+          "sideways"
+        ),
+      /unknown boss promo camera preset/
+    );
   });
 
   it("registers one warm-batch proof for every authored Chapter 1 sector", () => {
@@ -157,7 +275,7 @@ describe("promo scenes - registry", () => {
     assert.match(captureSource, /stagePromoStreamingObserver/);
     assert.match(
       captureSource,
-      /await stagePromoStreamingObserver\(scene\.observer\.position\)/,
+      /scene\.streamingFocus \?\? scene\.observer\.position/,
       "a cinematic camera alone does not move the terrain/ECS interest set"
     );
     assert.match(

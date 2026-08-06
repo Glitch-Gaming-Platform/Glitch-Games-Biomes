@@ -98,6 +98,44 @@ scripts/harthmere/t.sh cutscene
 
 The asset audit verifies clip coverage, channel targets, and that the existing
 production `Attack` and `Attack2` tracks retain their original channel counts.
+
+## Canonical player sword combat actions
+
+`author_player_combat_actions.py` replaces the player sword set with four
+directional basic attacks and four matching heavy attacks:
+
+- horizontal right-to-left (`swing_left`)
+- horizontal left-to-right (`swing_right`)
+- high-right to low-left diagonal
+- high-left to low-right diagonal
+
+Each action is authored on the canonical 16-bone player rig from the real idle
+pose with anticipation, full-body weight transfer, a short contact accent,
+weapon overshoot, and recovery. The four light attacks are a forehand,
+backhand, descending cleave, and rising cut. The four heavy attacks are an
+overhead cleave, broad sweep, backhand crusher, and rising finisher. Light
+contact is frame 6 (0.250 seconds) with a frame-17 endpoint; heavy contact is
+frame 10 (0.417 seconds) with a frame-26 endpoint.
+
+Run the author and merge pass with:
+
+```bash
+blender --background src/galois/data/animations/character-animations.blend \
+  --python scripts/harthmere/blender/author_player_combat_actions.py -- \
+  --gltf src/galois/data/animations/character-animations.gltf
+```
+
+Then materialize the exact production artifact with:
+
+```bash
+./b galois assets export --filter '^wearables/animations$'
+```
+
+The content hash of `src/galois/data/exports/wearables/animations.glb` must be
+used for both the file under `public/buckets/biomes-static/asset_data/wearables/`
+and `src/galois/js/interface/gen/asset_versions.json`. Audits resolve that index
+and inspect the published GLB rather than treating body variants as the player
+runtime source.
 Blender inspection is an authoring check, not the visual acceptance gate. The
 final review must use the exact-current-source game renderer and the generated
 `harthmere-expression-showcase` cutscene described in `docs/cutscenes.md`,

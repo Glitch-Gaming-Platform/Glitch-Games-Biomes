@@ -8,7 +8,7 @@ import type {
 import { normalizeAngle } from "@/shared/math/angles";
 import { HARTHMERE_SPECIAL_MOVEMENT_STAMINA } from "@/shared/harthmere/deliberate_combat";
 
-export const RESERVED_MOVEMENT_KEY_CODES = ["KeyZ", "KeyX", "KeyC"] as const;
+export const RESERVED_MOVEMENT_KEY_CODES = ["KeyZ", "KeyE", "KeyQ"] as const;
 export const MOVEMENT_ACTION_STAMINA_COST =
   HARTHMERE_SPECIAL_MOVEMENT_STAMINA.dodgeCost;
 export const EVADE_MOVEMENT_ACTION_STAMINA_COST =
@@ -81,7 +81,7 @@ export const PLAYER_MOVEMENT_ACTION_TIMING = {
     movementEndSeconds: 0.42,
     invulnerabilityStartSeconds: 0.1,
     invulnerabilityEndSeconds: 0.28,
-    cooldownSeconds: 0.85,
+    cooldownSeconds: 0.5,
     distanceMeters: 4.75,
     cameraFovBoostDegrees: 3,
     cameraPullbackMeters: 0.12,
@@ -93,7 +93,7 @@ export const PLAYER_MOVEMENT_ACTION_TIMING = {
     movementEndSeconds: PLAYER_ROLL_DODGE_EVENTS.landing,
     invulnerabilityStartSeconds: PLAYER_ROLL_DODGE_EVENTS.iframeStart,
     invulnerabilityEndSeconds: PLAYER_ROLL_DODGE_EVENTS.iframeEnd,
-    cooldownSeconds: 1.15,
+    cooldownSeconds: 0.5,
     distanceMeters: 5.25,
     cameraFovBoostDegrees: 5,
     cameraPullbackMeters: 0.28,
@@ -192,9 +192,15 @@ export function isDoubleJumpAttempt(activeJumps: number): boolean {
   return activeJumps >= 1;
 }
 
+export const PLAYER_MOVEMENT_ACTION_ATTACK_CANCEL_SECONDS = {
+  dodge: 0,
+  evade: 0,
+  doubleJump: 0,
+} as const satisfies Record<MovementActionType, number>;
+
 export const PLAYER_EVADE_ATTACK_TRANSITION = {
-  queueStartSeconds: PLAYER_ROLL_DODGE_EVENTS.landing - 0.07,
-  cancelStartSeconds: PLAYER_ROLL_DODGE_EVENTS.recovery,
+  queueStartSeconds: 0,
+  cancelStartSeconds: PLAYER_MOVEMENT_ACTION_ATTACK_CANCEL_SECONDS.evade,
   inputGraceSeconds: 0.15,
 } as const;
 
@@ -202,8 +208,10 @@ export type MovementActionAttackTransition =
   "none" | "blocked" | "queue" | "open";
 
 /**
- * Preserve the readable roll through rotation, buffer attack input during the
- * landing, then allow the existing attack animation to take over in recovery.
+ * Open the combat upper body immediately while authored movement continues on
+ * the lower body. Dodge, evade/roll, jump, and double-jump keep their movement,
+ * i-frame, and half-second repeat-cooldown clocks; they simply add no separate
+ * movement-to-attack delay.
  */
 export function movementActionAttackTransition({
   action,
@@ -217,13 +225,14 @@ export function movementActionAttackTransition({
   nowSeconds: number;
 }): MovementActionAttackTransition {
   if (
-    action !== "evade" ||
+    !action ||
     nowSeconds < startTimeSeconds ||
     nowSeconds >= expiryTimeSeconds
   ) {
     return "none";
   }
-  const authoredDuration = PLAYER_MOVEMENT_ACTION_TIMING.evade.durationSeconds;
+  const authoredDuration =
+    PLAYER_MOVEMENT_ACTION_TIMING[action].durationSeconds;
   const actualDuration = expiryTimeSeconds - startTimeSeconds;
   if (!Number.isFinite(actualDuration) || actualDuration <= 0) {
     return "none";
@@ -231,10 +240,10 @@ export function movementActionAttackTransition({
   const elapsed =
     ((nowSeconds - startTimeSeconds) / actualDuration) * authoredDuration;
   const epsilon = 1e-9;
-  if (elapsed + epsilon < PLAYER_EVADE_ATTACK_TRANSITION.queueStartSeconds) {
-    return "blocked";
-  }
-  if (elapsed + epsilon < PLAYER_EVADE_ATTACK_TRANSITION.cancelStartSeconds) {
+  if (
+    elapsed + epsilon <
+    PLAYER_MOVEMENT_ACTION_ATTACK_CANCEL_SECONDS[action]
+  ) {
     return "queue";
   }
   return "open";
@@ -258,9 +267,9 @@ export function playerMovementActionAnimationName({
     return "doubleJump";
   }
   // Keep the gameplay actions, stamina, motion, cooldowns, and network state
-  // unchanged; only exchange the clips presented for the desktop X/C actions.
-  // X still publishes `dodge` but now plays C's roll, while C still publishes
-  // `evade` and selects X's directional dodge from its travel direction.
+  // unchanged; only exchange the clips presented for the desktop E/Q actions.
+  // E publishes `dodge` but plays the roll clip, while Q publishes `evade` and
+  // selects the directional dodge clip from its travel direction.
   if (action === "dodge") {
     return "evade";
   }

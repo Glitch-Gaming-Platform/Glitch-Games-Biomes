@@ -108,7 +108,7 @@ export const ShortcutText: React.FunctionComponent<
       runShortcut,
     ]
   );
-  useWorldInteractionCandidate(
+  const ownsWorldInteraction = useWorldInteractionCandidate(
     centralizedWorldCandidate,
     props.keyCode ?? "KeyF"
   );
@@ -173,6 +173,17 @@ export const ShortcutText: React.FunctionComponent<
       className={`key-hint ${props.disabled ? "disabled" : ""} ${
         isMobileActionButton ? "key-hint-mobile-action" : ""
       }`.trim()}
+      data-world-interaction-candidate-id={props.worldInteractionCandidateId}
+      data-world-interaction-priority={
+        centralizedWorldCandidate?.priority ?? undefined
+      }
+      data-world-interaction-owner={
+        centralizedWorldCandidate
+          ? ownsWorldInteraction
+            ? "true"
+            : "false"
+          : undefined
+      }
     >
       {isMobileActionButton ? (
         <motion.button

@@ -9,7 +9,8 @@
  * HTTP response, debug global, or localStorage mutation is never considered a
  * gameplay success without authoritative ECS and synchronized-client evidence.
  */
-// The focused production-shaped stack maps web 3017 -> Redis 6390. Configure
+// The focused production-shaped stack exposes its retained Redis through the
+// host-only biomes-prod-smoke-redis-forward bridge on port 6493. Configure
 // the host-side fixture client before importing connection.ts, whose port is
 // captured at module load. Requiring every invocation to remember this extra
 // variable caused long browser runs to fail before their first assertion.
@@ -21,7 +22,7 @@ if (
   const configuredWeb = process.env.HARTHMERE_E2E_BASE_URL ?? "";
   process.env.GLITCH_REDIS_PORT =
     process.env.HARTHMERE_E2E_REDIS_PORT ??
-    (/:3017(?:\/|$)/.test(configuredWeb) ? "6390" : "6379");
+    (/:3017(?:\/|$)/.test(configuredWeb) ? "6493" : "6379");
 }
 if (process.env.HARTHMERE_E2E_DIRECT_WORLD_FIXTURES === "1") {
   process.env.IS_SERVER = process.env.IS_SERVER || "1";
@@ -87,7 +88,6 @@ const {
   Health,
   Inventory,
   Label,
-  LockedInPlace,
   LooseItem,
   MinigameComponent,
   MinigameInstance,
@@ -189,10 +189,15 @@ const {
   nativeQuestStepXp,
 } = require("../../src/shared/harthmere/native_quest_step_xp");
 const {
+  HARTHMERE_NPC_CHASE_MIN_EFFECTIVE_METERS_PER_SECOND,
   HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND,
+  RETALIATION_TARGET_ROTATION_SECONDS,
 } = require("../../src/shared/npc/behavior/chase_attack");
 const { buildEscortState } = require("../../src/shared/npc/behavior/escort");
-const { serializeNpcCustomState } = require("../../src/shared/npc/serde");
+const {
+  deserializeNpcCustomState,
+  serializeNpcCustomState,
+} = require("../../src/shared/npc/serde");
 const { LOCAL_DEV_HUMAN_NPC_TYPE_ID } = require("../../src/shared/npc/bikkie");
 const {
   HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED,
@@ -211,6 +216,7 @@ const {
   scaleCreatureCombatStats,
 } = require("../../src/shared/npc/creature_level");
 const {
+  buildHarthmereLiveCreatureEntity,
   harthmereLiveCreatureNpcState,
 } = require("../../src/server/harthmere/live_entity_ecs_seed");
 const {
@@ -256,6 +262,9 @@ const {
   connectToRedis,
   connectToRedisWithLua,
 } = require("../../src/server/shared/redis/connection");
+const {
+  releaseCh1Slot,
+} = require("../../src/server/harthmere/ch1_slot_claim");
 const { HfcWorldApi } = require("../../src/server/shared/world/hfc/hfc");
 const { HybridWorldApi } = require("../../src/server/shared/world/hfc/hybrid");
 const { RedisWorld } = require("../../src/server/shared/world/redis");
@@ -311,6 +320,10 @@ const {
   GROVE_FOUNTAIN_LESSON_IDS,
   GROVE_QUEST_CATALOG,
 } = require("../../src/shared/harthmere/grove/grove_quest_catalog");
+const {
+  groveNativeQuestId,
+  groveNativeStepId,
+} = require("../../src/shared/harthmere/grove/grove_quest_ids");
 const {
   groveQuestGiverId,
 } = require("../../src/shared/harthmere/grove/grove_quest_schema");
@@ -430,6 +443,9 @@ const { CH1_QUESTS } = require("../../src/shared/harthmere/ch1_quests");
 const {
   CH1_REQUIRED_GROVE_JOB_COMPLETIONS,
 } = require("../../src/shared/harthmere/ch1_objective_requirements");
+const {
+  CH1_GROVE_JOB_TEMPLATE_IDS,
+} = require("../../src/shared/harthmere/ch1_interaction_surfaces");
 const {
   CH1_GROVE_SUPPLIER_ROUTE,
   CH1_TESTIMONY_ROUTE,
@@ -696,6 +712,11 @@ const chaseOnly = process.env.HARTHMERE_E2E_CHASE_ONLY === "1";
 const escortOnly = process.env.HARTHMERE_E2E_ESCORT_ONLY === "1";
 // HARTHMERE_HILL_COMBAT: ledge reach, crest retention, and group identity.
 const hillCombatOnly = process.env.HARTHMERE_E2E_HILL_COMBAT_ONLY === "1";
+const hillCombatSkipGiant =
+  process.env.HARTHMERE_E2E_HILL_COMBAT_SKIP_GIANT === "1";
+const retaliationOnly = process.env.HARTHMERE_E2E_RETALIATION_ONLY === "1";
+const retaliationSoloRotation =
+  process.env.HARTHMERE_E2E_RETALIATION_SOLO_ROTATION === "1";
 const hoePurchaseOnly = process.env.HARTHMERE_E2E_HOE_PURCHASE_ONLY === "1";
 const skillsOnly = process.env.HARTHMERE_E2E_SKILLS_ONLY === "1";
 const exhaustiveRobotStory =
@@ -953,6 +974,7 @@ const snapshotGroveResetTimeoutMs = Math.min(
   Number(process.env.HARTHMERE_E2E_GROVE_RESET_TIMEOUT_MS || 60_000)
 );
 const chapter1Features = selectedCatalogIds("HARTHMERE_E2E_CHAPTER_1_FEATURES");
+const chapter1ItemIds = selectedCatalogIds("HARTHMERE_E2E_CHAPTER_1_ITEM_IDS");
 const chapter1CaptureIds = selectedCatalogIds(
   "HARTHMERE_E2E_CHAPTER_1_CAPTURE_IDS"
 );
@@ -1037,7 +1059,11 @@ const browserCleanupTimeoutMs = Math.min(
 );
 const acceptanceGateMs = Number(
   process.env.HARTHMERE_E2E_ACCEPTANCE_GATE_MS ||
-    (combatMusicOnly || chaseOnly || escortOnly || hillCombatOnly
+    (combatMusicOnly ||
+    chaseOnly ||
+    escortOnly ||
+    hillCombatOnly ||
+    retaliationOnly
       ? 10_000
       : 2000)
 );
@@ -1049,7 +1075,11 @@ const performanceAssertionsEnabled =
   process.env.HARTHMERE_E2E_PERFORMANCE_ASSERTIONS === "1";
 const originSyncGateMs = Number(
   process.env.HARTHMERE_E2E_ORIGIN_SYNC_GATE_MS ||
-    (combatMusicOnly || chaseOnly || escortOnly || hillCombatOnly
+    (combatMusicOnly ||
+    chaseOnly ||
+    escortOnly ||
+    hillCombatOnly ||
+    retaliationOnly
       ? timeoutMs + 30_000
       : legacyCombatRoutesOnly
         ? 20_000
@@ -1072,7 +1102,11 @@ const combatMusicRestoreGateMs = Number(
 const controlToken = process.env.HARTHMERE_E2E_CONTROL_TOKEN || "";
 const combatFixtureSyncGateMs = Number(
   process.env.HARTHMERE_E2E_COMBAT_FIXTURE_SYNC_GATE_MS ||
-    (combatMusicOnly || chaseOnly || escortOnly || hillCombatOnly
+    (combatMusicOnly ||
+    chaseOnly ||
+    escortOnly ||
+    hillCombatOnly ||
+    retaliationOnly
       ? timeoutMs + 30_000
       : secondClientSyncGateMs)
 );
@@ -1204,47 +1238,49 @@ const report = {
     ? "chase-only"
     : escortOnly
       ? "escort-only"
-      : hillCombatOnly
-        ? "hill-combat-only"
-        : hoePurchaseOnly
-          ? "hoe-purchase-only"
-          : skillsOnly
-            ? "skills-only"
-            : combatMusicOnly
-              ? "combat-music-only"
-              : snapshotGroveOnboardingOnly
-                ? "snapshot-grove-onboarding-only"
-                : robotStoryCrateDialogsOnly
-                  ? "robot-story-crate-dialogs-only"
-                  : robotSetupContinueOnly
-                    ? "robot-setup-continue-only"
-                    : exhaustiveRobotStory
-                      ? "robot-story-exhaustive"
-                      : robotStoryOnly
-                        ? "robot-story-only"
-                        : remainingJobsOnly
-                          ? "remaining-business-jobs-only"
-                          : remainingQuestsOnly
-                            ? "remaining-grove-quests-only"
-                            : remainingBibleOnly
-                              ? "remaining-bible-quests-only"
-                              : remainingClientQuestsOnly
-                                ? "remaining-client-quests-only"
-                                : legacyCombatMarkersOnly
-                                  ? "legacy-combat-markers-only"
-                                  : legacyCombatRoutesOnly
-                                    ? "legacy-combat-routes-only"
-                                    : questsUiOnly
-                                      ? "quests-ui-only"
-                                      : chapter1NpcAuditOnly
-                                        ? "chapter-1-npc-audit-only"
-                                        : chapter1CaptureOnly
-                                          ? "chapter-1-capture-only"
-                                          : chapter1Only
-                                            ? "chapter-1-only"
-                                            : jobsOnly
-                                              ? "jobs-only"
-                                              : "full",
+      : retaliationOnly
+        ? "retaliation-only"
+        : hillCombatOnly
+          ? "hill-combat-only"
+          : hoePurchaseOnly
+            ? "hoe-purchase-only"
+            : skillsOnly
+              ? "skills-only"
+              : combatMusicOnly
+                ? "combat-music-only"
+                : snapshotGroveOnboardingOnly
+                  ? "snapshot-grove-onboarding-only"
+                  : robotStoryCrateDialogsOnly
+                    ? "robot-story-crate-dialogs-only"
+                    : robotSetupContinueOnly
+                      ? "robot-setup-continue-only"
+                      : exhaustiveRobotStory
+                        ? "robot-story-exhaustive"
+                        : robotStoryOnly
+                          ? "robot-story-only"
+                          : remainingJobsOnly
+                            ? "remaining-business-jobs-only"
+                            : remainingQuestsOnly
+                              ? "remaining-grove-quests-only"
+                              : remainingBibleOnly
+                                ? "remaining-bible-quests-only"
+                                : remainingClientQuestsOnly
+                                  ? "remaining-client-quests-only"
+                                  : legacyCombatMarkersOnly
+                                    ? "legacy-combat-markers-only"
+                                    : legacyCombatRoutesOnly
+                                      ? "legacy-combat-routes-only"
+                                      : questsUiOnly
+                                        ? "quests-ui-only"
+                                        : chapter1NpcAuditOnly
+                                          ? "chapter-1-npc-audit-only"
+                                          : chapter1CaptureOnly
+                                            ? "chapter-1-capture-only"
+                                            : chapter1Only
+                                              ? "chapter-1-only"
+                                              : jobsOnly
+                                                ? "jobs-only"
+                                                : "full",
   gates: {
     performanceAssertionsEnabled,
     acceptanceGateMs,
@@ -1333,6 +1369,8 @@ function gameUrl() {
     questsUiOnly ||
     skillsOnly ||
     chaseOnly ||
+    hillCombatOnly ||
+    retaliationOnly ||
     hoePurchaseOnly ||
     escortOnly ||
     chapter1Only ||
@@ -2233,6 +2271,8 @@ function attachDiagnostics(page, label) {
     const unsupportedExtensionAsset =
       text.includes("Fetch API cannot load chrome-extension://") &&
       text.includes('URL scheme "chrome-extension" is not supported');
+    const unsupportedExtensionOpaqueMessage =
+      text === `${label}:error: {target: X, data: 150}`;
     const knownMixedSceneMeshFallback =
       text.includes("Found mesh with mix of scene types") &&
       (text.includes("Defaulting to base.") ||
@@ -2300,6 +2340,7 @@ function attachDiagnostics(page, label) {
     if (
       message.type() === "error" &&
       !unsupportedExtensionAsset &&
+      !unsupportedExtensionOpaqueMessage &&
       !knownMixedSceneMeshFallback &&
       !knownComputePressurePolicyWarning &&
       !urlLessResource404 &&
@@ -2313,6 +2354,9 @@ function attachDiagnostics(page, label) {
       report.browser.failures.push(text);
     }
     if (isolatedChapter1LegacyRobotStoryNavigationTarget) {
+      report.browser.transients.push(text);
+    }
+    if (unsupportedExtensionOpaqueMessage) {
       report.browser.transients.push(text);
     }
     if (recoveredLegacyCombatMarkerOnlyPlaceableMesh) {
@@ -2467,6 +2511,12 @@ function attachDiagnostics(page, label) {
       errorText === "net::ERR_ABORTED" &&
       request.method() === "GET" &&
       /\/_next\/static\/media\/quest-main\.[a-f0-9]+\.png(?:\?|$)/.test(url);
+    const abortedChapter1UnmountedQuestIcon =
+      chapter1Only &&
+      (!chapter1Features || chapter1Features.has("quests")) &&
+      errorText === "net::ERR_ABORTED" &&
+      request.method() === "GET" &&
+      /\/_next\/static\/media\/quest-main\.[a-f0-9]+\.png(?:\?|$)/.test(url);
     const recoveredJobsOnlyAbortedRequest =
       jobsCatalogOnly &&
       errorText === "net::ERR_ABORTED" &&
@@ -2496,6 +2546,38 @@ function attachDiagnostics(page, label) {
       /^\/harthmere\/voices\/generated\/current\/[^?]+\.mp3(?:\?|$)/.test(
         url.slice(baseUrl.length)
       );
+    const abortedChapter1CutsceneMusicTransition =
+      (chapter1Only || chapter1CaptureOnly) &&
+      (!chapter1Features ||
+        chapter1Features.has("cutscenes") ||
+        chapter1Features.has("quests")) &&
+      errorText === "net::ERR_ABORTED" &&
+      request.method() === "GET" &&
+      /^\/assets\/harthmere\/audio\/[^?]+\.mp3(?:\?|$)/.test(
+        url.slice(baseUrl.length)
+      );
+    const abortedChapter1WorldMusicTransition =
+      chapter1Only &&
+      errorText === "net::ERR_ABORTED" &&
+      request.method() === "GET" &&
+      /^\/buckets\/biomes-static\/asset_data\/audio\/(?:music-1|muck-music-1)\.[a-f0-9]+\.webm(?:\?|$)/.test(
+        new URL(url).pathname
+      );
+    const abortedHillCombatAmbientMusicTransition =
+      (hillCombatOnly || retaliationOnly) &&
+      errorText === "net::ERR_ABORTED" &&
+      request.method() === "GET" &&
+      (/^\/buckets\/biomes-static\/asset_data\/audio\/[^?]+\.webm(?:\?|$)/.test(
+        new URL(url).pathname
+      ) ||
+        /^\/assets\/harthmere\/audio\/[^?]+\.mp3(?:\?|$)/.test(
+          new URL(url).pathname
+        ));
+    const abortedHillCombatChapter1StoryPoll =
+      (hillCombatOnly || retaliationOnly) &&
+      errorText === "net::ERR_ABORTED" &&
+      request.method() === "POST" &&
+      url === `${baseUrl}/api/harthmere/chapter1_story`;
     const recoveredCatalogAbortedMutation =
       (remainingQuestsOnly || remainingBibleOnly) &&
       errorText === "net::ERR_ABORTED" &&
@@ -2529,6 +2611,10 @@ function attachDiagnostics(page, label) {
         abortedVoiceSynthesis ||
         abortedVoiceStatusPoll ||
         abortedCommittedChapter1VoicePlayback ||
+        abortedChapter1CutsceneMusicTransition ||
+        abortedChapter1WorldMusicTransition ||
+        abortedHillCombatAmbientMusicTransition ||
+        abortedHillCombatChapter1StoryPoll ||
         recoveredCatalogAbortedMutation ||
         abortedUnmountedNextStaticAsset ||
         recoveredHoePurchaseBackgroundMutation ||
@@ -2541,6 +2627,7 @@ function attachDiagnostics(page, label) {
         abortedChapter1ReadOnlyPoll ||
         recoveredRobotStoryLiveModeBackgroundAbort ||
         recoveredRobotStoryUnmountedQuestIcon ||
+        abortedChapter1UnmountedQuestIcon ||
         recoveredJobsOnlyAbortedRequest
       ) {
         report.browser.transients.push(diagnostic);
@@ -2695,6 +2782,8 @@ async function openUser(browser, username, label) {
       questsUiOnly ||
       skillsOnly ||
       chaseOnly ||
+      hillCombatOnly ||
+      retaliationOnly ||
       snapshotGroveOnboardingOnly
         ? { width: 800, height: 600 }
         : { width: 1440, height: 900 },
@@ -2709,6 +2798,8 @@ async function openUser(browser, username, label) {
     questsUiOnly ||
     skillsOnly ||
     chaseOnly ||
+    hillCombatOnly ||
+    retaliationOnly ||
     snapshotGroveOnboardingOnly ||
     chapter1Only ||
     chapter1CaptureOnly ||
@@ -2924,11 +3015,11 @@ async function openUser(browser, username, label) {
 
   let focusedCombatPosition;
   if (combatMusicOnly) {
-    const combatNode = HARTHMERE_GATHERING_AUTHORITY_NODES.find(
-      (node) => node.requiredTool && node.requiredSkill <= 1
-    );
-    assert(combatNode, "no basic combat-position fixture is authored");
-    focusedCombatPosition = [...combatNode.position];
+    // The old generic gathering node is not backed by terrain in the retained
+    // production snapshot. Starting there exercises void recovery and reloads
+    // the page before the audio gate can observe clientContext. Reuse the same
+    // production-scanned road surface as the chase and hill-combat gates.
+    focusedCombatPosition = [...HARTHMERE_HILL_COMBAT_BROWSER_FIXTURE_POSITION];
     const applyResponse = await context.request.post(
       new URL("/api/admin/apply_ecs_changes", baseUrl).toString(),
       {
@@ -10785,7 +10876,6 @@ async function proveNativeChaseRoundTrip(first, combatPosition) {
     combatPosition[2],
   ];
   const chaseStartDistance = distance3(chaseStartPosition, chasePlayerPosition);
-  const chaseStartedAtMs = Date.now();
   await placeFrontendPlayerForFixture(
     first.page,
     first.userId,
@@ -10834,7 +10924,7 @@ async function proveNativeChaseRoundTrip(first, combatPosition) {
   const chaseDisplacement = distance3(chaseStartPosition, chasePosition);
   const chaseElapsedSeconds = Math.max(
     0.001,
-    (Date.now() - chaseStartedAtMs) / 1000
+    authoritativeChase.elapsedMs / 1000
   );
   const effectiveChaseSpeed = chaseDisplacement / chaseElapsedSeconds;
   const maxChaseHeight = Math.max(
@@ -10852,6 +10942,15 @@ async function proveNativeChaseRoundTrip(first, combatPosition) {
     `Mucker did not complete the bounded chase observation: ${chaseDisplacement.toFixed(
       2
     )}m`
+  );
+  assert(
+    effectiveChaseSpeed + 0.35 >=
+      HARTHMERE_NPC_CHASE_MIN_EFFECTIVE_METERS_PER_SECOND,
+    `Mucker chase remained too slow: ${effectiveChaseSpeed.toFixed(
+      2
+    )}m/s, expected at least ${HARTHMERE_NPC_CHASE_MIN_EFFECTIVE_METERS_PER_SECOND.toFixed(
+      2
+    )}m/s within hill/poll tolerance`
   );
   assert(
     chaseDisplacement <=
@@ -10907,6 +11006,7 @@ async function proveNativeChaseRoundTrip(first, combatPosition) {
     hillStepIds: [String(lowerStepId), String(upperStepId)],
     renderedPosition: renderedRecord?.at,
     speedCap: HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND,
+    speedFloor: HARTHMERE_NPC_CHASE_MIN_EFFECTIVE_METERS_PER_SECOND,
   });
 }
 
@@ -11141,6 +11241,17 @@ async function proveNativeEscortRoundTrip(first, combatPosition) {
 // reload and can never be a valid combat fixture.
 const HARTHMERE_HILL_COMBAT_BROWSER_FIXTURE_POSITION = [895, 62, -197];
 
+// Native Anima safe zones are terrain-aware: clean road is protected even when
+// it is outside the authored town/Grove safe-area circles. Direct retaliation is
+// deliberately permitted there, but pack-mate propagation is not. The first
+// The group row deliberately runs at the first pack's real production shoulder.
+// The assertion covers the whole authored pack instead of pretending two selected
+// members are the only responders. The solitary row runs separately at its own
+// authored production position after the complete group is suspended.
+const HARTHMERE_RETALIATION_BROWSER_FIXTURE_POSITION = [
+  781.227, 66, -180.855,
+];
+
 // Run it on a warm production-shaped stack with Anima ready:
 //
 //   HARTHMERE_E2E_HILL_COMBAT_ONLY=1 \
@@ -11148,6 +11259,999 @@ const HARTHMERE_HILL_COMBAT_BROWSER_FIXTURE_POSITION = [895, 62, -197];
 //   HARTHMERE_E2E_SYNC_BASE_URL=http://127.0.0.1:4907 \
 //   HARTHMERE_E2E_URL=http://127.0.0.1:3017/at \
 //     node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+async function proveNativeMultiplayerRetaliationRoundTrip(
+  first,
+  combatPosition
+) {
+  const roadSeed = HARTHMERE_ROAD_GROUP_MONSTER_SEEDS.find(
+    (seed) => seed.combatKind === "mux"
+  );
+  const mateSeed = HARTHMERE_ROAD_GROUP_MONSTER_SEEDS.find(
+    (seed) =>
+      seed.combatKind === "mux" &&
+      seed.groupId === roadSeed?.groupId &&
+      seed.entityId !== roadSeed?.entityId
+  );
+  const sourcePackSeeds = HARTHMERE_ROAD_GROUP_MONSTER_SEEDS.filter(
+    (seed) => seed.groupId === roadSeed?.groupId
+  );
+  const otherGroupSeed = HARTHMERE_ROAD_GROUP_MONSTER_SEEDS.find(
+    (seed) => seed.combatKind === "mux" && seed.groupId !== roadSeed?.groupId
+  );
+  const retaliationOnlySeed =
+    harthmereGroundedMuckMonsterSeedsInTerritory().find(
+      (seed) =>
+        seed.combatKind === "mux" && seed.areaId === "road_muckwad_patch"
+    );
+  assert(
+    roadSeed &&
+      mateSeed &&
+      sourcePackSeeds.length > 2 &&
+      otherGroupSeed &&
+      retaliationOnlySeed,
+    "multiplayer retaliation seeds are unavailable"
+  );
+  const profile = harthmereNativeNpcCombatProfileForSeed(roadSeed);
+  const otherGroupProfile =
+    harthmereNativeNpcCombatProfileForSeed(otherGroupSeed);
+  const retaliationOnlyProfile =
+    harthmereNativeNpcCombatProfileForSeed(retaliationOnlySeed);
+  const maxHp = scaleCreatureCombatStats(
+    {
+      maxHp: profile.maxHp,
+      attackDamage: profile.attackDamage,
+      attackIntervalSecs: profile.attackIntervalSecs,
+      walkSpeed: profile.walkSpeed,
+      runSpeed: profile.runSpeed,
+      killXp: profile.killXp,
+    },
+    roadSeed.progressionLevel
+  ).maxHp;
+  const retaliationOnlyMaxHp = scaleCreatureCombatStats(
+    {
+      maxHp: retaliationOnlyProfile.maxHp,
+      attackDamage: retaliationOnlyProfile.attackDamage,
+      attackIntervalSecs: retaliationOnlyProfile.attackIntervalSecs,
+      walkSpeed: retaliationOnlyProfile.walkSpeed,
+      runSpeed: retaliationOnlyProfile.runSpeed,
+      killXp: retaliationOnlyProfile.killXp,
+    },
+    retaliationOnlySeed.progressionLevel
+  ).maxHp;
+  const originalPlayer = await authoritativeEntity(first.page, first.userId);
+  assert(
+    originalPlayer.entity?.position?.v &&
+      originalPlayer.entity?.health &&
+      originalPlayer.entity?.inventory &&
+      originalPlayer.entity?.trigger_state,
+    "retaliation player has no authoritative pose/health/combat state"
+  );
+  const originalPlayerPosition = [...originalPlayer.entity.position.v];
+  const originalPlayerHealth = Health.clone(originalPlayer.entity.health);
+  const originalPlayerInventory = Inventory.clone(originalPlayer.entity.inventory);
+  const originalPlayerSelectedItem = originalPlayer.entity.selected_item
+    ? SelectedItem.clone(originalPlayer.entity.selected_item)
+    : undefined;
+  const originalPlayerTriggerState = TriggerState.clone(
+    originalPlayer.entity.trigger_state
+  );
+  const fixtureIds = new Set();
+  let previousPermitVoidMovement = false;
+  let nearbySecond;
+  let nearbySecondOriginalPosition;
+  let nearbySecondOriginalHealth;
+  let nearbySecondPreviousPermitVoidMovement;
+  let originalCombatNpcs = [];
+
+  const allocateFixtureId = async () => {
+    const id = await bridgeCall(first.page, "allocateId");
+    fixtureIds.add(id);
+    return id;
+  };
+
+  const placePlayer = async (client, position, label) => {
+    await placeFrontendPlayerForFixture(
+      client.page,
+      client.userId,
+      position,
+      [0, 0]
+    );
+    await publishFrontendMove(client.page, client.userId, position, [0, 0]);
+    return waitFor(
+      label,
+      () => authoritativeEntity(client.page, client.userId),
+      ({ entity }) =>
+        Boolean(entity?.position?.v) &&
+        distance3(entity.position.v, position) <= 0.75,
+      15_000,
+      30_000
+    );
+  };
+
+  const publishEncounterPlayerPose = async (client, position) => {
+    await applyFixture(client.page, {
+      kind: "update",
+      entity: {
+        id: client.userId,
+        position: Position.create({ v: position }),
+        rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+      },
+    });
+    await placeFrontendPlayerForFixture(
+      client.page,
+      client.userId,
+      position,
+      [0, 0]
+    );
+    await publishFrontendMove(
+      client.page,
+      client.userId,
+      position,
+      [0, 0]
+    );
+  };
+
+  const provokeFixtureNpc = async (npcId, label, options = {}) => {
+    const before = await authoritativeEntity(first.page, npcId);
+    assert(before.entity?.health, `${label}: fixture has no native health`);
+    assert(before.entity.health.hp > 1, `${label}: fixture cannot receive damage`);
+    const event = new UpdateNpcHealthEvent({
+      id: npcId,
+      hp: -1,
+      damageSource: {
+        kind: "attack",
+        attacker: first.userId,
+        dir: [1, 0, 0],
+      },
+    });
+    if (options.record !== false) {
+      await publishAndProve({
+        name: label,
+        page: first.page,
+        event,
+        authoritativeProbe: () => authoritativeEntity(first.page, npcId),
+        authoritativePredicate: ({ version, entity }) =>
+          version > before.version &&
+          (entity?.health?.hp ?? Number.POSITIVE_INFINITY) <
+            before.entity.health.hp &&
+          entity?.health?.lastDamageSource?.kind === "attack" &&
+          Number(entity.health.lastDamageSource.attacker) ===
+            Number(first.userId),
+        localProbe: () => localEntity(first.page, npcId),
+        localPredicate: ({ entity }) =>
+          (entity?.health?.hp ?? Number.POSITIVE_INFINITY) <
+          before.entity.health.hp,
+        authoritativeGateMs: combatFixtureSyncGateMs,
+      });
+      return;
+    }
+    await bridgeCall(first.page, "publish", serializedEvent(event));
+    const authoritative = await waitFor(
+      `${label}: authoritative damage evidence`,
+      () => authoritativeEntity(first.page, npcId),
+      ({ version, entity }) =>
+        version > before.version &&
+        (entity?.health?.hp ?? Number.POSITIVE_INFINITY) <
+          before.entity.health.hp &&
+        entity.health.lastDamageSource?.kind === "attack" &&
+        Number(entity.health.lastDamageSource.attacker) ===
+          Number(first.userId),
+      combatFixtureSyncGateMs
+    );
+    return authoritative;
+  };
+
+  try {
+    previousPermitVoidMovement = await first.page.evaluate(() => {
+      const resources = globalThis.clientContext?.resources;
+      if (!resources) {
+        throw new Error("retaliation client resources are unavailable");
+      }
+      const previous = Boolean(resources.get("/tweaks").permitVoidMovement);
+      resources.update("/tweaks", (tweaks) => {
+        tweaks.permitVoidMovement = true;
+      });
+      return previous;
+    });
+
+    const combatFloorId = await allocateFixtureId();
+    await applyFixture(first.page, {
+      kind: "create",
+      entity: {
+        id: combatFloorId,
+        position: Position.create({
+          v: [combatPosition[0] - 3, combatPosition[1] - 1, combatPosition[2]],
+        }),
+        size: Size.create({ v: [40, 1, 20] }),
+        collideable: Collideable.create(),
+        label: Label.create({ text: "E2E retaliation floor" }),
+      },
+    });
+    await waitFor(
+      "retaliation: deterministic floor created authoritatively",
+      () => authoritativeEntity(first.page, combatFloorId),
+      ({ entity }) => entity?.collideable !== undefined,
+      combatFixtureSyncGateMs
+    );
+    await placeFrontendPlayerForFixture(
+      first.page,
+      first.userId,
+      combatPosition,
+      [0, 0]
+    );
+    await publishFrontendMove(first.page, first.userId, combatPosition, [0, 0]);
+    await waitFor(
+      "retaliation: deterministic floor synchronized",
+      () => localEntity(first.page, combatFloorId),
+      ({ entity }) => entity?.collideable !== undefined,
+      combatFixtureSyncGateMs
+    );
+    await publishEncounterPlayerPose(
+      first,
+      combatPosition
+    );
+    await delay(500);
+    await applyFixture(first.page, {
+      kind: "update",
+      entity: {
+        id: first.userId,
+        health: Health.create({ hp: 1_000_000, maxHp: 1_000_000 }),
+      },
+    });
+
+    const browser = first.context.browser();
+    assert(browser, "retaliation browser is unavailable");
+    nearbySecond = await openUser(
+      browser,
+      `NativeECS-Retaliation-B-${runId.replace(/[^0-9]/g, "").slice(-10)}`,
+      "retaliation-client-b"
+    );
+    const nearbySecondOriginal = await authoritativeEntity(
+      nearbySecond.page,
+      nearbySecond.userId
+    );
+    assert(
+      nearbySecondOriginal.entity?.position?.v &&
+        nearbySecondOriginal.entity?.health,
+      "second retaliation player has no authoritative pose/health"
+    );
+    nearbySecondOriginalPosition = [...nearbySecondOriginal.entity.position.v];
+    nearbySecondOriginalHealth = Health.clone(
+      nearbySecondOriginal.entity.health
+    );
+    nearbySecondPreviousPermitVoidMovement = await nearbySecond.page.evaluate(
+      () => {
+        const resources = globalThis.clientContext?.resources;
+        if (!resources) {
+          throw new Error(
+            "second retaliation client resources are unavailable"
+          );
+        }
+        const previous = Boolean(resources.get("/tweaks").permitVoidMovement);
+        resources.update("/tweaks", (tweaks) => {
+          tweaks.permitVoidMovement = true;
+        });
+        return previous;
+      }
+    );
+    const nearbySecondPosition = [
+      combatPosition[0] + 1,
+      combatPosition[1],
+      combatPosition[2] + 4,
+    ];
+    // The second client has its own subscription/render readiness. Stage it
+    // near the encounter so the temporary floor enters that client's local
+    // table, then reassert the pose after the floor is known. Waiting for the
+    // first placement here races legitimate client movement against an unseen
+    // floor and can drift the actor out of the encounter before combat begins.
+    await placeFrontendPlayerForFixture(
+      nearbySecond.page,
+      nearbySecond.userId,
+      nearbySecondPosition,
+      [0, 0]
+    );
+    await publishFrontendMove(
+      nearbySecond.page,
+      nearbySecond.userId,
+      nearbySecondPosition,
+      [0, 0]
+    );
+    await waitFor(
+      "retaliation: second client synchronizes the deterministic floor",
+      () => localEntity(nearbySecond.page, combatFloorId),
+      ({ entity }) => entity?.collideable !== undefined,
+      combatFixtureSyncGateMs
+    );
+    await publishEncounterPlayerPose(
+      nearbySecond,
+      nearbySecondPosition
+    );
+    await delay(500);
+    await applyFixture(nearbySecond.page, {
+      kind: "update",
+      entity: {
+        id: nearbySecond.userId,
+        health: Health.create({ hp: 1_000_000, maxHp: 1_000_000 }),
+      },
+    });
+
+    // UpdateNpcHealthEvent is intentionally a real player attack, so the
+    // server validates the attacker's selected native item, level, cadence,
+    // reach, and health. A retained visual-auth player can have any ordinary
+    // tool or non-combat item selected; relying on that ambient state made this
+    // release gate pass or time out depending on what the player last equipped.
+    // Stage one deterministic melee item and restore the complete player combat
+    // state in finally.
+    await equipFocusedNativeCombatItem(
+      first,
+      "training_dagger",
+      combatPosition
+    );
+    report.browser.transients.push(
+      "retaliation-staged-authoritative-training-dagger"
+    );
+
+    // Reuse authored creature identities rather than allocating random
+    // NPC ids. The production-sized Anima worker may temporarily hold only a
+    // subset of value shards after a restart; existing authored ids are already
+    // admitted to its tracker and therefore make this a targeting test instead
+    // of a shard-lease lottery. Every changed component is restored in finally.
+    const sourceId = roadSeed.entityId;
+    const mateId = mateSeed.entityId;
+    const sourcePackIds = sourcePackSeeds.map((seed) => seed.entityId);
+    const strangerId = otherGroupSeed.entityId;
+    const soloId = retaliationOnlySeed.entityId;
+    const combatSeeds = [
+      ...sourcePackSeeds,
+      otherGroupSeed,
+      retaliationOnlySeed,
+    ];
+    originalCombatNpcs = await Promise.all(
+      combatSeeds.map(({ entityId: id }) =>
+        authoritativeEntity(first.page, id)
+      )
+    );
+    const canonicalCombatNpcs = combatSeeds.map((seed) =>
+      buildHarthmereLiveCreatureEntity(seed, secondsSinceEpoch())
+    );
+    const missingCombatNpcChanges = originalCombatNpcs.flatMap(
+      ({ entity }, index) =>
+        entity
+          ? []
+          : [{ kind: "create", entity: canonicalCombatNpcs[index] }]
+    );
+    if (missingCombatNpcChanges.length > 0) {
+      await applyTypedFixture(first.page, ...missingCombatNpcChanges);
+      await waitFor(
+        "retaliation: missing authored fixtures restored from production seeds",
+        () =>
+          Promise.all(
+            combatSeeds.map(({ entityId }) =>
+              authoritativeEntity(first.page, entityId)
+            )
+          ),
+        (entities) => entities.every(({ entity }) => entity?.npc_metadata),
+        combatFixtureSyncGateMs
+      );
+      report.browser.transients.push(
+        `retaliation-restored-missing-authored-fixtures:${missingCombatNpcChanges
+          .map((change) => String(change.entity.id))
+          .join(",")}`
+      );
+    }
+    // These are production-owned authored identities, not disposable random
+    // fixtures. Always restore the canonical production entity after the row;
+    // restoring a state captured from an earlier aborted browser run would
+    // preserve its chase target, staged pose, or partial tombstone forever.
+    originalCombatNpcs = originalCombatNpcs.map((row, index) => ({
+      ...row,
+      entity: canonicalCombatNpcs[index],
+    }));
+    assert(
+      originalCombatNpcs.every(({ entity }) => entity?.npc_metadata),
+      "authored retaliation fixtures are missing from the retained world"
+    );
+    const sourcePosition = [...roadSeed.position];
+    const matePosition = [...mateSeed.position];
+    const strangerPosition = [...otherGroupSeed.position];
+    const groupFixtureChanges = [
+        {
+          id: sourceId,
+          position: sourcePosition,
+          npcState: harthmereLiveCreatureNpcState(roadSeed),
+          typeId: profile.id,
+          label: `E2E ${profile.displayName} Retaliation Source`,
+        },
+        {
+          id: mateId,
+          position: matePosition,
+          npcState: harthmereLiveCreatureNpcState(mateSeed),
+          typeId: profile.id,
+          label: `E2E ${profile.displayName} Pack Mate`,
+        },
+        {
+          id: strangerId,
+          position: strangerPosition,
+          npcState: harthmereLiveCreatureNpcState(otherGroupSeed),
+          typeId: otherGroupProfile.id,
+          label: `E2E ${otherGroupProfile.displayName} Other Group`,
+        },
+      ].map(({ id, position, npcState, typeId, label }) => ({
+        kind: "update",
+        entity: {
+          id,
+          position: Position.create({ v: position }),
+          orientation: Orientation.create({ v: [0, 0] }),
+          rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+          size: Size.create({ v: [1, 1.2, 1] }),
+          health: Health.create({ hp: maxHp, maxHp }),
+          npc_state: npcState,
+          npc_metadata: NpcMetadata.create({
+            type_id: typeId,
+            created_time: secondsSinceEpoch(),
+            spawn_position: position,
+            spawn_orientation: [0, 0],
+          }),
+          label: Label.create({ text: label }),
+        },
+      }));
+    const clearGroupPresentation = () =>
+      applyFixture(
+        first.page,
+        ...[...sourcePackIds, strangerId].map((id) => ({
+          kind: "update",
+          entity: {
+            id,
+            npc_combat_state: null,
+            movement_state: null,
+            emote: null,
+          },
+        }))
+      );
+    await applyTypedFixture(first.page, ...groupFixtureChanges);
+    await clearGroupPresentation();
+    await waitFor(
+      "retaliation: group fixture identities synchronized",
+      () => localEntity(first.page, sourceId),
+      ({ entity }) => entity?.health?.hp === maxHp,
+      combatFixtureSyncGateMs
+    );
+    // A retained Anima shard can still have one in-flight delta from a prior
+    // aborted row. Reassert only after the new fixture identity is visible,
+    // then prove both body placement and private chase state are clean before
+    // opening the encounter.
+    await delay(1_000);
+    await applyTypedFixture(first.page, ...groupFixtureChanges);
+    await clearGroupPresentation();
+    await waitFor(
+      "retaliation: group fixtures settle without stale targets",
+      () =>
+        Promise.all(
+          sourcePackIds.map((id) =>
+            authoritativeEntity(first.page, id)
+          )
+        ),
+      (entities) =>
+        entities.every(({ entity }) => {
+          const state = deserializeNpcCustomState(entity?.npc_state?.data);
+          return (
+            entity?.position?.v !== undefined &&
+            state.chaseAttack?.attackTarget === undefined &&
+            entity.npc_combat_state?.attack_target === undefined
+          );
+        }),
+      60_000,
+      hillCombatFunctionalTimeoutMs
+    );
+
+    const preGroupBodies = await Promise.all([
+      authoritativeEntity(first.page, sourceId),
+      authoritativeEntity(first.page, mateId),
+    ]);
+    const sourceBody = preGroupBodies[0].entity?.position?.v;
+    const mateBody = preGroupBodies[1].entity?.position?.v;
+    assert(sourceBody && mateBody, "retaliation pack has no authoritative body");
+    await publishEncounterPlayerPose(
+      nearbySecond,
+      [mateBody[0] + 1, combatPosition[1], mateBody[2]]
+    );
+    const preHitSource = await authoritativeEntity(first.page, sourceId);
+    assert(
+      preHitSource.entity?.position?.v,
+      "retaliation source has no authoritative body"
+    );
+    await publishEncounterPlayerPose(
+      first,
+      [
+        preHitSource.entity.position.v[0] - 1,
+        combatPosition[1],
+        preHitSource.entity.position.v[2],
+      ]
+    );
+    await delay(500);
+
+    const scenarioFailures = [];
+    try {
+      await provokeFixtureNpc(
+        sourceId,
+        "retaliation: authored group provocation"
+      );
+      let nextGroupProvocationAt = Date.now() + 10_000;
+      let nextGroupParticipantReassertAt = 0;
+      const groupProbe = async () => {
+        let pack = await Promise.all(
+          sourcePackIds.map((id) => authoritativeEntity(first.page, id))
+        );
+        const source = pack.find(
+          ({ entity }) => Number(entity?.id) === Number(sourceId)
+        );
+        const mate = pack.find(
+          ({ entity }) => Number(entity?.id) === Number(mateId)
+        );
+        if (
+          source?.entity?.position?.v &&
+          mate?.entity?.position?.v &&
+          Date.now() >= nextGroupParticipantReassertAt
+        ) {
+          await Promise.all([
+            publishEncounterPlayerPose(first, [
+              source.entity.position.v[0] - 1,
+              Math.max(combatPosition[1], source.entity.position.v[1]),
+              source.entity.position.v[2],
+            ]),
+            publishEncounterPlayerPose(nearbySecond, [
+              mate.entity.position.v[0] + 1,
+              Math.max(combatPosition[1], mate.entity.position.v[1]),
+              mate.entity.position.v[2],
+            ]),
+          ]);
+          pack = await Promise.all(
+            sourcePackIds.map((id) => authoritativeEntity(first.page, id))
+          );
+          nextGroupParticipantReassertAt = Date.now() + 1_000;
+        }
+        if (Date.now() >= nextGroupProvocationAt) {
+          await provokeFixtureNpc(
+            sourceId,
+            "retaliation: authored group provocation refresh",
+            { record: false }
+          );
+          nextGroupProvocationAt = Date.now() + 10_000;
+        }
+        return pack;
+      };
+      const distributed = await waitFor(
+        "retaliation: authored pack distributes across both nearby players",
+        groupProbe,
+        (pack) => {
+          const targets = new Set(
+            pack.map(({ entity }) =>
+              Number(entity?.npc_combat_state?.attack_target ?? 0)
+            )
+          );
+          return (
+            targets.has(Number(first.userId)) &&
+            targets.has(Number(nearbySecond.userId))
+          );
+        },
+        60_000,
+        hillCombatFunctionalTimeoutMs
+      );
+      const unrelated = await authoritativeEntity(first.page, strangerId);
+      assert(
+        ![Number(first.userId), Number(nearbySecond.userId)].includes(
+          Number(unrelated.entity?.npc_combat_state?.attack_target ?? 0)
+        ),
+        "a creature from a different authored group joined the shared alert"
+      );
+      report.scenarios.push({
+        name: "multiplayer retaliation distributes an authored pack across two players",
+        status: "pass",
+        groupId: roadSeed.groupId,
+        responders: distributed.value
+          .filter(({ entity }) => entity?.npc_combat_state?.attack_target)
+          .map(({ entity }) => ({
+            npcId: String(entity.id),
+            targetId: String(entity.npc_combat_state.attack_target),
+          })),
+        distributionMs: distributed.elapsedMs,
+        otherGroupId: otherGroupSeed.groupId,
+        otherGroupNpcId: String(strangerId),
+        otherGroupJoinedSharedAlert: false,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      scenarioFailures.push(`group: ${message}`);
+      report.scenarios.push({
+        name: "multiplayer retaliation distributes an authored pack across two players",
+        status: "fail",
+        error: message,
+      });
+    }
+
+    // The group row leaves real Anima combatants actively chasing the two
+    // browser players. Suspend the complete authored pack before
+    // the independent solo row so pack melee, knockback, and movement cannot
+    // invalidate the solo player's freshly asserted pose. The complete authored
+    // entities are restored in finally regardless of either scenario's result.
+    await applyFixture(
+      first.page,
+      ...[...sourcePackIds, strangerId].map((id) => ({
+        kind: "update",
+        entity: {
+          id,
+          npc_metadata: null,
+          npc_combat_state: null,
+          movement_state: null,
+          emote: null,
+        },
+      }))
+    );
+    await delay(1_000);
+
+    // The production solo row is an opt-in diagnostic rather than a release
+    // gate. Its target-rotation rules are deterministic unit coverage, while a
+    // retained live body's terrain/LOS timing is intentionally non-deterministic.
+    // The default browser release gate is the complete authored pack above.
+    if (retaliationSoloRotation) {
+      try {
+      const soloPosition = [...retaliationOnlySeed.position];
+      const soloFloorId = await allocateFixtureId();
+      await applyFixture(first.page, {
+        kind: "create",
+        entity: {
+          id: soloFloorId,
+          position: Position.create({
+            v: [soloPosition[0] - 3, soloPosition[1] - 1, soloPosition[2]],
+          }),
+          size: Size.create({ v: [40, 1, 20] }),
+          collideable: Collideable.create(),
+          label: Label.create({ text: "E2E solitary retaliation floor" }),
+        },
+      });
+      await waitFor(
+        "retaliation: solitary floor created authoritatively",
+        () => authoritativeEntity(first.page, soloFloorId),
+        ({ entity }) => entity?.collideable !== undefined,
+        combatFixtureSyncGateMs
+      );
+      await Promise.all([
+        publishEncounterPlayerPose(first, soloPosition),
+        publishEncounterPlayerPose(nearbySecond, [
+          soloPosition[0] + 1.5,
+          soloPosition[1],
+          soloPosition[2],
+        ]),
+      ]);
+      await Promise.all([
+        waitFor(
+          "retaliation: opener synchronizes solitary floor",
+          () => localEntity(first.page, soloFloorId),
+          ({ entity }) => entity?.collideable !== undefined,
+          combatFixtureSyncGateMs
+        ),
+        waitFor(
+          "retaliation: second client synchronizes solitary floor",
+          () => localEntity(nearbySecond.page, soloFloorId),
+          ({ entity }) => entity?.collideable !== undefined,
+          combatFixtureSyncGateMs
+        ),
+      ]);
+      await Promise.all([
+        publishEncounterPlayerPose(first, soloPosition),
+        publishEncounterPlayerPose(nearbySecond, [
+          soloPosition[0] + 1.5,
+          soloPosition[1],
+          soloPosition[2],
+        ]),
+      ]);
+      await Promise.all([
+        applyFixture(first.page, {
+          kind: "update",
+          entity: {
+            id: first.userId,
+            health: Health.create({ hp: 1_000_000, maxHp: 1_000_000 }),
+          },
+        }),
+        applyFixture(nearbySecond.page, {
+          kind: "update",
+          entity: {
+            id: nearbySecond.userId,
+            health: Health.create({ hp: 1_000_000, maxHp: 1_000_000 }),
+          },
+        }),
+      ]);
+      const soloFixture = {
+        kind: "update",
+        entity: {
+          id: soloId,
+          position: Position.create({ v: soloPosition }),
+          orientation: Orientation.create({ v: [0, 0] }),
+          rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+          size: Size.create({ v: [1, 1.2, 1] }),
+          health: Health.create({
+            hp: retaliationOnlyMaxHp,
+            maxHp: retaliationOnlyMaxHp,
+          }),
+          npc_state: harthmereLiveCreatureNpcState(retaliationOnlySeed),
+          npc_metadata: NpcMetadata.create({
+            type_id: retaliationOnlyProfile.id,
+            created_time: secondsSinceEpoch(),
+            spawn_position: soloPosition,
+            spawn_orientation: [0, 0],
+          }),
+          label: Label.create({
+            text: `E2E ${retaliationOnlyProfile.displayName} Solo Retaliation`,
+          }),
+        },
+      };
+      await applyTypedFixture(first.page, soloFixture);
+      await waitFor(
+        "retaliation: authored solo identity synchronized",
+        () => localEntity(first.page, soloId),
+        ({ entity }) =>
+          entity?.health?.hp === retaliationOnlyMaxHp &&
+          entity.npc_metadata?.spawn_position !== undefined &&
+          distance3(entity.npc_metadata.spawn_position, soloPosition) <= 0.25,
+        combatFixtureSyncGateMs
+      );
+      // Anima can have one in-flight movement delta from the NPC's original
+      // production location when the first fixture update arrives. Reapply only
+      // after the new identity/state is visible, then require the authoritative
+      // body itself to settle in the encounter before provoking it.
+      await delay(1_000);
+      await applyTypedFixture(first.page, soloFixture);
+      await waitFor(
+        "retaliation: authored solo pose settles in the encounter",
+        () => authoritativeEntity(first.page, soloId),
+        ({ entity }) =>
+          entity?.position?.v !== undefined &&
+          distance3(entity.position.v, soloPosition) <= 4 &&
+          entity.health?.hp === retaliationOnlyMaxHp,
+        60_000,
+        hillCombatFunctionalTimeoutMs
+      );
+      await delay(1_500);
+      const stableSolo = await authoritativeEntity(first.page, soloId);
+      assert(
+        stableSolo.entity?.position?.v &&
+          distance3(stableSolo.entity.position.v, soloPosition) <= 4,
+        "retaliation-only authored NPC did not remain in the staged encounter"
+      );
+      const soloBodyPosition = [...stableSolo.entity.position.v];
+      const soloSecondPosition = [
+        soloBodyPosition[0] + 1.5,
+        soloBodyPosition[1],
+        soloBodyPosition[2],
+      ];
+      await publishEncounterPlayerPose(
+        nearbySecond,
+        soloSecondPosition
+      );
+      // Read the moving retaliation-only body again after placing the second
+      // participant, then put the opener inside authoritative bare-hand range
+      // immediately before publishing the real attack event.
+      const preHitSolo = await authoritativeEntity(first.page, soloId);
+      assert(preHitSolo.entity?.position?.v, "solo retaliation NPC has no body");
+      const soloOpenerPosition = [
+        preHitSolo.entity.position.v[0] - 1,
+        preHitSolo.entity.position.v[1],
+        preHitSolo.entity.position.v[2],
+      ];
+      await publishEncounterPlayerPose(
+        first,
+        soloOpenerPosition
+      );
+
+      await provokeFixtureNpc(
+        soloId,
+        "retaliation: solitary rotation provocation"
+      );
+      let nextSolitaryProvocationAt = Date.now() + 10_000;
+      let nextSoloParticipantReassertAt = 0;
+      const soloParticipantProbe = async () => {
+        let [solo, opener, second] = await Promise.all([
+          authoritativeEntity(first.page, soloId),
+          authoritativeEntity(first.page, first.userId),
+          authoritativeEntity(nearbySecond.page, nearbySecond.userId),
+        ]);
+        const soloBody = solo.entity?.position?.v;
+        if (soloBody && Date.now() >= nextSoloParticipantReassertAt) {
+          const participantY = Math.max(soloPosition[1], soloBody[1]);
+          const openerPosition = [
+            soloBody[0] - 1,
+            participantY,
+            soloBody[2],
+          ];
+          const secondPosition = [
+            soloBody[0] + 1.5,
+            participantY,
+            soloBody[2],
+          ];
+          await Promise.all([
+            publishEncounterPlayerPose(first, openerPosition),
+            publishEncounterPlayerPose(nearbySecond, secondPosition),
+          ]);
+          [solo, opener, second] = await Promise.all([
+            authoritativeEntity(first.page, soloId),
+            authoritativeEntity(first.page, first.userId),
+            authoritativeEntity(nearbySecond.page, nearbySecond.userId),
+          ]);
+          nextSoloParticipantReassertAt = Date.now() + 1_000;
+        }
+        return { solo, opener, second };
+      };
+      const solitaryOpener = await waitFor(
+        "retaliation: solitary creature first targets the opener",
+        async () => {
+          const state = await soloParticipantProbe();
+          if (Date.now() >= nextSolitaryProvocationAt) {
+            await provokeFixtureNpc(
+              soloId,
+              "retaliation: solitary rotation provocation refresh",
+              { record: false }
+            );
+            nextSolitaryProvocationAt = Date.now() + 10_000;
+          }
+          return state;
+        },
+        ({ solo }) =>
+          Number(solo.entity?.npc_combat_state?.attack_target) ===
+          Number(first.userId),
+        60_000,
+        hillCombatFunctionalTimeoutMs
+      );
+      const solitarySecond = await waitFor(
+        "retaliation: solitary creature rotates to the second nearby player",
+        soloParticipantProbe,
+        ({ solo }) =>
+          Number(solo.entity?.npc_combat_state?.attack_target) ===
+          Number(nearbySecond.userId),
+        (RETALIATION_TARGET_ROTATION_SECONDS + 4) * 1000,
+        hillCombatFunctionalTimeoutMs
+      );
+
+      report.scenarios.push({
+        name: "solitary retaliation rotates to the second nearby player",
+        status: "pass",
+        npcId: String(soloId),
+        solitaryRotation: {
+          openerAcquireMs: solitaryOpener.elapsedMs,
+          secondAcquireMs: solitarySecond.elapsedMs,
+        },
+      });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        scenarioFailures.push(`solo: ${message}`);
+        report.scenarios.push({
+          name: "solitary retaliation rotates to the second nearby player",
+          status: "fail",
+          error: message,
+        });
+      }
+    } else {
+      report.scenarios.push({
+        name: "solitary retaliation rotates to the second nearby player",
+        status: "skipped",
+        reason:
+          "deterministic unit-covered diagnostic; set HARTHMERE_E2E_RETALIATION_SOLO_ROTATION=1 to run",
+      });
+    }
+
+    if (scenarioFailures.length > 0) {
+      throw new AggregateError(
+        scenarioFailures,
+        `multiplayer retaliation failures: ${scenarioFailures.join(" | ")}`
+      );
+    }
+  } finally {
+    if (originalCombatNpcs.length > 0 && !first.page.isClosed()) {
+      const restorableCombatNpcs = originalCombatNpcs.filter(
+        ({ entity }) => entity?.id !== undefined
+      );
+      const restoreCombatNpcs = async () => {
+        await applyTypedFixture(
+          first.page,
+          ...restorableCombatNpcs.map(({ entity }) => ({
+            kind: "update",
+            entity,
+          }))
+        );
+        await applyFixture(
+          first.page,
+          ...restorableCombatNpcs.map(({ entity }) => ({
+            kind: "update",
+            entity: {
+              id: entity.id,
+              ...(entity.npc_combat_state === undefined
+                ? { npc_combat_state: null }
+                : {}),
+              ...(entity.movement_state === undefined
+                ? { movement_state: null }
+                : {}),
+              ...(entity.emote === undefined ? { emote: null } : {}),
+            },
+          }))
+        );
+      };
+      await restoreCombatNpcs().catch(() => undefined);
+      // Let an in-flight Anima tick land, then restore once more so failed rows
+      // cannot leak private chase targets or staged poses into the next run.
+      await delay(1_000);
+      await restoreCombatNpcs().catch(() => undefined);
+    }
+    if (fixtureIds.size > 0 && !first.page.isClosed()) {
+      await applyFixture(
+        first.page,
+        ...[...fixtureIds].map((id) => ({ kind: "delete", id }))
+      ).catch(() => undefined);
+    }
+    if (!first.page.isClosed()) {
+      await applyFixture(first.page, {
+        kind: "update",
+        entity: {
+          id: first.userId,
+          health: originalPlayerHealth,
+          inventory: originalPlayerInventory,
+          selected_item: originalPlayerSelectedItem ?? null,
+          trigger_state: originalPlayerTriggerState,
+        },
+      }).catch(() => undefined);
+      await placeFrontendPlayerForFixture(
+        first.page,
+        first.userId,
+        originalPlayerPosition
+      ).catch(() => undefined);
+      await publishFrontendMove(
+        first.page,
+        first.userId,
+        originalPlayerPosition
+      ).catch(() => undefined);
+      await first.page
+        .evaluate((permitVoidMovement) => {
+          globalThis.clientContext?.resources?.update("/tweaks", (tweaks) => {
+            tweaks.permitVoidMovement = permitVoidMovement;
+          });
+        }, previousPermitVoidMovement)
+        .catch(() => undefined);
+    }
+    if (nearbySecond && !nearbySecond.page.isClosed()) {
+      if (nearbySecondOriginalHealth) {
+        await applyFixture(nearbySecond.page, {
+          kind: "update",
+          entity: {
+            id: nearbySecond.userId,
+            health: nearbySecondOriginalHealth,
+          },
+        }).catch(() => undefined);
+      }
+      if (nearbySecondOriginalPosition) {
+        await placeFrontendPlayerForFixture(
+          nearbySecond.page,
+          nearbySecond.userId,
+          nearbySecondOriginalPosition
+        ).catch(() => undefined);
+        await publishFrontendMove(
+          nearbySecond.page,
+          nearbySecond.userId,
+          nearbySecondOriginalPosition
+        ).catch(() => undefined);
+      }
+      if (nearbySecondPreviousPermitVoidMovement !== undefined) {
+        await nearbySecond.page
+          .evaluate((permitVoidMovement) => {
+            globalThis.clientContext?.resources?.update("/tweaks", (tweaks) => {
+              tweaks.permitVoidMovement = permitVoidMovement;
+            });
+          }, nearbySecondPreviousPermitVoidMovement)
+          .catch(() => undefined);
+      }
+      intentionallyClosingPages.add(nearbySecond.page);
+      await nearbySecond.context.close().catch(() => undefined);
+    }
+  }
+}
+
 async function proveNativeHillCombatRoundTrip(first, combatPosition) {
   const roadSeed = HARTHMERE_ROAD_GROUP_MONSTER_SEEDS.find(
     (seed) => seed.combatKind === "mux"
@@ -11177,6 +12281,9 @@ async function proveNativeHillCombatRoundTrip(first, combatPosition) {
   assert(originalPlayer.entity?.health, "hill combat player has no health");
   const originalPlayerPosition = [...originalPlayer.entity.position.v];
   const originalPlayerHealth = Health.clone(originalPlayer.entity.health);
+  let nearbySecond;
+  let nearbySecondOriginalPosition;
+  let nearbySecondPreviousPermitVoidMovement;
 
   // This gate is testing Anima's response to authoritative damage evidence, not
   // the player's weapon-validation path. A visual-auth player is not guaranteed
@@ -11322,247 +12429,250 @@ async function proveNativeHillCombatRoundTrip(first, combatPosition) {
       "hill combat: player settles on the deterministic lower floor"
     );
 
-    // ---- 0. OVERSIZED BOSS LOCOMOTION -------------------------------------
-    // Preserve the Helix's full 6.8 x 4.8 x 8.4 ECS combat/render size while
-    // proving its compact terrain-locomotion core can traverse uneven ground.
-    // The player begins outside every authored attack range so Anima must chase
-    // and the renderer must visibly select Walk/Run before the boss can cast.
-    const giantProfile = harthmereNativeNpcCombatProfileForSeed(
-      HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED
-    );
-    const giantSize = harthmereLiveEntitySizeForSeed(
-      HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED
-    );
-    const giantId = await allocateFixtureId();
-    const giantLowerStepId = await allocateFixtureId();
-    const giantUpperStepId = await allocateFixtureId();
-    const giantLaneZ = combatPosition[2] + 7;
-    const giantStartPosition = [
-      combatPosition[0] - 14,
-      combatPosition[1],
-      giantLaneZ,
-    ];
-    const giantPlayerPosition = [
-      combatPosition[0] + 14,
-      combatPosition[1],
-      giantLaneZ,
-    ];
-    const giantLowerStepPosition = [
-      combatPosition[0] - 11.25,
-      combatPosition[1],
-      giantLaneZ,
-    ];
-    const giantUpperStepPosition = [
-      combatPosition[0] - 10.25,
-      combatPosition[1],
-      giantLaneZ,
-    ];
-    await applyTypedFixture(
-      first.page,
-      {
-        kind: "create",
-        entity: {
-          id: giantLowerStepId,
-          position: Position.create({ v: giantLowerStepPosition }),
-          size: Size.create({ v: [1, 1, 4] }),
-          collideable: Collideable.create(),
-          label: Label.create({ text: "E2E giant lower hill step" }),
+    if (!hillCombatSkipGiant) {
+      // ---- 0. OVERSIZED BOSS LOCOMOTION -----------------------------------
+      // Preserve the Helix's full 6.8 x 4.8 x 8.4 ECS combat/render size while
+      // proving its compact terrain-locomotion core can traverse uneven ground.
+      // The player begins outside every authored attack range so Anima must chase
+      // and the renderer must visibly select Walk/Run before the boss can cast.
+      const giantProfile = harthmereNativeNpcCombatProfileForSeed(
+        HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED
+      );
+      const giantSize = harthmereLiveEntitySizeForSeed(
+        HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED
+      );
+      const giantId = await allocateFixtureId();
+      const giantLowerStepId = await allocateFixtureId();
+      const giantUpperStepId = await allocateFixtureId();
+      const giantLaneZ = combatPosition[2] + 7;
+      const giantStartPosition = [
+        combatPosition[0] - 14,
+        combatPosition[1],
+        giantLaneZ,
+      ];
+      const giantPlayerPosition = [
+        combatPosition[0] + 14,
+        combatPosition[1],
+        giantLaneZ,
+      ];
+      const giantLowerStepPosition = [
+        combatPosition[0] - 11.25,
+        combatPosition[1],
+        giantLaneZ,
+      ];
+      const giantUpperStepPosition = [
+        combatPosition[0] - 10.25,
+        combatPosition[1],
+        giantLaneZ,
+      ];
+      await applyTypedFixture(
+        first.page,
+        {
+          kind: "create",
+          entity: {
+            id: giantLowerStepId,
+            position: Position.create({ v: giantLowerStepPosition }),
+            size: Size.create({ v: [1, 1, 4] }),
+            collideable: Collideable.create(),
+            label: Label.create({ text: "E2E giant lower hill step" }),
+          },
         },
-      },
-      {
-        kind: "create",
-        entity: {
-          id: giantUpperStepId,
-          position: Position.create({ v: giantUpperStepPosition }),
-          size: Size.create({ v: [1, 2, 4] }),
-          collideable: Collideable.create(),
-          label: Label.create({ text: "E2E giant upper hill step" }),
+        {
+          kind: "create",
+          entity: {
+            id: giantUpperStepId,
+            position: Position.create({ v: giantUpperStepPosition }),
+            size: Size.create({ v: [1, 2, 4] }),
+            collideable: Collideable.create(),
+            label: Label.create({ text: "E2E giant upper hill step" }),
+          },
         },
-      },
-      {
-        kind: "create",
-        entity: {
-          id: giantId,
-          position: Position.create({ v: giantStartPosition }),
-          orientation: Orientation.create({ v: [0, -Math.PI / 2] }),
-          rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
-          size: Size.create({ v: giantSize }),
-          health: Health.create({
-            hp: giantProfile.maxHp,
-            maxHp: giantProfile.maxHp,
-          }),
-          npc_state: harthmereLiveCreatureNpcState(
-            HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED
+        {
+          kind: "create",
+          entity: {
+            id: giantId,
+            position: Position.create({ v: giantStartPosition }),
+            orientation: Orientation.create({ v: [0, -Math.PI / 2] }),
+            rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+            size: Size.create({ v: giantSize }),
+            health: Health.create({
+              hp: giantProfile.maxHp,
+              maxHp: giantProfile.maxHp,
+            }),
+            npc_state: harthmereLiveCreatureNpcState(
+              HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED
+            ),
+            npc_metadata: NpcMetadata.create({
+              type_id: giantProfile.id,
+              created_time: secondsSinceEpoch(),
+              spawn_position: giantStartPosition,
+              spawn_orientation: [0, -Math.PI / 2],
+            }),
+            label: Label.create({ text: "Muck-Scarred Helix" }),
+          },
+        }
+      );
+      await waitFor(
+        "hill combat: full-size Helix fixture synchronized",
+        () => localEntity(first.page, giantId),
+        ({ entity }) =>
+          entity?.health?.hp === giantProfile.maxHp &&
+          entity?.size?.v?.every(
+            (dimension, axis) =>
+              Math.abs(Number(dimension) - Number(giantSize[axis])) < 1e-6
           ),
-          npc_metadata: NpcMetadata.create({
-            type_id: giantProfile.id,
-            created_time: secondsSinceEpoch(),
-            spawn_position: giantStartPosition,
-            spawn_orientation: [0, -Math.PI / 2],
-          }),
-          label: Label.create({ text: "Muck-Scarred Helix" }),
+        combatFixtureSyncGateMs
+      );
+      await placeHillCombatPlayer(
+        giantPlayerPosition,
+        "hill combat: player reaches the giant traversal target",
+        lookAtOrientation(
+          [
+            giantPlayerPosition[0],
+            giantPlayerPosition[1] + 1.6,
+            giantPlayerPosition[2],
+          ],
+          [
+            giantStartPosition[0],
+            giantStartPosition[1] + giantSize[1] * 0.55,
+            giantStartPosition[2],
+          ]
+        )
+      );
+      await provokeFixtureNpc(
+        giantId,
+        "hill combat: Muck-Scarred Helix provocation"
+      );
+      await waitFor(
+        "hill combat: Muck-Scarred Helix acquires the distant player",
+        () => authoritativeEntity(first.page, giantId),
+        ({ entity }) =>
+          Number(entity?.npc_combat_state?.attack_target) ===
+          Number(first.userId),
+        60_000,
+        hillCombatFunctionalTimeoutMs
+      );
+
+      const giantSamples = [];
+      const giantWalk = await waitFor(
+        "hill combat: full-size Helix moves with finite state and visible locomotion",
+        async () => {
+          const [authoritative, render] = await Promise.all([
+            authoritativeEntity(first.page, giantId),
+            bridgeCall(first.page, "combatRenderSnapshot"),
+          ]);
+          const position = authoritative.entity?.position?.v;
+          if (position) {
+            giantSamples.push([...position]);
+          }
+          return { authoritative, render };
         },
-      }
-    );
-    await waitFor(
-      "hill combat: full-size Helix fixture synchronized",
-      () => localEntity(first.page, giantId),
-      ({ entity }) =>
-        entity?.health?.hp === giantProfile.maxHp &&
-        entity?.size?.v?.every(
-          (dimension, axis) =>
-            Math.abs(Number(dimension) - Number(giantSize[axis])) < 1e-6
-        ),
-      combatFixtureSyncGateMs
-    );
-    await placeHillCombatPlayer(
-      giantPlayerPosition,
-      "hill combat: player reaches the giant traversal target",
-      lookAtOrientation(
-        [
-          giantPlayerPosition[0],
-          giantPlayerPosition[1] + 1.6,
-          giantPlayerPosition[2],
-        ],
-        [
-          giantStartPosition[0],
-          giantStartPosition[1] + giantSize[1] * 0.55,
-          giantStartPosition[2],
-        ]
-      )
-    );
-    await provokeFixtureNpc(
-      giantId,
-      "hill combat: Muck-Scarred Helix provocation"
-    );
-    await waitFor(
-      "hill combat: Muck-Scarred Helix acquires the distant player",
-      () => authoritativeEntity(first.page, giantId),
-      ({ entity }) =>
-        Number(entity?.npc_combat_state?.attack_target) ===
-        Number(first.userId),
-      60_000,
-      hillCombatFunctionalTimeoutMs
-    );
+        ({ authoritative, render }) => {
+          const entity = authoritative.entity;
+          const position = entity?.position?.v;
+          const orientation = entity?.orientation?.v;
+          const velocity = entity?.rigid_body?.velocity;
+          const audit = render.animationAudits?.[String(giantId)];
+          return (
+            Boolean(position && orientation && velocity) &&
+            position.every(Number.isFinite) &&
+            orientation.every(Number.isFinite) &&
+            velocity.every(Number.isFinite) &&
+            distance3(position, giantStartPosition) >= 0.5 &&
+            (audit?.selectedState === "walk" ||
+              audit?.selectedState === "run") &&
+            audit?.animationMoving === true &&
+            audit?.hasMatchingClip === true &&
+            Number(audit?.horizontalSpeed ?? 0) >= 0.06
+          );
+        },
+        60_000,
+        hillCombatFunctionalTimeoutMs
+      );
+      const giantWalkScreenshot = path.join(
+        artifactsDir,
+        `${runId}-giant-hill-walk.png`
+      );
+      await first.page.screenshot({ path: giantWalkScreenshot });
 
-    const giantSamples = [];
-    const giantWalk = await waitFor(
-      "hill combat: full-size Helix moves with finite state and visible locomotion",
-      async () => {
-        const [authoritative, render] = await Promise.all([
-          authoritativeEntity(first.page, giantId),
-          bridgeCall(first.page, "combatRenderSnapshot"),
-        ]);
-        const position = authoritative.entity?.position?.v;
-        if (position) {
-          giantSamples.push([...position]);
-        }
-        return { authoritative, render };
-      },
-      ({ authoritative, render }) => {
-        const entity = authoritative.entity;
-        const position = entity?.position?.v;
-        const orientation = entity?.orientation?.v;
-        const velocity = entity?.rigid_body?.velocity;
-        const audit = render.animationAudits?.[String(giantId)];
-        return (
-          Boolean(position && orientation && velocity) &&
-          position.every(Number.isFinite) &&
-          orientation.every(Number.isFinite) &&
-          velocity.every(Number.isFinite) &&
-          distance3(position, giantStartPosition) >= 0.5 &&
-          (audit?.selectedState === "walk" || audit?.selectedState === "run") &&
-          audit?.animationMoving === true &&
-          audit?.hasMatchingClip === true &&
-          Number(audit?.horizontalSpeed ?? 0) >= 0.06
-        );
-      },
-      60_000,
-      hillCombatFunctionalTimeoutMs
-    );
-    const giantWalkScreenshot = path.join(
-      artifactsDir,
-      `${runId}-giant-hill-walk.png`
-    );
-    await first.page.screenshot({ path: giantWalkScreenshot });
-
-    const giantHill = await waitFor(
-      "hill combat: full-size Helix climbs the two-block hill",
-      async () => {
-        const value = await authoritativeEntity(first.page, giantId);
-        const position = value.entity?.position?.v;
-        const orientation = value.entity?.orientation?.v;
-        const velocity = value.entity?.rigid_body?.velocity;
-        if (position) {
-          giantSamples.push([...position]);
-        }
-        assert(
-          !position || position.every(Number.isFinite),
-          "Helix emitted a non-finite position during hill traversal"
-        );
-        assert(
-          !orientation || orientation.every(Number.isFinite),
-          "Helix emitted a non-finite orientation during hill traversal"
-        );
-        assert(
-          !velocity || velocity.every(Number.isFinite),
-          "Helix emitted a non-finite velocity during hill traversal"
-        );
-        return value;
-      },
-      ({ entity }) =>
-        Number(entity?.position?.v?.[1] ?? -Infinity) >=
-        giantStartPosition[1] + 1.5,
-      60_000,
-      hillCombatFunctionalTimeoutMs
-    );
-    const giantHillScreenshot = path.join(
-      artifactsDir,
-      `${runId}-giant-hill-climb.png`
-    );
-    await first.page.screenshot({ path: giantHillScreenshot });
-    const giantAuthoritative = giantHill.value.entity;
-    assert.deepEqual(
-      giantAuthoritative.size.v,
-      giantSize,
-      "terrain locomotion must not shrink the Helix combat hit volume"
-    );
-    assert(
-      giantSamples.every((sample) => sample.every(Number.isFinite)),
-      "Helix emitted a non-finite sampled position during hill traversal"
-    );
-    report.scenarios.push({
-      name: "oversized boss finite hill traversal and visible Walk",
-      status: "pass",
-      giantId: String(giantId),
-      authoredSize: giantSize,
-      startPosition: giantStartPosition,
-      finalPosition: giantAuthoritative.position.v,
-      maxHeight: Math.max(...giantSamples.map((sample) => sample[1])),
-      selectedAnimation:
-        giantWalk.value.render.animationAudits?.[String(giantId)]
-          ?.selectedState,
-      horizontalSpeed:
-        giantWalk.value.render.animationAudits?.[String(giantId)]
-          ?.horizontalSpeed,
-      screenshots: {
-        walk: giantWalkScreenshot,
-        climb: giantHillScreenshot,
-      },
-    });
-    await applyFixture(
-      first.page,
-      { kind: "delete", id: giantId },
-      { kind: "delete", id: giantLowerStepId },
-      { kind: "delete", id: giantUpperStepId }
-    );
-    fixtureIds.delete(giantId);
-    fixtureIds.delete(giantLowerStepId);
-    fixtureIds.delete(giantUpperStepId);
-    await placeHillCombatPlayer(
-      combatPosition,
-      "hill combat: player returns after giant traversal"
-    );
+      const giantHill = await waitFor(
+        "hill combat: full-size Helix climbs the two-block hill",
+        async () => {
+          const value = await authoritativeEntity(first.page, giantId);
+          const position = value.entity?.position?.v;
+          const orientation = value.entity?.orientation?.v;
+          const velocity = value.entity?.rigid_body?.velocity;
+          if (position) {
+            giantSamples.push([...position]);
+          }
+          assert(
+            !position || position.every(Number.isFinite),
+            "Helix emitted a non-finite position during hill traversal"
+          );
+          assert(
+            !orientation || orientation.every(Number.isFinite),
+            "Helix emitted a non-finite orientation during hill traversal"
+          );
+          assert(
+            !velocity || velocity.every(Number.isFinite),
+            "Helix emitted a non-finite velocity during hill traversal"
+          );
+          return value;
+        },
+        ({ entity }) =>
+          Number(entity?.position?.v?.[1] ?? -Infinity) >=
+          giantStartPosition[1] + 1.5,
+        60_000,
+        hillCombatFunctionalTimeoutMs
+      );
+      const giantHillScreenshot = path.join(
+        artifactsDir,
+        `${runId}-giant-hill-climb.png`
+      );
+      await first.page.screenshot({ path: giantHillScreenshot });
+      const giantAuthoritative = giantHill.value.entity;
+      assert.deepEqual(
+        giantAuthoritative.size.v,
+        giantSize,
+        "terrain locomotion must not shrink the Helix combat hit volume"
+      );
+      assert(
+        giantSamples.every((sample) => sample.every(Number.isFinite)),
+        "Helix emitted a non-finite sampled position during hill traversal"
+      );
+      report.scenarios.push({
+        name: "oversized boss finite hill traversal and visible Walk",
+        status: "pass",
+        giantId: String(giantId),
+        authoredSize: giantSize,
+        startPosition: giantStartPosition,
+        finalPosition: giantAuthoritative.position.v,
+        maxHeight: Math.max(...giantSamples.map((sample) => sample[1])),
+        selectedAnimation:
+          giantWalk.value.render.animationAudits?.[String(giantId)]
+            ?.selectedState,
+        horizontalSpeed:
+          giantWalk.value.render.animationAudits?.[String(giantId)]
+            ?.horizontalSpeed,
+        screenshots: {
+          walk: giantWalkScreenshot,
+          climb: giantHillScreenshot,
+        },
+      });
+      await applyFixture(
+        first.page,
+        { kind: "delete", id: giantId },
+        { kind: "delete", id: giantLowerStepId },
+        { kind: "delete", id: giantUpperStepId }
+      );
+      fixtureIds.delete(giantId);
+      fixtureIds.delete(giantLowerStepId);
+      fixtureIds.delete(giantUpperStepId);
+      await placeHillCombatPlayer(
+        combatPosition,
+        "hill combat: player returns after giant traversal"
+      );
+    }
 
     // ---- 1. LEDGE -----------------------------------------------------------
     // A solid 2 m shelf puts the player's feet above the Mucker's feet, while the
@@ -11844,9 +12954,70 @@ async function proveNativeHillCombatRoundTrip(first, combatPosition) {
     await applyFixture(first.page, { kind: "delete", id: crestId });
     fixtureIds.delete(crestId);
 
-    // ---- 3. GROUP -----------------------------------------------------------
-    // Two creatures equidistant from a damaged pack-mate: one shares its authored
-    // groupId, the other belongs to a different road group.
+    // ---- 3. GROUP + MULTIPLAYER RETALIATION --------------------------------
+    // Open a second real synchronized player only for this bounded group row.
+    // The attacked member should keep the opener while its active pack-mate
+    // immediately selects the other nearby participant. A solitary retaliation-
+    // only creature must then rotate to that second player after one readable
+    // exchange. This is the exact multiplayer behavior the old single-client
+    // hill gate could not prove.
+    const browser = first.context.browser();
+    assert(browser, "hill combat browser is unavailable for multiplayer row");
+    nearbySecond = await openUser(
+      browser,
+      `NativeECS-Retaliation-B-${runId.replace(/[^0-9]/g, "").slice(-10)}`,
+      "hill-combat-client-b"
+    );
+    nearbySecondPreviousPermitVoidMovement = await nearbySecond.page.evaluate(
+      () => {
+        const resources = globalThis.clientContext?.resources;
+        if (!resources) {
+          throw new Error(
+            "second hill-combat client resources are unavailable"
+          );
+        }
+        const previous = Boolean(resources.get("/tweaks").permitVoidMovement);
+        resources.update("/tweaks", (tweaks) => {
+          tweaks.permitVoidMovement = true;
+        });
+        return previous;
+      }
+    );
+    const nearbySecondOriginal = await authoritativeEntity(
+      nearbySecond.page,
+      nearbySecond.userId
+    );
+    assert(
+      nearbySecondOriginal.entity?.position?.v,
+      "second hill-combat player has no position"
+    );
+    nearbySecondOriginalPosition = [...nearbySecondOriginal.entity.position.v];
+    const nearbySecondPosition = [
+      combatPosition[0] + 1,
+      combatPosition[1],
+      combatPosition[2] + 4,
+    ];
+    await placeFrontendPlayerForFixture(
+      nearbySecond.page,
+      nearbySecond.userId,
+      nearbySecondPosition
+    );
+    await publishFrontendMove(
+      nearbySecond.page,
+      nearbySecond.userId,
+      nearbySecondPosition
+    );
+    await waitFor(
+      "hill combat: second player enters retaliation vicinity",
+      () => authoritativeEntity(nearbySecond.page, nearbySecond.userId),
+      ({ entity }) =>
+        Boolean(entity?.position?.v) &&
+        distance3(entity.position.v, nearbySecondPosition) <= 0.75,
+      combatFixtureSyncGateMs
+    );
+
+    // Two creatures equidistant from a damaged pack-mate: one shares its
+    // authored groupId, the other belongs to a different road group.
     const retaliationOnlySeed =
       harthmereGroundedMuckMonsterSeedsInTerritory().find(
         (seed) =>
@@ -11928,7 +13099,7 @@ async function proveNativeHillCombatRoundTrip(first, combatPosition) {
 
     let nextGroupProvocationAt = Date.now() + 10_000;
     const mateAssist = await waitFor(
-      "hill combat: an authored pack-mate answers the group alert",
+      "hill combat: an authored pack-mate targets the nearby second player",
       async () => {
         if (Date.now() >= nextGroupProvocationAt) {
           await provokeFixtureNpc(
@@ -11942,15 +13113,45 @@ async function proveNativeHillCombatRoundTrip(first, combatPosition) {
       },
       ({ entity }) =>
         Number(entity?.npc_combat_state?.attack_target) ===
+        Number(nearbySecond.userId),
+      60_000,
+      hillCombatFunctionalTimeoutMs
+    );
+    const attackedMember = await authoritativeEntity(first.page, crestMuckerId);
+    assert.equal(
+      Number(attackedMember.entity?.npc_combat_state?.attack_target),
+      Number(first.userId),
+      "the directly attacked pack member did not retain the encounter opener"
+    );
+    const stranger = await authoritativeEntity(first.page, strangerId);
+    assert(
+      ![Number(first.userId), Number(nearbySecond.userId)].includes(
+        Number(stranger.entity?.npc_combat_state?.attack_target ?? 0)
+      ),
+      "a creature from a DIFFERENT authored group joined the fight; group identity is not being honoured"
+    );
+
+    await provokeFixtureNpc(
+      strangerId,
+      "hill combat: solitary retaliation rotation provocation"
+    );
+    const solitaryOpener = await waitFor(
+      "hill combat: solitary creature first targets the player who hit it",
+      () => authoritativeEntity(first.page, strangerId),
+      ({ entity }) =>
+        Number(entity?.npc_combat_state?.attack_target) ===
         Number(first.userId),
       60_000,
       hillCombatFunctionalTimeoutMs
     );
-    const stranger = await authoritativeEntity(first.page, strangerId);
-    assert(
-      Number(stranger.entity?.npc_combat_state?.attack_target ?? 0) !==
-        Number(first.userId),
-      "a creature from a DIFFERENT authored group joined the fight; group identity is not being honoured"
+    const solitarySecond = await waitFor(
+      "hill combat: solitary creature rotates to the second nearby player",
+      () => authoritativeEntity(first.page, strangerId),
+      ({ entity }) =>
+        Number(entity?.npc_combat_state?.attack_target) ===
+        Number(nearbySecond.userId),
+      Math.max(60_000, (RETALIATION_TARGET_ROTATION_SECONDS + 4) * 1000),
+      hillCombatFunctionalTimeoutMs
     );
 
     report.scenarios.push({
@@ -11974,9 +13175,18 @@ async function proveNativeHillCombatRoundTrip(first, combatPosition) {
       groupId: roadSeed.groupId,
       packMateId: String(mateId),
       packMateAssistMs: mateAssist.elapsedMs,
+      encounterOpenerPlayerId: String(first.userId),
+      nearbySecondPlayerId: String(nearbySecond.userId),
+      directMemberTarget: String(first.userId),
+      packMateTarget: String(nearbySecond.userId),
+      solitaryRotation: {
+        npcId: String(strangerId),
+        openerAcquireMs: solitaryOpener.elapsedMs,
+        secondAcquireMs: solitarySecond.elapsedMs,
+      },
       otherGroupId: otherGroupSeed.groupId,
       otherGroupNpcId: String(strangerId),
-      otherGroupJoined: false,
+      otherGroupJoinedSharedAlert: false,
     });
   } finally {
     if (fixtureIds.size > 0 && !first.page.isClosed()) {
@@ -12005,6 +13215,31 @@ async function proveNativeHillCombatRoundTrip(first, combatPosition) {
           tweaks.permitVoidMovement = permitVoidMovement;
         });
       }, previousPermitVoidMovement);
+    }
+    if (nearbySecond && !nearbySecond.page.isClosed()) {
+      if (nearbySecondOriginalPosition) {
+        await placeFrontendPlayerForFixture(
+          nearbySecond.page,
+          nearbySecond.userId,
+          nearbySecondOriginalPosition
+        ).catch(() => undefined);
+        await publishFrontendMove(
+          nearbySecond.page,
+          nearbySecond.userId,
+          nearbySecondOriginalPosition
+        ).catch(() => undefined);
+      }
+      if (nearbySecondPreviousPermitVoidMovement !== undefined) {
+        await nearbySecond.page
+          .evaluate((permitVoidMovement) => {
+            globalThis.clientContext?.resources?.update("/tweaks", (tweaks) => {
+              tweaks.permitVoidMovement = permitVoidMovement;
+            });
+          }, nearbySecondPreviousPermitVoidMovement)
+          .catch(() => undefined);
+      }
+      intentionallyClosingPages.add(nearbySecond.page);
+      await nearbySecond.context.close().catch(() => undefined);
     }
   }
 }
@@ -12139,26 +13374,32 @@ async function proveCombatMusicRoundTrip(first, second, combatPosition) {
       ? ({ entity }) => entity?.health?.hp < combatProfile.maxHp
       : undefined,
   });
-  const chaseStart = await authoritativeEntity(first.page, npcId);
-  assert(
-    chaseStart.entity?.position?.v,
-    "combat NPC has no chase start position"
-  );
-  const chaseStartPosition = [...chaseStart.entity.position.v];
-  const chasePlayerPosition = [
-    combatPosition[0] + 6,
-    combatPosition[1],
-    combatPosition[2],
-  ];
-  const chaseStartDistance = distance3(chaseStartPosition, chasePlayerPosition);
-  const chaseStartedAtMs = Date.now();
-  await applyFixture(first.page, {
-    kind: "update",
-    entity: {
-      id: first.userId,
-      position: Position.create({ v: chasePlayerPosition }),
-    },
-  });
+  let chaseStartPosition;
+  let chasePlayerPosition;
+  let chaseStartDistance;
+  let chaseStartedAtMs;
+  if (!combatMusicOnly) {
+    const chaseStart = await authoritativeEntity(first.page, npcId);
+    assert(
+      chaseStart.entity?.position?.v,
+      "combat NPC has no chase start position"
+    );
+    chaseStartPosition = [...chaseStart.entity.position.v];
+    chasePlayerPosition = [
+      combatPosition[0] + 6,
+      combatPosition[1],
+      combatPosition[2],
+    ];
+    chaseStartDistance = distance3(chaseStartPosition, chasePlayerPosition);
+    chaseStartedAtMs = Date.now();
+    await applyFixture(first.page, {
+      kind: "update",
+      entity: {
+        id: first.userId,
+        position: Position.create({ v: chasePlayerPosition }),
+      },
+    });
+  }
   const battleMusicEntry = await waitFor(
     "native player attack selects combat music",
     () => bridgeCall(first.page, "audioDiagnostics"),
@@ -12170,82 +13411,105 @@ async function proveCombatMusicRoundTrip(first, second, combatPosition) {
         : diagnostics.currentTrack === "battle_music",
     originSyncGateMs
   );
-  const authoritativeChase = await waitFor(
-    "Anima moves the native combat NPC toward the visible player",
-    () => authoritativeEntity(first.page, npcId),
-    ({ entity }) => {
-      const position = entity?.position?.v;
-      return (
-        Boolean(position) &&
-        distance3(position, chaseStartPosition) >= 0.75 &&
-        distance3(position, chasePlayerPosition) <= chaseStartDistance - 0.5
-      );
-    },
-    10_000,
-    15_000
-  );
-  const chasePosition = [...authoritativeChase.value.entity.position.v];
-  const chaseDisplacement = distance3(chaseStartPosition, chasePosition);
-  const chaseElapsedSeconds = Math.max(
-    0.001,
-    (Date.now() - chaseStartedAtMs) / 1000
+  const battleAssetResponse = report.browser.audioAssets.find(
+    (entry) =>
+      entry.client === "client-a" &&
+      entry.url.includes(HARTHMERE_BATTLE_MUSIC_PATH)
   );
   assert(
-    chaseDisplacement <=
-      HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND * chaseElapsedSeconds +
-        1.5,
-    `NPC chase exceeded the player-safe speed cap: ${chaseDisplacement.toFixed(
-      2
-    )}m in ${chaseElapsedSeconds.toFixed(2)}s`
+    battleAssetResponse && battleAssetResponse.status < 400,
+    `battle music was selected without a successful on-demand asset response: ${JSON.stringify(
+      report.browser.audioAssets
+    )}`
   );
-  const localChase = await waitFor(
-    "native chase position reaches the attacking frontend",
-    () => localEntity(first.page, npcId),
-    ({ entity }) =>
-      Boolean(entity?.position?.v) &&
-      distance3(entity.position.v, chasePosition) <= 0.75,
-    originSyncGateMs
+  assert(
+    battleMusicEntry.value.loadedTracks.includes("battle_music") &&
+      battleMusicEntry.value.loadedTracks.includes(preCombatAmbientTrack) &&
+      battleMusicEntry.value.loadedTracks.length <= 2,
+    `combat crossfade exceeded the two-track residency bound: ${JSON.stringify(
+      battleMusicEntry.value
+    )}`
   );
-  const renderedChase = await waitFor(
-    "ECS chase reaches the live creature bridge and visible combat actor",
-    () => bridgeCall(first.page, "combatRenderSnapshot"),
-    (snapshot) => {
-      const record = snapshot.liveCreatureRecords.find(
-        (candidate) => Number(candidate.id) === Number(npcId)
-      );
-      const actor = snapshot.combatActors[String(npcId)];
-      return (
-        Boolean(record?.at && actor?.world) &&
-        distance3(record.at, chasePosition) <= 0.75 &&
-        distance3(actor.world, record.at) <= 1.5
-      );
-    },
-    10_000,
-    15_000
-  );
-  const renderedRecord = renderedChase.value.liveCreatureRecords.find(
-    (candidate) => Number(candidate.id) === Number(npcId)
-  );
-  report.scenarios.push({
-    name: "frontend attack -> Anima chase -> ECS sync -> frontend render",
-    status: "pass",
-    npcId: String(npcId),
-    authoritativeChaseMs: authoritativeChase.elapsedMs,
-    localSyncMs: localChase.elapsedMs,
-    renderSyncMs: renderedChase.elapsedMs,
-    chaseDisplacement,
-    chaseStartDistance,
-    chaseEndDistance: distance3(chasePosition, chasePlayerPosition),
-    renderedPosition: renderedRecord?.at,
-    speedCap: HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND,
-  });
   report.scenarios.push({
     name: "native combat selects battle music",
     status: "pass",
     originSyncMs: battleMusicEntry.elapsedMs,
     previousTrack: preCombatAmbientTrack,
+    assetStatus: battleAssetResponse.status,
+    loadedTracks: battleMusicEntry.value.loadedTracks,
     npcId: String(npcId),
   });
+  if (!combatMusicOnly) {
+    const authoritativeChase = await waitFor(
+      "Anima moves the native combat NPC toward the visible player",
+      () => authoritativeEntity(first.page, npcId),
+      ({ entity }) => {
+        const position = entity?.position?.v;
+        return (
+          Boolean(position) &&
+          distance3(position, chaseStartPosition) >= 0.75 &&
+          distance3(position, chasePlayerPosition) <= chaseStartDistance - 0.5
+        );
+      },
+      10_000,
+      15_000
+    );
+    const chasePosition = [...authoritativeChase.value.entity.position.v];
+    const chaseDisplacement = distance3(chaseStartPosition, chasePosition);
+    const chaseElapsedSeconds = Math.max(
+      0.001,
+      (Date.now() - chaseStartedAtMs) / 1000
+    );
+    assert(
+      chaseDisplacement <=
+        HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND * chaseElapsedSeconds +
+          1.5,
+      `NPC chase exceeded the player-safe speed cap: ${chaseDisplacement.toFixed(
+        2
+      )}m in ${chaseElapsedSeconds.toFixed(2)}s`
+    );
+    const localChase = await waitFor(
+      "native chase position reaches the attacking frontend",
+      () => localEntity(first.page, npcId),
+      ({ entity }) =>
+        Boolean(entity?.position?.v) &&
+        distance3(entity.position.v, chasePosition) <= 0.75,
+      originSyncGateMs
+    );
+    const renderedChase = await waitFor(
+      "ECS chase reaches the live creature bridge and visible combat actor",
+      () => bridgeCall(first.page, "combatRenderSnapshot"),
+      (snapshot) => {
+        const record = snapshot.liveCreatureRecords.find(
+          (candidate) => Number(candidate.id) === Number(npcId)
+        );
+        const actor = snapshot.combatActors[String(npcId)];
+        return (
+          Boolean(record?.at && actor?.world) &&
+          distance3(record.at, chasePosition) <= 0.75 &&
+          distance3(actor.world, record.at) <= 1.5
+        );
+      },
+      10_000,
+      15_000
+    );
+    const renderedRecord = renderedChase.value.liveCreatureRecords.find(
+      (candidate) => Number(candidate.id) === Number(npcId)
+    );
+    report.scenarios.push({
+      name: "frontend attack -> Anima chase -> ECS sync -> frontend render",
+      status: "pass",
+      npcId: String(npcId),
+      authoritativeChaseMs: authoritativeChase.elapsedMs,
+      localSyncMs: localChase.elapsedMs,
+      renderSyncMs: renderedChase.elapsedMs,
+      chaseDisplacement,
+      chaseStartDistance,
+      chaseEndDistance: distance3(chasePosition, chasePlayerPosition),
+      renderedPosition: renderedRecord?.at,
+      speedCap: HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND,
+    });
+  }
   let retaliationTransitionStart = preCombatTransitionCount;
   let retaliation;
   if (combatMusicOnly) {
@@ -12383,6 +13647,13 @@ async function proveCombatMusicRoundTrip(first, second, combatPosition) {
     },
     combatMusicRestoreGateMs,
     combatMusicRestoreGateMs + 5_000
+  );
+  assert(
+    ambientRestoration.value.loadedTracks.includes(preCombatAmbientTrack) &&
+      ambientRestoration.value.loadedTracks.length <= 2,
+    `ambient restoration exceeded the two-track residency bound: ${JSON.stringify(
+      ambientRestoration.value
+    )}`
   );
   if (combatMusicOnly) {
     const transitions = ambientRestoration.value.transitions.slice(
@@ -13060,16 +14331,27 @@ async function ensureChapter1ExternalInventoryRequirements(first, quest, step) {
         `${quest.id}/${step.id}: no real vendor route for ${requirement.itemId}`
       );
       if (missing > 0) {
-        const purchase = await bridgeCall(first.page, "vendorPurchase", {
-          offset: vendorRoute.offset,
-          itemId: requirement.itemId,
-          quantity: vendorRoute.bundleCount,
-          reason: `${quest.title}/${step.title} Chapter 1 material acquisition`,
-        });
-        assert(
-          purchase?.ok !== false,
-          `${quest.id}/${step.id}: vendor purchase rejected for ${requirement.itemId}`
+        const bundlePurchases = Math.ceil(
+          missing / vendorRoute.bundleCount
         );
+        for (
+          let bundleIndex = 0;
+          bundleIndex < bundlePurchases;
+          bundleIndex += 1
+        ) {
+          const purchase = await bridgeCall(first.page, "vendorPurchase", {
+            offset: vendorRoute.offset,
+            itemId: requirement.itemId,
+            quantity: vendorRoute.bundleCount,
+            reason: `${quest.title}/${step.title} Chapter 1 material acquisition bundle ${
+              bundleIndex + 1
+            }/${bundlePurchases}`,
+          });
+          assert(
+            purchase?.ok !== false,
+            `${quest.id}/${step.id}: vendor purchase rejected for ${requirement.itemId}`
+          );
+        }
       }
     }
     expected.push({ ...requirement, nativeId });
@@ -13283,17 +14565,23 @@ async function installChapter1CompletedGroveJobEvidence(first, challengeId) {
       index += 1
     ) {
       const jobId = `${prefix}${index + 1}`;
+      const templateId = CH1_GROVE_JOB_TEMPLATE_IDS[index];
+      const template = HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES.find(
+        (candidate) => candidate.templateId === templateId
+      );
+      assert(template, `take_jobs: missing authored template ${templateId}`);
       shared.jobsBoard.postings[jobId] = {
         jobId,
         boardId: board.boardId,
-        issuerKind: "town",
-        issuerId: "harthmere_grove",
-        title: `Chapter 1 completed Grove job ${index + 1}`,
-        description:
-          "Production-shaped external evidence for the Work the Board objective.",
-        kind: "service",
-        requirements: [],
-        templateId: `chapter1_e2e_completed_${index + 1}`,
+        issuerKind: template.issuerKind,
+        issuerId: template.issuerId,
+        title: template.title,
+        description: template.description,
+        kind: template.kind,
+        requirements: template.requirements.map((requirement) => ({
+          ...requirement,
+        })),
+        templateId,
         rewardGold: CH1_E2E_GROVE_JOB_REWARD_GOLD,
         escrowGold: 0,
         reputationDelta: 0,
@@ -13306,7 +14594,11 @@ async function installChapter1CompletedGroveJobEvidence(first, challengeId) {
         acceptedByActorId: String(first.userId),
         completedAtMs: Math.max(startedAtMs + index + 2, nowMs - index),
         failurePenaltyGold: 0,
-        requiresFieldWork: false,
+        requiresFieldWork: template.requiresFieldWork,
+        autoPosted: true,
+        source: "economy_auto_seed",
+        mapMarkerId: template.mapMarkerId,
+        targetId: template.targetId,
         abuseFlags: [],
         logs: [`chapter1_native_e2e:${runId}`],
       };
@@ -13408,11 +14700,42 @@ async function satisfyChapter1ExternalSystemRequirement(
   );
 
   if (step.id === "take_jobs") {
-    await first.page
+    const boardPrompt = first.page
       .locator(
         '[data-testid="harthmere-jobs-board-world-prompt"], button[aria-label="Read Jobs Board"]'
       )
-      .waitFor({ state: "visible", timeout: 20_000 });
+      .first();
+    await boardPrompt.waitFor({ state: "visible", timeout: 20_000 });
+    await boardPrompt.click();
+    const chapterBoard = first.page.locator(
+      '[data-chapter1-jobs-board="take_jobs"]'
+    );
+    await chapterBoard.waitFor({ state: "visible", timeout: 20_000 });
+    const tabs = await chapterBoard.getByRole("tab").allTextContents();
+    assert.deepEqual(
+      tabs.map((text) => text.replace(/\s*\(\d+\)\s*$/, "").trim()),
+      ["Chapter 1 Jobs", "Accepted"],
+      "take_jobs: Chapter 1 must replace the generic board tabs"
+    );
+    const allowedTitles = new Set([
+      "Stock the Road Rations Crate",
+      "Patch the Safe-Zone Fence",
+      "Clear the Muckwad Patch",
+    ]);
+    assert.equal(CH1_GROVE_JOB_TEMPLATE_IDS.length, allowedTitles.size);
+    const availableTitles = await chapterBoard
+      .locator(".harthmere-jobs-card > strong")
+      .allTextContents();
+    assert(
+      availableTitles.length > 0 &&
+        availableTitles.every((title) => allowedTitles.has(title.trim())),
+      `take_jobs: generic jobs leaked into Chapter 1 board: ${JSON.stringify(
+        availableTitles
+      )}`
+    );
+    await chapterBoard
+      .getByRole("button", { name: /Close jobs board/i })
+      .click();
     await installChapter1CompletedGroveJobEvidence(first, challengeId);
   } else {
     assert.equal(
@@ -13656,6 +14979,42 @@ async function ensureChapter1DungeonMechanicsFixture(first, questId) {
     fixture.dungeonId,
     `${questId}: gate-entry warp did not retain native portal admission`
   );
+}
+
+async function releaseFailedChapter1DungeonFixture(first) {
+  const redis = await connectToRedis("firehose");
+  try {
+    const actorId = String(first.userId);
+    const key = harthmereLiveModePlayerStateKey(actorId);
+    const nowMs = Date.now();
+    const raw = await redis.primary.get(key);
+    if (!raw) return;
+    const state = parseHarthmereLiveModeBackendState(raw, actorId, nowMs);
+    const dungeonId = state.chapter1.activeDungeonRunId;
+    const partyId = state.chapter1.activeDungeonPartyId;
+    if (!dungeonId || !partyId) return;
+    await releaseCh1Slot(redis, dungeonId, partyId, actorId);
+    state.chapter1 = {
+      ...state.chapter1,
+      activeDungeonRunId: undefined,
+      activeDungeonInstanceId: undefined,
+      activeDungeonPartyId: undefined,
+      activeGateId: undefined,
+      activeRunStartedMs: undefined,
+      returnPosition: undefined,
+      dungeonSurvival: undefined,
+    };
+    state.updatedAtMs = nowMs;
+    await redis.primary.set(
+      key,
+      stringifyHarthmereLiveModePlayerPersistenceState(state)
+    );
+    report.browser.transients.push(
+      `chapter1-test-dungeon-slot-released:${dungeonId}:${actorId}`
+    );
+  } finally {
+    await redis.quit("failed Chapter 1 dungeon fixture released");
+  }
 }
 
 async function assertChapter1DungeonAdmission(first, questId, label) {
@@ -14172,9 +15531,12 @@ async function drainChapter1Dialogue(first, step, mode, options = {}) {
     if (isFinalPage) {
       const finalText = String(await originalTalkSurface.textContent()).trim();
       assert(
-        /Next task:|Chapter 1 is complete\./.test(finalText),
-        `${step.id}: final conversation page did not state the next task`
+        /Go to |Press J to open BiomesUI|Chapter 1 is complete\./.test(
+          finalText
+        ),
+        `${step.id}: final conversation page did not state where to go`
       );
+      assert.doesNotMatch(finalText, /Next task:/i);
       const presentation = await originalTalkSurface.evaluate((element) => {
         const surface = getComputedStyle(element);
         const text = element.querySelector(".npc-quest-dialog");
@@ -14216,6 +15578,31 @@ async function drainChapter1Dialogue(first, step, mode, options = {}) {
   throw new Error(`${step.id}: dialogue exceeded 64 message screens`);
 }
 
+async function invokeChapter1ObjectiveInteraction(first, state, step) {
+  if (!["talk_npc", "dialogue_choice"].includes(step.trigger)) {
+    await first.page.keyboard.press("KeyF");
+    return;
+  }
+  const targetEntityId = Number(state.value.body.targetEntityId);
+  assert(
+    Number.isSafeInteger(targetEntityId) && targetEntityId > 0,
+    `${step.id}: NPC objective has no canonical target entity`
+  );
+  // Exercise the alternate production entry point for every NPC phase, not
+  // just the global F dispatcher. TalkToNPCScreen must immediately close the
+  // stock/default quest surface and route the exact active Chapter 1 target
+  // into the story objective. If regular NPC text wins, the expected Chapter
+  // 1 dialogue/choice/completion below never appears and the row fails.
+  await first.page.evaluate((talkingToNPCId) => {
+    const context = globalThis.clientContext;
+    if (!context?.resources) throw new Error("client context unavailable");
+    context.resources.set("/game_modal", {
+      kind: "talk_to_npc",
+      talkingToNPCId,
+    });
+  }, targetEntityId);
+}
+
 async function completeChapter1ObjectiveThroughProduct(first, args) {
   const { challengeId, quest, state, step, stepId } = args;
   const choice = state.value.body.choice;
@@ -14250,88 +15637,33 @@ async function completeChapter1ObjectiveThroughProduct(first, args) {
   for (const companion of escortFixtures) {
     const target = state.value.body.targetPosition;
     assert(target, `${quest.id}/${step.id}: escort target has no position`);
-    const current = await authoritativeEntity(first.page, companion.entityId);
-    const position = [target[0] + 2, target[1], target[2]];
-    fixtureChanges.push({
-      kind: "update",
-      entity: {
-        id: companion.entityId,
-        position: Position.create({ v: position }),
-        rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
-        locked_in_place: LockedInPlace.create(),
-      },
-    });
     escortTargets.push({
       entityId: companion.entityId,
       displayName: companion.displayName,
       target,
-      position,
-      wasLockedInPlace: Boolean(current.entity?.locked_in_place),
-      lastApplyAt: 0,
     });
   }
   if (fixtureChanges.length > 0) {
     await applyFixture(first.page, ...fixtureChanges);
-    for (const escort of escortTargets) escort.lastApplyAt = Date.now();
   }
   for (const escort of escortTargets) {
-    // The completion route reads the HFC-backed production WorldApi, while the
-    // admin fixture acknowledges the Redis write before every replica has
-    // consumed it. Wait on that same authoritative API instead of racing the
-    // escort check or weakening it; Anima remains free to keep following the
-    // player as long as the companion stays within the authored 22m radius.
+    // The objective is explicitly a 400-metre escort. Do not teleport or lock
+    // the companion as a test shortcut: Anima owns terrain-aware movement,
+    // catch-up, combat, and recovery. The production completion route requires
+    // the same 22m arrival radius, so wait on its authoritative WorldApi long
+    // enough for the authored journey instead of using the ordinary 40s step
+    // transition budget.
     await waitFor(
-      `${quest.id}/${step.id}: ${escort.displayName} synchronized at escort target`,
-      async () => {
-        const authoritative = await authoritativeEntity(
-          first.page,
-          escort.entityId
-        );
-        if (
-          (!authoritative.entity?.position?.v ||
-            distance3(authoritative.entity.position.v, escort.target) > 22) &&
-          Date.now() - escort.lastApplyAt >= 2_000
-        ) {
-          // LockedInPlace prevents future movement, but one Anima write can
-          // already be queued when the lock commits. Reassert the same locked
-          // target until HFC observes both fields together.
-          await applyFixture(first.page, {
-            kind: "update",
-            entity: {
-              id: escort.entityId,
-              position: Position.create({ v: escort.position }),
-              rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
-              locked_in_place: LockedInPlace.create(),
-            },
-          });
-          escort.lastApplyAt = Date.now();
-        }
-        return authoritative;
-      },
+      `${quest.id}/${step.id}: ${escort.displayName} completes the live escort route`,
+      () => authoritativeEntity(first.page, escort.entityId),
       ({ entity }) =>
         Boolean(entity?.position?.v) &&
         distance3(entity.position.v, escort.target) <= 22,
-      20_000,
-      40_000
+      180_000,
+      180_000
     );
   }
-  const finishResponse = async (response) => {
-    if (escortTargets.length > 0) {
-      await applyFixture(
-        first.page,
-        ...escortTargets.map((escort) => ({
-          kind: "update",
-          entity: {
-            id: escort.entityId,
-            locked_in_place: escort.wasLockedInPlace
-              ? LockedInPlace.create()
-              : null,
-          },
-        }))
-      );
-    }
-    return response;
-  };
+  const finishResponse = async (response) => response;
   if (step.id === "the_procedure") {
     const responsePromise = waitForChapter1CompletionResponse(
       first.page,
@@ -14339,7 +15671,7 @@ async function completeChapter1ObjectiveThroughProduct(first, args) {
       stepId,
       responseTimeoutMs
     );
-    await first.page.keyboard.press("KeyF");
+    await invokeChapter1ObjectiveInteraction(first, state, step);
     const triage = first.page.locator(
       '[data-chapter1-containment-triage="objective"]'
     );
@@ -14377,7 +15709,7 @@ async function completeChapter1ObjectiveThroughProduct(first, args) {
         responseTimeoutMs
       );
     }
-    await first.page.keyboard.press("KeyF");
+    await invokeChapter1ObjectiveInteraction(first, state, step);
     await drainChapter1Dialogue(first, step, "objective", {
       required: dialoguePages > 0,
       expectedPages: state.value.body.dialogue?.pages,
@@ -14399,7 +15731,70 @@ async function completeChapter1ObjectiveThroughProduct(first, args) {
     return finishResponse(response);
   }
 
-  await first.page.keyboard.press("KeyF");
+  if (step.id === "not_this_small") {
+    // Reproduce the user's exact collision: Road Signs is ready to turn in to
+    // Jackie while Jackie is also the staged Chapter 1 choice target. The
+    // Chapter 1 interaction must win; the generic Complete Quest menu must not
+    // replace it or require a second press.
+    const roadQuestId = groveNativeQuestId("road_signs_and_small_lies");
+    const roadStepIds = [0, 1, 2, 3].map((index) =>
+      groveNativeStepId("road_signs_and_small_lies", index)
+    );
+    assert(roadQuestId && roadStepIds.every(Boolean));
+    const current = await authoritativeEntity(first.page, first.userId);
+    const challenges = Challenges.clone(
+      current.entity?.challenges ?? Challenges.create()
+    );
+    challenges.in_progress.add(roadQuestId);
+    challenges.started_at.set(roadQuestId, secondsSinceEpoch() - 30);
+    const triggerState = TriggerState.clone(
+      current.entity?.trigger_state ?? TriggerState.create()
+    );
+    triggerState.by_root.set(
+      roadQuestId,
+      new Map(
+        roadStepIds
+          .slice(0, 3)
+          .map((stepId, index) => [stepId, secondsSinceEpoch() - 20 + index])
+      )
+    );
+    await applyFixture(first.page, {
+      kind: "update",
+      entity: {
+        id: first.userId,
+        challenges,
+        trigger_state: triggerState,
+      },
+    });
+    await waitFor(
+      "Jackie collision fixture reaches the live browser",
+      () => localEntity(first.page, first.userId),
+      ({ entity }) =>
+        entity?.challenges?.in_progress.has(roadQuestId) &&
+        roadStepIds
+          .slice(0, 3)
+          .every((stepId) =>
+            isTriggerFired(
+              entity?.trigger_state?.by_root.get(roadQuestId),
+              stepId
+            )
+          ),
+      Math.max(originSyncGateMs, 10_000),
+      Math.max(timeoutMs, 30_000)
+    );
+  }
+
+  await invokeChapter1ObjectiveInteraction(first, state, step);
+  if (step.id === "not_this_small") {
+    const genericRoadSigns = first.page.getByRole("button", {
+      name: /Road Signs and Small Lies/i,
+    });
+    assert.equal(
+      await genericRoadSigns.isVisible().catch(() => false),
+      false,
+      "Jackie opened the generic Road Signs quest menu instead of Chapter 1"
+    );
+  }
   await drainChapter1Dialogue(first, step, "objective", {
     required: dialoguePages > 0,
     expectedPages: state.value.body.dialogue?.pages,
@@ -14412,8 +15807,13 @@ async function completeChapter1ObjectiveThroughProduct(first, args) {
   await nextDirection.waitFor({ state: "visible", timeout: 20_000 });
   assert.match(
     String(await nextDirection.textContent()),
-    /Next task:|Chapter 1 is complete\./,
+    /Go to |Press J to open BiomesUI|Chapter 1 is complete\./,
     `${quest.id}/${step.id}: choice did not state what happens next`
+  );
+  assert.doesNotMatch(
+    String(await nextDirection.textContent()),
+    /Next task:/i,
+    `${quest.id}/${step.id}: choice exposed a mechanical Next task label`
   );
   const choicePresentation = await dialog
     .locator(".chapter1-choice-dialog")
@@ -14465,7 +15865,7 @@ async function completeChapter1ObjectiveThroughProduct(first, args) {
       false,
       `${quest.id}/${step.id}: Not yet fired native progress`
     );
-    await first.page.keyboard.press("KeyF");
+    await invokeChapter1ObjectiveInteraction(first, state, step);
     await drainChapter1Dialogue(first, step, "objective", {
       required: dialoguePages > 0,
       expectedPages: state.value.body.dialogue?.pages,
@@ -14829,11 +16229,18 @@ async function proveAllChapter1NativeQuestsComplete(first) {
         step,
         state
       );
-      await chapter1WarpAndWait(
-        first,
-        state.value.body.targetPosition,
-        `${quest.id}/${step.id}: authored objective target`
-      );
+      const recoveredUiOwned = step.id === "open_the_tab";
+      if (recoveredUiOwned) {
+        assert.equal(state.value.body.targetPosition, undefined);
+        assert.equal(state.value.body.showNavigationAid, false);
+        assert.equal(state.value.body.withinRange, true);
+      } else {
+        await chapter1WarpAndWait(
+          first,
+          state.value.body.targetPosition,
+          `${quest.id}/${step.id}: authored objective target`
+        );
+      }
       if (chapter1MaterialVisualCapture && step.id === "gather_parts") {
         const target = state.value.body.targetPosition;
         const approach = [target[0], target[1], target[2] + 5];
@@ -14903,27 +16310,54 @@ async function proveAllChapter1NativeQuestsComplete(first) {
       }
       const readyState = externalSystemOwned
         ? state
-        : step.trigger === "near_location"
+        : recoveredUiOwned
           ? state
-          : await waitFor(
-              `${quest.title}/${step.title}: server-authoritative interaction range`,
-              () =>
-                pageJson(first.page, "/api/harthmere/chapter1_progress", {
-                  method: "POST",
-                  body: JSON.stringify({ action: "state" }),
-                }),
-              (response) =>
-                response.ok &&
-                response.body?.status === "active" &&
-                String(response.body.challengeId) === String(challengeId) &&
-                String(response.body.stepId) === String(stepId) &&
-                response.body.withinRange === true,
-              20_000,
-              40_000
-            );
+          : step.trigger === "near_location"
+            ? state
+            : await waitFor(
+                `${quest.title}/${step.title}: server-authoritative interaction range`,
+                () =>
+                  pageJson(first.page, "/api/harthmere/chapter1_progress", {
+                    method: "POST",
+                    body: JSON.stringify({ action: "state" }),
+                  }),
+                (response) =>
+                  response.ok &&
+                  response.body?.status === "active" &&
+                  String(response.body.challengeId) === String(challengeId) &&
+                  String(response.body.stepId) === String(stepId) &&
+                  response.body.withinRange === true,
+                20_000,
+                40_000
+              );
       let completionBody;
       const incrementalRoute = chapter1IncrementalObjectiveRoute(step.id);
-      if (incrementalRoute) {
+      if (recoveredUiOwned) {
+        const openMenuHighlight = first.page.locator(
+          '[data-ui-id="hud.prompt.open_menu"][data-ui-blinking="true"]'
+        );
+        await openMenuHighlight.waitFor({ state: "visible", timeout: 20_000 });
+        const completionResponse = waitForChapter1CompletionResponse(
+          first.page,
+          challengeId,
+          stepId,
+          40_000
+        );
+        await first.page.keyboard.press("KeyJ");
+        const recoveredTab = first.page.locator(
+          '[data-ui-id="tab.recovered"][data-ui-blinking="true"]'
+        );
+        await recoveredTab.waitFor({ state: "visible", timeout: 20_000 });
+        await first.page
+          .getByText("Select MEM — Recovered", { exact: true })
+          .waitFor({ state: "visible", timeout: 20_000 });
+        await recoveredTab.click();
+        const response = await completionResponse;
+        assert(response.ok(), `${quest.id}/${step.id}: UI completion failed`);
+        completionBody = await response.json();
+        assert.equal(completionBody.status, "completed");
+        await first.page.keyboard.press("Escape");
+      } else if (incrementalRoute) {
         completionBody =
           await completeChapter1IncrementalObjectiveThroughProduct(
             first,
@@ -15041,6 +16475,57 @@ async function proveAllChapter1NativeQuestsComplete(first) {
         ...completedObjective,
       });
       persistReportCheckpoint();
+      const nextStep = quest.steps[stepIndex + 1];
+      if (nextStep) {
+        const nextStepId = String(
+          ch1NativeQuestStepId(quest.id, stepIndex + 1)
+        );
+        const nextStepUiOwned = nextStep.id === "open_the_tab";
+        await waitFor(
+          `${quest.id}/${step.id}: UI advances to ${nextStep.id}`,
+          async () => ({
+            projection: await bridgeCall(
+              first.page,
+              "nativeQuestFrontendSnapshot"
+            ),
+            hud: await first.page
+              .locator('[aria-label="Current objective"]')
+              .textContent()
+              .catch(() => ""),
+          }),
+          ({ projection, hud }) => {
+            const projectedQuest = projection.quests?.find(
+              ({ questId }) => String(questId) === String(challengeId)
+            );
+            const exactNativeStep =
+              String(projectedQuest?.currentStepId) === nextStepId;
+            const exactHud = String(hud ?? "").includes(nextStep.objective);
+            const activeQuestMarker = projection.markers?.find(
+              (marker) =>
+                String(marker.questId) === String(challengeId) &&
+                marker.id === projection.activeMapPin?.markerId &&
+                marker.label === projection.activeMapPin?.label &&
+                distanceXZ(
+                  marker.worldPosition,
+                  projection.activeMapPin?.worldPosition
+                ) <= CHAPTER1_E2E_WARP_VERTICAL_TOLERANCE_METERS
+            );
+            // Recovered is owned by BiomesUI, not a world target. Requiring a
+            // new map pin here both contradicts production and can mistake a
+            // retained pin from the completed Doc step for the next action.
+            // Quest-level fallback anchors reuse the quest id as their marker
+            // id, so their visible label and exact live destination are the
+            // authoritative proof that the persisted pin refreshed.
+            const correctSurface = nextStepUiOwned
+              ? true
+              : projection.activeMapPin?.markerId?.includes(nextStepId) ||
+                Boolean(activeQuestMarker);
+            return exactNativeStep && exactHud && correctSurface;
+          },
+          20_000,
+          40_000
+        );
+      }
       if (`${quest.id}/${step.id}` === chapter1StopAfter) {
         stopReached = true;
         break;
@@ -15117,21 +16602,23 @@ async function proveAllChapter1CutscenesStart(first) {
     "Chapter 1 cutscene selection did not match any registered scene"
   );
   const results = [];
+  const failures = [];
   for (const scene of selectedCatalog) {
-    const prepared = await bridgeCall(
-      first.page,
-      "chapter1PrepareCutsceneAudit",
-      scene.id
-    );
-    const focus = await focusChapter1Scene(
-      first,
-      scene.id,
-      prepared.staging,
-      chapter1GateRendererFocus(prepared.activeGateIds)
-    );
-    await waitForChapter1CutsceneFocusReady(first, focus, scene.id);
-    const gateHold = prepared.activeGateIds.length > 0;
+    let gateHold = false;
     try {
+      const prepared = await bridgeCall(
+        first.page,
+        "chapter1PrepareCutsceneAudit",
+        scene.id
+      );
+      const focus = await focusChapter1Scene(
+        first,
+        scene.id,
+        prepared.staging,
+        chapter1GateRendererFocus(prepared.activeGateIds)
+      );
+      await waitForChapter1CutsceneFocusReady(first, focus, scene.id);
+      gateHold = prepared.activeGateIds.length > 0;
       if (gateHold) {
         await holdChapter1AuditGates(
           first,
@@ -15172,6 +16659,71 @@ async function proveAllChapter1CutscenesStart(first) {
         startMs: started.elapsedMs,
         snapshot: await bridgeCall(first.page, "chapter1CutsceneSnapshot"),
       });
+      if (scene.id === "ch1-first-gate") {
+        // Reproduce the reported failure state deliberately: a cinematic face
+        // emote is active when the Grove cutscene exits. The director must
+        // neutralize it and immediately restore the theme for the region the
+        // player can actually see, even though the fence sample is Mucky.
+        const seededExpressionRequest = await first.page.evaluate(() => {
+          const context = globalThis.clientContext;
+          const localPlayer = context?.resources?.get("/scene/local_player");
+          if (!context?.events || !context.resources || !localPlayer) {
+            return false;
+          }
+          localPlayer.player.eagerEmote(
+            context.events,
+            context.resources,
+            "shock"
+          );
+          return true;
+        });
+        assert.equal(seededExpressionRequest, true);
+        const seededExpression = await waitFor(
+          `${scene.id}: reported stuck expression becomes active`,
+          () =>
+            first.page.evaluate(
+              () =>
+                globalThis.clientContext?.resources?.get("/scene/local_player")
+                  ?.player?.emoteInfo?.emoteType
+            ),
+          (emoteType) => emoteType === "shock",
+          10_000,
+          20_000
+        );
+        assert.equal(
+          seededExpression.value,
+          "shock",
+          `${scene.id}: could not seed the reported stuck expression`
+        );
+        await bridgeCall(first.page, "chapter1StopCutscene");
+        const cleanup = await waitFor(
+          `${scene.id}: expression and Grove music restore on exit`,
+          async () => ({
+            cutscene: await bridgeCall(first.page, "chapter1CutsceneSnapshot"),
+            audio: await bridgeCall(first.page, "audioDiagnostics"),
+            emoteType: await first.page.evaluate(
+              () =>
+                globalThis.clientContext?.resources?.get("/scene/local_player")
+                  ?.player?.emoteInfo?.emoteType
+            ),
+          }),
+          (state) =>
+            !state.cutscene?.active &&
+            state.emoteType === undefined &&
+            state.audio?.currentTrack === "grove_music",
+          20_000,
+          30_000
+        );
+        results[results.length - 1].exitCleanup = {
+          emoteType: cleanup.value.emoteType,
+          restoredTrack: cleanup.value.audio.currentTrack,
+        };
+      }
+    } catch (error) {
+      failures.push({ id: scene.id, error: chapter1ErrorText(error) });
+      await bridgeCall(first.page, "chapter1StopCutscene").catch(
+        () => undefined
+      );
     } finally {
       if (gateHold && !first.page.isClosed()) {
         await releaseChapter1AuditGates(first).catch(() => undefined);
@@ -15185,6 +16737,13 @@ async function proveAllChapter1CutscenesStart(first) {
     (snapshot) => !snapshot.active,
     15_000,
     20_000
+  );
+  assert.deepEqual(
+    failures,
+    [],
+    `Chapter 1 cutscene failures:\n${failures
+      .map((failure) => `${failure.id}: ${failure.error}`)
+      .join("\n\n")}`
   );
   return { count: results.length, scenes: results };
 }
@@ -17095,6 +18654,12 @@ async function runChapter1BrowserBatch(first, options) {
   const selected = (feature) =>
     !chapter1Features || chapter1Features.has(feature);
   if (!options.captureOnly) {
+    if (selected("items")) {
+      await chapter1Scenario(
+        "all Chapter 1 plot items render in the live inventory",
+        () => proveAllChapter1ItemsRender(first)
+      );
+    }
     if (selected("catalog")) {
       await chapter1Scenario(
         "Chapter 1 completeable browser state machine and native quest catalog",
@@ -17102,10 +18667,17 @@ async function runChapter1BrowserBatch(first, options) {
       );
     }
     if (selected("quests")) {
-      await chapter1Scenario(
+      const questScenario = await chapter1Scenario(
         "all Chapter 1 native quests complete through the production objective bridge",
         () => proveAllChapter1NativeQuestsComplete(first)
       );
+      if (questScenario.status === "fail") {
+        await releaseFailedChapter1DungeonFixture(first).catch((error) => {
+          report.browser.failures.push(
+            `chapter1-test-dungeon-cleanup:${chapter1ErrorText(error)}`
+          );
+        });
+      }
     }
     if (selected("cutscenes")) {
       await chapter1Scenario(
@@ -17144,6 +18716,719 @@ async function runChapter1BrowserBatch(first, options) {
   }
 }
 
+async function proveAllChapter1ItemsRender(first) {
+  const current = await authoritativeEntity(first.page, first.userId);
+  assert(current.entity?.inventory, "Chapter 1 item audit has no inventory");
+  const inventory = Inventory.create({
+    items: new Array(PLAYER_INVENTORY_SLOTS),
+    hotbar: new Array(PLAYER_HOTBAR_SLOTS),
+    currencies: new Map(),
+    overflow: new Map(),
+    selected: { kind: "hotbar", idx: 0 },
+  });
+  const expected = CH1_ITEMS.filter(
+    (item) => !chapter1ItemIds || chapter1ItemIds.has(item.id)
+  ).map((item) => {
+    const nativeId = harthmereNativeBiomesIdForItemId(item.id);
+    assert(nativeId, `${item.id}: Chapter 1 item has no canonical native id`);
+    setNativeInventoryCount(inventory, nativeId, 1);
+    return { ...item, nativeId };
+  });
+  await applyFixture(first.page, {
+    kind: "update",
+    entity: {
+      id: first.userId,
+      inventory,
+      selected_item: SelectedItem.create(),
+    },
+  });
+  await waitFor(
+    "all Chapter 1 plot items synchronize into the live browser",
+    () => localEntity(first.page, first.userId),
+    ({ entity }) =>
+      expected.every(({ nativeId }) => inventoryCount(entity, nativeId) === 1n),
+    Math.max(originSyncGateMs, 15_000),
+    Math.max(timeoutMs, 30_000)
+  );
+
+  await first.page.keyboard.press("KeyI");
+  const inventoryTab = first.page.getByLabel("Backpack inventory", {
+    exact: true,
+  });
+  await inventoryTab.waitFor({ state: "visible", timeout: timeoutMs });
+  const results = [];
+  const failures = [];
+  for (const item of expected) {
+    const result = {
+      itemId: item.id,
+      nativeItemId: String(item.nativeId),
+      name: item.name,
+    };
+    results.push(result);
+    try {
+      const button = inventoryTab.getByRole("button", {
+        name: `${item.name} x1`,
+        exact: true,
+      });
+      assert.equal(
+        await button.count(),
+        1,
+        `${item.id}: live inventory cell is missing or ambiguous`
+      );
+      const icon = button.locator('[data-inventory-icon-kind="image"]');
+      assert.equal(
+        await icon.count(),
+        1,
+        `${item.id}: live inventory did not render its authored image icon`
+      );
+      // The inventory panel becomes visible before its image requests finish
+      // on software/Metal lanes. Wait on the real DOM image state; broken URLs
+      // still fail with zero natural size rather than being hidden by a sleep.
+      await waitFor(
+        `${item.id}: inventory icon finishes loading`,
+        () =>
+          icon.evaluate((element) => ({
+            complete:
+              element instanceof HTMLImageElement ? element.complete : false,
+          })),
+        (image) => image.complete,
+        Math.max(acceptanceGateMs, 5_000),
+        Math.max(timeoutMs, 15_000)
+      );
+      const image = await icon.evaluate((element) => ({
+        src: element.getAttribute("src"),
+        complete:
+          element instanceof HTMLImageElement ? element.complete : false,
+        naturalWidth:
+          element instanceof HTMLImageElement ? element.naturalWidth : 0,
+        naturalHeight:
+          element instanceof HTMLImageElement ? element.naturalHeight : 0,
+        rect: {
+          width: element.getBoundingClientRect().width,
+          height: element.getBoundingClientRect().height,
+        },
+      }));
+      assert(
+        image.src?.includes("/assets/harthmere/inventory_icons/generated/"),
+        `${item.id}: live inventory used the wrong icon source ${image.src}`
+      );
+      assert.equal(
+        image.complete,
+        true,
+        `${item.id}: icon did not finish loading`
+      );
+      assert(image.naturalWidth > 0, `${item.id}: icon has zero natural width`);
+      assert(
+        image.naturalHeight > 0,
+        `${item.id}: icon has zero natural height`
+      );
+      assert(image.rect.width > 0, `${item.id}: icon is not visibly laid out`);
+      assert(image.rect.height > 0, `${item.id}: icon is not visibly laid out`);
+      Object.assign(result, {
+        icon: image.src,
+        naturalSize: [image.naturalWidth, image.naturalHeight],
+        renderedSize: [image.rect.width, image.rect.height],
+      });
+    } catch (error) {
+      const message = chapter1ErrorText(error);
+      result.iconError = message;
+      failures.push({ itemId: item.id, phase: "inventory", error: message });
+    }
+  }
+  const screenshot = path.join(
+    artifactsDir,
+    `${runId}-chapter-1-all-items-inventory.png`
+  );
+  await first.page.screenshot({ path: screenshot, fullPage: true });
+  await first.page.keyboard.press("Escape");
+
+  // Inventory thumbnails prove the exact Blender icon route, but the original
+  // production report was a selected Core Cell with no resolvable held mesh.
+  // Exercise every Chapter 1 plot item through the real selected-item renderer
+  // too. The local avatar (and therefore its hand attachment) is intentionally
+  // hidden in first person, so force the normal third-person camera before
+  // taking visual evidence. Console mesh-resolution errors remain fatal.
+  const firstPersonBeforeHeldAudit = await first.page.evaluate(() =>
+    Boolean(
+      globalThis.clientContext?.resources?.get("/scene/camera")?.isFirstPerson
+    )
+  );
+  if (firstPersonBeforeHeldAudit) {
+    await first.page.keyboard.press("KeyT");
+  }
+  await first.page.waitForFunction(
+    () =>
+      globalThis.clientContext?.resources?.get("/scene/camera")
+        ?.isFirstPerson === false,
+    undefined,
+    { timeout: 10_000 }
+  );
+  const gameCanvas = first.page.locator("canvas.biomes-canvas");
+  await gameCanvas.waitFor({ state: "visible", timeout: timeoutMs });
+  await gameCanvas.focus({ timeout: probeTimeoutMs });
+  const canvasBox = await gameCanvas.boundingBox();
+  assert(canvasBox, "Chapter 1 item audit game canvas has no layout box");
+  await first.page.mouse.move(
+    canvasBox.x + canvasBox.width / 2,
+    canvasBox.y + canvasBox.height / 2
+  );
+
+  // Generate a non-authoritative review scene through the same declarative
+  // cutscene system used by Chapter 1. The three composed cameras make held
+  // silhouettes, scale and hand attachment readable from the front and both
+  // three-quarter angles without moving the real player or committing story
+  // state. This is runtime-injected into the exact current app bundle.
+  const reviewCenter = await first.page.evaluate((userId) => {
+    const resources = globalThis.clientContext?.resources;
+    const player = resources?.get("/sim/player", userId);
+    const position = player?.position;
+    return Array.isArray(position) ? [...position] : undefined;
+  }, first.userId);
+  assert(
+    Array.isArray(reviewCenter) && reviewCenter.length === 3,
+    "Chapter 1 item audit could not resolve the live player position"
+  );
+  const [reviewX, reviewY, reviewZ] = reviewCenter;
+  // Normalize the avatar's facing before measuring any item. A review camera
+  // derived from the mesh bounds is only stable if the cutscene does not turn
+  // the player after those bounds were sampled.
+  const reviewPlayerOrientation = lookAtOrientation(
+    [reviewX, reviewY + 1.1, reviewZ],
+    [reviewX, reviewY + 1.1, reviewZ - 4]
+  );
+  await placeFrontendPlayerForFixture(
+    first.page,
+    first.userId,
+    reviewCenter,
+    reviewPlayerOrientation
+  );
+  await applyFixture(first.page, {
+    kind: "update",
+    entity: {
+      id: first.userId,
+      position: Position.create({ v: reviewCenter }),
+      orientation: Orientation.create({ v: reviewPlayerOrientation }),
+      rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+    },
+  });
+  await publishFrontendMove(
+    first.page,
+    first.userId,
+    reviewCenter,
+    reviewPlayerOrientation
+  );
+
+  const heldItemWorldBounds = (item, nativeId) =>
+    first.page.evaluate(
+      ({ userId, expectedItemId }) => {
+        const resources = globalThis.clientContext?.resources;
+        const playerMesh = resources?.cached("/scene/player/mesh", userId);
+        const attachment = playerMesh?.itemAttachment;
+        const root = attachment?.itemMeshInstance?.three;
+        if (!root) return undefined;
+        root.updateMatrixWorld?.(true);
+        const min = [Infinity, Infinity, Infinity];
+        const max = [-Infinity, -Infinity, -Infinity];
+        let meshCount = 0;
+        let vertexCount = 0;
+        const materials = [];
+        const include = (x, y, z) => {
+          min[0] = Math.min(min[0], x);
+          min[1] = Math.min(min[1], y);
+          min[2] = Math.min(min[2], z);
+          max[0] = Math.max(max[0], x);
+          max[1] = Math.max(max[1], y);
+          max[2] = Math.max(max[2], z);
+        };
+        root.traverse?.((child) => {
+          if (!child?.isMesh || !child.geometry) return;
+          meshCount += 1;
+          const meshMaterials = Array.isArray(child.material)
+            ? child.material
+            : [child.material];
+          for (const material of meshMaterials) {
+            materials.push({
+              name: String(material?.name ?? ""),
+              type: String(material?.type ?? material?.constructor?.name ?? ""),
+              color: material?.color?.toArray?.(),
+              baseColor: material?.uniforms?.baseColor?.value,
+              useMap: material?.uniforms?.useMap?.value,
+              vertexColors: material?.uniforms?.vertexColors?.value,
+              canonicalBaseColor:
+                material?.userData?.harthmereChapter1CanonicalBaseColor,
+              canonicalMaterialName:
+                material?.userData?.harthmereChapter1GltfMaterialName,
+            });
+          }
+          const geometry = child.geometry;
+          geometry.computeBoundingBox?.();
+          const box = geometry.boundingBox;
+          const elements = child.matrixWorld?.elements;
+          if (!box || !elements) return;
+          vertexCount += Number(geometry.attributes?.position?.count ?? 0);
+          for (const x of [box.min.x, box.max.x]) {
+            for (const y of [box.min.y, box.max.y]) {
+              for (const z of [box.min.z, box.max.z]) {
+                include(
+                  elements[0] * x +
+                    elements[4] * y +
+                    elements[8] * z +
+                    elements[12],
+                  elements[1] * x +
+                    elements[5] * y +
+                    elements[9] * z +
+                    elements[13],
+                  elements[2] * x +
+                    elements[6] * y +
+                    elements[10] * z +
+                    elements[14]
+                );
+              }
+            }
+          }
+        });
+        if (!min.every(Number.isFinite) || !max.every(Number.isFinite)) {
+          return undefined;
+        }
+        return {
+          selectedItemId: String(attachment?.selectedItem?.id ?? ""),
+          expectedItemId: String(expectedItemId),
+          min,
+          max,
+          center: min.map((value, index) => (value + max[index]) / 2),
+          size: min.map((value, index) => max[index] - value),
+          meshCount,
+          vertexCount,
+          materials,
+        };
+      },
+      { userId: first.userId, expectedItemId: nativeId }
+    );
+  const setHeldItemDetailIsolation = (active) =>
+    first.page.evaluate(
+      ({ active, userId }) => {
+        const resources = globalThis.clientContext?.resources;
+        const playerMesh = resources?.cached("/scene/player/mesh", userId);
+        const playerRoot = playerMesh?.three;
+        const itemRoot = playerMesh?.itemAttachment?.itemMeshInstance?.three;
+        if (!playerRoot) return { hidden: 0, itemMeshes: 0 };
+        const key = "__chapter1HeldItemDetailIsolation";
+        const previous = globalThis[key];
+        if (previous) {
+          playerRoot.traverse?.((object) => {
+            if (previous.has(object.uuid)) {
+              object.visible = previous.get(object.uuid);
+            }
+          });
+          delete globalThis[key];
+        }
+        if (!active || !itemRoot) return { hidden: 0, itemMeshes: 0 };
+        const itemObjects = new Set();
+        let itemMeshes = 0;
+        itemRoot.traverse?.((object) => {
+          itemObjects.add(object);
+          if (object?.isMesh) itemMeshes += 1;
+        });
+        const hidden = new Map();
+        playerRoot.traverse?.((object) => {
+          if (!object?.isMesh || itemObjects.has(object)) return;
+          hidden.set(object.uuid, object.visible);
+          object.visible = false;
+        });
+        globalThis[key] = hidden;
+        return { hidden: hidden.size, itemMeshes };
+      },
+      { active, userId: first.userId }
+    );
+  // Keep the evidence focused on the audited local avatar. Persistent test
+  // actors can share this Grove pad and otherwise overlap the hand/item from
+  // one of the generated angles.
+  await isolateChapter1CatalogProjection(first, reviewCenter);
+
+  const waitForHeldItemReviewAngle = async (itemId, label, target) =>
+    waitFor(
+      `${itemId}: generated ${label} camera settles with the fade clear`,
+      () =>
+        first.page.evaluate((targetPosition) => {
+          const resources = globalThis.clientContext?.resources;
+          const state = resources?.get("/scene/cutscene");
+          const waypoint = resources?.get("/scene/waypoint_camera/active");
+          const fadeElement = document.querySelector(
+            '[data-cutscene-fade="true"]'
+          );
+          const position =
+            waypoint?.kind === "active" ? waypoint.value?.[0] : undefined;
+          return {
+            active: Boolean(state?.active),
+            fadeOpacity: Number(state?.fadeOpacity ?? 1),
+            renderedFadeOpacity: fadeElement
+              ? Number(getComputedStyle(fadeElement).opacity)
+              : 1,
+            position: Array.isArray(position) ? [...position] : undefined,
+            horizontalDistance:
+              Array.isArray(position) && Array.isArray(targetPosition)
+                ? Math.hypot(
+                    position[0] - targetPosition[0],
+                    position[2] - targetPosition[2]
+                  )
+                : Number.POSITIVE_INFINITY,
+          };
+        }, target),
+      (snapshot) =>
+        snapshot.active &&
+        snapshot.fadeOpacity <= 0.01 &&
+        snapshot.renderedFadeOpacity <= 0.01 &&
+        snapshot.horizontalDistance <= 0.12,
+      15_000,
+      60_000
+    );
+
+  for (const item of expected) {
+    const result = results.find((candidate) => candidate.itemId === item.id);
+    let reverseCameraHeld = false;
+    try {
+      const heldInventory = Inventory.clone(inventory);
+      heldInventory.hotbar[0] = countOf(item.nativeId, 1n);
+      heldInventory.selected = { kind: "hotbar", idx: 0 };
+      await applyFixture(first.page, {
+        kind: "update",
+        entity: {
+          id: first.userId,
+          inventory: heldInventory,
+          selected_item: SelectedItem.create({
+            item: heldInventory.hotbar[0],
+          }),
+        },
+      });
+      await waitFor(
+        `${item.id}: selected held item synchronizes`,
+        () => localEntity(first.page, first.userId),
+        ({ entity }) => entity?.selected_item?.item?.item?.id === item.nativeId,
+        Math.max(originSyncGateMs, 10_000),
+        Math.max(timeoutMs, 20_000)
+      );
+      // The player renderer intentionally reads the local /hotbar/selection
+      // resource instead of the replicated selected_item component. Fixture
+      // updates can replace slot 0 while /hotbar/index is already 0, leaving
+      // that derived resource on its previous empty selection. Exercise the
+      // same local index transition as a real 2 -> 1 hotbar selection so the
+      // live renderer resolves the newly inserted Chapter 1 item.
+      await first.page.evaluate(() => {
+        const resources = globalThis.clientContext?.resources;
+        resources?.set("/hotbar/index", { value: 1 });
+        resources?.set("/hotbar/index", { value: 0 });
+      });
+      await waitFor(
+        `${item.id}: live hotbar resource selects the held item`,
+        () =>
+          first.page.evaluate(() => {
+            const resources = globalThis.clientContext?.resources;
+            const selection = resources?.get("/hotbar/selection");
+            const inventory = globalThis.clientContext?.userId
+              ? resources?.get(
+                  "/ecs/c/inventory",
+                  globalThis.clientContext.userId
+                )
+              : undefined;
+            return {
+              selectedItemId: String(selection?.item?.id ?? ""),
+              hotbarItemId: String(inventory?.hotbar?.[0]?.item?.id ?? ""),
+              hotbarIndex: resources?.get("/hotbar/index")?.value,
+            };
+          }),
+        (snapshot) =>
+          snapshot.hotbarIndex === 0 &&
+          snapshot.hotbarItemId === String(item.nativeId) &&
+          snapshot.selectedItemId === String(item.nativeId),
+        Math.max(originSyncGateMs, 10_000),
+        Math.max(timeoutMs, 20_000)
+      );
+      const attachment = await waitFor(
+        `${item.id}: authored held mesh attaches to the player`,
+        () =>
+          first.page.evaluate(
+            ({ userId, nativeId }) => {
+              const resources = globalThis.clientContext?.resources;
+              const playerMesh = resources?.cached(
+                "/scene/player/mesh",
+                userId
+              );
+              const itemAttachment = playerMesh?.itemAttachment;
+              const instance = itemAttachment?.itemMeshInstance;
+              let renderedMeshCount = 0;
+              instance?.three?.traverse?.((child) => {
+                if (child?.isMesh) renderedMeshCount += 1;
+              });
+              return {
+                cameraFirstPerson: Boolean(
+                  resources?.get("/scene/camera")?.isFirstPerson
+                ),
+                selectedItemId: String(itemAttachment?.selectedItem?.id ?? ""),
+                expectedItemId: String(nativeId),
+                renderedMeshCount,
+              };
+            },
+            { userId: first.userId, nativeId: item.nativeId }
+          ),
+        (snapshot) =>
+          snapshot.cameraFirstPerson === false &&
+          snapshot.selectedItemId === snapshot.expectedItemId &&
+          snapshot.renderedMeshCount > 0,
+        10_000,
+        20_000
+      );
+      await first.page.waitForTimeout(500);
+      const bounds = await waitFor(
+        `${item.id}: live held mesh exposes finite world bounds`,
+        () => heldItemWorldBounds(item, item.nativeId),
+        (snapshot) =>
+          Boolean(snapshot) &&
+          snapshot.selectedItemId === snapshot.expectedItemId &&
+          snapshot.meshCount > 0 &&
+          snapshot.vertexCount > 0 &&
+          snapshot.size.every(
+            (axis) => Number.isFinite(axis) && axis >= 0 && axis < 8
+          ) &&
+          Math.max(...snapshot.size) > 0.01,
+        10_000,
+        20_000
+      );
+      const reviewTarget = [...bounds.value.center];
+      const maxExtent = Math.max(...bounds.value.size);
+      // Fit the actual selected GLB, not a guessed torso location. The lower
+      // clamp leaves hand/grip context around tiny cells and papers; the upper
+      // clamp prevents a malformed bound from putting the camera outside the
+      // streamed scene.
+      const reviewRadius = Math.max(0.62, Math.min(3.2, maxExtent * 2.35));
+      const reviewAngle = (35 * Math.PI) / 180;
+      const reviewFront = [
+        reviewTarget[0],
+        reviewTarget[1] + Math.min(0.12, maxExtent * 0.15),
+        reviewTarget[2] - reviewRadius,
+      ];
+      const reviewLeft = [
+        reviewTarget[0] - Math.sin(reviewAngle) * reviewRadius,
+        reviewFront[1],
+        reviewTarget[2] - Math.cos(reviewAngle) * reviewRadius,
+      ];
+      const reviewRight = [
+        reviewTarget[0] + Math.sin(reviewAngle) * reviewRadius,
+        reviewFront[1],
+        reviewTarget[2] - Math.cos(reviewAngle) * reviewRadius,
+      ];
+      const heldItemReviewCutsceneId = await registerHostChapter1Cutscene(
+        first,
+        {
+          id: `ch1-held-item-angle-review-${item.id.replace(
+            /[^a-z0-9]+/gi,
+            "-"
+          )}`,
+          name: `Chapter 1 Held Item Review — ${item.name}`,
+          priority: 950_000,
+          settings: {
+            skippable: true,
+            skipAfterSeconds: 0,
+            lockPlayer: true,
+            hideHud: false,
+            letterbox: false,
+            invulnerablePlayer: true,
+            mode: "clientPuppet",
+            commitOn: [],
+            // This review scene is test-only and runs under software WebGL in
+            // CI. Keep each angle alive long enough for a loaded renderer to
+            // reach the real waypoint before the scene auto-cleans itself.
+            maxSceneDurationSeconds: 30,
+          },
+          cast: [{ role: "player", binding: { kind: "player" } }],
+          shots: [
+            {
+              id: "front",
+              duration: 6,
+              camera: {
+                kind: "static",
+                position: reviewFront,
+                orientation: lookAtOrientation(reviewFront, reviewTarget),
+              },
+              // A fade adds no evidence to an isolated item review and its
+              // DOM overlay can trail the logical cutscene state by a frame.
+              // Start directly on the fitted item camera instead.
+              transitionIn: "blend",
+              blendSeconds: 0.1,
+              actions: [{ kind: "fov", at: 0, fov: 40 }],
+            },
+            {
+              id: "three-quarter-left",
+              duration: 6,
+              camera: {
+                kind: "static",
+                position: reviewLeft,
+                orientation: lookAtOrientation(reviewLeft, reviewTarget),
+              },
+              transitionIn: "blend",
+              blendSeconds: 0.35,
+              actions: [],
+            },
+            {
+              id: "three-quarter-right",
+              duration: 6,
+              camera: {
+                kind: "static",
+                position: reviewRight,
+                orientation: lookAtOrientation(reviewRight, reviewTarget),
+              },
+              transitionIn: "blend",
+              blendSeconds: 0.35,
+              actions: [],
+            },
+          ],
+          onEnd: { placements: [], commits: [] },
+        }
+      );
+      // The production binding is middle mouse (button index 1), not right
+      // mouse. Prove the input motion becomes active before trusting the frame.
+      await gameCanvas.focus({ timeout: probeTimeoutMs });
+      await first.page.mouse.move(
+        canvasBox.x + canvasBox.width / 2,
+        canvasBox.y + canvasBox.height / 2
+      );
+      await first.page.mouse.down({ button: "middle" });
+      reverseCameraHeld = true;
+      await first.page.waitForFunction(
+        () =>
+          (globalThis.clientContext?.input?.motion("reverse_camera") ?? 0) > 0,
+        undefined,
+        { timeout: Math.max(acceptanceGateMs, 30_000) }
+      );
+      await first.page.waitForTimeout(350);
+      const heldScreenshot = path.join(
+        artifactsDir,
+        `${runId}-chapter-1-held-${item.id.replace(/[^a-z0-9]+/gi, "-")}.png`
+      );
+      await first.page.screenshot({ path: heldScreenshot, fullPage: true });
+      await first.page.mouse.up({ button: "middle" });
+      reverseCameraHeld = false;
+
+      const anglePrefix = `${runId}-chapter-1-held-${item.id.replace(
+        /[^a-z0-9]+/gi,
+        "-"
+      )}`;
+      const angleScreenshots = {
+        front: path.join(artifactsDir, `${anglePrefix}-cutscene-front.png`),
+        threeQuarterLeft: path.join(
+          artifactsDir,
+          `${anglePrefix}-cutscene-three-quarter-left.png`
+        ),
+        threeQuarterRight: path.join(
+          artifactsDir,
+          `${anglePrefix}-cutscene-three-quarter-right.png`
+        ),
+      };
+      const started = await bridgeCall(
+        first.page,
+        "chapter1StartCutscene",
+        heldItemReviewCutsceneId
+      );
+      assert.equal(
+        started.accepted,
+        true,
+        `${item.id}: generated held-item review cutscene was rejected`
+      );
+      await waitFor(
+        `${item.id}: generated held-item review cutscene starts`,
+        () => bridgeCall(first.page, "chapter1CutsceneSnapshot"),
+        (snapshot) => snapshot.active,
+        5_000,
+        10_000
+      );
+      const isolation = await setHeldItemDetailIsolation(true);
+      assert(
+        isolation.hidden > 0 && isolation.itemMeshes > 0,
+        `${item.id}: detail review could not isolate the live attached mesh`
+      );
+      // Authored time can advance substantially slower than wall time under
+      // software WebGL. Gate each frame on the real waypoint-camera position
+      // and cleared fade rather than sleeping and accidentally saving black.
+      await waitForHeldItemReviewAngle(item.id, "front", reviewFront);
+      await first.page.screenshot({
+        path: angleScreenshots.front,
+        fullPage: true,
+      });
+      await waitForHeldItemReviewAngle(
+        item.id,
+        "three-quarter-left",
+        reviewLeft
+      );
+      await first.page.screenshot({
+        path: angleScreenshots.threeQuarterLeft,
+        fullPage: true,
+      });
+      await waitForHeldItemReviewAngle(
+        item.id,
+        "three-quarter-right",
+        reviewRight
+      );
+      await first.page.screenshot({
+        path: angleScreenshots.threeQuarterRight,
+        fullPage: true,
+      });
+      // The review scene has no commits and its final frame is already saved.
+      // Stop it explicitly instead of making a software-GL acceptance run wait
+      // for an overloaded renderer to advance the last authored seconds. The
+      // cleanup assertion below still proves camera/input/HUD restoration.
+      await bridgeCall(first.page, "chapter1StopCutscene");
+      await waitFor(
+        `${item.id}: generated held-item review cutscene cleans up`,
+        () => bridgeCall(first.page, "chapter1CutsceneSnapshot"),
+        (snapshot) => !snapshot.active,
+        10_000,
+        30_000
+      );
+      if (result) {
+        result.heldScreenshot = heldScreenshot;
+        result.heldAngleScreenshots = angleScreenshots;
+        result.heldMeshCount = attachment.value.renderedMeshCount;
+        result.heldWorldBounds = bounds.value;
+        result.heldReviewCamera = {
+          radius: reviewRadius,
+          target: reviewTarget,
+          front: reviewFront,
+          threeQuarterLeft: reviewLeft,
+          threeQuarterRight: reviewRight,
+        };
+        result.heldDetailIsolation = isolation;
+      }
+    } catch (error) {
+      const message = chapter1ErrorText(error);
+      if (result) result.heldError = message;
+      failures.push({ itemId: item.id, phase: "held", error: message });
+    } finally {
+      if (reverseCameraHeld) {
+        await first.page.mouse.up({ button: "middle" }).catch(() => undefined);
+      }
+      await setHeldItemDetailIsolation(false).catch(() => undefined);
+      const cutscene = await bridgeCall(
+        first.page,
+        "chapter1CutsceneSnapshot"
+      ).catch(() => undefined);
+      if (cutscene?.active) {
+        await bridgeCall(first.page, "chapter1StopCutscene").catch(
+          () => undefined
+        );
+        await first.page.waitForTimeout(250);
+      }
+    }
+  }
+  await releaseChapter1CatalogProjection(first);
+  assert.deepEqual(
+    failures,
+    [],
+    `Chapter 1 item visual failures:\n${failures
+      .map((failure) => `${failure.itemId}/${failure.phase}: ${failure.error}`)
+      .join("\n\n")}`
+  );
+  return { itemCount: results.length, items: results, screenshot };
+}
+
 function finishFocusedChapter1Run() {
   const failedScenarios = report.scenarios.filter(
     (scenario) => scenario.status === "fail"
@@ -17167,13 +19452,29 @@ function finishFocusedChapter1Run() {
             ))
       )
     : [];
+  const recoveredBootstrapConnectionFailures = report.browser.transients.some(
+    (entry) => entry.includes("reloaded-after-stale-wakeup-bootstrap-race")
+  )
+    ? report.browser.failures.filter((failure) =>
+        failure.includes("Failed to load resource: net::ERR_CONNECTION_CLOSED")
+      )
+    : [];
   const scopedBrowserFailures = report.browser.failures.filter(
-    (failure) => !runtimeInjectionExternalFailures.includes(failure)
+    (failure) =>
+      !runtimeInjectionExternalFailures.includes(failure) &&
+      !recoveredBootstrapConnectionFailures.includes(failure)
   );
   if (runtimeInjectionExternalFailures.length > 0) {
     report.browser.transients.push(
       ...runtimeInjectionExternalFailures.map(
         (failure) => `runtime-injection-external:${failure}`
+      )
+    );
+  }
+  if (recoveredBootstrapConnectionFailures.length > 0) {
+    report.browser.transients.push(
+      ...recoveredBootstrapConnectionFailures.map(
+        (failure) => `recovered-stale-wakeup-bootstrap:${failure}`
       )
     );
   }
@@ -18188,7 +20489,7 @@ async function clickTalkDialogButton(first, name, label) {
 }
 
 async function openRenderedJobsBoard(first, label) {
-  // KeyB belongs to the current BiomesUI Abilities shortcut, so using it as a
+  // KeyB belongs to the current BiomesUI Bank shortcut, so using it as a
   // Jobs Board test silently exercised the wrong feature. Route through the
   // mounted production board opener shared by HUD/object entry points and
   // assert that its visible panel opens before checking quest progression.
@@ -21724,10 +24025,10 @@ async function run() {
       !combatMusicOnly &&
       !chaseOnly &&
       !escortOnly &&
-      // Hill combat is single-client by construction: every assertion reads the
-      // authoritative ECS for one attacking player, so a second browser context
-      // would only add memory pressure to an already Anima-heavy stack.
+      // Hill combat opens its second client only for the bounded multiplayer
+      // retaliation row, then closes it immediately to contain memory pressure.
       !hillCombatOnly &&
+      !retaliationOnly &&
       !robotStoryOnly &&
       !jobsOnly &&
       !remainingJobsOnly &&
@@ -21851,6 +24152,15 @@ async function run() {
       console.log("E2E hill combat: creating ledge, crest, and group fixtures");
       await proveNativeHillCombatRoundTrip(first, [
         ...HARTHMERE_HILL_COMBAT_BROWSER_FIXTURE_POSITION,
+      ]);
+      finishFocusedHillCombatRun();
+      return;
+    }
+
+    if (retaliationOnly) {
+      console.log("E2E retaliation: creating two-player group fixtures");
+      await proveNativeMultiplayerRetaliationRoundTrip(first, [
+        ...HARTHMERE_RETALIATION_BROWSER_FIXTURE_POSITION,
       ]);
       finishFocusedHillCombatRun();
       return;
@@ -21999,34 +24309,31 @@ async function run() {
 
     await bridgeCall(first.page, "resumeAudio");
     const audioReady = await waitFor(
-      "combat music asset decoded by the browser audio manager",
+      "selected ambient music loaded by the browser audio manager",
       () => bridgeCall(first.page, "audioDiagnostics"),
       (diagnostics) =>
         diagnostics.running &&
-        diagnostics.loadedTracks.includes("music") &&
-        diagnostics.loadedTracks.includes("muck_music") &&
-        diagnostics.loadedTracks.includes("battle_music") &&
-        ["music", "muck_music"].includes(diagnostics.currentTrack),
+        ["music", "muck_music"].includes(diagnostics.currentTrack) &&
+        diagnostics.loadedTracks.length === 1 &&
+        diagnostics.loadedTracks[0] === diagnostics.currentTrack,
       audioLoadGateMs,
       audioLoadGateMs + 5_000
     );
     const ambientTrack = audioReady.value.currentTrack;
-    const battleAssetResponse = report.browser.audioAssets.find(
+    const eagerBattleAssetResponse = report.browser.audioAssets.find(
       (entry) =>
         entry.client === "client-a" &&
         entry.url.includes(HARTHMERE_BATTLE_MUSIC_PATH)
     );
-    assert(
-      battleAssetResponse && battleAssetResponse.status < 400,
-      `battle music asset did not load successfully: ${JSON.stringify(
-        report.browser.audioAssets
-      )}`
+    assert.equal(
+      eagerBattleAssetResponse,
+      undefined,
+      "battle music must not be fetched before combat requests it"
     );
     report.scenarios.push({
-      name: "combat music asset load and decode",
+      name: "ambient music loads on demand without eager battle music",
       status: "pass",
       loadMs: audioReady.elapsedMs,
-      assetStatus: battleAssetResponse.status,
       ambientTrack,
       loadedTracks: audioReady.value.loadedTracks,
     });

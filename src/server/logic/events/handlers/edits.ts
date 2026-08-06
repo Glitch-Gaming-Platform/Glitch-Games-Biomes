@@ -26,6 +26,7 @@ import {
   terrainIdToBlockOrDie,
 } from "@/shared/bikkie/terrain";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
+import type { ReadonlyTriggerState } from "@/shared/ecs/gen/components";
 import type { EditEvent, HandlerEditEvent } from "@/shared/ecs/gen/events";
 import type { GrabBagFilter, Vec3f } from "@/shared/ecs/gen/types";
 import { aclForTerrainPlacement } from "@/shared/game/acls";
@@ -43,7 +44,13 @@ import { createCounter } from "@/shared/metrics/metrics";
 import {
   awardHarthmereNativeSkillXp,
   harthmereNativeGatheringSkillAwards,
+  readHarthmereNativeSkillLevel,
 } from "@/shared/harthmere/harthmere_skill_progression";
+import {
+  HARTHMERE_SUBLEVEL_YIELD_CAP,
+  harthmereSublevelWeightedProgress,
+  harthmereWeightedEfficiencyMultiplier,
+} from "@/shared/harthmere/harthmere_sublevel_benefits";
 
 const worldVoxelsPlaced = createCounter({
   name: "game_world_voxels_placed",
@@ -53,6 +60,32 @@ const worldVoxelsRemoved = createCounter({
   name: "game_world_voxels_removed",
   help: "Number of voxels removed from the world",
 });
+
+export function harthmereNativeTerrainGatheringSkillModifiers(input: {
+  triggerState: ReadonlyTriggerState | undefined;
+  resourceText: string;
+}) {
+  const mining =
+    /ore|stone|rock|metal|crystal|gem|coal|iron|copper|silver|gold/i.test(
+      input.resourceText
+    );
+  const levels = {
+    gathering: readHarthmereNativeSkillLevel(
+      input.triggerState,
+      "gathering"
+    ),
+    mining: readHarthmereNativeSkillLevel(input.triggerState, "mining"),
+  };
+  const weights: Readonly<Record<string, number>> = mining
+    ? { gathering: 0.3, mining: 0.7 }
+    : { gathering: 1 };
+  const progress = harthmereSublevelWeightedProgress(levels, weights);
+  return {
+    mining,
+    durability: harthmereWeightedEfficiencyMultiplier(levels, weights),
+    yield: 1 + HARTHMERE_SUBLEVEL_YIELD_CAP * progress,
+  };
+}
 
 export function blockDropBagForEdit(
   terrainId: TerrainID,
@@ -77,14 +110,22 @@ function handleBlockDrops<
   position: Vec3f,
   terrainId: TerrainID,
   event: EditEvent,
-  gameStateContext: GameStateContext
+  gameStateContext: GameStateContext,
+  modifiers: { durability: number; yield: number } = {
+    durability: 1,
+    yield: 1,
+  }
 ) {
   const block = terrainIdToBlockOrDie(terrainId);
   const toolSlot = inventory.get(event.tool_ref);
   const blockDestroyTimeMs = blockDestructionTimeMs(block, toolSlot?.item);
 
   // Handle inventory side-effects; decrement tool durability if it was a delete
-  decrementItemDurability(inventory, event.tool_ref, blockDestroyTimeMs);
+  decrementItemDurability(
+    inventory,
+    event.tool_ref,
+    Math.max(1, Math.round(blockDestroyTimeMs * modifiers.durability))
+  );
 
   // Send a ECS event
   context.publish({
@@ -102,7 +143,24 @@ function handleBlockDrops<
     expiry: secondsSinceEpoch() + CONFIG.gameMinePrioritySecs,
   } as GrabBagFilter;
 
-  const bag = blockDropBagForEdit(terrainId, gameStateContext);
+  const baseBag = blockDropBagForEdit(terrainId, gameStateContext);
+  const deterministicUnit = (() => {
+    const text = `${event.user_id}:${position.join(":")}:${terrainId}`;
+    let hash = 2166136261;
+    for (let index = 0; index < text.length; index += 1) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0) / 0x1_0000_0000;
+  })();
+  const bag = createBag(
+    ...[...baseBag.values()].map(({ item, count }) => {
+      const exact = Number(count) * Math.max(1, modifiers.yield);
+      const whole = Math.floor(exact);
+      const scaled = whole + (deterministicUnit < exact - whole ? 1 : 0);
+      return countOf(item, BigInt(Math.max(1, scaled)));
+    })
+  );
   createDropsForBag(
     context,
     keyForDrops,
@@ -241,9 +299,15 @@ export const editEventHandler = makeEventHandler("editEvent", {
       // Don't drop if there is a plant here
       if (ruleset.canDropAt(terrain, event.position)) {
         const block = terrainIdToBlock(existingTerrainId);
-        if (block) {
-          const toolSlot = player.inventory.get(event.tool_ref);
-          handleBlockDrops(
+          if (block) {
+            const toolSlot = player.inventory.get(event.tool_ref);
+            const resourceText = `${block.id} ${block.displayName ?? ""}`;
+            const skillModifiers =
+              harthmereNativeTerrainGatheringSkillModifiers({
+                triggerState: player.delta().triggerState(),
+                resourceText,
+              });
+            handleBlockDrops(
             context,
             "dropIds",
             player.inventory,
@@ -261,18 +325,15 @@ export const editEventHandler = makeEventHandler("editEvent", {
               positionZ: event.position[2],
               // TODO
               //timeOfDay
-            }
-          );
-          if (!isUserPlacedBlock) {
-            const resourceText = `${block.id} ${block.displayName ?? ""}`;
-            awardHarthmereNativeSkillXp(
+              },
+              skillModifiers
+            );
+            if (!isUserPlacedBlock) {
+              awardHarthmereNativeSkillXp(
               player.delta().mutableTriggerState(),
               harthmereNativeGatheringSkillAwards({
                 sourceId: String(block.id),
-                mining:
-                  /ore|stone|rock|metal|crystal|gem|coal|iron|copper|silver|gold/i.test(
-                    resourceText
-                  ),
+                mining: skillModifiers.mining,
               })
             );
           }

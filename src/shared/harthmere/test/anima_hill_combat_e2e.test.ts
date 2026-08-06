@@ -45,6 +45,11 @@ import { harthmereCreatureGroupForEntity } from "@/shared/harthmere/creature_gro
 import { harthmereNativeNpcCombatProfileForSeed } from "@/shared/harthmere/harthmere_native_combat";
 import type { BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
+import {
+  RETALIATION_TARGET_ROTATION_SECONDS,
+  retaliationTargetRotationIndex,
+} from "@/shared/npc/behavior/chase_attack";
+import { pickRetaliationParticipantTarget } from "@/shared/npc/threat";
 
 // The measured fight: player at ~[351.44, 35, -404.28], creature feet Y31..Y48
 // within 45 m, player max HP 140.
@@ -491,5 +496,78 @@ describe("hill combat E2E: pathfinding under a moving target", () => {
       Math.abs(searchDestination[0] - destination![0]) <= 3,
       "a repaired tail drifted beyond its own searched route"
     );
+  });
+});
+
+describe("Anima combat E2E: multiplayer retaliation vicinity", () => {
+  const players = [
+    { id: PLAYER_ID, distanceSq: 9, threat: 40, openedEncounter: true },
+    {
+      id: 9002 as unknown as BiomesId,
+      distanceSq: 16,
+      threat: 0,
+      openedEncounter: false,
+    },
+    {
+      id: 9003 as unknown as BiomesId,
+      distanceSq: 25,
+      threat: 0,
+      openedEncounter: false,
+    },
+  ];
+
+  it("spreads three active pack responders across three nearby players", () => {
+    const plan = groupResponderPlan({
+      members: [0, 1, 2].map((memberIndex) => ({
+        id: (7000 + memberIndex) as unknown as BiomesId,
+        role: memberIndex === 0 ? ("ranged" as const) : ("melee" as const),
+        memberIndex,
+        distanceToAttacker: 3 + memberIndex,
+        alive: true,
+      })),
+    });
+    const targets = plan
+      .filter((assignment) => assignment.mode !== "hold")
+      .map((assignment) =>
+        pickRetaliationParticipantTarget(
+          players,
+          retaliationTargetRotationIndex({
+            nowSeconds: 100,
+            encounterOpenedAtSeconds: 100,
+            responderRank: assignment.rank,
+          })
+        )
+      );
+    assert.deepEqual(new Set(targets), new Set(players.map(({ id }) => id)));
+  });
+
+  it("lets every shared Anima combat family rotate beyond the opener", () => {
+    const families = ["boss", "hex", "mucker", "indisworm", "animal"];
+    for (const family of families) {
+      const first = pickRetaliationParticipantTarget(
+        players,
+        retaliationTargetRotationIndex({
+          nowSeconds: 100,
+          encounterOpenedAtSeconds: 100,
+        })
+      );
+      const second = pickRetaliationParticipantTarget(
+        players,
+        retaliationTargetRotationIndex({
+          nowSeconds: 100 + RETALIATION_TARGET_ROTATION_SECONDS,
+          encounterOpenedAtSeconds: 100,
+        })
+      );
+      assert.equal(
+        first,
+        PLAYER_ID,
+        `${family} did not retaliate against opener`
+      );
+      assert.equal(
+        second,
+        players[1].id,
+        `${family} did not rotate to the nearby second player`
+      );
+    }
   });
 });

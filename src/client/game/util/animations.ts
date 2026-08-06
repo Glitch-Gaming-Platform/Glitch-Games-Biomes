@@ -1,6 +1,7 @@
 import type {
   ActionPriority,
   AnimationAction,
+  AnimationName,
   AnimationDefinition,
   AnimationSystem,
   AnimationSystemState,
@@ -41,6 +42,18 @@ export type CharacterAnimations = {
 };
 
 const IDLE_SPEED = 0.5;
+const MIN_LOCOMOTION_PLAYBACK_RATE = 0.65;
+const MAX_LOCOMOTION_PLAYBACK_RATE = 1.55;
+
+function locomotionPlaybackRate(speed: number, authoredSpeed: number) {
+  if (!(speed > 0) || !(authoredSpeed > 0)) {
+    return 1;
+  }
+  return Math.min(
+    MAX_LOCOMOTION_PLAYBACK_RATE,
+    Math.max(MIN_LOCOMOTION_PLAYBACK_RATE, speed / authoredSpeed)
+  );
+}
 
 export function animationLocomotionIsIdle(
   speed: number,
@@ -115,6 +128,9 @@ export function getVelocityBasedWeights<
     return {
       weights: weights,
       state: { repeat: { kind: "repeat" }, startTime: 0 },
+      playbackRates: {
+        flyForwards: locomotionPlaybackRate(speed2d, runSpeed),
+      } as Partial<Record<AnimationName<AnimationSystem<A, L>>, number>>,
       layers: ALL_LAYERS,
     };
   }
@@ -133,6 +149,10 @@ export function getVelocityBasedWeights<
     return {
       weights: weights,
       state: { repeat: { kind: "repeat" }, startTime: 0 },
+      playbackRates: {
+        swimForwards: locomotionPlaybackRate(speed2d, runSpeed * 0.65),
+        swimBackwards: locomotionPlaybackRate(speed2d, runSpeed * 0.55),
+      } as Partial<Record<AnimationName<AnimationSystem<A, L>>, number>>,
       layers: ALL_LAYERS,
     };
   }
@@ -150,6 +170,9 @@ export function getVelocityBasedWeights<
     return {
       weights: weights,
       state: { repeat: { kind: "repeat" }, startTime: 0 },
+      playbackRates: {
+        crouchWalking: locomotionPlaybackRate(speed2d, runSpeed * 0.28),
+      } as Partial<Record<AnimationName<AnimationSystem<A, L>>, number>>,
       layers: ALL_LAYERS,
     };
   }
@@ -199,6 +222,33 @@ export function getVelocityBasedWeights<
       repeat: { kind: "repeat" },
       startTime: 0,
     },
+    playbackRates: {
+      walk: locomotionPlaybackRate(
+        Math.max(0, forwardVelocity),
+        runSpeed * 0.45
+      ),
+      run: locomotionPlaybackRate(Math.max(0, forwardVelocity), runSpeed),
+      runBackwards: locomotionPlaybackRate(
+        Math.max(0, -forwardVelocity),
+        runSpeed * 0.62
+      ),
+      strafeRightSlow: locomotionPlaybackRate(
+        Math.max(0, sideVelocity),
+        runSpeed * 0.42
+      ),
+      strafeRightFast: locomotionPlaybackRate(
+        Math.max(0, sideVelocity),
+        runSpeed * 0.9
+      ),
+      strafeLeftSlow: locomotionPlaybackRate(
+        Math.max(0, -sideVelocity),
+        runSpeed * 0.42
+      ),
+      strafeLeftFast: locomotionPlaybackRate(
+        Math.max(0, -sideVelocity),
+        runSpeed * 0.9
+      ),
+    } as Partial<Record<AnimationName<AnimationSystem<A, L>>, number>>,
     layers: ALL_LAYERS,
   };
 }

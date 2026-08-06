@@ -154,6 +154,27 @@ repair_harthmere_town() {
   log "PASS persisted Harthmere town surface, roof, and NPC repair"
 }
 
+repair_exact_terrain_overlaps() {
+  if [ "${HARTHMERE_SKIP_EXACT_TERRAIN_OVERLAP_REPAIR:-0}" = "1" ]; then
+    log "Skipping exact Harthmere terrain-overlap repair by request."
+    return
+  fi
+  # Stable Harthmere terrain ids are authoritative. A stale original-map
+  # entity can occupy the exact same 32^3 box and win terrain selection by a
+  # newer tick, which hides the canonical ground and leaves buildings visibly
+  # suspended. Retire only the terrain identity of exact noncanonical twins
+  # while the canonical entity is present; unrelated ECS components survive,
+  # and the command fails closed on crossing or misaligned boxes.
+  log "START exact Harthmere terrain-overlap repair"
+  APPLY=1 \
+    HARTHMERE_EXACT_OVERLAP_SCAN_COUNT="${HARTHMERE_EXACT_OVERLAP_SCAN_COUNT:-3000}" \
+    HARTHMERE_EXACT_OVERLAP_APPLY_BATCH_SIZE="${HARTHMERE_EXACT_OVERLAP_APPLY_BATCH_SIZE:-40}" \
+    timeout --signal=TERM --kill-after=30s \
+      "${HARTHMERE_EXACT_OVERLAP_REPAIR_TIMEOUT_SECONDS:-300}" \
+      node scripts/harthmere/repair-harthmere-exact-terrain-overlaps.cjs
+  log "PASS exact Harthmere terrain-overlap repair"
+}
+
 verify_extension_terrain() {
   if [ "${HARTHMERE_SKIP_EXTENSION_TERRAIN_AUDIT:-0}" = "1" ]; then
     log "Skipping additive Harthmere terrain verification by request."
@@ -177,6 +198,24 @@ verify_harthmere_town() {
       "${HARTHMERE_TOWN_REPAIR_AUDIT_TIMEOUT_SECONDS:-300}" \
       node scripts/harthmere/audit-harthmere-town-repair.cjs
   log "PASS persisted Harthmere town surface, roof, and NPC verification"
+}
+
+verify_exact_terrain_overlaps() {
+  if [ "${HARTHMERE_SKIP_EXACT_TERRAIN_OVERLAP_AUDIT:-0}" = "1" ]; then
+    log "Skipping exact Harthmere terrain-overlap verification by request."
+    return
+  fi
+  # Independent full Redis scan after every terrain writer. The apply phase
+  # already reads itself back, but this separate process is the deployment gate
+  # required by the fast-testing guide.
+  log "START exact Harthmere terrain-overlap verification"
+  APPLY=0 \
+    HARTHMERE_EXACT_OVERLAP_REQUIRE_CLEAN=1 \
+    HARTHMERE_EXACT_OVERLAP_SCAN_COUNT="${HARTHMERE_EXACT_OVERLAP_SCAN_COUNT:-3000}" \
+    timeout --signal=TERM --kill-after=30s \
+      "${HARTHMERE_EXACT_OVERLAP_AUDIT_TIMEOUT_SECONDS:-300}" \
+      node scripts/harthmere/repair-harthmere-exact-terrain-overlaps.cjs
+  log "PASS exact Harthmere terrain-overlap verification"
 }
 
 materialize_business_outposts() {
@@ -258,6 +297,8 @@ if [ "${HARTHMERE_TOWN_REPAIR_ONLY:-0}" = "1" ]; then
   # not mean skipping the Brell.
   materialize_authored_water
   repair_harthmere_town
+  repair_exact_terrain_overlaps
+  verify_exact_terrain_overlaps
   verify_harthmere_town
   printf 'HARTHMERE_PRODUCTION_RECONCILIATION_READY tag=%s redis=%s:%s mode=town-only\n' \
     "${HARTHMERE_DEPLOY_TAG:-unknown}" "$REDIS_HOST" "$REDIS_PORT"
@@ -269,6 +310,7 @@ materialize_authored_water
 repair_extension_surface
 clear_building_interior_vegetation
 repair_harthmere_town
+repair_exact_terrain_overlaps
 materialize_business_outposts
 run_node "Harthmere ECS and shared-state reconciliation" \
   scripts/harthmere/reconcile-production-world-sync.cjs
@@ -292,6 +334,7 @@ fi
 # The terrain gate runs LAST, after every authored writer has had its turn, so
 # it verifies the world the player will actually load rather than an
 # intermediate state.
+verify_exact_terrain_overlaps
 verify_extension_terrain
 verify_harthmere_town
 

@@ -91,6 +91,41 @@ async function main() {
         `${definition.id}: ${String((error as Error)?.message ?? error)}`
       );
     }
+    const mobileFilename = `${definition.id}.m4a`;
+    const mobileFilePath = path.join(GENERATED_ROOT, mobileFilename);
+    try {
+      const actual = await probe(mobileFilePath);
+      if (actual.bytes <= 1024)
+        failures.push(`${definition.id}: mobile AAC file too small`);
+      if (actual.codec !== "aac") {
+        failures.push(
+          `${definition.id}: expected mobile AAC, got ${actual.codec}`
+        );
+      }
+      if (actual.sampleRate !== 48_000) {
+        failures.push(
+          `${definition.id}: expected mobile 48000 Hz, got ${actual.sampleRate}`
+        );
+      }
+      if (actual.channels !== 1) {
+        failures.push(
+          `${definition.id}: expected mobile mono, got ${actual.channels}`
+        );
+      }
+      if (
+        Math.abs(actual.durationSeconds - definition.durationSeconds) > 0.12
+      ) {
+        failures.push(
+          `${definition.id}: expected mobile ${definition.durationSeconds}s, got ${actual.durationSeconds}s`
+        );
+      }
+    } catch (error) {
+      failures.push(
+        `${definition.id} mobile AAC: ${String(
+          (error as Error)?.message ?? error
+        )}`
+      );
+    }
   }
 
   const actualFiles = (await fs.readdir(GENERATED_ROOT)).filter((name) =>

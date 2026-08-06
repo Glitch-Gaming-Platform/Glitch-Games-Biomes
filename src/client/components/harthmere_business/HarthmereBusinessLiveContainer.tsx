@@ -232,10 +232,11 @@ export function HarthmereBusinessLiveContainer({
           adapter={adapter}
           nearbyBusinessId={context.nearbyBusinessId}
           context={context}
-          // The physical counter opens directly onto the minimal shift control,
-          // not the detached customer-card arena. Starting closes this panel;
-          // the spatial HUD then stays beside the real ECS customer.
-          initialTab="customers"
+          // A fresh board visit always starts with the player-facing business
+          // overview. The in-world shift remains one explicit tab away; after
+          // starting it, this panel closes and service stays beside the real
+          // ECS customer.
+          initialTab="overview"
           onClose={onClose}
         />
       ) : null}

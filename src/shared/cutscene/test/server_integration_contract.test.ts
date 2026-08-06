@@ -21,7 +21,8 @@ describe("cutscene ECS / Anima / Gaia contracts", () => {
     const simulated = read("src/shared/npc/simulated.ts");
     assert.match(handler, /cinematicPauseUntil/);
     assert.match(logic, /npcCinematicPauseActive\(npc\.state/);
-    assert.match(simulated, /npc_state: external\.npc_state/);
+    assert.match(simulated, /NpcState\.clone\(external\.npc_state\)/);
+    assert.match(simulated, /preserveBusinessProgress/);
     assert.strictEqual(
       npcCinematicPauseActive({ cinematicPauseUntil: 11 }, 10),
       true

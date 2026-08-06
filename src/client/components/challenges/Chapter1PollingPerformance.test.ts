@@ -27,7 +27,31 @@ describe("Chapter 1 polling performance contracts", () => {
       projection,
       /addEventListener\("chapter1-story-updated", onStoryUpdated\)/
     );
-    assert.match(projection, /setInterval\(\(\) => void refresh\(\), 2_000\)/);
+    assert.match(
+      projection,
+      /CHAPTER1_PROJECTION_RECONCILE_INTERVAL_MS = 6_000/
+    );
+    assert.match(
+      projection,
+      /setInterval\([\s\S]*CHAPTER1_PROJECTION_RECONCILE_INTERVAL_MS/
+    );
     assert.match(projection, /signature === lastPublishedSignature/);
+  });
+
+  it("keeps proximity prompts responsive without sub-second POST polling", () => {
+    const gate = source("Chapter1FractureGatePrompt");
+    const objective = source("Chapter1NativeObjectivePrompt");
+    assert.match(gate, /CHAPTER1_GATE_RECONCILE_INTERVAL_MS = 2_000/);
+    assert.match(
+      gate,
+      /setInterval\([\s\S]*CHAPTER1_GATE_RECONCILE_INTERVAL_MS/
+    );
+    assert.doesNotMatch(gate, /\}, 750\)/);
+    assert.match(objective, /CHAPTER1_OBJECTIVE_RECONCILE_INTERVAL_MS = 2_000/);
+    assert.match(
+      objective,
+      /setInterval\([\s\S]*CHAPTER1_OBJECTIVE_RECONCILE_INTERVAL_MS/
+    );
+    assert.doesNotMatch(objective, /\}, 1_000\)/);
   });
 });

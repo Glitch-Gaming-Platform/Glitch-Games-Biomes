@@ -7,6 +7,12 @@ import {
 import {
   harthmereInventoryEncumbranceStaminaMultiplier,
 } from "./mmo_carry_weight";
+import {
+  harthmereDeterministicYieldCount,
+  harthmereSublevelEfficiencyMultiplier,
+  harthmereSublevelPotencyMultiplier,
+  harthmereSublevelYieldMultiplier,
+} from "./harthmere_sublevel_benefits";
 
 export const HARTHMERE_FARMING_FOOD_STAMINA_VERSION =
   "harthmere-farming-food-stamina" as const;
@@ -77,6 +83,7 @@ export interface HarthmereCookingRecipe {
   cookTimeMs: number;
   xp: number;
   maxBatchCount: number;
+  requiredSkillLevel: number;
   recipeType?: HarthmereRecipeType;
   metadata?: HarthmereBikkieItemMetadata;
 }
@@ -94,6 +101,8 @@ export interface HarthmereCookingJob {
   enqueuedAtMs: number;
   startedAtMs: number;
   readyAtMs: number;
+  /** Skill is captured at enqueue so a queued job remains deterministic. */
+  cookingSkillLevel?: number;
   /** Inputs removed from inventory at enqueue; refunded if the job is cancelled. */
   reservedInputs: Record<string, number>;
 }
@@ -388,6 +397,7 @@ const HARTHMERE_LOCAL_COOKING_RECIPES: Record<string, HarthmereCookingRecipe> = 
     cookTimeMs: 45_000,
     xp: 12,
     maxBatchCount: 10,
+    requiredSkillLevel: 1,
   },
   worker_meal: {
     recipeId: "worker_meal",
@@ -398,6 +408,7 @@ const HARTHMERE_LOCAL_COOKING_RECIPES: Record<string, HarthmereCookingRecipe> = 
     cookTimeMs: 90_000,
     xp: 16,
     maxBatchCount: 8,
+    requiredSkillLevel: 10,
   },
   hearty_stew: {
     recipeId: "hearty_stew",
@@ -408,6 +419,7 @@ const HARTHMERE_LOCAL_COOKING_RECIPES: Record<string, HarthmereCookingRecipe> = 
     cookTimeMs: 120_000,
     xp: 24,
     maxBatchCount: 6,
+    requiredSkillLevel: 20,
   },
   berry_tart: {
     recipeId: "berry_tart",
@@ -418,6 +430,7 @@ const HARTHMERE_LOCAL_COOKING_RECIPES: Record<string, HarthmereCookingRecipe> = 
     cookTimeMs: 150_000,
     xp: 22,
     maxBatchCount: 6,
+    requiredSkillLevel: 35,
   },
 };
 
@@ -448,6 +461,14 @@ const HARTHMERE_BIKKIE_COOKING_RECIPES: Record<string, HarthmereCookingRecipe> =
         cookTimeMs,
         xp,
         maxBatchCount,
+        requiredSkillLevel:
+          recipeType !== "cooking"
+            ? 1
+            : stationKind === "oven"
+              ? 35
+              : stationKind === "cookpot"
+                ? Math.max(10, Math.min(20, Math.ceil(xp / 2)))
+                : 1,
         recipeType: recipeType as HarthmereRecipeType,
         metadata: optionalBikkieMetadata(
           recipeId,
@@ -742,6 +763,7 @@ export function plantHarthmereCrop(
     /** Whether the target plot gets sun. Defaults to sunny when unknown, so this
      *  only rejects when the caller explicitly reports shade for a sun crop. */
     plotHasSun?: boolean;
+    farmingSkillLevel?: number;
   },
 ): HarthmereFoodStaminaResult {
   if (!input.plotId) return result(state, ["farming_rejected:missing_plot"]);
@@ -762,7 +784,15 @@ export function plantHarthmereCrop(
     seedItemId: input.seedItemId,
     cropItemId: seed.cropItemId,
     plantedAtMs: input.nowMs,
-    harvestReadyAtMs: input.nowMs + seed.growMs,
+    harvestReadyAtMs:
+      input.nowMs +
+      Math.max(
+        1,
+        Math.round(
+          seed.growMs *
+            harthmereSublevelEfficiencyMultiplier(input.farmingSkillLevel ?? 1),
+        ),
+      ),
   };
   return result({
     ...state,
@@ -795,7 +825,7 @@ export function waterHarthmereCrop(
 
 export function harvestHarthmereCrop(
   state: HarthmereFoodStaminaState,
-  input: { plotId: string; nowMs: number },
+  input: { plotId: string; nowMs: number; farmingSkillLevel?: number },
 ): HarthmereFoodStaminaResult {
   const plot = state.plots[input.plotId];
   if (!plot) return result(state, ["farming_rejected:unknown_plot"]);
@@ -825,9 +855,14 @@ export function harvestHarthmereCrop(
   // Watering pays off at harvest: a tended (watered) crop yields its full count;
   // an unwatered crop still produces, but a reduced harvest (never below 1).
   const watered = typeof plot.wateredAtMs === "number";
-  const yieldCount = watered
+  const baseYieldCount = watered
     ? seed.yieldCount
     : Math.max(1, Math.ceil(seed.yieldCount / 2));
+  const yieldCount = harthmereDeterministicYieldCount({
+    baseCount: baseYieldCount,
+    multiplier: harthmereSublevelYieldMultiplier(input.farmingSkillLevel ?? 1),
+    seed: `${input.plotId}:${plot.plantedAtMs}:${seed.yieldItemId}`,
+  });
   return result({
     ...state,
     inventory: addItem(state.inventory, seed.yieldItemId, yieldCount),
@@ -876,7 +911,7 @@ export function forageHarthmereFoodSpawn(
 
 export function huntHarthmereAnimalForFood(
   state: HarthmereFoodStaminaState,
-  input: { animalId: string; nowMs: number },
+  input: { animalId: string; nowMs: number; trackingSkillLevel?: number },
 ): HarthmereFoodStaminaResult {
   const spawn = state.spawns[input.animalId];
   if (!spawn || spawn.kind !== "animal") return result(state, ["hunt_rejected:unknown_animal"]);
@@ -884,9 +919,16 @@ export function huntHarthmereAnimalForFood(
   if (spawn.protected) return result(state, ["hunt_rejected:protected_species"]);
   if ((spawn.hp ?? spawn.maxHp ?? 1) > 0) return result(state, ["hunt_rejected:animal_not_killed"]);
   if (spawn.depletedAtMs) return result(state, ["hunt_rejected:already_harvested"]);
+  const meatCount = harthmereDeterministicYieldCount({
+    baseCount: 2,
+    multiplier: harthmereSublevelYieldMultiplier(
+      input.trackingSkillLevel ?? 1
+    ),
+    seed: `${input.animalId}:${input.nowMs}`,
+  });
   return result({
     ...state,
-    inventory: addItem(state.inventory, "raw_meat", 2),
+    inventory: addItem(state.inventory, "raw_meat", meatCount),
     spawns: {
       ...state.spawns,
       [input.animalId]: {
@@ -895,7 +937,7 @@ export function huntHarthmereAnimalForFood(
         respawnAtMs: input.nowMs + HARTHMERE_HALF_DAY_MS,
       },
     },
-  }, [], { raw_meat: 2 });
+  }, [], { raw_meat: meatCount });
 }
 
 export function feedHarthmereLivestock(
@@ -973,6 +1015,7 @@ export function cookHarthmereFood(
     stationKind?: HarthmereCookingStationKind;
     count?: number;
     nowMs: number;
+    cookingSkillLevel?: number;
   },
 ): HarthmereFoodStaminaResult {
   const recipeId = cookingRecipeIdForInput(input);
@@ -980,7 +1023,23 @@ export function cookHarthmereFood(
   if (!recipe) return result(state, ["cooking_rejected:unknown_recipe"]);
   const count = normalizeCookingCount(input.count);
   if (!count) return result(state, ["cooking_rejected:invalid_count"]);
-  if (count > recipe.maxBatchCount) return result(state, ["cooking_rejected:batch_too_large"]);
+  const cookingSkillLevel = Math.max(
+    1,
+    Math.min(100, Math.trunc(input.cookingSkillLevel ?? 1))
+  );
+  if (cookingSkillLevel < recipe.requiredSkillLevel) {
+    return result(state, [
+      `cooking_rejected:skill_level_required:${recipe.requiredSkillLevel}`,
+    ]);
+  }
+  const skilledBatchCap = Math.max(
+    recipe.maxBatchCount,
+    Math.floor(
+      recipe.maxBatchCount *
+        harthmereSublevelYieldMultiplier(cookingSkillLevel)
+    )
+  );
+  if (count > skilledBatchCap) return result(state, ["cooking_rejected:batch_too_large"]);
   const stationKind = input.stationKind ?? "campfire";
   if (recipe.stationKind !== "field" && stationKind !== recipe.stationKind) {
     return result(state, [`cooking_rejected:missing_station:${recipe.stationKind}`]);
@@ -1053,6 +1112,7 @@ const HARTHMERE_COOK_TIME_CORPUS = (() => {
 export function scaleHarthmereCookDurationMs(
   cookTimeMs: number,
   count: number,
+  cookingSkillLevel = 1,
 ): number {
   const safeCount = Math.max(1, Math.trunc(Number(count) || 1));
   const { min, max } = HARTHMERE_COOK_TIME_CORPUS;
@@ -1065,13 +1125,20 @@ export function scaleHarthmereCookDurationMs(
     HARTHMERE_COOK_DURATION_MIN_MS +
     frac *
       (HARTHMERE_COOK_DURATION_MAX_MS - HARTHMERE_COOK_DURATION_MIN_MS);
-  return Math.round(base) * safeCount;
+  return (
+    Math.round(base * harthmereSublevelEfficiencyMultiplier(cookingSkillLevel)) *
+    safeCount
+  );
 }
 
 function cookDurationForJob(job: HarthmereCookingJob): number {
   const recipe = HARTHMERE_COOKING_RECIPES[job.recipeId];
   return recipe
-    ? scaleHarthmereCookDurationMs(recipe.cookTimeMs, job.count)
+    ? scaleHarthmereCookDurationMs(
+        recipe.cookTimeMs,
+        job.count,
+        job.cookingSkillLevel
+      )
     : Math.max(0, job.readyAtMs - job.startedAtMs);
 }
 
@@ -1101,7 +1168,9 @@ function jobHasSpoiled(
 ): boolean {
   return (
     job.status === "ready" &&
-    nowMs - job.readyAtMs >= HARTHMERE_COOK_SPOIL_MS
+    nowMs - job.readyAtMs >=
+      HARTHMERE_COOK_SPOIL_MS *
+        harthmereSublevelPotencyMultiplier(job.cookingSkillLevel)
   );
 }
 
@@ -1203,6 +1272,7 @@ export function enqueueHarthmereCook(
     recipeId: string;
     count?: number;
     nowMs: number;
+    cookingSkillLevel?: number;
   },
 ): HarthmereFoodStaminaResult {
   if (!input.stationId) {
@@ -1212,7 +1282,23 @@ export function enqueueHarthmereCook(
   if (!recipe) return cookingResult(state, ["cooking_rejected:unknown_recipe"]);
   const count = normalizeCookingCount(input.count);
   if (!count) return cookingResult(state, ["cooking_rejected:invalid_count"]);
-  if (count > recipe.maxBatchCount) {
+  const cookingSkillLevel = Math.max(
+    1,
+    Math.min(100, Math.trunc(input.cookingSkillLevel ?? 1))
+  );
+  if (cookingSkillLevel < recipe.requiredSkillLevel) {
+    return cookingResult(state, [
+      `cooking_rejected:skill_level_required:${recipe.requiredSkillLevel}`,
+    ]);
+  }
+  const skilledBatchCap = Math.max(
+    recipe.maxBatchCount,
+    Math.floor(
+      recipe.maxBatchCount *
+        harthmereSublevelYieldMultiplier(cookingSkillLevel)
+    )
+  );
+  if (count > skilledBatchCap) {
     return cookingResult(state, ["cooking_rejected:batch_too_large"]);
   }
   const stationKind = input.stationKind ?? "campfire";
@@ -1254,7 +1340,12 @@ export function enqueueHarthmereCook(
     : input.nowMs;
   const startedAtMs = Math.max(input.nowMs, tailReadyAtMs);
   const readyAtMs =
-    startedAtMs + scaleHarthmereCookDurationMs(recipe.cookTimeMs, count);
+    startedAtMs +
+    scaleHarthmereCookDurationMs(
+      recipe.cookTimeMs,
+      count,
+      cookingSkillLevel
+    );
   jobs.push({
     jobId: `${input.stationId}::${input.recipeId}::${input.nowMs}::${jobs.length}`,
     recipeId: input.recipeId,
@@ -1263,6 +1354,7 @@ export function enqueueHarthmereCook(
     enqueuedAtMs: input.nowMs,
     startedAtMs,
     readyAtMs,
+    cookingSkillLevel,
     reservedInputs,
   });
   const cooking = { ...(state.cooking ?? {}) };

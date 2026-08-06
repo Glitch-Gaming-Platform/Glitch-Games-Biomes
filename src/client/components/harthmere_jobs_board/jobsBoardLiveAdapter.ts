@@ -7,6 +7,7 @@ import {
   HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS,
   HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION,
 } from "../../../shared/harthmere/mmo_jobs_board_authority";
+import { isCh1GroveJobPosting } from "@/shared/harthmere/ch1_interaction_surfaces";
 import { completeHarthmereDailyTask } from "@/client/components/challenges/harthmereDailyTasks";
 import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
 import { HARTHMERE_LIVE_INVENTORY_SYNC_EVENT } from "@/client/components/challenges/harthmereEvents";
@@ -123,6 +124,24 @@ export type HarthmereJobsBoardJobKind =
 export type HarthmereJobsBoardStatus =
   "open" | "active" | "completed" | "failed" | "cancelled" | "expired";
 
+export interface HarthmereJobsBoardEscortCompanion {
+  companionId: string;
+  entityId: number;
+  jobId: string;
+  actorId: string;
+  actorEntityId?: number;
+  displayName: string;
+  status: "following" | "arrived" | "completed" | "failed";
+  position: { x: number; y: number; z: number };
+  destination: { x: number; y: number; z: number };
+  destinationTargetId?: string;
+  destinationMarkerId?: string;
+  createdAtMs: number;
+  updatedAtMs: number;
+  arrivedAtMs?: number;
+  failedAtMs?: number;
+}
+
 export interface HarthmereJobsBoardPosting {
   jobId: string;
   boardId: string;
@@ -139,6 +158,8 @@ export interface HarthmereJobsBoardPosting {
     targetId?: string;
     targetName?: string;
     mapMarkerId?: string;
+    recipientNpcId?: string;
+    pickupMarkerId?: string;
   }>;
   templateId?: string;
   rewardGold: number;
@@ -158,6 +179,9 @@ export interface HarthmereJobsBoardPosting {
   targetId?: string;
   abuseFlags: string[];
   logs: string[];
+  escortCompanion?: HarthmereJobsBoardEscortCompanion;
+  autoPosted?: boolean;
+  source?: string;
 }
 
 export interface HarthmereJobsBoardTodo {
@@ -540,6 +564,25 @@ export function normalizeHarthmereJobsBoardSnapshot(
   };
 }
 
+export function jobsBoardSnapshotWithLiveInventoryForTest(
+  snapshot: HarthmereJobsBoardSnapshot | undefined,
+  inventoryLootState: unknown
+): HarthmereJobsBoardSnapshot | undefined {
+  const items = (inventoryLootState as any)?.actor?.items;
+  if (!snapshot || !items || typeof items !== "object") {
+    return snapshot;
+  }
+  return {
+    ...snapshot,
+    inventoryItems: Object.fromEntries(
+      Object.entries(items).map(([itemId, count]) => [
+        itemId,
+        Math.max(0, Math.trunc(Number(count) || 0)),
+      ])
+    ),
+  };
+}
+
 export function dispatchHarthmereJobsBoardStateUpdated(
   snapshot: HarthmereJobsBoardSnapshot
 ) {
@@ -739,11 +782,14 @@ export function getHarthmereJobsBoardTabs(
 export function getHarthmereAvailableJobsPanel(
   snapshot: HarthmereJobsBoardSnapshot,
   boardId = snapshot.defaultBoardId,
-  nowMs = Date.now()
+  nowMs = Date.now(),
+  options: { chapter1Mode?: boolean } = {}
 ) {
+  const atRegularLimit =
+    snapshot.myAcceptedJobs.filter(
+      (job) => job.status === "active" && !isCh1GroveJobPosting(job)
+    ).length >= snapshot.safety.maxActiveAcceptedPerSeeker;
   if (
-    snapshot.myAcceptedJobs.filter((job) => job.status === "active").length >=
-      snapshot.safety.maxActiveAcceptedPerSeeker ||
     (snapshot.cooldown.lastAcceptAtMs ?? 0) +
       HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS >
       nowMs
@@ -756,6 +802,8 @@ export function getHarthmereAvailableJobsPanel(
         job.boardId === boardId &&
         job.status === "open" &&
         job.deadlineAtMs > nowMs &&
+        (!atRegularLimit ||
+          (options.chapter1Mode && isCh1GroveJobPosting(job))) &&
         !(job.issuerKind === "player" && job.issuerId === snapshot.actorId)
     )
     .sort(
@@ -763,12 +811,16 @@ export function getHarthmereAvailableJobsPanel(
     )
     .map((job) => ({
       jobId: job.jobId,
+      templateId: job.templateId,
+      autoPosted: job.autoPosted,
+      townId: job.townId,
+      issuerKind: job.issuerKind,
+      issuerId: job.issuerId,
       title: job.title,
       kindLabel: HARTHMERE_JOBS_BOARD_JOB_KIND_LABELS[job.kind],
       rewardGold: job.rewardGold,
       deadlineAtMs: job.deadlineAtMs,
       timeRemaining: formatHarthmereJobTimeRemaining(job.deadlineAtMs, nowMs),
-      issuerKind: job.issuerKind,
       requiresFieldWork: job.requiresFieldWork,
       targetLabel:
         job.requirements.find((req) => req.targetName)?.targetName ??
@@ -788,6 +840,11 @@ export function getHarthmereMyJobsPanel(
       const todo = snapshot.myTodos.find((entry) => entry.jobId === job.jobId);
       return {
         jobId: job.jobId,
+        templateId: job.templateId,
+        autoPosted: job.autoPosted,
+        townId: job.townId,
+        issuerKind: job.issuerKind,
+        issuerId: job.issuerId,
         title: job.title,
         status: job.status,
         rewardGold: job.rewardGold,

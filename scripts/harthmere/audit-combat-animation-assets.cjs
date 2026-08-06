@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const fs = require("fs");
 const path = require("path");
+const { createHash } = require("crypto");
 
 const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
 
@@ -47,7 +48,9 @@ function readJsonChunkFromGlb(buffer) {
 
 function analyzeFile(file) {
   const buffer = fs.readFileSync(file);
-  const head = buffer.subarray(0, Math.min(buffer.length, 256)).toString("utf8");
+  const head = buffer
+    .subarray(0, Math.min(buffer.length, 256))
+    .toString("utf8");
 
   if (head.startsWith("version https://git-lfs.github.com/spec/v1")) {
     return {
@@ -91,7 +94,9 @@ function classifyAnimations(names) {
   return {
     idle: /idle|stand/.test(joined),
     move: /walk|run|move|trot|crawl/.test(joined),
-    attack: /attack|slash|swing|punch|bite|claw|cast|spell|shoot|strike/.test(joined),
+    attack: /attack|slash|swing|punch|bite|claw|cast|spell|shoot|strike/.test(
+      joined
+    ),
     hit: /hit|hurt|damage|impact|react|flinch/.test(joined),
     death: /death|die|dead|fall|knock|defeat/.test(joined),
   };
@@ -144,6 +149,69 @@ console.log("");
 console.log("HARTHMERE COMBAT ANIMATION AUDIT");
 console.log("================================");
 console.log(`Root: ${root}`);
+console.log("");
+
+// The player client does not load the body-variant directories below. Resolve
+// and inspect the exact content-addressed artifact from asset_versions first;
+// variant scans are supplemental coverage only.
+const versionsPath = path.join(
+  root,
+  "src/galois/js/interface/gen/asset_versions.json"
+);
+const versions = JSON.parse(fs.readFileSync(versionsPath, "utf8"));
+const canonicalRelativePath = path.join(
+  "public/buckets/biomes-static",
+  versions.paths["wearables/animations"]
+);
+const canonicalPath = path.join(root, canonicalRelativePath);
+const canonical = fs.existsSync(canonicalPath)
+  ? analyzeFile(canonicalPath)
+  : { format: "MISSING", animations: [], error: "missing published artifact" };
+const requiredPlayerCombatClips = [
+  ...[1, 2, 3, 4].map(
+    (index) => `HarthmereBodyWeaponBasic_Variation${index}_24`
+  ),
+  ...[1, 2, 3, 4].map(
+    (index) => `HarthmereBodyWeaponHeavy_Variation${index}_24`
+  ),
+  "HarthmereBodyWeaponBasic_Aligned_30",
+  "HarthmereBodyWeaponHeavy_Aligned_30",
+  "HarthmereBodyRangedDraw_Aligned_30",
+  "HarthmereBodyRangedRelease_Aligned_30",
+  "HarthmereBodyRangedReload_Aligned_30",
+];
+const missingCanonicalClips = requiredPlayerCombatClips.filter(
+  (name) => !canonical.animations.includes(name)
+);
+const canonicalFileName = path.basename(canonicalPath);
+const canonicalHashMatch = canonicalFileName.match(
+  /^animations\.([0-9a-f]{32})\.glb$/
+);
+const canonicalContentHash = fs.existsSync(canonicalPath)
+  ? createHash("md5").update(fs.readFileSync(canonicalPath)).digest("hex")
+  : undefined;
+const canonicalHashOk =
+  canonicalHashMatch?.[1] !== undefined &&
+  canonicalHashMatch[1] === canonicalContentHash;
+const canonicalOk =
+  canonical.format === "GLB_BINARY" &&
+  missingCanonicalClips.length === 0 &&
+  canonicalHashOk;
+
+console.log("CANONICAL PLAYER RUNTIME ARTIFACT");
+console.log("=================================");
+console.log(`path: ${canonicalRelativePath}`);
+console.log(`format: ${canonical.format}`);
+console.log(`animationCount: ${canonical.animations.length}`);
+console.log(
+  `requiredCombatClips: ${
+    missingCanonicalClips.length
+      ? `MISSING ${missingCanonicalClips.join(" | ")}`
+      : "all present"
+  }`
+);
+console.log(`contentAddressMatchesBytes: ${canonicalHashOk ? "yes" : "no"}`);
+if (canonical.error) console.log(`error: ${canonical.error}`);
 console.log("");
 
 let total = 0;
@@ -207,12 +275,15 @@ console.log("===================");
 let sourceOk = true;
 
 sourceOk =
-  scanSourceFile("src/client/components/challenges/LocalDevHarthmereCombat.tsx", [
-    "HARTHMERE_COMBAT_EFFECT_EVENT",
-    "performHarthmereCombatAttack",
-    "tickHarthmereRealtimeCombatAI",
-    "applyAttack",
-  ]) && sourceOk;
+  scanSourceFile(
+    "src/client/components/challenges/LocalDevHarthmereCombat.tsx",
+    [
+      "HARTHMERE_COMBAT_EFFECT_EVENT",
+      "performHarthmereCombatAttack",
+      "tickHarthmereRealtimeCombatAI",
+      "applyAttack",
+    ]
+  ) && sourceOk;
 
 sourceOk =
   scanSourceFile("src/client/components/challenges/HarthmereUnifiedHUD.tsx", [
@@ -240,12 +311,23 @@ console.log(`filesMissingAttackNamedClip: ${missingAttack}`);
 console.log(`filesMissingHitNamedClip: ${missingHit}`);
 console.log(`filesMissingDeathNamedClip: ${missingDeath}`);
 console.log(`sourceWiringLooksComplete: ${sourceOk ? "yes" : "no"}`);
+console.log(`canonicalPlayerRuntimeComplete: ${canonicalOk ? "yes" : "no"}`);
 
 console.log("");
 
+if (!canonicalOk) {
+  console.log("RESULT: FAIL");
+  console.log(
+    "The content-addressed wearables/animations artifact loaded by the client is incomplete."
+  );
+  process.exit(2);
+}
+
 if (pointerCount > 0) {
   console.log("RESULT: FAIL");
-  console.log("Some GLTF files are Git LFS pointer files. Real animation playback cannot work until those are replaced with real assets.");
+  console.log(
+    "Some GLTF files are Git LFS pointer files. Real animation playback cannot work until those are replaced with real assets."
+  );
   process.exit(2);
 }
 
@@ -255,10 +337,19 @@ if (invalidCount > 0) {
   process.exit(2);
 }
 
-if (zeroAnimationCount > 0 || missingAttack > 0 || missingHit > 0 || missingDeath > 0) {
+if (
+  zeroAnimationCount > 0 ||
+  missingAttack > 0 ||
+  missingHit > 0 ||
+  missingDeath > 0
+) {
   console.log("RESULT: PARTIAL");
-  console.log("The files are loadable, but some do not expose clearly named attack/hit/death animations.");
-  console.log("This means the code needs either a clip-name mapping table or procedural fallback motion.");
+  console.log(
+    "The files are loadable, but some do not expose clearly named attack/hit/death animations."
+  );
+  console.log(
+    "This means the code needs either a clip-name mapping table or procedural fallback motion."
+  );
   process.exit(1);
 }
 
@@ -269,4 +360,6 @@ if (!sourceOk) {
 }
 
 console.log("RESULT: PASS");
-console.log("The assets are real, animated, and the expected combat/rendering hooks are present.");
+console.log(
+  "The assets are real, animated, and the expected combat/rendering hooks are present."
+);

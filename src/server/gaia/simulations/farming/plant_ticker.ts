@@ -146,7 +146,8 @@ export function wiltAndProgress(
   waterIntervalMs?: number,
   progressTimeMs?: number,
   deathTimeMs?: number,
-  additionalRemainingGrowthTimeMs?: number
+  additionalRemainingGrowthTimeMs?: number,
+  skillGrowthTimeMultiplier?: number
 ) {
   farmLog(`    ${elapsedTimeMs}ms progressed`, 3);
 
@@ -168,6 +169,18 @@ export function wiltAndProgress(
     timeMult = 1 - playerModifiers.farmingSpeed.increase / 100;
     farmLog(
       `    (farming speed buff: ${playerModifiers.farmingSpeed.increase}; ${timeMult} multiplier)`,
+      3
+    );
+  }
+  if (skillGrowthTimeMultiplier !== undefined) {
+    const boundedGrowthTimeMultiplier = clamp(
+      skillGrowthTimeMultiplier,
+      0.8,
+      1
+    );
+    timeMult *= 1 / boundedGrowthTimeMultiplier;
+    farmLog(
+      `    (Farming skill growth-time multiplier: ${boundedGrowthTimeMultiplier})`,
       3
     );
   }

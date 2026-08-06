@@ -189,7 +189,7 @@ describe("Harthmere unified native skill progression", () => {
         }),
         ...harthmereNativeShieldSkillAwards({
           equippedItemIds: ["wooden_shield"],
-          damageTaken: 20,
+          damagePrevented: 20,
         }),
       ].map((award) => award.skillId)
     );
@@ -296,7 +296,10 @@ describe("Harthmere unified native skill progression", () => {
 
   it("maps authored world and resource actions to exploration, social, and gathering skills", () => {
     const awards = [
-      ...harthmereWorldInteractionSkillAwards({ kind: "open_gate" }),
+      ...harthmereWorldInteractionSkillAwards({
+        kind: "open_gate",
+        label: "Locked garden gate",
+      }),
       ...harthmereWorldInteractionSkillAwards({
         kind: "inspect",
         label: "Ancient arcane rune machine",
@@ -382,7 +385,7 @@ describe("Harthmere unified native skill progression", () => {
       }),
       ...harthmereNativeShieldSkillAwards({
         equippedItemIds: ["wooden_shield"],
-        damageTaken: 20,
+        damagePrevented: 20,
       }),
       ...harthmereNativeMedicalSkillAwards({
         itemId: "health_potion",
@@ -395,7 +398,10 @@ describe("Harthmere unified native skill progression", () => {
         fishing: true,
         tracking: true,
       }),
-      ...harthmereWorldInteractionSkillAwards({ kind: "open_gate" }),
+      ...harthmereWorldInteractionSkillAwards({
+        kind: "open_gate",
+        label: "Locked garden gate",
+      }),
       ...harthmereWorldInteractionSkillAwards({
         kind: "read",
         label: "Arcane runes",

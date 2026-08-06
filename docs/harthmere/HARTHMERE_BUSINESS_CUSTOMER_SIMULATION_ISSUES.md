@@ -5,6 +5,227 @@ the in-world customer-service simulation. Add the exact runtime topology,
 artifact, observed authoritative state, source fix, and focused retest result.
 Do not replace failed live evidence with source-contract or UI-only evidence.
 
+## 2026-08-05 — Answer result is invisible and request text repeatedly restarts
+
+Status: **hotfix implemented; focused gates and final Greenlamp live acceptance
+green**
+
+User evidence:
+
+- `/Users/devindixon/Downloads/last_mini_game_fix.har`
+- `/Users/devindixon/Desktop/Screenshot 2026-08-05 at 4.50.55 PM.png`
+- `/Users/devindixon/Desktop/Screenshot 2026-08-05 at 4.50.57 PM.png`
+
+Observed behavior and HAR proof:
+
+- Choosing a service immediately closed the customer dialog. The player never
+  saw whether the answer was correct, what the customer actually needed, or
+  what was earned.
+- The server did pay a successful Clinic answer: the authoritative wallet moved
+  from 153 to 186 gold and the session recorded 33 earned gold. This was a
+  missing feedback surface, not a missing payout.
+- Economy polling updated `patienceRemaining` every two seconds. The open dialog
+  consumed that live target object, so every countdown response changed
+  `dialogText`; translation/typewriter state cleared and the same request began
+  typing again. The two supplied screenshots show different partial prefixes
+  of the same sentence.
+- The captured shift contained four customers with unrelated generated patience
+  values. The requested game contract is now ten customers with a deterministic
+  30, 28, 26, 24, 22, 20, 18, 16, 14, 12 second ladder.
+
+Grouped source fix:
+
+- Freeze the exact customer request when the conversation opens. The world-card
+  countdown remains live, but polling can no longer replace the modal text or
+  restart its typewriter.
+- Do not close after a service choice. Keep the same modal open on a stable
+  result screen, offer an explicit continue button, and automatically advance
+  after three seconds. The existing typewriter presentation remains enabled.
+- Correct feedback names the fulfilled service and displays authoritative gold,
+  business points, service XP, likeability, collectibles, decorations, and
+  badges earned by that one answer. Incorrect feedback names the needed service,
+  the selected service, zero payout, and the customer-satisfaction change.
+- The client explicitly requests ten customers and the server defaults to ten.
+  Queue construction assigns the exact two-second patience ladder independent
+  of persona, ask text, or skill tier.
+
+No-repeat rules:
+
+- A changed wallet or session ledger is not sufficient UI acceptance. After
+  every answer, require a visible `correct` or `incorrect` result, explicit
+  gold/business-point values, and a player continue action before the next
+  customer takes focus.
+- Do not bind timed dialog copy to `patienceRemaining`. Freeze the puzzle copy
+  for the open modal; render urgency only in the independently updating world
+  card.
+- Do not test only the winning branch. Live acceptance must choose one correct
+  service and one incorrect service and prove both result screens.
+- A ten-customer configuration test must assert the complete ordered patience
+  sequence, not only queue length, minimum, or maximum.
+
+Focused gates:
+
+- Complete affected batch: 171 passing, one rendered-panel test-double failure.
+  The failure was fixed by exporting the new ten-customer constant from that
+  isolated module stub; the failed-only rerun passed 1/1.
+- A separate full-shift authority row completed all ten customers with five
+  correct and five incorrect outcomes, preserved the exact timer ladder, paid
+  only correct answers, and passed 1/1.
+- `tsconfig.ch1renderer.json`, `tsconfig.ch1check.json`, live-runner syntax,
+  the 19-business runner contract, and scoped `git diff --check` passed.
+
+Final hotfix/live evidence:
+
+- Exact client build exercised: `warm-business-results-hotfix-20260805-r3`,
+  image ID
+  `sha256:700e7e3e76e9d533e14ec0f8f6d355dcc4f20c4b3b0b898f320205cc8b0ff113`.
+- Final report:
+  `artifacts/harthmere-business-live-browser/1785978370639-75634-report.json`.
+  Greenlamp passed 1/1 with zero row failures and zero browser failures.
+- The live shift contained exactly ten customers with the ordered patience
+  ladder `30, 28, 26, 24, 22, 20, 18, 16, 14, 12`. The first countdown visibly
+  decreased from 30 to 26.
+- The correct result visibly reported Jorek Linn, Run checkup, 22 gold, four
+  business points, 20 service XP, and +4 likeability. The result remained
+  stable across the former two-second polling boundary and automatically
+  advanced after the three-second display interval.
+- The second customer exercised the incorrect branch and visibly reported zero
+  gold/business points with the needed service. The first customer reached the
+  authored exterior departure point and despawned 30.2 metres from the staff
+  point. Leaving the building aborted the remaining shift safely.
+- Result copy retains the shared typewriter presentation by user choice; the
+  result identity and reward data remain stable while it types.
+
+Live-runner no-repeat corrections:
+
+- Check the Continue action immediately, before spending the three-second
+  result window on stability evidence.
+- Monitor the previous customer's long exit walk in parallel with serving the
+  next customer. Waiting synchronously for despawn consumes the next 28-second
+  timer and manufactures a stale-customer failure.
+- Player exit placement must use exterior terrain height, not the NPC GLB
+  feet-plane. The clinic's player settled at Y=63.43 while the NPC departure
+  route is authored at Y=65.
+- A focused Anima worker running `node --no-opt` with a 301k-entity replica
+  repeatedly saturated and stopped applying movement. The final green row used
+  the same image, Redis, network, and `dist/anima.js`, but normal optimized Node
+  with a 4 GiB heap. Do not repeat blind retries against a worker whose `/ready`
+  probe is hung.
+
+## 2026-08-05 — Customer reaches the counter but remains permanently "Entering"
+
+Status: **hotfix deployed; focused gates green; live matrix stopped by user
+after 3 passes and 1 actionable failure**
+
+User evidence:
+
+- `/Users/devindixon/Downloads/www.glitch.fun-1785931771401.har`
+- `/Users/devindixon/Downloads/www.glitch.fun-1785931771401.log`
+- `/Users/devindixon/Desktop/Screenshot 2026-08-05 at 7.08.10 AM.png`
+- `/Users/devindixon/Desktop/Screenshot 2026-08-05 at 7.08.21 AM.png`
+
+Observed behavior:
+
+- The native customer physically reached the audited counter point and the
+  server started reducing patience, but the durable economy ticket still said
+  `spatialPhase: "entering"`.
+- Pressing F therefore opened the fallback NPC sentence, "Stay behind the
+  counter and let them reach the service point," instead of the business
+  service choices. The timer could expire while the customer was already
+  standing at the service point.
+
+Root cause and grouped fix:
+
+- `expireImpatientCustomerTickets` accepted the exact native
+  `nativeCustomerReady` proof only for starting `patienceStartedAtMs`; it did
+  not reconcile the durable ticket to `serving`.
+- Exact native readiness now atomically records `spatialPhase: "serving"` and
+  the neutral reaction before starting patience. The client resolves the
+  current ticket's effective phase from synchronized native or economy
+  serving authority, so a short projection lag cannot reopen the impossible
+  Entering fallback.
+- The direct customer interaction owns the real F route while the current
+  customer is visible and serving. It opens the service conversation and must
+  never reopen the nearby management board. A fresh or reopened board starts
+  on Overview.
+- The ready request, countdown text, and service choices are authored as one
+  timed dialog step. `{break}` creates separate shared-NPC dialog pages and
+  attaches actions only to the last page, so using it here left a 30-second
+  customer waiting behind an unexplained "Click to continue" screen.
+- Customer patience is clamped to 15–30 seconds. Ordinary generated customers
+  start at no more than 25 seconds, leaving Business Operations progression
+  room to improve patience without ever exceeding the requested 30-second
+  maximum. The HUD exposes a synchronized, player-readable countdown bar.
+
+Regression and no-repeat contract:
+
+- Do not infer readiness from customer position alone, and do not accept a
+  client-only modal injection as F-interaction evidence. The live row must
+  prove the same ticket/entity is `serving`, the visible bar agrees with the
+  authority countdown and begins at 30 seconds or less, real KeyF opens the
+  service choices, serving completes, the customer departs, and leaving the
+  business ends the shift safely.
+- Do not clamp every generated customer directly to 30 before applying skill
+  progression; that erases the novice/master distinction and hides a stale
+  progression test behind an apparently correct maximum.
+- Do not start or recreate a warm app while another deploy/build owns `.next`
+  or `dist`. A concurrent August 5 deployment stopped the healthy app and
+  removed the generated artifact paths during acceptance. Require zero build
+  owners immediately before artifact refresh and again before Chromium.
+
+Focused gates completed before live acceptance:
+
+- 74/74 business simulator, economy-session, and all-19 native ECS matrix
+  assertions passed after the fix.
+- The prior broad non-fail-fast batch reported 6 failures; the complete
+  failed-only rerun finished 67/68 and the single corrected shield row then
+  passed 1/1. No failed row was silently skipped.
+- `tsconfig.ch1check.json`, `tsconfig.ch1renderer.json`, runner syntax, the
+  19-row runner contract, and `git diff --check` passed.
+
+Exact hotfix/live evidence:
+
+- Client-only hotfix build: `warm-business-dialog-hotfix-20260805-r1` on app
+  image ID
+  `sha256:700e7e3e76e9d533e14ec0f8f6d355dcc4f20c4b3b0b898f320205cc8b0ff113`.
+  The retained server artifacts, Redis, and same-world Anima were not rebuilt
+  or replaced. App, Redis, and Anima were restart 0 / OOM false; Redis returned
+  literal `PONG`; Anima returned `/ready=OK` and had completed HFC bootstrap.
+- The final headed batch report is
+  `artifacts/harthmere-business-live-browser/1785942507048-31876-report.json`.
+  Ashline, North Biome Repair, and Glassyard each completed the complete
+  player path: physical F board open, Overview default and reset, shift start,
+  native customer arrival, a visible 25-second-or-less countdown that reduced,
+  real F customer talk, service choices visible on the request screen,
+  authoritative service completion, safe departure/queue advance, and shift
+  termination by leaving the building. Browser failures remained zero.
+- Redoubt timed out waiting for the expected owned customer-interaction
+  candidate. Its failure screenshot shows the generic visible `F Talk` prompt
+  plus the nearby business-board prompt while the camera/player appears
+  embedded at the building boundary. This is an actionable remaining
+  interaction/placement failure; it is not evidence that the original
+  Entering dialog returned.
+- The user stopped the run while Redoubt recovery was in progress. Rows 5-19
+  were never exercised. The runner's shutdown path recorded them as fresh
+  browser recovery failures because Chromium had closed; those entries are
+  interruption artifacts, not product failures and not passes. Never quote the
+  generated `16 business browser rows failed` aggregate without this context.
+
+Additional no-repeat lessons from the final batch:
+
+- A rendered business panel does not prove the full-screen world loading layer
+  has stopped receiving pointer input. Before a player click, require
+  `.loading-wrapper` to remain absent for one continuous second. The runner
+  contract now enforces this stable boundary.
+- When a batch is intentionally interrupted, report completed rows,
+  actionable in-progress failures, and unrun rows separately. Do not convert
+  closed-browser recovery errors into product verdicts.
+- Preserve screenshots for the first failing interaction owner. A generic
+  `F Talk` prompt coexisting with a business-board prompt is materially
+  different from a correct
+  `data-world-interaction-owner="true"` business-customer route even if both
+  use the same visible key.
+
 ## 2026-08-03 — All combined business interiors render outside the shell
 
 Status: **shared source fix and all-asset contracts green; exact-image browser
@@ -592,7 +813,7 @@ dashboard console — `dashboardAccessPoint`, derived from
 `max(origin.x + 3, doorX - 4)` — not the audited staff point at
 `(656.5, 65, -175)`.
 
-`rejectEconomyMutationOutsideBusiness` only ever checked *distance* to the
+`rejectEconomyMutationOutsideBusiness` only ever checked _distance_ to the
 counter, with a 4.25 m radius for the four customer operations. That radius is
 satisfied just as well from the customer side, so a player could start, serve,
 tick and end an entire shift while standing in the queue's own lane — facing the
@@ -617,7 +838,7 @@ a physical fact rather than a label.
 
 `HarthmereBusinessCustomerTalkDialog` and its routing in `TalkToNPCScreen` were
 correct, but the talk target was a **single module-level variable** published
-only by the projected `SpatialCustomerCard` for the *current* ticket. Two
+only by the projected `SpatialCustomerCard` for the _current_ ticket. Two
 consequences:
 
 - Talking to any other customer in the queue found no target and fell through to
@@ -632,7 +853,7 @@ customers is automatic and a stale entry cannot offer service to someone who has
 already walked out. `ready` — and therefore the presence of service choices —
 remains restricted to the session's current ticket in phase `serving`, so a
 queued customer is talkable in character without letting the player serve out of
-order. The per-card effect now only *refines* the current customer with its live
+order. The per-card effect now only _refines_ the current customer with its live
 ECS phase and no longer deregisters on unmount.
 
 Contract: `__tests__/businessCustomerTalkState.test.ts`, including a source
@@ -642,7 +863,7 @@ Testing lesson:
 
 - A correct dialogue branch proves nothing if the state it branches on is
   published by a component that unmounts for unrelated reasons. When routing
-  depends on module-level state, the contract has to cover the *publisher's*
+  depends on module-level state, the contract has to cover the _publisher's_
   lifetime, not just the reader's logic.
 - The known embedded-browser bundler limitation (`esbuild` native binary
   unavailable in this environment) still fails one row of

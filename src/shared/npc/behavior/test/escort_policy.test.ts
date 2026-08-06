@@ -11,10 +11,13 @@ import assert from "assert";
 
 import {
   ESCORT_ARRIVE_RADIUS,
+  ESCORT_CATCH_UP_RUN_SPEED_MULTIPLIER,
+  ESCORT_CLOSE_FAST_RUN_SPEED_MULTIPLIER,
   ESCORT_DEFAULT_FOLLOW_DISTANCE,
   ESCORT_DEFAULT_LEASH_DISTANCE,
   ESCORT_DEFEND_RADIUS,
   ESCORT_DESTINATION_ARRIVE_RADIUS,
+  ESCORT_FOLLOW_RUN_SPEED_MULTIPLIER,
   ESCORT_PROGRESS_DISTANCE_METERS,
   ESCORT_STUCK_GRACE_SECONDS,
   ESCORT_WARP_PATH_FAILURE_SECONDS,
@@ -119,34 +122,42 @@ describe("escort: follow pacing", () => {
   it("holds station inside the slot", () => {
     assert.deepEqual(
       escortLocomotionDecision({ ...base, distanceToFormationAnchor: 0.5 }),
-      { action: "hold", speedFraction: 0 }
+      { action: "hold", runSpeedMultiplier: 0 }
     );
   });
 
-  it("walks small gaps instead of jogging on the leader's heels", () => {
+  it("runs while closing small gaps so it never drops into a walk animation", () => {
     const decision = escortLocomotionDecision({
       ...base,
       distanceToFormationAnchor: ESCORT_ARRIVE_RADIUS + 0.5,
     });
-    assert.equal(decision.action, "follow");
-    assert.ok(decision.speedFraction > 0 && decision.speedFraction < 1);
+    assert.deepEqual(decision, {
+      action: "follow",
+      runSpeedMultiplier: ESCORT_FOLLOW_RUN_SPEED_MULTIPLIER,
+    });
   });
 
-  it("sprints once genuinely out of formation", () => {
+  it("accelerates above authored run speed once out of formation", () => {
     assert.deepEqual(
       escortLocomotionDecision({ ...base, distanceToFormationAnchor: 12 }),
-      { action: "close_fast", speedFraction: 1 }
+      {
+        action: "close_fast",
+        runSpeedMultiplier: ESCORT_CLOSE_FAST_RUN_SPEED_MULTIPLIER,
+      }
     );
   });
 
-  it("switches to catch-up past the leash", () => {
-    assert.equal(
+  it("switches to near-player-sprint catch-up past the leash", () => {
+    assert.deepEqual(
       escortLocomotionDecision({
         ...base,
         distanceToLeader: ESCORT_DEFAULT_LEASH_DISTANCE + 1,
         distanceToFormationAnchor: 60,
-      }).action,
-      "catch_up"
+      }),
+      {
+        action: "catch_up",
+        runSpeedMultiplier: ESCORT_CATCH_UP_RUN_SPEED_MULTIPLIER,
+      }
     );
   });
 
@@ -157,7 +168,7 @@ describe("escort: follow pacing", () => {
         distanceToFormationAnchor: 40,
         destinationDistance: ESCORT_DESTINATION_ARRIVE_RADIUS - 0.1,
       }),
-      { action: "arrived", speedFraction: 0 }
+      { action: "arrived", runSpeedMultiplier: 0 }
     );
   });
 });

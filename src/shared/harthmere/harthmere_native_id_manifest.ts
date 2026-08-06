@@ -1193,6 +1193,9 @@ export const HARTHMERE_NATIVE_ITEM_ID_MANIFEST = {
   colored_spiked_shield: id(8791000000000037),
   colored_square_shield: id(8791000000000038),
   colored_badge_shield: id(8791000000000039),
+  // HARTHMERE_BOW_AMMO: one physical stack identity consumed only from the
+  // backpack by server-authorized bow releases.
+  hunting_arrow: id(8791000000000040),
 } as const satisfies Readonly<Record<string, BiomesId>>;
 
 /**

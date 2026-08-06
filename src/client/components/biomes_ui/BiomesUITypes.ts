@@ -81,7 +81,6 @@ export const TAB_DESCRIPTORS: Record<TabKey, TabDescriptor> = {
     key: "abilities",
     label: "Abilities",
     code: "ABI",
-    shortcut: "B",
     subtitle: "Choose and arrange abilities for combat and exploration",
   },
   skills: {
@@ -124,7 +123,7 @@ export const TAB_DESCRIPTORS: Record<TabKey, TabDescriptor> = {
     key: "banking",
     label: "Bank",
     code: "BNK",
-    shortcut: "Q",
+    shortcut: "B",
     subtitle: "Store and manage your money and valuables",
   },
   quests: {
@@ -138,7 +137,7 @@ export const TAB_DESCRIPTORS: Record<TabKey, TabDescriptor> = {
     key: "recovered",
     label: "Recovered",
     code: "MEM",
-    shortcut: "Z",
+    shortcut: "[",
     subtitle: "Review recovered memories, skills, and discoveries",
   },
   map: {

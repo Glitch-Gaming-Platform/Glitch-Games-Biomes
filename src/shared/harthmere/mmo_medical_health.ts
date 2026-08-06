@@ -1,3 +1,5 @@
+import { harthmereSublevelPotencyMultiplier } from "./harthmere_sublevel_benefits";
+
 export const HARTHMERE_MEDICAL_HEALTH_VERSION =
   "harthmere-medical-health" as const;
 
@@ -149,7 +151,7 @@ function isOnCooldown(
 
 export function useHarthmereMedicalItem(
   state: HarthmereMedicalHealthState,
-  input: { itemId: string; nowMs: number },
+  input: { itemId: string; nowMs: number; medicineSkillLevel?: number },
 ): HarthmereMedicalHealthResult {
   const previousHealth = currentHealthFor(state);
   const maxHealth = maxHealthFor(state);
@@ -164,7 +166,14 @@ export function useHarthmereMedicalItem(
     return result(state, ["medical_rejected:consumable_on_cooldown"], {}, 0, previousHealth);
   }
 
-  const nextHealth = Math.min(maxHealth, previousHealth + def.healthRestore);
+  const nextHealth = Math.min(
+    maxHealth,
+    previousHealth +
+      Math.round(
+        def.healthRestore *
+          harthmereSublevelPotencyMultiplier(input.medicineSkillLevel ?? 1),
+      ),
+  );
   return result({
     ...state,
     health: nextHealth,

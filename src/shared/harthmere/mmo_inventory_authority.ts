@@ -22,6 +22,14 @@
 
 import { PLAYER_INVENTORY_SLOTS } from "@/shared/game/inventory";
 import { isHarthmereVendorPurchaseAvailable } from "@/shared/harthmere/harthmere_vendor_chapter_gates";
+import {
+  HARTHMERE_SUBLEVEL_POTENCY_CAP,
+  harthmereSublevelSuccessChanceBonus,
+  harthmereSublevelTradeBonus,
+  harthmereSublevelWeightedProgress,
+  harthmereWeightedEfficiencyMultiplier,
+  normalizeHarthmereSublevelId,
+} from "@/shared/harthmere/harthmere_sublevel_benefits";
 
 export const MMO_INVENTORY_AUTHORITY_VERSION = "mmo-inventory-authority";
 
@@ -862,7 +870,9 @@ function resultFail(
 function validateVendorBuy(
   req: HarthmereInventoryMutationRequest,
   snapshot: HarthmereInventorySnapshot,
-  reputation: Record<string, number>
+  reputation: Record<string, number>,
+  playerSkills: Record<string, { level: number }>,
+  destination?: HarthmereVendorPurchaseDestination
 ): HarthmereInventoryMutationResult {
   const errors: string[] = [];
   const { requestId, actorId, kind, itemId, vendorId } = req;
@@ -916,31 +926,59 @@ function validateVendorBuy(
   }
 
   // Server-computed buy price — client cannot supply this
-  const totalCost =
+  const baseTotalCost =
     entry.bundleQuantity !== undefined && entry.bundlePrice !== undefined
       ? entry.bundlePrice
       : entry.buyPrice * count;
+  const persuasionDiscount = harthmereSublevelTradeBonus(
+    playerSkills.persuasion?.level ?? 1
+  );
+  const totalCost = Math.max(
+    1,
+    Math.ceil(baseTotalCost * (1 - persuasionDiscount))
+  );
   if (snapshot.gold < totalCost) {
     fail(errors, "insufficient_gold");
   }
 
-  // Inventory capacity
-  const existingCount = Math.max(0, snapshot.items[itemId] ?? 0);
-  const newCount = existingCount + count;
-  const maxStackSize = Math.max(1, def.maxStackSize);
-  const slotsNeeded =
-    Math.ceil(newCount / maxStackSize) -
-    Math.ceil(existingCount / maxStackSize);
-  if (!inventoryHasCapacity(snapshot.items, slotsNeeded)) {
-    fail(errors, "inventory_full");
+  if (destination?.kind === "material_storage") {
+    const storage = snapshot.materialStorage ?? {};
+    const occupiedSlots = Object.values(storage).filter(
+      (storedCount) => Number(storedCount) > 0
+    ).length;
+    const maxSlots = Number.isFinite(destination.maxSlots)
+      ? Math.max(0, Math.trunc(destination.maxSlots))
+      : 0;
+    if ((storage[itemId] ?? 0) <= 0 && occupiedSlots >= maxSlots) {
+      fail(errors, "material_storage_full");
+    }
+  } else {
+    // Inventory capacity
+    const existingCount = Math.max(0, snapshot.items[itemId] ?? 0);
+    const newCount = existingCount + count;
+    const maxStackSize = Math.max(1, def.maxStackSize);
+    const slotsNeeded =
+      Math.ceil(newCount / maxStackSize) -
+      Math.ceil(existingCount / maxStackSize);
+    if (!inventoryHasCapacity(snapshot.items, slotsNeeded)) {
+      fail(errors, "inventory_full");
+    }
   }
 
   if (errors.length > 0) return resultFail(requestId, kind, actorId, errors);
 
   return resultOk(requestId, kind, actorId, {
-    itemDeltas: { [itemId]: count },
+    itemDeltas:
+      destination?.kind === "material_storage" ? {} : { [itemId]: count },
+    materialStorageDeltas:
+      destination?.kind === "material_storage" ? { [itemId]: count } : {},
     goldDelta: -totalCost,
-    auditTags: ["vendor_buy", vendorId, itemId],
+    auditTags: [
+      "vendor_buy",
+      vendorId,
+      itemId,
+      `persuasion_discount:${persuasionDiscount.toFixed(4)}`,
+    ],
   });
 }
 
@@ -950,7 +988,8 @@ function validateVendorBuy(
 
 function validateVendorSell(
   req: HarthmereInventoryMutationRequest,
-  snapshot: HarthmereInventorySnapshot
+  snapshot: HarthmereInventorySnapshot,
+  playerSkills: Record<string, { level: number }>
 ): HarthmereInventoryMutationResult {
   const errors: string[] = [];
   const { requestId, actorId, kind, itemId, vendorId } = req;
@@ -988,10 +1027,21 @@ function validateVendorSell(
 
   if (errors.length > 0) return resultFail(requestId, kind, actorId, errors);
 
+  const persuasionBonus = harthmereSublevelTradeBonus(
+    playerSkills.persuasion?.level ?? 1
+  );
   return resultOk(requestId, kind, actorId, {
     itemDeltas: { [itemId]: -count },
-    goldDelta: entry!.sellPrice * count,
-    auditTags: ["vendor_sell", vendorId, itemId],
+    goldDelta: Math.max(
+      1,
+      Math.floor(entry!.sellPrice * count * (1 + persuasionBonus))
+    ),
+    auditTags: [
+      "vendor_sell",
+      vendorId,
+      itemId,
+      `persuasion_bonus:${persuasionBonus.toFixed(4)}`,
+    ],
   });
 }
 
@@ -1113,7 +1163,13 @@ function craftingSkillLevel(
   playerSkills: Record<string, { level: number }>,
   skillId: string | undefined
 ) {
-  return skillId ? Math.max(0, playerSkills[skillId]?.level ?? 0) : 0;
+  const normalized = normalizeHarthmereSublevelId(skillId);
+  return normalized
+    ? Math.max(
+        0,
+        playerSkills[normalized]?.level ?? playerSkills[skillId!]?.level ?? 0
+      )
+    : 0;
 }
 
 function selectedCraftingTools(
@@ -1467,21 +1523,38 @@ function validateCraftItem(
     },
     0
   );
-  const baseSkillLevel = Math.max(
-    craftingSkillLevel(playerSkills, recipe.requiredSkillId),
-    craftingSkillLevel(playerSkills, recipe.professionId)
+  const professionId =
+    normalizeHarthmereSublevelId(
+      recipe.professionId ?? recipe.requiredSkillId
+    ) ?? "crafting";
+  const craftingLevels = Object.fromEntries(
+    Object.entries(playerSkills).map(([skillId, progress]) => [
+      normalizeHarthmereSublevelId(skillId) ?? skillId,
+      progress.level,
+    ])
   );
-  const requiredSkillFloor = Math.max(
-    recipe.requiredSkillLevel ?? 0,
-    recipe.requiredProfessionLevel ?? 0
+  const craftingWeights =
+    professionId === "crafting"
+      ? { crafting: 1 }
+      : { crafting: 0.25, [professionId]: 0.75 };
+  const weightedSkillProgress = harthmereSublevelWeightedProgress(
+    craftingLevels,
+    craftingWeights
   );
-  const skillOverage = Math.max(0, baseSkillLevel - requiredSkillFloor);
+  const workEfficiency = harthmereWeightedEfficiencyMultiplier(
+    craftingLevels,
+    craftingWeights
+  );
+  const weightedSkillLevel = 1 + Math.round(weightedSkillProgress * 99);
   const seed = craftingSeedFromRequest(req);
+  const authoredSuccessChance = recipe.successChance ?? 1;
   const successChance = Math.max(
     0,
     Math.min(
-      1,
-      (recipe.successChance ?? 1) + reagentSuccessBonus + skillOverage * 0.01
+      authoredSuccessChance >= 1 ? 1 : 0.95,
+      authoredSuccessChance +
+        reagentSuccessBonus +
+        harthmereSublevelSuccessChanceBonus(weightedSkillLevel)
     )
   );
   const success =
@@ -1499,7 +1572,10 @@ function validateCraftItem(
             qualityFloor +
               deterministicCraftingUnit(seed, 2) *
                 (qualityCeiling - qualityFloor) +
-              skillOverage * (recipe.qualitySkillScale ?? 1.5) +
+              weightedSkillProgress *
+                HARTHMERE_SUBLEVEL_POTENCY_CAP *
+                100 *
+                Math.min(1, (recipe.qualitySkillScale ?? 1.5) / 1.5) +
               reagentQualityBonus * (recipe.qualityReagentScale ?? 1)
           )
         )
@@ -1601,12 +1677,27 @@ function validateCraftItem(
     professionId: recipe.professionId ?? recipe.requiredSkillId,
     recipeTier: recipe.recipeTier,
     materialTier: recipe.materialTier,
-    durabilityMax: recipe.durabilityMax ?? outputDef?.durabilityMax,
+    durabilityMax:
+      (recipe.durabilityMax ?? outputDef?.durabilityMax) !== undefined
+        ? Math.max(
+            1,
+            Math.round(
+              (recipe.durabilityMax ?? outputDef?.durabilityMax ?? 1) *
+                (1 +
+                  HARTHMERE_SUBLEVEL_POTENCY_CAP * weightedSkillProgress)
+            )
+          )
+        : undefined,
     binding: recipe.outputBinding ?? outputDef?.binding,
     questId: recipe.questId,
     businessTypeId: recipe.businessTypeId,
     workOrderTag: recipe.workOrderTag,
-    toolDurabilityCosts,
+    toolDurabilityCosts: Object.fromEntries(
+      Object.entries(toolDurabilityCosts).map(([itemId, cost]) => [
+        itemId,
+        Math.max(1, Math.round(cost * workEfficiency)),
+      ])
+    ),
     economyTags: [
       workflowKind,
       ...(recipe.businessTypeId ? [`business:${recipe.businessTypeId}`] : []),
@@ -1614,7 +1705,8 @@ function validateCraftItem(
     ],
     readyAtMs:
       phase === "start"
-        ? req.nowMs + Math.max(0, recipe.craftingTimeMs)
+        ? req.nowMs +
+          Math.max(0, Math.round(recipe.craftingTimeMs * workEfficiency))
         : undefined,
     failureReason: success ? undefined : "crafting_roll_failed",
   };
@@ -2038,6 +2130,17 @@ export interface HarthmereInventoryMutationContext {
   playerClassId?: string;
   /** Internal server-only escape hatch for timed job completion after inputs were reserved. */
   allowPrepaidCraftingInputs?: boolean;
+  /**
+   * Server-owned destination for vendor goods that bypass the backpack by
+   * design. The client cannot request this route; the live-mode catalogue and
+   * storage rules decide it before calling the authority reducer.
+   */
+  vendorPurchaseDestination?: HarthmereVendorPurchaseDestination;
+}
+
+export interface HarthmereVendorPurchaseDestination {
+  kind: "material_storage";
+  maxSlots: number;
 }
 
 export function reduceHarthmereInventoryMutation(
@@ -2051,6 +2154,7 @@ export function reduceHarthmereInventoryMutation(
     reputation,
     playerClassId,
     allowPrepaidCraftingInputs,
+    vendorPurchaseDestination,
   } = ctx;
 
   switch (req.kind) {
@@ -2068,10 +2172,16 @@ export function reduceHarthmereInventoryMutation(
       return validateRemoveCarriedItem(req, snapshot);
 
     case "buy_from_vendor":
-      return validateVendorBuy(req, snapshot, reputation);
+      return validateVendorBuy(
+        req,
+        snapshot,
+        reputation,
+        playerSkills,
+        vendorPurchaseDestination
+      );
 
     case "sell_to_vendor":
-      return validateVendorSell(req, snapshot);
+      return validateVendorSell(req, snapshot, playerSkills);
 
     case "use_item":
     case "learn_spell_from_tome":

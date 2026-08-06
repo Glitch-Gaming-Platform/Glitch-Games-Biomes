@@ -126,6 +126,9 @@ describe("Chapter 1 native browser-runner contracts", () => {
     assert.match(runner, /harthmereNativeBiomesIdForItemId/);
     assert.match(runner, /proveChapter1MaterialGuidance/);
     assert.match(runner, /bridgeCall\(first\.page, "vendorPurchase"/);
+    assert.match(runner, /const bundlePurchases = Math\.ceil/);
+    assert.match(runner, /missing \/ vendorRoute\.bundleCount/);
+    assert.match(runner, /quantity: vendorRoute\.bundleCount/);
     assert.match(runner, /chapter1UsableItemCount/);
     assert.match(runner, /harthmere_material_storage\?\.items/);
     assert.match(runner, /CH1_E2E_RETAINED_PREREQUISITE_GOLD = 75/);
@@ -134,6 +137,8 @@ describe("Chapter 1 native browser-runner contracts", () => {
     assert.match(runner, /replaceChapter1FixtureNativeGold/);
     assert.match(runner, /paid job rewards reach the native wallet/);
     assert.match(runner, /if \(step\.id === "take_jobs"\)/);
+    assert.match(runner, /CH1_GROVE_JOB_TEMPLATE_IDS\[index\]/);
+    assert.match(runner, /candidate\.templateId === templateId/);
     assert.match(runner, /if \(step\.id === "meet_the_suppliers"\)/);
     assert.match(runner, /state\.economy\.vendorTransactions/);
     assert.match(runner, /initialSupplierCount/);
@@ -222,6 +227,19 @@ describe("Chapter 1 native browser-runner contracts", () => {
     assert.match(
       fastGuide,
       /Do not make Chapter 1 steal `F` from the system that owns the evidence/
+    );
+  });
+
+  it("routes every active Chapter 1 NPC phase through story dialogue", () => {
+    assert.match(runner, /async function invokeChapter1ObjectiveInteraction/);
+    assert.match(runner, /\["talk_npc", "dialogue_choice"\]/);
+    assert.match(runner, /state\.value\.body\.targetEntityId/);
+    assert.match(runner, /kind: "talk_to_npc"/);
+    assert.match(runner, /stock\/default quest surface/);
+    assert.ok(
+      (runner.match(/invokeChapter1ObjectiveInteraction\(first, state, step\)/g) ?? [])
+        .length >= 4,
+      "normal dialogue, choices, deferrals, and special interactions must share NPC routing"
     );
   });
 
@@ -321,23 +339,13 @@ describe("Chapter 1 native browser-runner contracts", () => {
     );
   });
 
-  it("pins escort fixtures against Anima only until signed completion", () => {
-    assert.match(runner, /locked_in_place: LockedInPlace\.create\(\)/);
-    assert.match(runner, /wasLockedInPlace/);
-    assert.match(runner, /const finishResponse = async \(response\)/);
-    assert.match(runner, /Date\.now\(\) - escort\.lastApplyAt >= 2_000/);
-    assert.match(runner, /one Anima write can\s+\/\/ already be queued/);
-    assert.match(
-      runner,
-      /locked_in_place: escort\.wasLockedInPlace[\s\S]*LockedInPlace\.create\(\)[\s\S]*: null/
-    );
+  it("keeps Chapter 1 escort acceptance under Anima authority", () => {
+    assert.doesNotMatch(runner, /LockedInPlace/);
+    assert.match(runner, /completes the live escort route/);
+    assert.match(runner, /distance3\(entity\.position\.v, escort\.target\) <= 22/);
     assert.match(
       fastGuide,
-      /Temporarily lock deterministic escort fixtures, then restore them/
-    );
-    assert.match(
-      fastGuide,
-      /A committed escort lock can trail one queued move/
+      /Do not lock or teleport Chapter 1 companions for release acceptance/
     );
   });
 
@@ -484,6 +492,108 @@ describe("Chapter 1 native browser-runner contracts", () => {
       fastGuide,
       /Compare captured cutscene dialogue by authored text/
     );
+  });
+
+  it("frames every held plot item from its live mesh bounds instead of a guessed torso point", () => {
+    assert.match(runner, /heldItemWorldBounds/);
+    assert.match(runner, /itemMeshInstance\?\.three/);
+    assert.match(runner, /geometry\.computeBoundingBox\?\.\(\)/);
+    assert.match(runner, /child\.matrixWorld\?\.elements/);
+    assert.match(runner, /snapshot\.vertexCount > 0/);
+    assert.match(runner, /const reviewTarget = \[\.\.\.bounds\.value\.center\]/);
+    assert.match(runner, /const maxExtent = Math\.max\(\.\.\.bounds\.value\.size\)/);
+    assert.match(runner, /maxExtent \* 2\.35/);
+    assert.match(runner, /heldWorldBounds = bounds\.value/);
+    assert.match(runner, /heldReviewCamera/);
+    assert.match(runner, /setHeldItemDetailIsolation/);
+    assert.match(
+      runner,
+      /detail review could not isolate the live attached mesh/
+    );
+    assert.match(runner, /heldDetailIsolation/);
+    assert.match(runner, /button: "middle"/);
+    assert.match(
+      fastGuide,
+      /Frame held-item review cameras from the live attached mesh bounds/
+    );
+  });
+
+  it("does not require a world map pin when the next objective is Recovered UI", () => {
+    assert.match(runner, /const nextStepUiOwned = nextStep\.id === "open_the_tab"/);
+    assert.match(runner, /const exactNativeStep/);
+    assert.match(runner, /const correctSurface = nextStepUiOwned/);
+  });
+
+  it("requires a reused Chapter 1 quest anchor to refresh to the active step", () => {
+    const pins = read(
+      "src/client/components/biomes_ui/adapters/mapPinnedDestination.ts"
+    );
+    assert.match(pins, /const objectiveChanged/);
+    assert.match(
+      pins,
+      /input\.existingPin\?\.ownerStepId !== input\.quest\.currentStepId/
+    );
+    assert.match(pins, /const labelChanged/);
+    assert.match(pins, /const destinationChanged/);
+    assert.match(pins, /Math\.hypot\(/);
+    assert.match(pins, /ownerQuestId: input\.quest\.questId/);
+    assert.match(pins, /ownerStepId: input\.quest\.currentStepId/);
+    assert.match(runner, /const activeQuestMarker = projection\.markers\?\.find/);
+    assert.match(runner, /marker\.label === projection\.activeMapPin\?\.label/);
+    assert.match(runner, /distanceXZ\(/);
+    assert.match(
+      runner,
+      /\) <= CHAPTER1_E2E_WARP_VERTICAL_TOLERANCE_METERS/
+    );
+    assert.match(runner, /Boolean\(activeQuestMarker\)/);
+    assert.match(
+      fastGuide,
+      /A repeated quest-level marker id does not make the persisted destination\s+current/
+    );
+  });
+
+  it("releases only the failed test actor's dungeon slot before a checkpoint rerun", () => {
+    assert.match(runner, /async function releaseFailedChapter1DungeonFixture/);
+    assert.match(runner, /await releaseCh1Slot\(redis, dungeonId, partyId, actorId\)/);
+    assert.match(runner, /activeDungeonRunId: undefined/);
+    assert.match(runner, /chapter1-test-dungeon-slot-released/);
+    assert.match(runner, /if \(questScenario\.status === "fail"\)/);
+    assert.match(
+      fastGuide,
+      /Release a failed focused actor's Chapter 1 slot before launching its checkpoint\s+continuation/
+    );
+  });
+
+  it("treats a canceled unmounted quest icon as transient during the Chapter 1 campaign", () => {
+    assert.match(runner, /const abortedChapter1UnmountedQuestIcon/);
+    assert.match(runner, /chapter1Features\.has\("quests"\)/);
+    assert.match(runner, /quest-main\\\.\[a-f0-9\]\+\\\.png/);
+  });
+
+  it("allows only the canceled canonical world theme during a Chapter 1 audio transition", () => {
+    assert.match(runner, /const abortedChapter1WorldMusicTransition/);
+    assert.match(runner, /\(\?:music-1\|muck-music-1\)/);
+    assert.match(
+      runner,
+      /chapter1Features\.has\("cutscenes"\) \|\|\s+chapter1Features\.has\("quests"\)/
+    );
+    assert.match(runner, /errorText === "net::ERR_ABORTED"/);
+  });
+
+  it("runs the authored long escort through Anima instead of teleporting companions", () => {
+    assert.match(runner, /completes the live escort route/);
+    assert.match(runner, /180_000,\s+180_000/);
+    assert.match(runner, /distance3\(entity\.position\.v, escort\.target\) <= 22/);
+    assert.doesNotMatch(runner, /position: Position\.create\(\{ v: escort\.position \}\)/);
+    assert.match(
+      fastGuide,
+      /A 400-metre escort is not a 40-second interaction transition/
+    );
+  });
+
+  it("classifies the exact unsupported-extension opaque console payload only", () => {
+    assert.match(runner, /unsupportedExtensionOpaqueMessage/);
+    assert.match(runner, /\{target: X, data: 150\}/);
   });
 
   it("finishes the real containment procedure before awaiting completion", () => {

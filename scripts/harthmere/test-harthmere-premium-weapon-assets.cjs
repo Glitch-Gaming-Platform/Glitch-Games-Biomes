@@ -89,7 +89,10 @@ function parseGlb(filePath) {
 
 const manifestPath = path.join(glbRoot, "manifest.json");
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-assert.equal(manifest.version, "harthmere-premium-voxel-weapons-v1");
+assert.equal(
+  manifest.version,
+  "harthmere-premium-voxel-weapons-v2-animated-bows"
+);
 assert.equal(manifest.count, expectedIds.length);
 assert.deepEqual(
   manifest.weapons.map(({ id }) => id).sort(),
@@ -145,6 +148,33 @@ for (const weapon of manifest.weapons) {
     gltf.animations?.some(({ name }) => name === weapon.idleClip),
     `${weapon.id} exports ${weapon.idleClip}`
   );
+
+  if (weapon.builder === "bow") {
+    assert.equal(gltf.skins?.length, 1, `${weapon.id} exports one bow rig`);
+    const nodeNames = new Set(gltf.nodes?.map(({ name }) => name));
+    for (const socket of [
+      "ArrowSocket",
+      "GripSocket",
+      "LeftHandSocket",
+      "RightHandSocket",
+      "FXSocket",
+      "TrailSocket",
+    ]) {
+      assert.ok(nodeNames.has(socket), `${weapon.id} exports ${socket}`);
+    }
+    const animationNames = new Set(
+      gltf.animations?.map(({ name }) => name) ?? []
+    );
+    for (const clip of [
+      "IdleAim_24",
+      "AimDraw_24",
+      "Release_24",
+      "Recover_24",
+      "Reload_24",
+    ]) {
+      assert.ok(animationNames.has(clip), `${weapon.id} exports ${clip}`);
+    }
+  }
 }
 
 const contactSheet = path.join(previewRoot, "contact_sheet.png");
@@ -159,6 +189,14 @@ const blend = path.join(
   "src/galois/data/weapons/harthmere_premium_weapons.blend"
 );
 assert.ok(fs.statSync(blend).size >= 300000, "master Blender project saved");
+const bowBlend = path.join(
+  root,
+  "src/galois/data/weapons/harthmere_premium_bows.blend"
+);
+assert.ok(
+  fs.statSync(bowBlend).size >= 200000,
+  "animated bow Blender project saved"
+);
 
 const catalogSource = read("src/shared/harthmere/premium_weapon_catalog.ts");
 const energyCatalogSource = read(
@@ -246,7 +284,7 @@ const nativePresentationSource = read(
 );
 assert.match(
   nativePresentationSource,
-  /premiumWeapon\?\.inventoryIconUrl \?\? generatedInventoryIcon/
+  /premiumWeapon\?\.inventoryIconUrl \?\?[\s\S]*HARTHMERE_ARROW_ITEM_ID[\s\S]*hunting_arrow\.png[\s\S]*generatedInventoryIcon/
 );
 assert.match(nativePresentationSource, /galoisIcon: inventoryIcon/);
 
@@ -254,7 +292,16 @@ const hotbarSource = read(
   "src/client/components/biomes_ui/adapters/useBiomesUILiveAdapters.ts"
 );
 assert.match(hotbarSource, /equipHarthmereHotbarItem\(localItemId\)/);
-assert.match(hotbarSource, /HARTHMERE_HOTBAR_HELD_ITEM_EVENT/);
+assert.match(hotbarSource, /dispatchHarthmereHotbarHeldItemSelection/);
+assert.match(
+  hotbarSource,
+  /heldCompatibilityItemIdForSlot[\s\S]{0,900}isNativeBikkieItemId\(itemId\)[\s\S]{0,500}carriedCountForHotbarItem\(itemId\) <= 0/
+);
+const heldItemBridgeSource = read(
+  "src/client/game/resources/harthmere_held_item.ts"
+);
+assert.match(heldItemBridgeSource, /HARTHMERE_HOTBAR_HELD_ITEM_EVENT/);
+assert.match(heldItemBridgeSource, /harthmereHotbarHeldItemForAttachment/);
 
 console.log(
   `Validated ${expectedIds.length} premium Blender weapons, previews, animations, registrations, vendor routes, hotbar wiring, and held-model integration.`

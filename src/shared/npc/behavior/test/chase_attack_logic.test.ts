@@ -24,12 +24,16 @@ import {
   MIXED_CREATURE_GROUP_ALERT_RADIUS,
   NIGHT_MUCKER_HEX_MOVEMENT_MULTIPLIER,
   NPC_MELEE_STRIKE_GRACE_SECONDS,
+  RETALIATION_TARGET_ROTATION_SECONDS,
+  RETALIATION_VICINITY_RADIUS_METERS,
   HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND,
   HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
   HARTHMERE_NPC_CHASE_SPEED_STEP_UP_20,
   HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30,
   HARTHMERE_NPC_SPEED_STEP_DOWN_30,
   HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER,
+  retaliationTargetRotationIndex,
+  isRetaliationEncounterParticipant,
   shouldDropHarthmereChaseTargetForLineOfSight,
   shouldDropNpcTargetAtSafeZoneBoundary,
   type MixedCreatureGroupAlertCandidate,
@@ -766,7 +770,7 @@ describe("chase attack: mixed creature group retaliation", () => {
     }
   });
 
-  it("drops shared-alert targets at safe-zone boundaries but preserves direct retaliation", () => {
+  it("keeps active retaliation participants across safe-zone boundaries", () => {
     assert.equal(
       shouldDropNpcTargetAtSafeZoneBoundary({
         targetId: playerId,
@@ -779,6 +783,15 @@ describe("chase attack: mixed creature group retaliation", () => {
       shouldDropNpcTargetAtSafeZoneBoundary({
         targetId: playerId,
         recentDirectAttackerId: playerId,
+        targetInSafeZone: true,
+      }),
+      false
+    );
+    assert.equal(
+      shouldDropNpcTargetAtSafeZoneBoundary({
+        targetId: playerId,
+        recentDirectAttackerId: undefined,
+        activeRetaliationParticipant: true,
         targetInSafeZone: true,
       }),
       false
@@ -835,6 +848,80 @@ describe("chase attack: mixed creature group retaliation", () => {
         memorySeconds: ATTACK_MEMORY_SECONDS,
       }),
       undefined
+    );
+  });
+});
+
+describe("chase attack: multiplayer retaliation rotation", () => {
+  it("keeps the opener for one readable exchange, then advances", () => {
+    const openedAt = 100;
+    assert.equal(
+      retaliationTargetRotationIndex({
+        nowSeconds: openedAt + RETALIATION_TARGET_ROTATION_SECONDS - 0.001,
+        encounterOpenedAtSeconds: openedAt,
+      }),
+      0
+    );
+    assert.equal(
+      retaliationTargetRotationIndex({
+        nowSeconds: openedAt + RETALIATION_TARGET_ROTATION_SECONDS,
+        encounterOpenedAtSeconds: openedAt,
+      }),
+      1
+    );
+  });
+
+  it("offsets authored group responders across nearby players", () => {
+    assert.deepEqual(
+      [0, 1, 2].map((responderRank) =>
+        retaliationTargetRotationIndex({
+          nowSeconds: 100,
+          encounterOpenedAtSeconds: 100,
+          responderRank,
+        })
+      ),
+      [0, 1, 2]
+    );
+  });
+
+  it("uses a bounded local encounter radius", () => {
+    assert.equal(RETALIATION_VICINITY_RADIUS_METERS, 18);
+  });
+
+  it("includes an active NPC escort but excludes unrelated nearby NPCs", () => {
+    const encounterNpcId = 100 as BiomesId;
+    const openerId = 200 as BiomesId;
+    const escortId = 300 as BiomesId;
+    assert.equal(
+      isRetaliationEncounterParticipant({
+        participantId: escortId,
+        encounterNpcId,
+        openerId,
+        isPlayer: false,
+        isNpc: true,
+        npcAttackTarget: encounterNpcId,
+      }),
+      true
+    );
+    assert.equal(
+      isRetaliationEncounterParticipant({
+        participantId: escortId,
+        encounterNpcId,
+        openerId,
+        isPlayer: false,
+        isNpc: true,
+      }),
+      false
+    );
+    assert.equal(
+      isRetaliationEncounterParticipant({
+        participantId: openerId,
+        encounterNpcId,
+        openerId,
+        isPlayer: false,
+        isNpc: true,
+      }),
+      true
     );
   });
 });

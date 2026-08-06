@@ -301,6 +301,10 @@ RUN rm -rf /home/nextjs/.cache/bazel /home/nextjs/.cache/bazelisk /home/nextjs/.
 
 COPY --chown=nextjs:nodejs snapshot_backup.json snapshot_backup.json
 COPY --chown=nextjs:nodejs .env* *.js package.json package-lock.json tsconfig*.json yarn.lock ./
+# next.config.js loads this production compression policy at server startup.
+# Keep the runtime module beside the root config files or the immutable image
+# can compile successfully but fail before binding the web port.
+COPY --chown=nextjs:nodejs config/http_compression.cjs config/http_compression.cjs
 COPY --chown=nextjs:nodejs Dockerfile.biomes Dockerfile.biomes
 # Keep large public asset families in separate layers. A single COPY public/
 # layer is currently ~2.5GB, so touching one asset family forces an expensive

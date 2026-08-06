@@ -83,6 +83,29 @@ export class Exporter {
     return { extension: "ts", data: wrapper.data };
   }
 
+  // HARTHMERE_ASSET_JSON_FORMATTING (2026-08-04 asset loading audit)
+  //
+  // This is the fallback for every asset kind that is not Binary/PNG/GLTF/GLB/
+  // WEBM/source -- notably `ItemMesh` and the block/flora/glass atlases, whose
+  // payloads are base64 blobs inside JSON.
+  //
+  // The audit initially proposed dropping the `null, 2` pretty-printing as a
+  // free size win. Measured on the shipped index, it is not: a 250-file sample
+  // of `asset_data/item_meshes` is 19.38 MB pretty vs 19.35 MB compact (0.15%),
+  // and identical to the kilobyte after gzip, because these documents are
+  // dominated by one very long base64 string rather than by structure. Only
+  // `mapping/index.json` benefits materially (1107 KB -> 876 KB raw, 43 KB ->
+  // 41 KB gzipped).
+  //
+  // Reformatting is not free either: JSON payloads are content-hashed, so it
+  // would rename and re-upload all 742 JSON objects and make every future
+  // published diff unreadable. Keep the indentation.
+  //
+  // The base64 transfer penalty this format implies is also largely recovered by
+  // HTTP compression (see config/http_compression.cjs): the same sample is
+  // 5.47 MB gzipped either way. What remains is main-thread *decode* cost
+  // (JSON.parse of a multi-MB document, then base64 -> bytes), which is a client
+  // scheduling problem, not a serialization-format problem.
   private async exportJson(asset: l.Asset) {
     const data = await this.builder.buildUntyped(asset);
     return { extension: "json", data: JSON.stringify(data, null, 2) };

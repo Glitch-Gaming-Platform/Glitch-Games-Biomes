@@ -15,6 +15,7 @@ import {
   HARTHMERE_BOSS_BATTLE_MUSIC_PATH,
   HARTHMERE_BUSINESS_MINIGAME_MUSIC_PATH,
   HARTHMERE_EXPLORATION_MUSIC_PATH,
+  LEGACY_PROTECTED_AREA_MUSIC_PATHS,
   resolveAudioUrl,
 } from "@/client/game/resources/audio";
 import type { ClientResources } from "@/client/game/resources/types";
@@ -22,13 +23,19 @@ import { emptyCutsceneUiState } from "@/client/game/resources/cutscene";
 import {
   AudioScript,
   COMBAT_MUSIC_DAMAGE_GRACE_SECONDS,
-  MOUNTAIN_WIND_AUDIO_PATH,
   GROVE_MUSIC_REGION_BOUNDS,
+  LEGACY_LARGE_PROTECTED_AREA_MIN_HORIZONTAL_BLOCKS,
+  LEGACY_LARGE_PROTECTED_AREA_NAMES,
+  LEGACY_PROTECTED_AREA_MUSIC_TRACKS,
+  MOUNTAIN_WIND_AUDIO_PATH,
   healthIndicatesRecentCombatDamage,
+  legacyProtectedAreaMusicTrack,
+  legacyProtectedAreaNameForOwner,
   selectBackgroundMusicTrack,
   shouldPlayMountainWind,
 } from "@/client/game/scripts/audio";
 import { getAudioAssetPaths } from "@/galois/assets/audio";
+import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import { ch1ElsewhenSlot } from "@/shared/harthmere/ch1_elsewhen_region";
 import {
   HARTHMERE_BOSS_MUSIC_ENTITY_IDS,
@@ -42,6 +49,7 @@ import path from "path";
 
 const PLAYER_ID = 101 as BiomesId;
 const OTHER_PLAYER_ID = 202 as BiomesId;
+const LEGACY_PROTECTION_OWNER_ID = 303 as BiomesId;
 let nextNpcId = 1000;
 
 type TestHealth = {
@@ -98,9 +106,11 @@ function audioHarness() {
   let mediaVolume = 1;
   let activeMinigame = false;
   let backgroundMusicOverride: AudioTrackType | undefined;
-  let playerPos: [number, number, number] = [0, 0, 0];
+  let playerPos: [number, number, number] = [0, 53, 0];
   let npcs: ReturnType<typeof npc>[] = [];
   let audioSources: TestAudioSource[] = [];
+  let legacyProtectionOwner: ReadonlyEntity | undefined;
+  let legacyProtectionFields: ReadonlyEntity[] = [];
   const tracks: AudioTrackType[] = [];
   const attenuations: number[] = [];
   const effects: string[] = [];
@@ -145,6 +155,9 @@ function audioHarness() {
       if (id === PLAYER_ID) {
         return { id: PLAYER_ID, health: playerHealth };
       }
+      if (id === LEGACY_PROTECTION_OWNER_ID) {
+        return legacyProtectionOwner;
+      }
       return npcs.find((candidate) => candidate.id === id);
     },
     scan(query: unknown) {
@@ -154,6 +167,9 @@ function audioHarness() {
       }
       if (index === "npc_metadata_selector") {
         return npcs;
+      }
+      if (index === "protection") {
+        return legacyProtectionFields;
       }
       throw new Error(`Unexpected table query ${String(index)}`);
     },
@@ -238,6 +254,34 @@ function audioHarness() {
     setAudioSources(value: TestAudioSource[]) {
       audioSources = value;
     },
+    setLegacyProtectedArea(
+      areaName: string | undefined,
+      options: { userOwned?: boolean; landmark?: boolean } = {}
+    ) {
+      if (!areaName) {
+        legacyProtectionOwner = undefined;
+        legacyProtectionFields = [];
+        return;
+      }
+      legacyProtectionOwner = {
+        id: LEGACY_PROTECTION_OWNER_ID,
+        label: { text: areaName },
+        landmark:
+          options.landmark === false
+            ? undefined
+            : { override_name: areaName, importance: 1 },
+        projects_protection: { size: [128, 96, 128] },
+        created_by: options.userOwned
+          ? { id: OTHER_PLAYER_ID, created_at: 0 }
+          : undefined,
+      } as unknown as ReadonlyEntity;
+      legacyProtectionFields = [
+        {
+          id: 404 as BiomesId,
+          created_by: { id: LEGACY_PROTECTION_OWNER_ID, created_at: 0 },
+        } as ReadonlyEntity,
+      ];
+    },
   };
 }
 
@@ -284,6 +328,7 @@ describe("combat background music", () => {
       HARTHMERE_EXPLORATION_MUSIC_PATH,
       CH1_SAND_DUNGEON_MUSIC_PATH,
       CH1_WINTER_DUNGEON_MUSIC_PATH,
+      ...Object.values(LEGACY_PROTECTED_AREA_MUSIC_PATHS),
     ]) {
       assert.equal(resolveAudioUrl(musicPath), musicPath);
       assert.equal(
@@ -293,6 +338,51 @@ describe("combat background music", () => {
         true
       );
     }
+  });
+
+  it("assigns only the audited large legacy protected areas to tracks 01-04", () => {
+    assert.equal(LEGACY_LARGE_PROTECTED_AREA_MIN_HORIZONTAL_BLOCKS, 128 * 96);
+    const auditedAreas = new Set<string>(LEGACY_LARGE_PROTECTED_AREA_NAMES);
+    for (const areaName of [
+      "Clodhopper Cabins",
+      "Brickleberry Farms",
+      "Rolland Pond",
+      "Doc's Dock",
+    ]) {
+      assert.ok(auditedAreas.has(areaName));
+      const track = legacyProtectedAreaMusicTrack(areaName);
+      assert.ok(track && LEGACY_PROTECTED_AREA_MUSIC_TRACKS.includes(track));
+    }
+    assert.equal(legacyProtectedAreaMusicTrack("Mucky Caves"), undefined);
+    assert.equal(legacyProtectedAreaMusicTrack("Admin Bot"), undefined);
+    assert.equal(legacyProtectedAreaMusicTrack("The Grove"), undefined);
+    assert.equal(
+      legacyProtectedAreaMusicTrack("small player claim"),
+      undefined
+    );
+    assert.equal(
+      new Set(
+        LEGACY_LARGE_PROTECTED_AREA_NAMES.map((name) =>
+          legacyProtectedAreaMusicTrack(name)
+        )
+      ).size,
+      4,
+      "the seeded assignment should use every non-battle theme"
+    );
+    assert.equal(
+      legacyProtectedAreaMusicTrack("Rolland Pond"),
+      legacyProtectedAreaMusicTrack("Rolland Pond"),
+      "an area's random assignment must remain stable across visits"
+    );
+    assert.equal(
+      legacyProtectedAreaNameForOwner({
+        id: LEGACY_PROTECTION_OWNER_ID,
+        landmark: { override_name: "Rolland Pond", importance: 1 },
+        created_by: { id: OTHER_PLAYER_ID, created_at: 0 },
+      } as ReadonlyEntity),
+      undefined,
+      "player-owned robots cannot spoof a legacy area's theme"
+    );
   });
 
   it("gives combat and dungeons priority while caves replace the Muck bed", () => {
@@ -354,6 +444,79 @@ describe("combat background music", () => {
     );
   });
 
+  it("uses a large legacy area's assigned exploration theme and preserves higher-priority cues", () => {
+    const theme = legacyProtectedAreaMusicTrack("Rolland Pond");
+    assert.ok(theme);
+    assert.equal(
+      selectBackgroundMusicTrack(
+        0,
+        false,
+        [496, 71, -126],
+        false,
+        false,
+        false,
+        theme
+      ),
+      theme,
+      "the protected-area theme replaces the ordinary Grove/world bed"
+    );
+    assert.equal(
+      selectBackgroundMusicTrack(
+        0,
+        true,
+        [496, 71, -126],
+        false,
+        false,
+        false,
+        theme
+      ),
+      "battle_music"
+    );
+    assert.equal(
+      selectBackgroundMusicTrack(
+        0,
+        false,
+        [496, 71, -126],
+        false,
+        true,
+        false,
+        theme
+      ),
+      "cave_music"
+    );
+    assert.equal(
+      selectBackgroundMusicTrack(
+        1,
+        false,
+        [496, 71, -126],
+        false,
+        false,
+        false,
+        theme
+      ),
+      "muck_music"
+    );
+  });
+
+  it("switches to the assigned theme on protection entry and restores world music on exit", () => {
+    const harness = audioHarness();
+    const rollandTheme = legacyProtectedAreaMusicTrack("Rolland Pond");
+    assert.ok(rollandTheme);
+
+    harness.setLegacyProtectedArea("Rolland Pond");
+    harness.script.tick(0);
+
+    harness.setLegacyProtectedArea(undefined);
+    harness.setPlayerPos([1, 53, 0]);
+    harness.script.tick(0);
+
+    harness.setLegacyProtectedArea("Rolland Pond", { userOwned: true });
+    harness.setPlayerPos([2, 53, 0]);
+    harness.script.tick(0);
+
+    assert.deepEqual(harness.tracks, [rollandTheme, "music", "music"]);
+  });
+
   it("uses cave music for authored caves and restores it after combat", () => {
     const harness = audioHarness();
     harness.setPlayerPos([689.481, 47, -89.532]);
@@ -370,6 +533,15 @@ describe("combat background music", () => {
       "battle_music",
       "cave_music",
     ]);
+  });
+
+  it("uses cave music below the regional Y cutoffs without terrain probes", () => {
+    const harness = audioHarness();
+    harness.setPlayerPos([0, 19, 0]);
+
+    harness.script.tick(0);
+
+    assert.deepEqual(harness.tracks, ["cave_music"]);
   });
 
   it("suppresses cave replacement while a minigame owns the play session", () => {
@@ -510,7 +682,7 @@ describe("combat background music", () => {
     );
     assert.equal(
       selectBackgroundMusicTrack(1, false, [496, 71, -126]),
-      "muck_music"
+      "grove_music"
     );
   });
 
@@ -801,7 +973,7 @@ describe("combat background music", () => {
     harness.script.tick(0);
     harness.setNpcs([]);
     harness.script.tick(0);
-    harness.setPlayerPos([0, 0, 0]);
+    harness.setPlayerPos([0, 53, 0]);
     harness.script.tick(0);
 
     assert.deepEqual(harness.tracks, [

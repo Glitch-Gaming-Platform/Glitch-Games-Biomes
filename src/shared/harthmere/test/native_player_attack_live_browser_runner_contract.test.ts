@@ -73,16 +73,29 @@ describe("native player-attack live-browser runner contract", () => {
       "collideable blocker prevents through-wall hit",
       "melee target leaving before impact is not hit",
       "melee windup cannot transfer to a replacement target",
-      "actual hotbar switch cancels pending melee impact",
+      "hotbar switch preserves pending melee impact and replaces the attached item once",
       "dead native target cannot be attacked",
       "protected native target cannot be attacked",
       "health-backed entity without npc metadata is not promised as a hit",
       "nearest collinear target alone receives melee damage",
-      "rapid double click produces one committed hit",
+      "rapid double click queues exactly one committed follow-up hit",
+      "holding primary commits one 50-percent-stronger 30-percent-slower heavy attack",
+      "four authored swings chain once then enforce the three-second combo cooldown",
+      "second cow pressed during recovery receives the queued next attack",
+      "out-of-range buffered cow yields to the current valid second cow",
+      "selected hotbar item is the sole hand attachment with no trailing sword",
+      "selected mining tool uses its own visual on the combat attack path",
+      "dodge input flows directly into a damaging attack",
+      "evade input flows directly into a damaging attack",
+      "jump input permits an immediate visible damaging attack",
+      "double jump buffers into an airborne hit and lands without cancelling it",
+      "dodge can repeat at the exact half-second cooldown",
+      "evade can repeat at the exact half-second cooldown",
       "ranged real input retains launch target and renders projectile",
       "ranged miss still renders a projectile without damaging off-axis target",
       "magic real input shows charge projectile and authoritative hit",
       "actual hotbar switch cancels visible magic charge and damage",
+      "inventory Drop 1 Destroy and Drop All mutate authoritative items",
     ];
     for (const scenario of requiredScenarios) {
       assert.ok(
@@ -91,6 +104,15 @@ describe("native player-attack live-browser runner contract", () => {
       );
     }
     assert.match(source, /runProjectileCatalog\(page\)/);
+    assert.match(source, /orientationToward/);
+    assert.match(source, /persistent NPC cannot steal the crosshair/);
+    assert.match(source, /harthmereBackpackArrowCount/);
+    assert.match(
+      source,
+      /one paid bow release must consume exactly one backpack arrow/
+    );
+    assert.match(source, /__nativePlayerAttackProjectileEvents/);
+    assert.match(source, /arrowLaunchEvent/);
   });
 
   it("persists screenshots and authoritative reports for failures and passes", () => {
@@ -99,6 +121,25 @@ describe("native player-attack live-browser runner contract", () => {
     assert.match(source, /row\.screenshots\.failure/);
     assert.match(source, /combatPassed/);
     assert.match(source, /catalogPassed/);
+    assert.match(source, /combat baseline remained below 30 FPS/);
+    assert.match(source, /medianEffectiveDrawDistance/);
+    assert.match(source, /medianRequestedDynamicDrawDistance/);
+    assert.match(source, /report\.browser\.failures\.push/);
+    assert.doesNotMatch(
+      source,
+      /assert\(\s*Number\(report\.performance\.baseline\.medianFps/
+    );
+  });
+
+  it("does not let audit I/O or replication echoes manufacture timing failures", () => {
+    assert.match(source, /Screenshots are intentionally deferred/);
+    assert.match(source, /await capture\("four-hits"\)/);
+    assert.match(source, /replicatedMovementState\?\.startTime/);
+    assert.match(source, /authority accepted a repeat before 0\.5 seconds/);
+    assert.match(
+      source,
+      /locator\.evaluate\(\(element\) => element\.click\(\)\)/
+    );
   });
 
   it("waits for deleted fixtures to leave authority, local ECS, and the cursor", () => {

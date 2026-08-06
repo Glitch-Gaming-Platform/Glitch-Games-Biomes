@@ -9,3 +9,28 @@ Dockerfile.glitch.dockerignore
 node_modules/.cache
 node_modules
 node_modules/**
+
+# HARTHMERE_IMAGE_ASSET_TRIM (2026-08-04 asset loading audit, finding 12)
+#
+# Upstream Biomes marketing media: 344 MB of trailer and hero video that no
+# module under src/ references. Verified by
+# src/client/test/image_asset_trim.test.ts, which fails if any of these paths
+# becomes reachable from the application again.
+#
+#   trailer-4k.mp4   134.8 MB     hero-video.mov  66.8 MB (a ProRes-era source
+#   trailer-4k.webm   84.3 MB     hero-video.mp4  58.9 MB  next to its own
+#                                                           export)
+#
+# They were copied into every production image (Dockerfile.biomes, the
+# `COPY public/splash/` layer), so they were paid for on every image pull and
+# every container start, and they inflated the context of every `docker build`.
+# The files stay in the repository; they are simply not shipped in the runtime
+# image.
+#
+# The referenced splash assets -- home-bg.png, biomes-logo.png, b-logo.png,
+# biomes.svg, black.png, trailer-poster.png, 404.png, hero-bg*.png and the rest
+# -- are NOT excluded and must not be.
+public/splash/trailer-4k.mp4
+public/splash/trailer-4k.webm
+public/splash/hero-video.mov
+public/splash/hero-video.mp4

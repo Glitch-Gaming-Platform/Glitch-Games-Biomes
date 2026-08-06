@@ -3,6 +3,7 @@ import {
   HARTHMERE_SEED_DEFINITIONS,
 } from "@/shared/harthmere/mmo_farming_food_stamina";
 import { HARTHMERE_SKILL_XP_PER_LEVEL } from "@/shared/harthmere/mmo_class_ability_collectibles";
+import { harthmereSublevelPotencyMultiplier } from "@/shared/harthmere/harthmere_sublevel_benefits";
 
 export const HARTHMERE_CARE_LOOPS_VERSION = "harthmere-care-loops" as const;
 export const HARTHMERE_CARE_LOOP_DAY_MS = 24 * 60 * 60 * 1000;
@@ -81,6 +82,9 @@ export interface HarthmereCareLoopState {
       count: number;
       lastAtMs: number;
       lastRequestId: string;
+      actionDurationMs?: number;
+      toolDurabilityCost?: number;
+      successChance?: number;
     }
   >;
 }
@@ -96,6 +100,7 @@ export interface HarthmereCareLoopRequest {
   season?: HarthmereSeason;
   inventory?: Record<string, number>;
   actorLevel?: number;
+  careLevel?: number;
 }
 
 export interface HarthmereCareLoopResult {
@@ -408,6 +413,10 @@ export function reduceHarthmereCareLoop(
     request.actorId,
     request.nowMs
   );
+  const carePotency = harthmereSublevelPotencyMultiplier(
+    request.careLevel ?? care.skills.care?.level ?? 1
+  );
+  const careImpact = (base: number) => base * carePotency;
 
   if (request.operation === "daily_task_completed") {
     const activity = targetId || "check_in";
@@ -498,7 +507,7 @@ export function reduceHarthmereCareLoop(
       },
     };
     const [need, delta] = needBump[activity] ?? ["happiness", 1];
-    care = bumpNeed(care, need, delta);
+    care = bumpNeed(care, need, careImpact(delta));
     care = addSkillXp(care, "care", xpReward);
     return result(
       care,
@@ -524,7 +533,7 @@ export function reduceHarthmereCareLoop(
         ["care_rejected:npc_already_talked_today"],
         ["care_npc_rejection"]
       );
-    const relationship = memory.relationship + 3;
+    const relationship = memory.relationship + careImpact(3);
     const unlocked =
       relationship >= 10 && !memory.unlockedDialogue.includes("trust_1")
         ? ["trust_1"]
@@ -581,7 +590,8 @@ export function reduceHarthmereCareLoop(
     const liked = (HARTHMERE_CARE_NPC_PREFERENCES[targetId] ?? []).includes(
       request.itemId
     );
-    const relationship = memory.relationship + (liked ? 10 : 2);
+    const relationship =
+      memory.relationship + (liked ? careImpact(10) : 2);
     const unlocked = [
       ...(relationship >= 10 && !memory.unlockedDialogue.includes("trust_1")
         ? ["trust_1"]
@@ -656,7 +666,7 @@ export function reduceHarthmereCareLoop(
         },
       },
       project.projectId.includes("food") ? "food" : "happiness",
-      completed ? 12 : 5
+      careImpact(completed ? 12 : 5)
     );
     return result(
       care,
@@ -684,7 +694,7 @@ export function reduceHarthmereCareLoop(
     care = bumpNeed(
       addSkillXp(care, isFood ? "cooking" : "trading", count * 8),
       isFood ? "food" : "happiness",
-      isFood ? count : 1
+      careImpact(isFood ? count : 1)
     );
     return result(
       care,
@@ -773,7 +783,7 @@ export function reduceHarthmereCareLoop(
         },
       },
       "happiness",
-      4
+      careImpact(4)
     );
     return result(
       care,
@@ -806,7 +816,11 @@ export function reduceHarthmereCareLoop(
 
   if (request.operation === "town_life_help") {
     const need = targetId || "happiness";
-    care = bumpNeed(addSkillXp(care, "community", 10), need, 6);
+    care = bumpNeed(
+      addSkillXp(care, "community", 10),
+      need,
+      careImpact(6)
+    );
     return result(
       care,
       [],

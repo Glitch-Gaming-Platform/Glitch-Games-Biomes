@@ -12,6 +12,9 @@ describe("ShortcutsHUD gameplay movement focus recovery", () => {
     );
     assert.equal(biomesUITabForKeyboardCodeForTest("KeyJ"), "quests");
     assert.equal(biomesUITabForKeyboardCodeForTest("KeyG"), "guilds");
+    assert.equal(biomesUITabForKeyboardCodeForTest("KeyB"), "banking");
+    assert.equal(biomesUITabForKeyboardCodeForTest("KeyQ"), undefined);
+    assert.equal(biomesUITabForKeyboardCodeForTest("KeyE"), undefined);
     assert.equal(
       biomesUITabForKeyboardCodeForTest("KeyG", true),
       undefined,
@@ -27,8 +30,8 @@ describe("ShortcutsHUD gameplay movement focus recovery", () => {
       "ShiftLeft",
       "ShiftRight",
       "KeyZ",
-      "KeyX",
-      "KeyC",
+      "KeyE",
+      "KeyQ",
     ]) {
       assert.equal(
         shortcutsHUDHandlesKeyForModeForTest(code, true),
@@ -36,10 +39,10 @@ describe("ShortcutsHUD gameplay movement focus recovery", () => {
         `${code} must still reach the pointer-lock recovery path`
       );
     }
-    for (const code of ["KeyE", "KeyI", "KeyM", "KeyV", "KeyO"]) {
+    for (const code of ["KeyI", "KeyM", "KeyV", "KeyO"]) {
       assert.equal(shortcutsHUDHandlesKeyForModeForTest(code, true), false);
     }
-    assert.equal(shortcutsHUDHandlesKeyForModeForTest("KeyE", false), true);
+    assert.equal(shortcutsHUDHandlesKeyForModeForTest("KeyB", false), true);
   });
 
   it("relocks gameplay when movement starts from an unfocused empty game view", () => {
@@ -75,7 +78,7 @@ describe("ShortcutsHUD gameplay movement focus recovery", () => {
   });
 
   it("relocks gameplay for crouch, dodge, and evade", () => {
-    for (const code of ["KeyZ", "KeyX", "KeyC"]) {
+    for (const code of ["KeyZ", "KeyE", "KeyQ"]) {
       assert.equal(
         shouldFocusAndLockForGameplayMovementKey({
           code,

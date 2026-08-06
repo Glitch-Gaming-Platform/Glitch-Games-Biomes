@@ -91,6 +91,22 @@ describe("mobile gameplay control wiring", () => {
     );
   });
 
+  it("defers mobile music until a real document touch without changing desktop unlock", () => {
+    const view = read("src/client/components/BiomesView.tsx");
+    assert.ok(view.includes("if (!clientConfig.mobileDevice)"));
+    assert.ok(view.includes("const resumeMobileAudio = () =>"));
+    assert.ok(
+      view.includes(
+        'document.addEventListener(\n        "touchstart",\n        resumeMobileAudio'
+      )
+    );
+    assert.ok(
+      view.includes(
+        'document.removeEventListener(\n        "touchstart",\n        resumeMobileAudio'
+      )
+    );
+  });
+
   it("suppresses the Enter Game pointer-lock overlay in joystick mode", () => {
     const menu = read("src/client/components/EscGameMenu.tsx");
     assert.ok(menu.includes("clientConfig.showVirtualJoystick"));
@@ -119,6 +135,13 @@ describe("mobile gameplay control wiring", () => {
       prompt.includes("export function useBiomesUINonGameplayScreenVisible()")
     );
     assert.ok(joystick.includes("useBiomesUINonGameplayScreenVisible"));
+    assert.ok(joystick.includes("MOBILE_CONTROLS_HIDE_FOR_GAME_MODAL"));
+    assert.ok(joystick.includes('reactResources.use("/game_modal")'));
+    assert.ok(
+      joystick.includes(
+        'clientConfig.mobileDevice && gameModal.kind !== "empty"'
+      )
+    );
     assert.ok(
       joystick.includes("clientConfig.mobileDevice && nonGameplayScreenVisible")
     );
@@ -164,6 +187,15 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(characterCss.includes("min-height: 44px !important"));
   });
 
+  it("keeps all coarse-pointer dialog actions at an iOS-safe touch size", () => {
+    const hud = read("src/client/styles/hud.css");
+    assert.ok(hud.includes("MOBILE_DIALOG_TOUCH_TARGETS"));
+    assert.ok(hud.includes("@media (hover: none) and (pointer: coarse)"));
+    assert.ok(hud.includes(".button.dialog-button.xl"));
+    assert.ok(hud.includes("min-height: 44px;"));
+    assert.ok(hud.includes("font-size: max(16px, var(--font-size-large));"));
+  });
+
   it("adds directional double-tap evade plus contained crouch and jump controls", () => {
     const joystick = read("src/client/components/JoystickInput.tsx");
     const input = read("src/client/game/context_managers/input.ts");
@@ -195,7 +227,7 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(joystick.includes('window.addEventListener("popstate"'));
     assert.ok(joystick.includes("window.history.pushState"));
     assert.ok(hud.includes("padding-left: max(24px"));
-    assert.ok(hud.includes("bottom: max(76px"));
+    assert.ok(hud.includes("bottom: max(40px"));
     assert.ok(hud.includes("align-items: flex-start"));
     assert.ok(input.includes("setSyntheticAction"));
     assert.ok(player.includes("MOBILE_JOYSTICK_CROUCH_SOURCE"));
@@ -247,10 +279,32 @@ describe("mobile gameplay control wiring", () => {
       "src/client/components/biomes_ui/BiomesUIOpenPrompt.tsx"
     );
     const ui = read("src/client/components/biomes_ui/BiomesUI.tsx");
+    const shop = read(
+      "src/client/components/inventory/BiomesUIShopChrome.tsx"
+    );
+    const crafting = read(
+      "src/client/components/inventory/crafting/GeneralCraftingStationScreen.tsx"
+    );
+    const invite = read(
+      "src/client/components/system/PlayerInviteModal.tsx"
+    );
+    const textSign = read("src/client/components/TextSignConfigureModal.tsx");
 
     assert.ok(prompt.includes("clientConfig.showVirtualJoystick"));
     assert.ok(ui.includes("const phoneLayout = clientConfig.mobileDevice"));
     assert.ok(ui.includes("zIndex: phoneLayout ? 5 : undefined"));
+    assert.ok(ui.includes("MOBILE_BIOMES_UI_CLOSE_TOUCH"));
+    assert.ok(ui.includes("containMobileControlEvent(event)"));
+    assert.ok(ui.includes("if (event.detail !== 0)"));
+    assert.ok(shop.includes("MOBILE_BIOMES_UI_SHOP_CLOSE_TOUCH"));
+    assert.ok(shop.includes("if (!mobile)"));
+    assert.ok(crafting.includes("mobile={clientConfig.mobileDevice}"));
+    assert.ok(invite.includes("MOBILE_PLAYER_INVITE_CLOSE_TOUCH"));
+    assert.ok(invite.includes('aria-label="Close invite"'));
+    assert.ok(ui.includes("mobile={phoneLayout}"));
+    assert.ok(textSign.includes("MOBILE_TEXT_SIGN_CLOSE_TOUCH"));
+    assert.ok(textSign.includes("clientConfig.mobileDevice"));
+    assert.ok(textSign.includes('event.pointerType !== "touch"'));
     assert.ok(prompt.includes('data-biomes-mobile-menu="true"'));
     assert.ok(prompt.includes('data-biomes-mobile-action="menu"'));
     assert.ok(prompt.includes('data-biomes-mobile-action="recipes"'));
@@ -306,8 +360,22 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(
       joystick.includes('invokeSelectedWorldInteractionForKey("KeyF")')
     );
+    assert.ok(joystick.includes("interactPointerIdRef"));
+    assert.ok(joystick.includes("setPointerCapture?.(event.pointerId)"));
+    assert.ok(
+      joystick.includes(
+        "event.currentTarget.setPointerCapture?.(event.pointerId);\n            // An interaction candidate can disappear"
+      )
+    );
+    assert.ok(
+      joystick.includes(
+        '// hold, so invoke while the selected candidate is still present.\n            invokeSelectedWorldInteractionForKey("KeyF");'
+      )
+    );
     assert.ok(hud.includes(".joysticks--mobile .mobile-interact-button"));
-    assert.ok(hud.includes("env(safe-area-inset-right)"));
+    assert.ok(hud.includes("top: 50%;"));
+    assert.ok(hud.includes("left: 50%;"));
+    assert.ok(hud.includes("transform: translate(-50%, -50%);"));
   });
 
   it("uses a compact one-row phone vitals strip without changing desktop", () => {
@@ -342,18 +410,63 @@ describe("mobile gameplay control wiring", () => {
     );
   });
 
-  it("keeps phone menu actions horizontal and clear of movement controls", () => {
+  it("stacks compact phone menu actions flush with vitals and moves controls into the objective row", () => {
     const prompt = read(
       "src/client/components/biomes_ui/BiomesUIOpenPrompt.tsx"
     );
+    const objective = read(
+      "src/client/components/biomes_ui/CurrentQuestObjectiveHUD.tsx"
+    );
+    const joystick = read("src/client/components/JoystickInput.tsx");
     const theme = read(
       "src/client/components/biomes_ui/theme/biomesUITheme.ts"
     );
+    const hud = read("src/client/styles/hud.css");
     assert.ok(prompt.includes("biomes-ui-mobile-menu__label"));
     assert.ok(theme.includes(".biomes-ui-mobile-menu--phone {"));
-    assert.ok(theme.includes("flex-direction: row;"));
-    assert.ok(theme.includes("width: 44px;"));
-    assert.ok(theme.includes("width: min(49vw, 320px);"));
+    assert.ok(theme.includes("flex-direction: column;"));
+    assert.ok(theme.includes("+ min(46vw, 190px) + 2px"));
+    assert.ok(theme.includes("width: 38px;"));
+    assert.ok(objective.includes("mobileCollapsed"));
+    assert.ok(objective.includes("data-biomes-mobile-objective-collapsed"));
+    assert.ok(objective.includes("aria-expanded={!mobileCollapsed}"));
+    assert.ok(
+      theme.includes("top: calc(max(8px, env(safe-area-inset-top)) + 126px);")
+    );
+    assert.ok(hud.includes("bottom: max(40px"));
+    assert.ok(hud.includes("bottom: 76px;"));
+    assert.ok(joystick.includes("mobileJoystickResponsivePositionForTest"));
+  });
+
+  it("keeps the short landscape phone HUD compact and clear of the safe-area edges", () => {
+    const theme = read(
+      "src/client/components/biomes_ui/theme/biomesUITheme.ts"
+    );
+    const hud = read("src/client/styles/hud.css");
+
+    assert.ok(theme.includes("MOBILE_PHONE_LANDSCAPE_HUD"));
+    assert.ok(
+      theme.includes("@media (max-height: 500px) and (orientation: landscape)")
+    );
+    assert.ok(
+      theme.includes("left: max(8px, env(safe-area-inset-left));")
+    );
+    assert.ok(theme.includes("width: 186px;"));
+    assert.ok(
+      theme.includes(
+        "left: calc(max(8px, env(safe-area-inset-left)) + 232px);"
+      )
+    );
+    assert.ok(theme.includes("width: min(34vw, 280px);"));
+    assert.ok(
+      theme.includes("right: max(8px, env(safe-area-inset-right));")
+    );
+    assert.ok(hud.includes("MOBILE_PHONE_LANDSCAPE_CONTROLS"));
+    assert.ok(
+      hud.includes(
+        "bottom: max(22px, calc(env(safe-area-inset-bottom) + 10px));"
+      )
+    );
   });
 
   it("prevents repeated phone client mounts from reserving WASM more than once", () => {
@@ -394,6 +507,14 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(ui.includes("biomes-ui-hotbar-hud--mobile"));
     assert.ok(ui.includes("data-biomes-mobile-hotbar"));
     assert.ok(hotbar.includes('mobile ? "pan-x" : undefined'));
+    assert.ok(hotbar.includes("mobileSlotsRef"));
+    assert.ok(hotbar.includes("data-biomes-mobile-hotbar-slot"));
+    assert.ok(hotbar.includes("slotsElement.scrollTo"));
+    assert.ok(hotbar.includes("MOBILE_HOTBAR_TOUCH_SELECT"));
+    assert.ok(hotbar.includes("mobileSlotTapRef"));
+    assert.ok(hotbar.includes("Math.hypot("));
+    assert.ok(hotbar.includes("onSelect(tap.slot)"));
+    assert.ok(hotbar.includes("if (mobile && event.detail !== 0)"));
     assert.ok(theme.includes(".biomes-ui-hotbar-hud--mobile"));
     assert.ok(
       theme.includes(

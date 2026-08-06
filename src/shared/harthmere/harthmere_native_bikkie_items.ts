@@ -61,6 +61,7 @@ import {
 import { harthmereGeneratedInventoryIconUrl } from "@/shared/harthmere/generated/harthmere_inventory_icon_manifest";
 import { harthmereBusinessFurnitureAsset } from "@/shared/harthmere/generated/harthmere_business_furniture_manifest";
 import { harthmereOriginalInventoryIconUrl } from "@/shared/harthmere/original_inventory_icons";
+import { HARTHMERE_ARROW_ITEM_ID } from "@/shared/harthmere/harthmere_ranged_resources";
 
 /**
  * Existing snapshot biscuits may donate presentation data to an exact
@@ -144,7 +145,38 @@ const HARTHMERE_NATIVE_PRESENTATION_SOURCE_IDS: Readonly<
   beacon_attuner: BikkieIds.muckBuster,
   carving_cleaver: BikkieIds.axe,
   hearth_broom: BikkieIds.muckBuster,
+  hunting_arrow: BikkieIds.muckBuster,
+  // Chapter 1 inventory art is exact Blender-rendered 2D work. These donors
+  // supply only held/dropped world presentation so every plot item remains
+  // recognizable outside the inventory instead of falling back to the
+  // procedural missing-mesh cube.
+  item_ch1_breakfast_tea: BikkieIds.coffee,
+  item_grey_card: BikkieIds.recipePaper,
+  item_augur9_core_cell: BikkieIds.powerCell,
+  item_bulls_core: BikkieIds.powerCell,
+  item_jackies_tin: BikkieIds.bucket,
+  item_ch1_compound_a: BikkieIds.powerCell,
+  item_ch1_compound_b: BikkieIds.powerCell,
+  item_lou_case_notes: BikkieIds.recipePaper,
+  item_first_grain: BikkieIds.coffeeSeed,
+  item_iris_button: BikkieIds.ringWithGem,
+  item_sorrel_field_ledger: BikkieIds.recipePaper,
+  item_custodian_key_3: BikkieIds.recipeStick,
+  item_rook_bell_iron_token: BikkieIds.silverNugget,
+  item_marrow_collar: BikkieIds.hawaiiNecklace,
+  item_hnefatafl_piece: BikkieIds.neptuniumNugget,
 };
+
+export function harthmereNativePresentationSourceIdForTest(itemId: string) {
+  return HARTHMERE_NATIVE_PRESENTATION_SOURCE_IDS[itemId];
+}
+
+export function mergeHarthmereNativePresentationSource(
+  existing: Biscuit | undefined,
+  donor: Biscuit | undefined
+): Biscuit | undefined {
+  return existing ? ({ ...donor, ...existing } as Biscuit) : donor;
+}
 
 const HARTHMERE_NATIVE_PRESENTATION_ATTRIBUTES = [
   "attachmentTransform",
@@ -722,7 +754,10 @@ export function harthmereBiscuitForItemDefinition(
     harthmereOriginalInventoryIconUrl(definition.itemId) ??
     harthmereGeneratedInventoryIconUrl(definition.itemId);
   const inventoryIcon =
-    premiumWeapon?.inventoryIconUrl ?? generatedInventoryIcon;
+    premiumWeapon?.inventoryIconUrl ??
+    (definition.itemId === HARTHMERE_ARROW_ITEM_ID
+      ? "/assets/harthmere/weapon_icons/hunting_arrow.png"
+      : generatedInventoryIcon);
   const placeableSize = definition.objectMetadata?.sizeVoxels;
   const nativePlaceable = Boolean(
     placeableSize &&
@@ -988,12 +1023,16 @@ export function withHarthmereNativeBikkieItems(
     }
     const presentationSourceId =
       HARTHMERE_NATIVE_PRESENTATION_SOURCE_IDS[definition.itemId];
+    const donorPresentationSource = presentationSourceId
+      ? contents.get(presentationSourceId)
+      : undefined;
     const presentationSource =
       existing?.name === expectedName
-        ? existing
-        : presentationSourceId
-          ? contents.get(presentationSourceId)
-          : undefined;
+        ? mergeHarthmereNativePresentationSource(
+            existing,
+            donorPresentationSource
+          )
+        : donorPresentationSource;
     const biscuit = harthmereBiscuitForItemDefinition(
       definition,
       presentationSource

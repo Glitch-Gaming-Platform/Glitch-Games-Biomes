@@ -53,6 +53,33 @@ export {
 export const HARTHMERE_BUSINESS_CUSTOMER_SIMULATOR_VERSION =
   "harthmere-business-customer-simulator" as const;
 export const HARTHMERE_BUSINESS_JOB_PAY_DIVISOR = 4 as const;
+export const HARTHMERE_BUSINESS_CUSTOMERS_PER_SHIFT = 10;
+export const HARTHMERE_BUSINESS_CUSTOMER_FIRST_PATIENCE_SECONDS = 30;
+export const HARTHMERE_BUSINESS_CUSTOMER_PATIENCE_STEP_SECONDS = 2;
+export const HARTHMERE_BUSINESS_CUSTOMER_MIN_PATIENCE_SECONDS = 12;
+export const HARTHMERE_BUSINESS_CUSTOMER_BASE_MAX_PATIENCE_SECONDS = 30;
+export const HARTHMERE_BUSINESS_CUSTOMER_MAX_PATIENCE_SECONDS = 30;
+
+export function clampHarthmereBusinessCustomerPatience(
+  seconds: number,
+  maxSeconds = HARTHMERE_BUSINESS_CUSTOMER_MAX_PATIENCE_SECONDS
+) {
+  return Math.max(
+    HARTHMERE_BUSINESS_CUSTOMER_MIN_PATIENCE_SECONDS,
+    Math.min(
+      Math.max(HARTHMERE_BUSINESS_CUSTOMER_MIN_PATIENCE_SECONDS, maxSeconds),
+      Math.round(Number(seconds) || 0)
+    )
+  );
+}
+
+export function harthmereBusinessCustomerPatienceForQueueIndex(index: number) {
+  return clampHarthmereBusinessCustomerPatience(
+    HARTHMERE_BUSINESS_CUSTOMER_FIRST_PATIENCE_SECONDS -
+      Math.max(0, Math.trunc(index)) *
+        HARTHMERE_BUSINESS_CUSTOMER_PATIENCE_STEP_SECONDS
+  );
+}
 
 export function harthmereBusinessScaledJobPay(rewardGold: number): number {
   return Math.max(
@@ -209,6 +236,7 @@ export interface HarthmereBusinessCustomerTicket {
   askLine: string;
   status: "waiting" | "served" | "failed" | "left";
   arrivedAtMs: number;
+  patienceStartedAtMs?: number;
   patience: number;
   patienceRemaining: number;
   difficulty: number;
@@ -7517,13 +7545,11 @@ export function createHarthmereBusinessCustomerQueue(input: {
         requestContext.line,
         complication.line,
       ].join(" ");
-      const patience = Math.max(
-        15,
-        Math.round(
-          Math.max(20, ask.patience - (tier - 1) * 5) *
-            modifier.patienceMultiplier
-        )
-      );
+      // One shift is a ten-customer speed ladder. Each next customer is two
+      // seconds less patient: 30, 28, 26 ... 12. Keep this independent of the
+      // generated persona/ask so every business presents the same readable
+      // difficulty curve and the final customer never reaches zero on arrival.
+      const patience = harthmereBusinessCustomerPatienceForQueueIndex(index);
       const ticketId = `customer_ticket_${nextTicketNumber++}`;
       return {
         ticketId,

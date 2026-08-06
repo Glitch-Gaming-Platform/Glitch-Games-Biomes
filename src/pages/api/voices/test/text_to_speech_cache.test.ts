@@ -67,6 +67,22 @@ describe("text-to-speech committed audio integration", () => {
     );
   });
 
+  it("resolves the committed Jackie AAC variant for a compatible mobile client", async () => {
+    const response = await resolveChatVoiceRequest({
+      text: "The name is Jackie. I'm glad we found ya before the Muckers did.",
+      voice:
+        "azure-speech|voice=en-US-JennyNeural|gender=female|kind=humanoid|style=hopeful|styleDegree=1.05|rate=%2B0%25|pitch=%2B2%25|volume=default|break=146|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie",
+      language: "en-US",
+      provider: "elevenlabs",
+      preferredFormat: "aac",
+    });
+
+    assert.equal(
+      response.url,
+      "/harthmere/voices/generated/current/native-robot-story/the-road-ahead-6193612340426932/8997551883502307/3960245896803219-01.m4a"
+    );
+  });
+
   it("resolves every additive-town conversation tier to shipped MP3s", async () => {
     const mira = harthmereAdditiveTownNpcDialogueForOffset(1)!;
     const voice = harthmereAdditiveTownNpcVoiceProfile(mira).voiceParameterId;

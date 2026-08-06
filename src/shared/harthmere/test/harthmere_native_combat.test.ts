@@ -4,7 +4,11 @@ import {
   HARTHMERE_INDISWORM_HOSTILITY,
   applyHarthmereNativeAttackStats,
   awardHarthmereNativeCombatXp,
+  harthmereNativeAttackCadenceDecision,
   harthmereNativeItemCombatProfile,
+  HARTHMERE_HELD_TOOL_ATTACK_REACH,
+  HARTHMERE_MELEE_HAND_AND_BODY_REACH,
+  HARTHMERE_UNARMED_ATTACK_REACH,
   mitigateHarthmereNativeIncomingDamage,
   nativeCombatArmorStats,
   readHarthmereNativeCombatProgression,
@@ -42,10 +46,25 @@ describe("Harthmere native ECS combat rules", () => {
     const spellScroll = harthmereNativeItemCombatProfile(
       anItem(harthmereNativeBiomesIdForItemId("scroll_of_spark")!)
     );
+    const heldTool = harthmereNativeItemCombatProfile(
+      anItem(harthmereNativeBiomesIdForItemId("woodcutters_axe")!)
+    );
+    const unarmed = harthmereNativeItemCombatProfile(undefined);
+    const swordDefinition = HARTHMERE_PREMIUM_WEAPONS.find(
+      ({ id }) => id === "iron_longsword"
+    )!;
 
     assert.equal(sword?.kind, "melee");
     assert.equal(sword?.damagePerHit, 32);
     assert.equal(sword?.levelRequirement, 2);
+    assert.equal(unarmed?.reach, HARTHMERE_UNARMED_ATTACK_REACH);
+    assert.equal(heldTool?.reach, HARTHMERE_HELD_TOOL_ATTACK_REACH);
+    assert.equal(
+      sword?.reach,
+      HARTHMERE_MELEE_HAND_AND_BODY_REACH + swordDefinition.targetLength
+    );
+    assert.ok((heldTool?.reach ?? 0) > (unarmed?.reach ?? Infinity));
+    assert.ok((sword?.reach ?? 0) > (heldTool?.reach ?? Infinity));
     assert.equal(heavy?.kind, "heavy");
     assert.ok((heavy?.reach ?? 0) > (sword?.reach ?? 0));
     assert.equal(bow?.kind, "ranged");
@@ -98,6 +117,47 @@ describe("Harthmere native ECS combat rules", () => {
     assert.equal(awarded.lastAttackMs, 1234);
     assert.equal(awarded.migrationVersion, 1);
     assert.deepEqual(readHarthmereNativeCombatProgression(state), awarded);
+  });
+
+  it("authorizes four contact-linked attacks then enforces the three-second server cooldown", () => {
+    let progression = readHarthmereNativeCombatProgression(undefined);
+    const attackTimes = [10_000, 10_936, 11_336, 11_736];
+    const damages: number[] = [];
+    for (let hit = 1; hit <= 4; hit += 1) {
+      const timingClass = hit === 2 ? "heavy" : "basic";
+      const decision = harthmereNativeAttackCadenceDecision({
+        progression,
+        nowMs: attackTimes[hit - 1],
+        itemIntervalMs: 1_000,
+        itemKind: "melee",
+        requestedTimingClass: timingClass,
+      });
+      assert.equal(decision.allowed, true, `hit ${hit}`);
+      assert.equal(
+        decision.damageMultiplier,
+        timingClass === "heavy" ? 1.5 : 1
+      );
+      progression = { ...progression, ...decision.progression };
+      damages.push(decision.damageMultiplier);
+    }
+    assert.deepEqual(damages, [1, 1.5, 1, 1]);
+    const blocked = harthmereNativeAttackCadenceDecision({
+      progression,
+      nowMs: 12_136,
+      itemIntervalMs: 1_000,
+      itemKind: "melee",
+      requestedTimingClass: "basic",
+    });
+    assert.equal(blocked.allowed, false);
+    const released = harthmereNativeAttackCadenceDecision({
+      progression,
+      nowMs: progression.comboCooldownUntilMs,
+      itemIntervalMs: 1_000,
+      itemKind: "melee",
+      requestedTimingClass: "basic",
+    });
+    assert.equal(released.allowed, true);
+    assert.equal(released.progression?.comboHits, 1);
   });
 
   it("applies level, armor, defense, and evasion mitigation deterministically", () => {
@@ -272,6 +332,10 @@ describe("Harthmere native ECS combat rules", () => {
     assert.equal(bandit.isPlayerLikeAppearance, true);
     assert.equal(bandit.galoisPath, undefined);
     assert.equal(banditBiscuit.isPlayerLikeAppearance, true);
+    assert.ok(
+      bandit.maxMana >= 300,
+      "human NPCs retain a large but finite mana pool"
+    );
 
     const mucker = harthmereNativeNpcCombatProfileForSeed({
       seedId: "test-mucker",
@@ -281,6 +345,7 @@ describe("Harthmere native ECS combat rules", () => {
     });
     assert.equal(mucker.isPlayerLikeAppearance, undefined);
     assert.equal(mucker.galoisPath, "npcs/tree_mucker");
+    assert.ok(mucker.maxMana < bandit.maxMana);
     assert.equal(
       harthmereNativeNpcBiscuit(mucker).galoisPath,
       "npcs/tree_mucker"
@@ -337,8 +402,31 @@ describe("Harthmere native ECS combat rules", () => {
     assert.equal(poisonSpit.projectileVisualId, "indisworm_poison_spit");
     assert.equal(poisonSpit.damageType, "nature");
     assert.equal(poisonSpit.magic, false);
+    assert.equal(poisonSpit.manaCost, 0);
     assert.equal(poisonSpit.animationClip, "RangedAttack");
     assert.equal(poisonSpit.castTimeSecs, 1.15);
     assert.ok(poisonSpit.minimumDistance > profile.attackDistance);
+  });
+
+  it("gives every magic creature attack an affordable finite mana cost", () => {
+    const profile = harthmereNativeNpcCombatProfileForSeed({
+      seedId: "test-hex-mana",
+      displayName: "Briar Hexer",
+      kind: "ambient_muck_monster",
+      combatKind: "hex",
+      combatLevel: 4,
+      combatHp: 120,
+      attackDamage: 42,
+    });
+    assert.ok(profile.maxMana > 0);
+    assert.ok(profile.manaRegenPerSecond > 0);
+    assert.ok(profile.rangedAttacks?.length);
+    for (const attack of profile.rangedAttacks ?? []) {
+      assert.ok((attack.manaCost ?? 0) > 0, attack.abilityId);
+      assert.ok((attack.manaCost ?? 0) <= profile.maxMana, attack.abilityId);
+    }
+    const chase = harthmereNativeNpcBiscuit(profile).behavior?.chaseAttack;
+    assert.equal(chase?.maxMana, profile.maxMana);
+    assert.equal(chase?.manaRegenPerSecond, profile.manaRegenPerSecond);
   });
 });

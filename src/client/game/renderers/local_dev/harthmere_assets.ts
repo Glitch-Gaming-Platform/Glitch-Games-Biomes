@@ -75,8 +75,13 @@ import {
 import {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
   HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
-  shouldEnableHarthmereAdditiveWorldExtension,
 } from "@/shared/harthmere/world_extension";
+import {
+  shouldEnableHarthmereClientWorldExtension,
+  shouldPreserveHarthmereUnderwaysRuntimeScenery,
+  shouldRenderHarthmereClientRuntimeTown,
+  shouldUseHarthmereClientSnapshotBuiltRuntimePolicy,
+} from "@/client/game/renderers/local_dev/harthmere_client_world_extension";
 import {
   HARTHMERE_FACIAL_EXPRESSION_EVENT,
   dispatchHarthmereFacialExpressionEvent,
@@ -219,6 +224,8 @@ import {
   type HarthmereLiveCreatureBridgeRecord,
   type HarthmereLiveCreatureEvadeVisual,
 } from "@/shared/harthmere/live_creature_ecs_bridge";
+import { preserveAuthoredCutsceneGhostMaterials } from "@/client/game/cutscene/ghost_materials";
+import { groundCutsceneGhost } from "@/client/game/cutscene/ghost_grounding";
 import { harthmereLiveModeCombatTargetIdForVisibleActor } from "@/shared/harthmere/visible_combat_target";
 import type { Disposable } from "@/shared/disposable";
 import type { BiomesId } from "@/shared/ids";
@@ -537,7 +544,7 @@ function shouldUseHarthmereRuntimeExtraTownOffset() {
   // Match the server: forced local-dev seeding is now shifted so Harthmere
   // remains separate from The Grove. Legacy unshifted runtime can be restored
   // only with BIOMES_HARTHMERE_STANDALONE_TOWN=1.
-  return shouldEnableHarthmereAdditiveWorldExtension(process.env);
+  return shouldEnableHarthmereClientWorldExtension();
 }
 function harthmereRuntimeExtraTownOffsetX() {
   return shouldUseHarthmereRuntimeExtraTownOffset()
@@ -563,18 +570,7 @@ function isSnapshotMergeRuntime() {
 }
 
 function shouldRenderHarthmereRuntimeTown() {
-  if (!isSnapshotMergeRuntime()) {
-    return true;
-  }
-  return (
-    shouldUseHarthmereRuntimeExtraTownOffset() ||
-    process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||
-    process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
-    process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN === "1" ||
-    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1" ||
-    process.env.NEXT_PUBLIC_BIOMES_RENDER_HARTHMERE_RUNTIME === "1" ||
-    process.env.BIOMES_RENDER_HARTHMERE_RUNTIME === "1"
-  );
+  return shouldRenderHarthmereClientRuntimeTown();
 }
 const HARTHMERE_RUNTIME_CORE_ORIGIN = [
   HARTHMERE_RUNTIME_CORE_BASE_ORIGIN[0] + harthmereRuntimeExtraTownOffsetX(),
@@ -2893,22 +2889,7 @@ const HARTHMERE_SNAPSHOT_BUILT_RUNTIME_POLICY_VERSION =
   "harthmere-snapshot-built-runtime-policy";
 
 function shouldUseHarthmereSnapshotBuiltRuntimePolicy() {
-  const disabled =
-    process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_SNAPSHOT_BUILT_MODE === "0" ||
-    process.env.BIOMES_HARTHMERE_SNAPSHOT_BUILT_MODE === "0" ||
-    process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_RENDER_GLBS === "1" ||
-    process.env.BIOMES_HARTHMERE_RENDER_GLBS === "1";
-  if (disabled) return false;
-  return (
-    process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||
-    process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
-    isSnapshotMergeRuntime() ||
-    shouldUseHarthmereRuntimeExtraTownOffset() ||
-    process.env.NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
-    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
-    process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN === "1" ||
-    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1"
-  );
+  return shouldUseHarthmereClientSnapshotBuiltRuntimePolicy();
 }
 
 function harthmereRuntimeAssetPath(placement: RuntimePlacement) {
@@ -2990,6 +2971,9 @@ function isHarthmereSnapshotBuiltRuntimeOwnedPlacement(
 ) {
   if (isHarthmereCombatDiagnosticRuntimePlacement(placement)) return false;
   if (isSnapshotRawFloatingNpcRuntimePlacement(placement)) return true;
+  if (shouldPreserveHarthmereUnderwaysRuntimeScenery(placement.district)) {
+    return false;
+  }
   if (isHarthmereRuntimeLifePlacement(placement)) return false;
   const label = `${placement.asset} ${placement.name ?? ""} ${
     placement.district ?? ""
@@ -28240,6 +28224,17 @@ interface NativeCutsceneActor {
 }
 
 export class HarthmereRuntimeAssetsRenderer implements Renderer {
+  // The player renderer's ItemAttachment is the only equipped-item visual. It
+  // is already driven by the exact local/remote hotbar selection and parented
+  // to the animated Tool/hand node. The former renderer-owned sword used a
+  // separate world-space anchor rig, defaulted to an iron longsword, and was
+  // the gray trailing duplicate visible in the August 4 regression capture.
+  static readonly AUTHORITATIVE_EQUIPPED_ITEM_VISUAL =
+    "player-item-attachment-tool-bone-v1";
+
+  private usesAuthoritativeEquippedItemAttachment() {
+    return true;
+  }
   private harthmerePolishFrameCounter = 0;
 
   private harthmerePlayerSwordManualSwing?: {
@@ -28394,7 +28389,6 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     private readonly resources: ClientResources,
     private readonly mobileDevice = false
   ) {
-    this.installHarthmerePlayerSwordVisuals();
     this.installHarthmereFacialExpressionBridge();
     this.root.name = "harthmere-rebuilt-town-and-wilds-root";
     this.root.updateMatrix();
@@ -28437,12 +28431,10 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     // not showing" in the shipped build.
     //
     // Combat VFX are not local-dev town scenery; they are core game feedback.
-    // Desktop eagerly caches them. Mobile keeps the same fallback-first spawn
-    // path but lazy-loads only the projectile actually used, avoiding 35 GLBs
-    // before the phone's first frame.
-    if (!this.mobileDevice) {
-      this.harthmereProjectileVisuals.preloadAll();
-    }
+    // Keep their fallback-first spawn path active on every platform, but load
+    // each premium projectile or attack-shape GLB only when it is used. Eagerly
+    // preloading the complete catalogue contributed 35 simultaneous requests
+    // and GLTF decodes before the first playable frame on desktop captures.
     if (shouldRenderHarthmereRuntimeAssets()) {
       // HARTHMERE_BOUNDED_RUNTIME_STREAMING. The former desktop branch eagerly
       // fetched and decoded every town, Wilds, dungeon, and business-interior
@@ -28462,19 +28454,10 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
   }
 
   draw(scenes: Scenes, dt: number) {
-    // Keep weapon animation on the renderer's one frame clock. The old
-    // constructor-installed requestAnimationFrame loop ran independently of
-    // rendering, duplicated scheduling/work during long frames, and was never
-    // cancelled. This path also runs while town assets are still loading, so
-    // the always-on production weapon/VFX contract remains intact.
-    this.updateHarthmerePlayerSwordVisual();
     if (!this.ready || this.root.children.length === 0) {
       // HARTHMERE_COMBAT_VFX_ALWAYS_ON: the town may be unloaded (production,
       // where the runtime-asset gate is off) or still loading, but projectiles,
-      // impacts, magic charges and the local player's equipped weapon must
-      // still animate and still be drawn. All of them are parented to `root`,
-      // so tick them and attach the root even when the town half of this
-      // renderer has nothing to contribute.
+      // impacts, and magic charges must still animate and still be drawn.
       this.harthmereProjectileVisuals.update(dt);
       if (this.hasHarthmereSceneAttachableContent()) {
         scenes.three.add(this.root);
@@ -31171,6 +31154,12 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         );
       },
       swordState: () => ({
+        authoritativeEquippedItemVisual:
+          HarthmereRuntimeAssetsRenderer.AUTHORITATIVE_EQUIPPED_ITEM_VISUAL,
+        deprecatedWorldSpaceWeaponPresent: Boolean(
+          this.harthmerePlayerSword?.parent ||
+          this.harthmerePlayerSwordAnchorRoot?.parent
+        ),
         state: this.harthmerePlayerSwordState,
         drawn: this.harthmerePlayerSwordState.drawn,
         action: this.harthmerePlayerSwordState.action,
@@ -32126,10 +32115,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
    * sheathe blend and swing animation while town scenery is disabled.
    */
   private hasHarthmereSceneAttachableContent() {
-    return (
-      this.harthmereProjectileVisuals.hasActiveVisuals() ||
-      this.harthmerePlayerSwordAnchorRoot !== undefined
-    );
+    return this.harthmereProjectileVisuals.hasActiveVisuals();
   }
 
   private ensureHarthmerePlayerSwordAnchorRig() {
@@ -33662,6 +33648,23 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
   }
 
   private updateHarthmerePlayerSwordVisual() {
+    // Deprecated duplicate visual cleanup. ItemAttachment in players.ts owns
+    // the exact selected item on the animated Tool/hand node. Never recreate a
+    // second world-space sword, even if an old debug bridge calls this method.
+    if (this.usesAuthoritativeEquippedItemAttachment()) {
+      if (this.harthmerePlayerSword?.parent) {
+        this.harthmerePlayerSword.parent.remove(this.harthmerePlayerSword);
+      }
+      if (this.harthmerePlayerSwordAnchorRoot?.parent) {
+        this.harthmerePlayerSwordAnchorRoot.parent.remove(
+          this.harthmerePlayerSwordAnchorRoot
+        );
+      }
+      this.harthmerePlayerSword = undefined;
+      this.harthmerePlayerSwordAnchorRoot = undefined;
+      return;
+    }
+
     if (typeof window === "undefined") {
       return;
     }
@@ -34661,7 +34664,8 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       ) {
         const mesh = await makeSnapshotCutscenePlayerMesh(
           this.resources as unknown as ClientResourceDeps,
-          (record.appearanceSourceEntityId ?? record.id) as BiomesId
+          (record.appearanceSourceEntityId ?? record.id) as BiomesId,
+          this.mobileDevice
         );
         actor = {
           object: mesh.three,
@@ -34680,10 +34684,18 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
           );
         }
         const gltf = await loadGltf(url);
-        replaceWithPlayerMaterial(gltf);
+        // Boss promo puppets use canonical world-scale GLBs whose material
+        // slots carry the complete encounter palette. The former unconditional
+        // player-material conversion collapsed all 10-33 authored materials to
+        // one flat gray shader, making loaded bosses look like placeholders.
+        if (!preserveAuthoredCutsceneGhostMaterials(record.asset)) {
+          replaceWithPlayerMaterial(gltf);
+        }
         setFrustumCulling(gltf, false);
-        const object = cloneSkeleton(gltf.scene);
-        const mixer = new THREE.AnimationMixer(object);
+        const cloned = cloneSkeleton(gltf.scene);
+        const grounded = groundCutsceneGhost(cloned);
+        const object = grounded.root;
+        const mixer = new THREE.AnimationMixer(grounded.animationRoot);
         const clips = new Map(
           (gltf.animations ?? []).map((clip) => [clip.name.toLowerCase(), clip])
         );

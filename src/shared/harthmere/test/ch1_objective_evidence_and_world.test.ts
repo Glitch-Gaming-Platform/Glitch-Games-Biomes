@@ -12,6 +12,7 @@ import {
   CH1_REQUIRED_GROVE_JOB_COMPLETIONS,
   ch1ObjectiveRequirementState,
 } from "@/shared/harthmere/ch1_objective_requirements";
+import { countDistinctCompletedCh1GroveJobs } from "@/shared/harthmere/ch1_interaction_surfaces";
 import {
   CH1_GROVE_SUPPLIER_ROUTE,
   CH1_THREE_ANSWER_ROUTE,
@@ -130,6 +131,39 @@ describe("Chapter 1 objective evidence and canonical world", () => {
         ),
       })?.ready,
       true
+    );
+  });
+
+  it("counts only distinct authored Chapter 1 Grove jobs", () => {
+    const job = (
+      templateId: string,
+      overrides: Record<string, unknown> = {}
+    ) => ({
+      acceptedByActorId: "player",
+      townId: "harthmere_grove",
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      autoPosted: true,
+      templateId,
+      status: "completed",
+      completedAtMs: 2_000,
+      ...overrides,
+    });
+    assert.equal(
+      countDistinctCompletedCh1GroveJobs(
+        [
+          job("town_gather_road_rations"),
+          job("town_gather_road_rations"),
+          job("town_repair_fence"),
+          job("town_cleanup_muck_patch"),
+          job("hunt_mucker_elite"),
+          job("town_cleanup_muck_patch", { acceptedByActorId: "other" }),
+          job("town_repair_fence", { completedAtMs: 500 }),
+        ],
+        "player",
+        1_000
+      ),
+      3
     );
   });
 

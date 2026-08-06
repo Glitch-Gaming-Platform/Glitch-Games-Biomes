@@ -77,7 +77,7 @@ export const NUXOpenInventoryItem: React.FunctionComponent<{
   return (
     <NUXItem nuxId={nuxId}>
       <NUXLeft>
-        <ShortcutText shortcut="E" keyCode="KeyE" />
+        <ShortcutText shortcut="I" keyCode="KeyI" />
       </NUXLeft>
       Press <NuxHotkey>E</NuxHotkey> to open your inventory
     </NUXItem>

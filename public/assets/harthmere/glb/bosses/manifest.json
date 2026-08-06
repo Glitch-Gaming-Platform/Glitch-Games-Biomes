@@ -25,6 +25,9 @@
       "clips": [
         "AreaAttack",
         "Attack",
+        "BossStaggerHeavy",
+        "BossStaggerLight",
+        "BossStaggerMedium",
         "BreachCollapse",
         "BreachStalk",
         "Burrow",
@@ -72,7 +75,7 @@
           48.5
         ]
       },
-      "fileBytes": 4384604
+      "fileBytes": 4473024
     },
     {
       "id": "gilded_bull",
@@ -92,6 +95,9 @@
       "clips": [
         "AreaAttack",
         "Attack",
+        "BossStaggerHeavy",
+        "BossStaggerLight",
+        "BossStaggerMedium",
         "Charge",
         "CoreRupture",
         "Death",
@@ -139,7 +145,7 @@
           33.5
         ]
       },
-      "fileBytes": 3616180
+      "fileBytes": 3704936
     },
     {
       "id": "ninth_winter",
@@ -160,6 +166,9 @@
         "AreaAttack",
         "Attack",
         "Blizzard",
+        "BossStaggerHeavy",
+        "BossStaggerLight",
+        "BossStaggerMedium",
         "Death",
         "Enrage",
         "Fly",
@@ -206,7 +215,7 @@
           75.5
         ]
       },
-      "fileBytes": 6000340
+      "fileBytes": 6093096
     },
     {
       "id": "failed_apprentice",
@@ -230,6 +239,9 @@
         "BellCrack",
         "BellFist",
         "BindingTear",
+        "BossStaggerHeavy",
+        "BossStaggerLight",
+        "BossStaggerMedium",
         "ChainLurch",
         "Death",
         "Enrage",
@@ -275,7 +287,7 @@
           58.5
         ]
       },
-      "fileBytes": 2770332
+      "fileBytes": 2829096
     },
     {
       "id": "first_choir",
@@ -295,6 +307,9 @@
       "clips": [
         "AreaAttack",
         "Attack",
+        "BossStaggerHeavy",
+        "BossStaggerLight",
+        "BossStaggerMedium",
         "Chant",
         "Death",
         "Enrage",
@@ -330,7 +345,7 @@
           26.5
         ]
       },
-      "fileBytes": 909528
+      "fileBytes": 975968
     },
     {
       "id": "echo_singer",
@@ -350,6 +365,9 @@
       "clips": [
         "AreaAttack",
         "Attack",
+        "BossStaggerHeavy",
+        "BossStaggerLight",
+        "BossStaggerMedium",
         "CopyGuard",
         "CopyMelee",
         "CopyRanged",
@@ -399,7 +417,7 @@
           52.5
         ]
       },
-      "fileBytes": 3064400
+      "fileBytes": 3095396
     },
     {
       "id": "vyrahel_vein_keeper",
@@ -419,6 +437,9 @@
       "clips": [
         "AreaAttack",
         "Attack",
+        "BossStaggerHeavy",
+        "BossStaggerLight",
+        "BossStaggerMedium",
         "BurrowRush",
         "CrystalGuard",
         "Death",
@@ -468,7 +489,7 @@
           42.5
         ]
       },
-      "fileBytes": 4819872
+      "fileBytes": 4897036
     },
     {
       "id": "thaedryn_bellbound",
@@ -489,6 +510,9 @@
         "AreaAttack",
         "Attack",
         "BellboundRise",
+        "BossStaggerHeavy",
+        "BossStaggerLight",
+        "BossStaggerMedium",
         "ChainBreak",
         "Death",
         "Enrage",
@@ -543,7 +567,7 @@
           53.5
         ]
       },
-      "fileBytes": 12323232
+      "fileBytes": 12476448
     },
     {
       "id": "hex_wraith",
@@ -563,6 +587,9 @@
       "clips": [
         "AreaAttack",
         "Attack",
+        "BossStaggerHeavy",
+        "BossStaggerLight",
+        "BossStaggerMedium",
         "Death",
         "Enrage",
         "Fly",
@@ -598,7 +625,7 @@
           35.5
         ]
       },
-      "fileBytes": 841100
+      "fileBytes": 871272
     },
     {
       "id": "alpha_mucker",
@@ -618,6 +645,9 @@
       "clips": [
         "AreaAttack",
         "Attack",
+        "BossStaggerHeavy",
+        "BossStaggerLight",
+        "BossStaggerMedium",
         "BranchSlam",
         "CanopyRage",
         "Death",
@@ -667,7 +697,7 @@
           102.5
         ]
       },
-      "fileBytes": 11139204
+      "fileBytes": 11183940
     },
     {
       "id": "root_crowned_dead",
@@ -687,6 +717,9 @@
       "clips": [
         "AreaAttack",
         "Attack",
+        "BossStaggerHeavy",
+        "BossStaggerLight",
+        "BossStaggerMedium",
         "Death",
         "Enrage",
         "Fly",
@@ -722,7 +755,7 @@
           55.5
         ]
       },
-      "fileBytes": 2007640
+      "fileBytes": 2046672
     }
   ]
 }

@@ -53,7 +53,41 @@ const DRAW_DISTANCE_ADJUSTMENT_INCREMENT = 16;
 // Minimum number of performance samples we need before we'll start making
 // decisions. Reset after every performance tweak.
 const MIN_STAT_SAMPLES_COUNT = 110;
+// A sudden battle can collapse a previously healthy client to 2-14 FPS. At
+// those rates waiting for 110 new frames leaves the emergency quality ladder
+// idle for 8-55 seconds. A smaller window is enough to permit reductions only;
+// quality increases still require the full stable sample set.
+const EMERGENCY_STAT_SAMPLES_COUNT = 24;
+const EMERGENCY_FRAME_INTERVAL_MS = 50;
 const DYNAMIC_PERFORMANCE_CHECK_INTERVAL_MS = 250;
+
+export type DynamicPerformanceSampleMode =
+  | "wait"
+  | "emergency-reduce"
+  | "normal";
+
+export function dynamicPerformanceSampleMode(input: {
+  cpuCount: number;
+  gpuCount?: number;
+  renderCount: number;
+  renderIntervalMs: number;
+}): DynamicPerformanceSampleMode {
+  const minimumCount = Math.min(
+    input.cpuCount,
+    input.gpuCount ?? Number.POSITIVE_INFINITY,
+    input.renderCount
+  );
+  if (minimumCount >= MIN_STAT_SAMPLES_COUNT) {
+    return "normal";
+  }
+  if (
+    minimumCount >= EMERGENCY_STAT_SAMPLES_COUNT &&
+    input.renderIntervalMs >= EMERGENCY_FRAME_INTERVAL_MS
+  ) {
+    return "emergency-reduce";
+  }
+  return "wait";
+}
 
 // Based on our current framerate, find out what quality settings we'll aim
 // towards via dynamic graphics settings updates. The reason the settings are
@@ -248,13 +282,18 @@ export class DynamicSettingsUpdater {
     computed: ComputedGraphicsSettings,
     resources: ClientResources
   ) {
-    // Make sure we have gathered enough data before making performance decisions.
     const gpuRenderTime = this.profiler.gpuRenderTime();
-    if (
-      this.profiler.cpuRenderTime().count() < MIN_STAT_SAMPLES_COUNT ||
-      (gpuRenderTime && gpuRenderTime.count() < MIN_STAT_SAMPLES_COUNT) ||
-      this.profiler.renderInterval().count() < MIN_STAT_SAMPLES_COUNT
-    ) {
+    const renderInterval = this.profiler.renderInterval();
+    const sampleMode = dynamicPerformanceSampleMode({
+      cpuCount: this.profiler.cpuRenderTime().count(),
+      gpuCount: gpuRenderTime?.count(),
+      renderCount: renderInterval.count(),
+      renderIntervalMs:
+        renderInterval.count() > 0
+          ? renderInterval.getPercentile(0.5)
+          : Number.POSITIVE_INFINITY,
+    });
+    if (sampleMode === "wait") {
       return;
     }
 
@@ -267,16 +306,18 @@ export class DynamicSettingsUpdater {
     });
 
     // We'll only apply a single quality increase and a single quality reduction at a time.
-    const qualityIncreases = this.chooseQualityIncrease(
-      mapValues(updates, (v) =>
-        v?.qualityChange === "increase" ? v : undefined
-      )
-    );
-    if (qualityIncreases.length > 0) {
-      this.applyChanges(qualityIncreases);
-      // Don't continue with quality reductions if we've applied any quality
-      // increases.
-      return;
+    if (sampleMode === "normal") {
+      const qualityIncreases = this.chooseQualityIncrease(
+        mapValues(updates, (v) =>
+          v?.qualityChange === "increase" ? v : undefined
+        )
+      );
+      if (qualityIncreases.length > 0) {
+        this.applyChanges(qualityIncreases);
+        // Don't continue with quality reductions if we've applied any quality
+        // increases.
+        return;
+      }
     }
 
     this.applyChanges(

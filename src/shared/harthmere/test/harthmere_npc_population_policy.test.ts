@@ -22,7 +22,7 @@ describe("Harthmere NPC population policy", () => {
   });
 
   it("pins the complete audited production generic crowd without collisions", () => {
-    assert.strictEqual(HARTHMERE_RETIRED_GENERIC_TOWNSPERSON_IDS.length, 10);
+    assert.strictEqual(HARTHMERE_RETIRED_GENERIC_TOWNSPERSON_IDS.length, 14);
     assert.strictEqual(
       new Set(HARTHMERE_RETIRED_GENERIC_TOWNSPERSON_IDS).size,
       HARTHMERE_RETIRED_GENERIC_TOWNSPERSON_IDS.length

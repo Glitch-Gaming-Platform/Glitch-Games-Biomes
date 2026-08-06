@@ -23,10 +23,10 @@ const assets = read(files.assets);
 const shortcuts = read(files.shortcuts);
 
 const checks = [
-  ["B maps to basic", /KeyB[\s\S]{0,320}performHarthmereKeyedAttack\("basic"\)/.test(mp) || /HARTHMERE_COMBAT_KEY_BINDINGS\.basic[\s\S]{0,320}performHarthmereKeyedAttack\("basic"\)/.test(mp)],
+  ["primary click owns basic and B is not a combat key", /basic:\s*"Mouse0"/.test(mp) && !/code\s*===\s*["']KeyB["'][\s\S]{0,90}return\s+["']basic["']/.test(mp)],
   ["H maps to heavy", /KeyH[\s\S]{0,320}performHarthmereKeyedAttack\("heavy"\)/.test(mp) || /HARTHMERE_COMBAT_KEY_BINDINGS\.heavy[\s\S]{0,320}performHarthmereKeyedAttack\("heavy"\)/.test(mp)],
   ["L maps to spark", /KeyL[\s\S]{0,320}performHarthmereKeyedAttack\("spark"\)/.test(mp) || /HARTHMERE_COMBAT_KEY_BINDINGS\.spark[\s\S]{0,320}performHarthmereKeyedAttack\("spark"\)/.test(mp)],
-  ["Shortcuts reserve B/H/L", shortcuts.includes('"KeyB"') && shortcuts.includes('"KeyH"') && shortcuts.includes('"KeyL"')],
+  ["Shortcuts reserve H/L but leave B to Bank", !shortcuts.includes('"KeyB"') && shortcuts.includes('"KeyH"') && shortcuts.includes('"KeyL"')],
   ["Combat events include clip priority", combat.includes("attackerClipPriority") && combat.includes("targetClipPriority")],
   ["Renderer consumes clip priority", assets.includes("preferredClipNames") && assets.includes("attackerClipPriority") && assets.includes("targetClipPriority")],
   ["Human clips routed", assets.includes("HeavyAttack") && assets.includes("BasicMagic") && assets.includes("SideSwing")],

@@ -12,7 +12,17 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { Chapter1ContainmentTriage } from "@/client/components/challenges/Chapter1ContainmentTriage";
-import { publishChapter1ObjectiveWorldProjection } from "@/client/components/challenges/Chapter1ObjectiveWorldState";
+import {
+  CHAPTER1_OBJECTIVE_INTERACT_EVENT,
+  CHAPTER1_RECOVERED_TAB_VISIBILITY_EVENT,
+  publishChapter1ObjectiveWorldProjection,
+  readChapter1RecoveredTabVisibility,
+} from "@/client/components/challenges/Chapter1ObjectiveWorldState";
+import {
+  clearHighlight,
+  requestHighlight,
+} from "@/client/components/biomes_ui/highlight/HighlightRegistry";
+import { UI_IDS } from "@/client/components/biomes_ui/uniqueIds";
 import { TalkDialogModal } from "@/client/components/challenges/TalkDialogModal";
 import { GenericTalkDialogModalStep } from "@/client/components/challenges/TalkDialogModalStep";
 import {
@@ -33,6 +43,7 @@ import {
   resolveHarthmereNpcDialogueActor,
 } from "@/shared/harthmere/npc_dialogue_expressions";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import { ch1InteractionSurfaceForStep } from "@/shared/harthmere/ch1_interaction_surfaces";
 import type { HarthmereCinematicExpression } from "@/shared/cutscene/cinematic_expressions";
 import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
 import type { BiomesId } from "@/shared/ids";
@@ -58,6 +69,7 @@ interface Chapter1ObjectiveState {
   targetLabel?: string;
   targetPosition?: [number, number, number];
   targetEntityId?: number;
+  targetPositionAuthority?: "authored" | "live_entity";
   trigger?: string;
   actionLabel?: string;
   interactionRadius?: number;
@@ -104,6 +116,10 @@ interface Chapter1ObjectiveState {
     aliveEnemies?: number;
   };
 }
+
+// Server mutations and chapter events refresh immediately. This interval is a
+// cross-tab reconciliation fallback, not the primary progression mechanism.
+export const CHAPTER1_OBJECTIVE_RECONCILE_INTERVAL_MS = 2_000;
 
 interface Chapter1DialogueSequence {
   title: string;
@@ -204,6 +220,7 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
   const modalOpenRef = useRef(false);
   const refreshInFlight = useRef<Promise<void>>(undefined);
   const lastStateSignature = useRef<string>(undefined);
+  const recoveredHighlightsOwned = useRef(false);
   const shouldReturnPointerLock = useRef<PointerLockUnlockWhileOpenReturnRef>({
     current: false,
   });
@@ -399,15 +416,16 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
         autoremoveWhenNear: false,
         challengeId: state.challengeId as BiomesId,
         triggerId: state.stepId as BiomesId,
-        target: state.targetEntityId
-          ? {
-              kind: "entity",
-              id: state.targetEntityId as BiomesId,
-            }
-          : {
-              kind: "position",
-              position: [...state.targetPosition],
-            },
+        target:
+          state.targetEntityId && state.targetPositionAuthority !== "authored"
+            ? {
+                kind: "entity",
+                id: state.targetEntityId as BiomesId,
+              }
+            : {
+                kind: "position",
+                position: [...state.targetPosition],
+              },
       },
       state.stepId
     );
@@ -421,6 +439,7 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
     state?.targetPosition?.[1],
     state?.targetPosition?.[2],
     state?.targetEntityId,
+    state?.targetPositionAuthority,
     state?.status,
   ]);
 
@@ -435,6 +454,7 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
     }
     publishChapter1ObjectiveWorldProjection({
       key: objectiveKey(state),
+      authoredStepId: state.authoredStepId,
       label: state.targetLabel || state.objective || "Chapter 1 objective",
       position: [...state.targetPosition],
       trigger: state.trigger || "interact",
@@ -454,6 +474,44 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
     state?.targetPosition?.[2],
     state?.trigger,
   ]);
+
+  const recoveredUiObjectiveActive =
+    state?.status === "active" &&
+    ch1InteractionSurfaceForStep(state.authoredStepId) ===
+      "biomes_ui_recovered";
+
+  useEffect(() => {
+    if (!recoveredUiObjectiveActive) {
+      if (recoveredHighlightsOwned.current) {
+        clearHighlight(UI_IDS.HUD_PROMPT_OPEN_MENU);
+        clearHighlight(UI_IDS.TAB_RECOVERED);
+        recoveredHighlightsOwned.current = false;
+      }
+      return;
+    }
+    recoveredHighlightsOwned.current = true;
+    requestHighlight({
+      uniqueId: UI_IDS.HUD_PROMPT_OPEN_MENU,
+      style: "ring",
+      durationMs: 0,
+      caption: "Press J to open BiomesUI",
+      source: "chapter1.open_recovered",
+    });
+    requestHighlight({
+      uniqueId: UI_IDS.TAB_RECOVERED,
+      style: "arrow",
+      durationMs: 0,
+      caption: "Select MEM — Recovered",
+      source: "chapter1.open_recovered",
+    });
+    return () => {
+      if (recoveredHighlightsOwned.current) {
+        clearHighlight(UI_IDS.HUD_PROMPT_OPEN_MENU);
+        clearHighlight(UI_IDS.TAB_RECOVERED);
+        recoveredHighlightsOwned.current = false;
+      }
+    };
+  }, [recoveredUiObjectiveActive]);
 
   useEffect(() => {
     const id = state?.introCutsceneId;
@@ -490,7 +548,7 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
       ) {
         void refresh();
       }
-    }, 1_000);
+    }, CHAPTER1_OBJECTIVE_RECONCILE_INTERVAL_MS);
     return () => window.clearInterval(timer);
   }, [refresh]);
 
@@ -511,9 +569,84 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
     void complete();
   }, [busy, complete, state]);
 
+  const interactWithObjective = useCallback(() => {
+    if (
+      state?.status !== "active" ||
+      ch1InteractionSurfaceForStep(state.authoredStepId) !== "world" ||
+      !state.withinRange ||
+      state.trigger === "near_location" ||
+      state.requirement?.blocksChapterInteraction ||
+      (state.preparedChoice && (state.experience?.aliveEnemies ?? 0) > 0) ||
+      choiceOpen ||
+      containmentOpen ||
+      dialogue ||
+      cutscene.active ||
+      busy ||
+      sleepTransition
+    ) {
+      return;
+    }
+    if (state.authoredStepId === "sleep_alone") {
+      void beginSleepTransition();
+    } else if (state.dialogue) {
+      setDialogue({ sequence: state.dialogue, mode: "objective" });
+      setDialoguePageIndex(0);
+    } else if (state.authoredStepId === "the_procedure") {
+      setContainmentOpen(true);
+    } else if (state.choice && !state.preparedChoice) {
+      setChoiceOpen(true);
+    } else if (state.preparedChoice) {
+      void complete(state.preparedChoice);
+    } else {
+      void complete();
+    }
+  }, [
+    beginSleepTransition,
+    busy,
+    choiceOpen,
+    complete,
+    containmentOpen,
+    cutscene.active,
+    dialogue,
+    sleepTransition,
+    state,
+  ]);
+
+  useEffect(() => {
+    const onInteract = () => interactWithObjective();
+    window.addEventListener(CHAPTER1_OBJECTIVE_INTERACT_EVENT, onInteract);
+    return () =>
+      window.removeEventListener(CHAPTER1_OBJECTIVE_INTERACT_EVENT, onInteract);
+  }, [interactWithObjective]);
+
+  useEffect(() => {
+    if (!recoveredUiObjectiveActive) return;
+    const finishIfVisible = () => {
+      if (readChapter1RecoveredTabVisibility()) void complete();
+    };
+    finishIfVisible();
+    const onVisibility = (event: Event) => {
+      if (
+        (event as CustomEvent<{ visible?: boolean }>).detail?.visible !== false
+      ) {
+        finishIfVisible();
+      }
+    };
+    window.addEventListener(
+      CHAPTER1_RECOVERED_TAB_VISIBILITY_EVENT,
+      onVisibility
+    );
+    return () =>
+      window.removeEventListener(
+        CHAPTER1_RECOVERED_TAB_VISIBILITY_EVENT,
+        onVisibility
+      );
+  }, [complete, recoveredUiObjectiveActive]);
+
   const worldCandidate = useMemo(
     () =>
       state?.status === "active" &&
+      ch1InteractionSurfaceForStep(state.authoredStepId) === "world" &&
       state.withinRange &&
       state.trigger !== "near_location" &&
       !state.requirement?.blocksChapterInteraction &&
@@ -529,22 +662,7 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
             // The central dispatcher owns repeat/modifier/editable-target
             // guards and consumes the winning key. Registering here avoids a
             // second window listener racing native ECS/container prompts.
-            onInteract: () => {
-              if (state.authoredStepId === "sleep_alone") {
-                void beginSleepTransition();
-              } else if (state.dialogue) {
-                setDialogue({ sequence: state.dialogue, mode: "objective" });
-                setDialoguePageIndex(0);
-              } else if (state.authoredStepId === "the_procedure") {
-                setContainmentOpen(true);
-              } else if (state.choice && !state.preparedChoice) {
-                setChoiceOpen(true);
-              } else if (state.preparedChoice) {
-                void complete(state.preparedChoice);
-              } else {
-                void complete();
-              }
-            },
+            onInteract: interactWithObjective,
           }
         : undefined,
     [
@@ -555,6 +673,7 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
       containmentOpen,
       cutscene.active,
       dialogue,
+      interactWithObjective,
       sleepTransition,
       state,
     ]

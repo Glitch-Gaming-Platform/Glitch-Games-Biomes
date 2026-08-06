@@ -39,15 +39,15 @@ CLIPS = {
         "keys": [(0.00, {"RightArm": (-34,0,0), "RightHand": (-4,0,0), "LeftArm": (-55,0,30), "LeftHand": (-15,-8,-26), "Chest": (0,0,0), "HipsT": (0,0,0)}), (0.32, {"RightArm": (-32,0,4), "RightHand": (-4,0,0), "LeftArm": (-74,0,18), "LeftHand": (-20,-6,-28), "Chest": (0,0,1), "HipsT": (0,0,0)}), (1.00, {"RightArm": (-34,0,0), "RightHand": (-4,0,0), "LeftArm": (-55,0,30), "LeftHand": (-15,-8,-26), "Chest": (0,0,0), "HipsT": (0,0,0)})],
     },
     "HarthmereBodyRangedDraw_Aligned_30": {
-        "duration": 0.90, "category": "ranged_draw", "timing": {"windupMs": 180, "impactMs": 300, "recoveryMs": 420},
+        "duration": 0.50, "category": "ranged_draw", "timing": {"windupMs": 180, "impactMs": 280, "recoveryMs": 220},
         "keys": [(0.00, {"RightArm": (-35,0,-10), "RightHand": (-8,0,8), "LeftArm": (-36,0,14), "LeftHand": (-8,0,-12), "Chest": (0,0,0), "HipsT": (0,0,0)}), (0.45, {"RightArm": (-50,-12,-48), "RightHand": (-12,20,32), "LeftArm": (-64,0,20), "LeftHand": (-18,-8,-18), "Chest": (0,0,-1), "HipsT": (0,0,0)}), (1.00, {"RightArm": (-50,-12,-48), "RightHand": (-12,20,32), "LeftArm": (-64,0,20), "LeftHand": (-18,-8,-18), "Chest": (0,0,-1), "HipsT": (0,0,0)})],
     },
     "HarthmereBodyRangedRelease_Aligned_30": {
-        "duration": 0.72, "category": "ranged_release", "timing": {"windupMs": 80, "impactMs": 160, "recoveryMs": 420},
-        "keys": [(0.00, {"RightArm": (-50,-12,-48), "RightHand": (-12,20,32), "LeftArm": (-64,0,20), "LeftHand": (-18,-8,-18), "Chest": (0,0,-1), "HipsT": (0,0,0)}), (0.22, {"RightArm": (-42,-4,-16), "RightHand": (-8,0,8), "LeftArm": (-62,0,18), "LeftHand": (-16,-6,-18), "Chest": (0,0,0), "HipsT": (0,0,0)}), (1.00, {"RightArm": (-36,0,-8), "RightHand": (-6,0,4), "LeftArm": (-38,0,12), "LeftHand": (-8,-4,-10), "Chest": (0,0,0), "HipsT": (0,0,0)})],
+        "duration": 0.50, "category": "ranged_release", "timing": {"windupMs": 180, "impactMs": 280, "recoveryMs": 220},
+        "keys": [(0.00, {"RightArm": (-35,0,-10), "RightHand": (-8,0,8), "LeftArm": (-36,0,14), "LeftHand": (-8,0,-12), "Chest": (0,0,0), "HipsT": (0,0,0)}), (0.48, {"RightArm": (-64,0,20), "RightHand": (-18,-8,-16), "LeftArm": (-50,-12,-48), "LeftHand": (-12,20,32), "Chest": (0,0,-1), "HipsT": (0,0,0)}), (0.56, {"RightArm": (-62,0,18), "RightHand": (-16,-6,-18), "LeftArm": (-42,-4,-16), "LeftHand": (-8,0,8), "Chest": (0,0,0), "HipsT": (0,0,0)}), (1.00, {"RightArm": (-36,0,-8), "RightHand": (-6,0,4), "LeftArm": (-38,0,12), "LeftHand": (-8,-4,-10), "Chest": (0,0,0), "HipsT": (0,0,0)})],
     },
     "HarthmereBodyRangedReload_Aligned_30": {
-        "duration": 0.84, "category": "ranged_reload", "timing": {"windupMs": 160, "impactMs": 320, "recoveryMs": 360},
+        "duration": 0.50, "category": "ranged_reload", "timing": {"windupMs": 140, "impactMs": 260, "recoveryMs": 240},
         "keys": [(0.00, {"RightArm": (-26,0,-20), "RightHand": (4,12,20), "LeftArm": (-36,0,16), "LeftHand": (-6,0,-10), "Chest": (0,0,0), "HipsT": (0,0,0)}), (0.44, {"RightArm": (-42,-8,-28), "RightHand": (-8,18,26), "LeftArm": (-46,0,22), "LeftHand": (-10,-4,-14), "Chest": (0,0,-1), "HipsT": (0,0,0)}), (1.00, {"RightArm": (-34,0,-8), "RightHand": (-6,0,4), "LeftArm": (-36,0,12), "LeftHand": (-6,-4,-8), "Chest": (0,0,0), "HipsT": (0,0,0)})],
     },
     "HarthmereBodyMagicCast_Aligned_30": {

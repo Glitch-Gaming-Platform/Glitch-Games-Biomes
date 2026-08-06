@@ -22,12 +22,28 @@ describe("Harthmere combat VFX are independent of the town-asset gate", () => {
     ),
     "utf8"
   );
-  it("preloads projectile assets outside the town-asset gate on desktop only", () => {
+  const projectileRuntime = fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "src/client/game/renderers/local_dev/harthmere_projectiles.ts"
+    ),
+    "utf8"
+  );
+  it("keeps projectile assets lazy outside the town-asset gate on every platform", () => {
     assert.match(renderer, /HARTHMERE_COMBAT_VFX_ALWAYS_ON/);
-    assert.match(
-      renderer,
-      /if \(!this\.mobileDevice\) \{\s*this\.harthmereProjectileVisuals\.preloadAll\(\);\s*\}\s*if \(shouldRenderHarthmereRuntimeAssets\(\)\)/
+    const constructorStreaming = renderer.slice(
+      renderer.indexOf("constructor("),
+      renderer.indexOf("draw(scenes: Scenes, dt: number)")
     );
+    assert.doesNotMatch(
+      constructorStreaming,
+      /this\.harthmereProjectileVisuals\.preloadAll\(/
+    );
+    assert.match(
+      projectileRuntime,
+      /const fallback = makeLoadingSilhouette\(definition\)/
+    );
+    assert.match(projectileRuntime, /void this\.load\(definition\)/);
   });
 
   it("ticks and attaches the VFX layer on the not-ready draw path", () => {
@@ -43,22 +59,28 @@ describe("Harthmere combat VFX are independent of the town-asset gate", () => {
     assert.match(notReadyBranch, /scenes\.three\.add\(this\.root\)/);
   });
 
-  it("also attaches the local player's third-person weapon rig", () => {
-    // The weapon rig shares draw()'s frame clock and is updated before the
-    // readiness gate, so production does not need an extra uncancelled rAF.
+  it("leaves third-person equipment on the authoritative player attachment", () => {
+    // Projectiles remain renderer-owned. Equipped items do not: the ordinary
+    // player renderer already binds the exact hotbar item to the Tool/hand bone,
+    // so this renderer must not attach its old world-space follower rig.
     assert.match(
       renderer,
-      /hasHarthmereSceneAttachableContent\(\)[\s\S]{0,400}?harthmerePlayerSwordAnchorRoot !== undefined/
+      /AUTHORITATIVE_EQUIPPED_ITEM_VISUAL =\s*"player-item-attachment-tool-bone-v1"/
     );
-    const drawStart = renderer.indexOf("draw(scenes: Scenes, dt: number)");
-    const notReady = renderer.indexOf(
-      "if (!this.ready || this.root.children.length === 0)",
-      drawStart
+    assert.match(
+      renderer,
+      /hasHarthmereSceneAttachableContent\(\)[\s\S]{0,220}?return this\.harthmereProjectileVisuals\.hasActiveVisuals\(\)/
     );
-    assert.ok(
-      renderer.indexOf("this.updateHarthmerePlayerSwordVisual();", drawStart) <
-        notReady
+    const constructor = renderer.slice(
+      renderer.indexOf("constructor("),
+      renderer.indexOf("draw(scenes: Scenes, dt: number)")
     );
+    assert.doesNotMatch(constructor, /installHarthmerePlayerSwordVisuals\(\)/);
+    const draw = renderer.slice(
+      renderer.indexOf("draw(scenes: Scenes, dt: number)"),
+      renderer.indexOf("private resolveHarthmereRuntimePlacement")
+    );
+    assert.doesNotMatch(draw, /updateHarthmerePlayerSwordVisual\(\)/);
     assert.doesNotMatch(renderer, /requestAnimationFrame\(animateSword\)/);
   });
 

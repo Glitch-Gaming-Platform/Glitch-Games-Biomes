@@ -14,13 +14,31 @@ function check(label, condition) {
   if (!condition) ok = false;
 }
 
-check("robust sanitize version exists", text.includes("harthmere-robust-physical-combat-sanitize"));
-check("Training Dagger Strike can classify physical via dagger/strike", text.includes("dagger|strike|slash|swing"));
-check("physical clips can classify physical", text.includes("harthmereHasPhysicalClip"));
-check("explicit spark remains magic", text.includes("harthmereIsExplicitMagicAction"));
-check("magic clips are stripped from physical attacks", text.includes("basicmagic|heavymagic|spark|spell|arcane"));
-check("no this.debugHarthmereRenderer calls remain", !text.includes("this.debugHarthmereRenderer("));
-check("physical marker is set", text.includes("detailAny.harthmereNoSparkBasic = true"));
+check(
+  "robust sanitize version exists",
+  text.includes("harthmere-robust-physical-combat-sanitize")
+);
+check(
+  "Training Dagger Strike can classify physical via dagger/strike",
+  text.includes("dagger|strike|slash|swing")
+);
+check(
+  "physical clips can classify physical",
+  text.includes("const hasPhysicalClip")
+);
+check("explicit spark remains magic", text.includes("const explicitMagic"));
+check(
+  "magic clips are stripped from physical attacks",
+  text.includes("basicmagic|heavymagic|spark|spell|arcane")
+);
+check(
+  "no this.debugHarthmereRenderer calls remain",
+  !text.includes("this.debugHarthmereRenderer(")
+);
+check(
+  "physical marker is set",
+  text.includes("detail.harthmereNoSparkBasic = true")
+);
 
 console.log("");
 console.log(ok ? "RESULT: PASS" : "RESULT: FAIL");

@@ -32,6 +32,9 @@ import {
   harthmereTownMapMarkerUiKind,
 } from "./harthmereTownMapMarkers";
 import {
+  BIOMES_UI_JOBS_BOARD_ACCEPTED_JOB_MARKER_SOURCE,
+  BIOMES_UI_JOBS_BOARD_ITEM_SOURCE_MARKER_SOURCE,
+  BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE,
   activeJobsBoardMissionStepsForBiomesUI,
   firstActiveJobsBoardQuestTitleForBiomesUI,
   jobsBoardAcceptedJobLandmarksForBiomesUI,
@@ -106,11 +109,11 @@ export function chapter1WorldMapLandmarksForBiomesUI() {
       landmark.slug === "old_wood_copse"
         ? "resource"
         : landmark.slug === "old_bridge" ||
-          landmark.slug === "fence_line_seam" ||
-          landmark.slug === "old_wood_aperture" ||
-          landmark.slug === "cold_gate"
-        ? "connector"
-        : "interactable",
+            landmark.slug === "fence_line_seam" ||
+            landmark.slug === "old_wood_aperture" ||
+            landmark.slug === "cold_gate"
+          ? "connector"
+          : "interactable",
     source: CH1_BIOMES_UI_MAP_MARKER_SOURCE,
     visibleOnWorldMap: true,
     visibleOnHudMap: true,
@@ -445,7 +448,10 @@ export function buildBiomesUIMapAdapter(
       landmark?.source === CH1_BIOMES_UI_MAP_MARKER_SOURCE ||
       landmark?.source === BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE ||
       landmark?.source === BIOMES_UI_SHARED_QUEST_MARKER_SOURCE ||
-      landmark?.source === HARTHMERE_BIBLE_QUEST_MARKER_SOURCE
+      landmark?.source === HARTHMERE_BIBLE_QUEST_MARKER_SOURCE ||
+      landmark?.source === BIOMES_UI_JOBS_BOARD_ACCEPTED_JOB_MARKER_SOURCE ||
+      landmark?.source === BIOMES_UI_JOBS_BOARD_ITEM_SOURCE_MARKER_SOURCE ||
+      landmark?.source === BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE
       ? id
       : normalizeMarkerId(id);
   };
@@ -687,21 +693,21 @@ export function buildBiomesUIMapAdapter(
           description: isLiveEntityHelperMarker
             ? String(landmark.description ?? "Active helper quest target.")
             : isSharedQuestMarker
-            ? String(landmark.description ?? "Shared quest target.")
-            : isFarmingHoeQuestMarker
-            ? String(landmark.description ?? "Buy a Hoe here.")
-            : isAcceptedJobMarker
-            ? String(landmark.description ?? "Accepted jobs board task.")
-            : isSyntheticRoadAheadObjective
-            ? "Current Road Ahead objective - head here to advance the route."
-            : isCurrentObjective
-            ? "Current objective - head here to advance the active quest."
-            : isInActiveChain
-            ? "Part of the active quest path."
-            : String(
-                landmark.description ??
-                  `${landmark.area ?? "Grove"} - ${landmark.kind ?? "landmark"}`
-              ),
+              ? String(landmark.description ?? "Shared quest target.")
+              : isFarmingHoeQuestMarker
+                ? String(landmark.description ?? "Buy a Hoe here.")
+                : isAcceptedJobMarker
+                  ? String(landmark.description ?? "Accepted jobs board task.")
+                  : isSyntheticRoadAheadObjective
+                    ? "Current Road Ahead objective - head here to advance the route."
+                    : isCurrentObjective
+                      ? "Current objective - head here to advance the active quest."
+                      : isInActiveChain
+                        ? "Part of the active quest path."
+                        : String(
+                            landmark.description ??
+                              `${landmark.area ?? "Grove"} - ${landmark.kind ?? "landmark"}`
+                          ),
         });
       }
       for (const marker of nativeMarkers) {
@@ -736,7 +742,7 @@ export function buildBiomesUIMapAdapter(
           worldPosition: [...BUILDING_SYSTEM_GROVE_STEWARD_NPC.position] as [
             number,
             number,
-            number
+            number,
           ],
         });
       }
@@ -758,8 +764,8 @@ export function buildBiomesUIMapAdapter(
       );
       return String(
         nativeQuest
-          ? nativeQuest.biscuit.displayName ?? "Current Mission"
-          : activeQuest?.title ??
+          ? (nativeQuest.biscuit.displayName ?? "Current Mission")
+          : (activeQuest?.title ??
               firstActiveJobsBoardQuestTitleForBiomesUI(jobsBoardState) ??
               (includeSyntheticRoadAhead
                 ? firstActiveSnapshotRoadAheadQuestTitleForBiomesUI(
@@ -774,7 +780,7 @@ export function buildBiomesUIMapAdapter(
               harthmereHoeQuestTrackableQuests(
                 farming?.hoeQuestState ?? "loading"
               )[0]?.title ??
-              "Current Mission"
+              "Current Mission")
       );
     },
     getMissionSteps: () => {
@@ -811,8 +817,8 @@ export function buildBiomesUIMapAdapter(
                 index < activeObjectiveIndex
                   ? `Completed step ${index + 1}`
                   : index === activeObjectiveIndex
-                  ? `Current step ${index + 1}`
-                  : `Upcoming step ${index + 1}`,
+                    ? `Current step ${index + 1}`
+                    : `Upcoming step ${index + 1}`,
               objective,
               done: index < activeObjectiveIndex,
             };
@@ -881,10 +887,10 @@ export function buildBiomesUIMapAdapter(
           const status = completed.includes(quest.id)
             ? ("completed" as const)
             : quest.id === activeQuestId ||
-              accepted.includes(quest.id) ||
-              liveActive.has(quest.id)
-            ? ("active" as const)
-            : ("available" as const);
+                accepted.includes(quest.id) ||
+                liveActive.has(quest.id)
+              ? ("active" as const)
+              : ("available" as const);
           const liveObjectiveIndex = liveModeActiveQuestObjectiveIndex(
             liveQuestState,
             String(quest.id)
@@ -937,9 +943,9 @@ export function buildBiomesUIMapAdapter(
               typeof quest.hook === "string" && quest.hook.trim()
                 ? quest.hook.trim()
                 : typeof quest.sampleDialogue === "string" &&
-                  quest.sampleDialogue.trim()
-                ? quest.sampleDialogue.trim()
-                : undefined,
+                    quest.sampleDialogue.trim()
+                  ? quest.sampleDialogue.trim()
+                  : undefined,
           };
         });
       return dedupeTrackableQuestProjections([

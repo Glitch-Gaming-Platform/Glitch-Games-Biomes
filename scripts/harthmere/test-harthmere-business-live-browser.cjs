@@ -21,6 +21,7 @@ const {
   Health,
   Orientation,
   Position,
+  TriggerState,
 } = require("../../src/shared/ecs/gen/components");
 const { MoveEvent } = require("../../src/shared/ecs/gen/events");
 const {
@@ -48,7 +49,12 @@ const {
 const {
   HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS,
 } = require("../../src/shared/harthmere/business_customer_npc_seed");
+const {
+  readHarthmereNativeVitals,
+  writeHarthmereNativeVitals,
+} = require("../../src/shared/harthmere/harthmere_native_vitals");
 const { deserializeNpcCustomState } = require("../../src/shared/npc/serde");
+const { lookAtOrientation } = require("../../src/shared/cutscene/math");
 
 const root = path.resolve(__dirname, "../..");
 const baseUrl = String(
@@ -468,13 +474,28 @@ async function dismissEnterGame(page) {
   );
 }
 
-async function placePlayer(page, position) {
+async function placePlayer(page, position, lookAt) {
+  const orientation = lookAt ? lookAtOrientation(position, lookAt) : [0, 0];
   let last;
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const current = await authoritativeEntity(page, actorId);
+    // "Passed away after falling asleep" is native stamina exhaustion, not an
+    // NPC attack. Keep the actor's level-owned health ceiling intact and reset
+    // the authoritative survival clock at each row boundary. Inflating max HP
+    // is both ineffective (level sync normalizes it) and hides the real cause.
     const maxHp = Math.max(1, current?.health?.maxHp ?? 100);
+    const triggerState = current?.trigger_state
+      ? TriggerState.clone(current.trigger_state)
+      : TriggerState.create();
+    const vitals = readHarthmereNativeVitals(triggerState);
+    writeHarthmereNativeVitals(triggerState, {
+      stamina: vitals.maxStamina,
+      breath: vitals.maxBreath,
+      underwater: false,
+      lastTickMs: Date.now(),
+    });
     const liveTeleport = await page.evaluate(
-      ({ id, position }) => {
+      ({ id, position, orientation }) => {
         const reactResources = globalThis.clientContext?.reactResources;
         reactResources?.set("/game_modal", { kind: "empty" });
         const teleport = globalThis.__harthmereLivePlayerDebug?.teleportTo;
@@ -492,17 +513,17 @@ async function placePlayer(page, position) {
         if (!resources) throw new Error("client resources unavailable");
         resources.update("/sim/player", id, (player) => {
           player.position = [...position];
-          player.orientation = [0, 0];
+          player.orientation = [...orientation];
           player.velocity = [0, 0, 0];
         });
         resources.update("/scene/local_player", (localPlayer) => {
           localPlayer.player.position = [...position];
-          localPlayer.player.orientation = [0, 0];
+          localPlayer.player.orientation = [...orientation];
           localPlayer.player.velocity = [0, 0, 0];
         });
         return result;
       },
-      { id: actorId, position }
+      { id: actorId, position, orientation }
     );
     if (liveTeleport) {
       assert.equal(
@@ -516,8 +537,9 @@ async function placePlayer(page, position) {
       entity: {
         id: actorId,
         position: Position.create({ v: [...position] }),
-        orientation: Orientation.create({ v: [0, 0] }),
+        orientation: Orientation.create({ v: [...orientation] }),
         health: Health.create({ hp: maxHp, maxHp }),
+        trigger_state: triggerState,
         death_info: null,
         iced: null,
       },
@@ -527,47 +549,70 @@ async function placePlayer(page, position) {
       new MoveEvent({
         id: actorId,
         position: [...position],
-        orientation: [0, 0],
+        orientation: [...orientation],
         velocity: [0, 0, 0],
       })
     );
     await delay(350);
     await page.evaluate(
-      ({ id, position }) => {
+      ({ id, position, orientation }) => {
         globalThis.clientContext?.reactResources?.set("/game_modal", {
           kind: "empty",
         });
         const resources = globalThis.clientContext?.resources;
         resources?.update("/sim/player", id, (player) => {
           player.position = [...position];
-          player.orientation = [0, 0];
+          player.orientation = [...orientation];
           player.velocity = [0, 0, 0];
         });
         resources?.update("/scene/local_player", (localPlayer) => {
           localPlayer.player.position = [...position];
-          localPlayer.player.orientation = [0, 0];
+          localPlayer.player.orientation = [...orientation];
           localPlayer.player.velocity = [0, 0, 0];
         });
       },
-      { id: actorId, position }
+      { id: actorId, position, orientation }
     );
     await dismissEnterGame(page);
     await delay(350);
     last = await authoritativeEntity(page, actorId);
     const authoritativePosition = last?.position?.v;
-    if (
+    const authoritativeVitals = readHarthmereNativeVitals(last?.trigger_state);
+    const initiallyStable =
       last?.health?.hp > 0 &&
+      authoritativeVitals.stamina > 0 &&
       !last?.death_info &&
       authoritativePosition &&
-      distance(authoritativePosition, position) <= 1.5
-    ) {
-      return;
+      distance(authoritativePosition, position) <= 1.5;
+    if (initiallyStable) {
+      // A previously killed disposable actor can have an already-queued
+      // respawn apply after the first healthy sample. Keep the row boundary
+      // closed until refreshed survival state and placement survive that
+      // delayed window.
+      await delay(1_250);
+      last = await authoritativeEntity(page, actorId);
+      const stablePosition = last?.position?.v;
+      const stableVitals = readHarthmereNativeVitals(last?.trigger_state);
+      if (
+        last?.health?.hp > 0 &&
+        stableVitals.stamina > 0 &&
+        !last.death_info &&
+        stablePosition &&
+        distance(stablePosition, position) <= 1.5
+      ) {
+        return;
+      }
     }
   }
   throw new Error(
     `player placement did not remain alive and stable at ${position.join(",")}; ` +
       `last=${JSON.stringify({
         hp: last?.health?.hp,
+        maxHp: last?.health?.maxHp,
+        stamina: readHarthmereNativeVitals(last?.trigger_state).stamina,
+        maxStamina: readHarthmereNativeVitals(last?.trigger_state).maxStamina,
+        lastVitalsTickMs: readHarthmereNativeVitals(last?.trigger_state)
+          .lastTickMs,
         position: last?.position?.v,
         dead: Boolean(last?.death_info),
       })}`
@@ -760,6 +805,22 @@ async function assertPlayerReadableBusinessUi(page, stage) {
     visibleText,
     /economy_(?:rejected|warning)|native_ecs_materialization_deferred|business_[a-z0-9]+_[a-z0-9_]+|TypeError|ReferenceError|RangeError|SyntaxError|Cannot read properties of|is not a function/i,
     `${stage} exposed a backend code to the player`
+  );
+}
+
+async function waitForStableGameplayOverlayClear(page, stage) {
+  await page.waitForFunction(
+    ({ stage }) => {
+      const key = `__harthmereBusinessLoadingClearSince_${stage}`;
+      if (document.querySelector(".loading-wrapper")) {
+        delete globalThis[key];
+        return false;
+      }
+      globalThis[key] ??= Date.now();
+      return Date.now() - globalThis[key] >= 1_000;
+    },
+    { stage },
+    { timeout: timeoutMs }
   );
 }
 
@@ -999,10 +1060,18 @@ async function runBusiness(page, record, index) {
     1,
     "Business board prompt must be unique"
   );
-  await boardPrompt.click();
+  await page.locator("canvas.biomes-canvas").focus();
+  await page.keyboard.press("KeyF");
   await page.waitForSelector(
     `[data-harthmere-business-interface="true"][data-business-id="${businessId}"]`,
     { timeout: timeoutMs }
+  );
+  const overview = page.getByRole("button", { name: "Overview", exact: true });
+  assert.equal(await overview.count(), 1, "Overview tab must be unique");
+  assert.equal(
+    await overview.getAttribute("aria-selected"),
+    "true",
+    "A fresh business board open must start on Overview"
   );
   const playerClose = page.getByRole("button", {
     name: "Close business interface",
@@ -1012,6 +1081,10 @@ async function runBusiness(page, record, index) {
     1,
     "Business interface must expose one player-readable close control"
   );
+  await waitForStableGameplayOverlayClear(
+    page,
+    `${record.outpostId}_initial_board_close`
+  );
   await playerClose.click();
   await page.waitForSelector(
     `[data-harthmere-business-interface="true"][data-business-id="${businessId}"]`,
@@ -1019,10 +1092,22 @@ async function runBusiness(page, record, index) {
   );
   result.phases.push("player_closed_board");
   await boardPrompt.waitFor({ state: "visible", timeout: timeoutMs });
-  await boardPrompt.click();
+  await page.locator("canvas.biomes-canvas").focus();
+  await page.keyboard.press("KeyF");
   await page.waitForSelector(
     `[data-harthmere-business-interface="true"][data-business-id="${businessId}"]`,
     { timeout: timeoutMs }
+  );
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Overview", exact: true })
+      .getAttribute("aria-selected"),
+    "true",
+    "Reopening the business board must reset to Overview"
+  );
+  await waitForStableGameplayOverlayClear(
+    page,
+    `${record.outpostId}_shift_controls`
   );
   const inWorldShift = page.getByRole("button", { name: "In-World Shift" });
   assert.equal(
@@ -1080,14 +1165,82 @@ async function runBusiness(page, record, index) {
   result.entityId = entityId;
   result.correctOfferId = ticket.requestedOfferId;
   result.phases.push("serving");
+  assert.equal(
+    session.queue.length,
+    10,
+    "A business shift must contain exactly ten customers"
+  );
+  assert.deepEqual(
+    session.queue.map((entry) => entry.patience),
+    [30, 28, 26, 24, 22, 20, 18, 16, 14, 12],
+    "Each next customer must have two fewer patience seconds"
+  );
+  result.customerPatienceLadder = session.queue.map((entry) => entry.patience);
   assert.equal(servingState?.phase, "serving");
   assert.equal(servingState?.sessionId, session.sessionId);
   assert(
     distance(servingEntity.position.v, points.customer) <= 1.75,
     "Customer must physically reach the audited counter point"
   );
+  await placePlayer(page, points.staff, [
+    servingEntity.position.v[0],
+    servingEntity.position.v[1] + 1.25,
+    servingEntity.position.v[2],
+  ]);
   result.screenshots.push(
     await screenshot(page, indexed, "customer-at-counter")
+  );
+
+  const customerCard = page.locator(
+    `[data-harthmere-business-spatial-customer="true"]` +
+      `[data-business-customer-ticket-id="${ticket.ticketId}"]`
+  );
+  await customerCard.waitFor({ state: "visible", timeout: timeoutMs });
+  const patienceBar = customerCard.locator(
+    '[data-harthmere-business-patience="true"]'
+  );
+  assert.equal(
+    await patienceBar.count(),
+    1,
+    "Customer patience bar must be unique"
+  );
+  const patienceStart = await waitFor(
+    `${record.outpostId} synchronized patience bar`,
+    async () => ({
+      visible: Number(await patienceBar.getAttribute("aria-valuenow")),
+      maximum: Number(await patienceBar.getAttribute("aria-valuemax")),
+      session: activeSessionForBusiness(await economyState(page), businessId),
+    }),
+    (value) => {
+      const current = currentSessionTicket(value.session);
+      return (
+        current?.ticketId === ticket.ticketId &&
+        current.patienceRemaining > 0 &&
+        value.maximum === current.patience &&
+        value.visible === current.patienceRemaining
+      );
+    }
+  );
+  const initialPatience = patienceStart.value.visible;
+  const patienceTick = await waitFor(
+    `${record.outpostId} visible patience countdown`,
+    async () => ({
+      visible: Number(await patienceBar.getAttribute("aria-valuenow")),
+      session: activeSessionForBusiness(await economyState(page), businessId),
+    }),
+    (value) => {
+      const current = currentSessionTicket(value.session);
+      return (
+        value.visible < initialPatience &&
+        current?.ticketId === ticket.ticketId &&
+        current.patienceRemaining === value.visible
+      );
+    }
+  );
+  result.initialPatience = initialPatience;
+  result.countedDownPatience = patienceTick.value.visible;
+  result.screenshots.push(
+    await screenshot(page, indexed, "customer-patience-countdown")
   );
 
   const definition =
@@ -1100,19 +1253,81 @@ async function runBusiness(page, record, index) {
     "Requested offer must exist in the business definition"
   );
   const offerDefinition = definition.offers[offerIndex];
-  // Use the actual NPC talk surface. The production HAR showed the shift start
-  // succeeded but talking to the customer displayed ambient Chit Chat choices,
-  // so no serve_business_customer mutation was ever sent. Opening the same
-  // game modal as the native F interaction lets the screenshot prove the
-  // active ticket overrides ordinary dialogue before the service click.
-  await page.evaluate((talkingToNPCId) => {
-    const resources = globalThis.clientContext?.reactResources;
-    if (!resources) throw new Error("client react resources unavailable");
-    resources.set("/game_modal", { kind: "talk_to_npc", talkingToNPCId });
-  }, entityId);
-  await page.waitForSelector('[data-harthmere-business-customer-talk="true"]', {
+  // Exercise the real global F dispatcher. Directly setting /game_modal hid the
+  // production failure where the nearby business-board candidate outranked the
+  // active customer. Requiring pixel-perfect cursor inspection caused a second
+  // false interaction barrier while the moving customer was plainly visible.
+  // The visible current-customer card must own F directly, press the real key,
+  // and reject any management-panel reopen.
+  const directCustomerCandidateId = `harthmere:business-customer:${entityId}`;
+  const customerCandidate = page.locator(
+    `[data-world-interaction-candidate-id="${directCustomerCandidateId}"]` +
+      '[data-world-interaction-owner="true"], ' +
+      `[data-world-interaction-candidate-id^="native:npc:${entityId}:"]` +
+      '[data-world-interaction-owner="true"]'
+  );
+  await customerCandidate.first().waitFor({
+    state: "visible",
     timeout: timeoutMs,
   });
+  assert.equal(
+    await customerCard.getAttribute("data-business-customer-entity-id"),
+    String(entityId),
+    "The patience card and direct F action must belong to the same customer"
+  );
+  assert.equal(
+    await customerCard.getAttribute("data-business-customer-direct-talk-ready"),
+    "true",
+    "The visible current customer must expose the direct real-F service action"
+  );
+  assert.equal(
+    await customerCard.getAttribute("data-business-customer-effective-phase"),
+    "serving",
+    "A ready customer must never still be labelled Entering"
+  );
+  assert.ok(
+    initialPatience <= 30,
+    `Customer patience must be capped at 30 seconds, received ${initialPatience}`
+  );
+  assert.equal(
+    await customerCandidate.count(),
+    1,
+    "Exactly one same-customer interaction surface must own F"
+  );
+  const interactionCandidateId = await customerCandidate
+    .first()
+    .getAttribute("data-world-interaction-candidate-id");
+  assert.ok(
+    interactionCandidateId === directCustomerCandidateId ||
+      interactionCandidateId?.startsWith(`native:npc:${entityId}:`),
+    "F must belong to the current business customer, not another NPC or board"
+  );
+  result.interactionCandidateId = interactionCandidateId;
+  assert.match(await customerCandidate.first().innerText(), /Talk/i);
+  await page.locator("canvas.biomes-canvas").focus();
+  await page.keyboard.press("KeyF");
+  const interactionResult = await waitFor(
+    `${record.outpostId} real F customer interaction`,
+    async () => ({
+      talk: await page
+        .locator('[data-harthmere-business-customer-talk="true"]')
+        .count(),
+      board: await page
+        .locator('[data-harthmere-business-interface="true"]')
+        .count(),
+    }),
+    (value) => value.talk > 0 || value.board > 0
+  );
+  assert.equal(
+    interactionResult.value.board,
+    0,
+    "Real F on the customer must not reopen the business board"
+  );
+  assert.equal(
+    interactionResult.value.talk,
+    1,
+    "Real F on the customer must open the business service conversation"
+  );
   assert.equal(
     await page.getByRole("button", { name: "Chit Chat" }).count(),
     0,
@@ -1123,6 +1338,13 @@ async function runBusiness(page, record, index) {
     0,
     "Active customer must not show ordinary place dialogue"
   );
+  // This is a 12-30 second timed minigame. Business choices are deliberately
+  // visible while the request text types, so the player never has to discover
+  // that a second F press is needed (and that second press must not reopen the
+  // global interaction or reset the modal).
+  await page
+    .getByRole("button", { name: definition.offers[0].label })
+    .waitFor({ state: "visible", timeout: timeoutMs });
   for (const definedOffer of definition.offers) {
     assert.equal(
       await page.getByRole("button", { name: definedOffer.label }).count(),
@@ -1140,10 +1362,61 @@ async function runBusiness(page, record, index) {
   const offer = page.getByRole("button", { name: offerDefinition.label });
   assert.equal(await offer.count(), 1, "Correct talk offer must be unique");
   await offer.click();
+  const resultScreen = page.locator(
+    '[data-harthmere-business-customer-talk="true"]' +
+      '[data-business-customer-result="correct"]'
+  );
+  await resultScreen.waitFor({ state: "visible", timeout: timeoutMs });
+  const goldEarned = Number(
+    await resultScreen.getAttribute("data-business-customer-gold-earned")
+  );
+  const progressEarned = Number(
+    await resultScreen.getAttribute("data-business-customer-progress-earned")
+  );
+  assert.ok(goldEarned > 0, "Correct service must visibly award gold");
+  assert.ok(
+    progressEarned > 0,
+    "Correct service must visibly award business points"
+  );
+  const correctResultMessage =
+    (await resultScreen.getAttribute(
+      "data-business-customer-result-message"
+    )) ?? "";
+  assert.match(correctResultMessage, /Correct!/i);
+  assert.match(correctResultMessage, new RegExp(`${goldEarned} gold`));
+  assert.match(correctResultMessage, /service XP/i);
+  assert.doesNotMatch(
+    correctResultMessage,
+    /customer_[a-z0-9_]+/i,
+    "Result feedback must use a player-readable customer name"
+  );
+  const correctResultStartedAt = Date.now();
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Continue to next customer" })
+      .count(),
+    1,
+    "Result feedback must offer an immediate continue action"
+  );
+  await delay(2_100);
+  assert.equal(
+    await resultScreen.getAttribute("data-business-customer-result-message"),
+    correctResultMessage,
+    "Result feedback must stay stable while its one-time typewriter completes"
+  );
+  result.goldEarned = goldEarned;
+  result.progressEarned = progressEarned;
+  result.screenshots.push(
+    await screenshot(page, indexed, "customer-correct-reward-feedback")
+  );
   await page.waitForSelector('[data-harthmere-business-customer-talk="true"]', {
     state: "detached",
-    timeout: timeoutMs,
+    timeout: 6_000,
   });
+  assert.ok(
+    Date.now() - correctResultStartedAt >= 2_000,
+    "Correct result must remain readable before automatic advancement"
+  );
   const committed = await waitFor(
     `${record.outpostId} authoritative service commit`,
     async () => {
@@ -1172,7 +1445,12 @@ async function runBusiness(page, record, index) {
 
   let lastPosition = servingEntity.position.v;
   let sawReaction = false;
-  const departed = await waitFor(
+  // The game is deliberately fast-paced: the next customer's patience clock
+  // starts when they reach the counter, not after the previous NPC finishes
+  // walking all the way outside. Track the first customer's safe departure in
+  // parallel so the test behaves like a player and immediately serves the next
+  // person instead of consuming their 28-second timer on a despawn audit.
+  const departedPromise = waitFor(
     `${record.outpostId} native departure and safe despawn`,
     async () => {
       const entity = await authoritativeEntity(page, entityId);
@@ -1189,7 +1467,128 @@ async function runBusiness(page, record, index) {
     },
     (value) => value.removed === true,
     timeoutMs * 2
+  ).then(
+    (value) => ({ value }),
+    (error) => ({ error })
   );
+
+  const nextServing = await waitFor(
+    `${record.outpostId} queue advance`,
+    async () => {
+      const state = await economyState(page);
+      const nextSession = activeSessionForBusiness(state, businessId);
+      const nextTicket = currentSessionTicket(nextSession);
+      const nextEntity = nextTicket?.entityId
+        ? await authoritativeEntity(page, nextTicket.entityId)
+        : undefined;
+      return {
+        session: nextSession,
+        ticket: nextTicket,
+        entity: nextEntity,
+        customer: customerState(nextEntity),
+      };
+    },
+    (next) =>
+      next?.ticket?.entityId !== entityId && next?.customer?.phase === "serving"
+  );
+  result.nextEntityId = nextServing.value.ticket.entityId;
+  result.queueAdvanced = true;
+  result.screenshots.push(await screenshot(page, indexed, "queue-advanced"));
+
+  // Prove the losing branch also pauses on a stable, player-readable result
+  // screen and never silently advances to the next customer.
+  const secondTicket = nextServing.value.ticket;
+  const secondEntity = nextServing.value.entity;
+  assert.ok(secondEntity?.position?.v, "Second customer position is missing");
+  await placePlayer(page, points.staff, [
+    secondEntity.position.v[0],
+    secondEntity.position.v[1] + 1.25,
+    secondEntity.position.v[2],
+  ]);
+  const secondCard = page.locator(
+    `[data-harthmere-business-spatial-customer="true"]` +
+      `[data-business-customer-ticket-id="${secondTicket.ticketId}"]`
+  );
+  await secondCard.waitFor({ state: "visible", timeout: timeoutMs });
+  const secondCandidate = page.locator(
+    `[data-world-interaction-candidate-id="harthmere:business-customer:${secondTicket.entityId}"]` +
+      '[data-world-interaction-owner="true"], ' +
+      `[data-world-interaction-candidate-id^="native:npc:${secondTicket.entityId}:"]` +
+      '[data-world-interaction-owner="true"]'
+  );
+  await secondCandidate.first().waitFor({
+    state: "visible",
+    timeout: timeoutMs,
+  });
+  await page.locator("canvas.biomes-canvas").focus();
+  await page.keyboard.press("KeyF");
+  await page
+    .locator('[data-harthmere-business-customer-talk="true"]')
+    .waitFor({ state: "visible", timeout: timeoutMs });
+  const wrongOfferDefinition = definition.offers.find(
+    (candidate) => candidate.offerId !== secondTicket.requestedOfferId
+  );
+  assert.ok(wrongOfferDefinition, "A wrong service choice must exist");
+  await page
+    .getByRole("button", { name: wrongOfferDefinition.label })
+    .click({ timeout: timeoutMs });
+  const incorrectResult = page.locator(
+    '[data-harthmere-business-customer-talk="true"]' +
+      '[data-business-customer-result="incorrect"]'
+  );
+  await incorrectResult.waitFor({ state: "visible", timeout: timeoutMs });
+  assert.equal(
+    Number(
+      await incorrectResult.getAttribute("data-business-customer-gold-earned")
+    ),
+    0,
+    "Incorrect service must visibly award zero gold"
+  );
+  assert.equal(
+    Number(
+      await incorrectResult.getAttribute(
+        "data-business-customer-progress-earned"
+      )
+    ),
+    0,
+    "Incorrect service must visibly award zero business points"
+  );
+  const incorrectResultMessage =
+    (await incorrectResult.getAttribute(
+      "data-business-customer-result-message"
+    )) ?? "";
+  assert.match(incorrectResultMessage, /Incorrect\./i);
+  assert.match(incorrectResultMessage, /You earned 0 gold/i);
+  result.incorrectFeedbackProven = true;
+  const incorrectResultStartedAt = Date.now();
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Continue to next customer" })
+      .count(),
+    1,
+    "Incorrect feedback must offer an immediate continue action"
+  );
+  result.screenshots.push(
+    await screenshot(page, indexed, "customer-incorrect-reward-feedback")
+  );
+  await page.waitForSelector('[data-harthmere-business-customer-talk="true"]', {
+    state: "detached",
+    timeout: 6_000,
+  });
+  assert.ok(
+    Date.now() - incorrectResultStartedAt >= 2_000,
+    "Incorrect result must remain readable before automatic advancement"
+  );
+  await waitFor(
+    `${record.outpostId} authoritative incorrect service commit`,
+    async () => activeSessionForBusiness(await economyState(page), businessId),
+    (nextSession) =>
+      nextSession?.failedTicketIds?.includes(secondTicket.ticketId)
+  );
+
+  const departedOutcome = await departedPromise;
+  if (departedOutcome.error) throw departedOutcome.error;
+  const departed = departedOutcome.value;
   assert.equal(sawReaction, true, "Customer must visibly react to success");
   assert(
     distance(departed.value.lastPosition, departure) <= 1.25,
@@ -1206,28 +1605,6 @@ async function runBusiness(page, record, index) {
   );
   result.screenshots.push(await screenshot(page, indexed, "departed"));
 
-  const nextServing = await waitFor(
-    `${record.outpostId} queue advance`,
-    async () => {
-      const state = await economyState(page);
-      const nextSession = activeSessionForBusiness(state, businessId);
-      const nextTicket = currentSessionTicket(nextSession);
-      const nextEntity = nextTicket?.entityId
-        ? await authoritativeEntity(page, nextTicket.entityId)
-        : undefined;
-      return {
-        session: nextSession,
-        ticket: nextTicket,
-        customer: customerState(nextEntity),
-      };
-    },
-    (next) =>
-      next?.ticket?.entityId !== entityId && next?.customer?.phase === "serving"
-  );
-  result.nextEntityId = nextServing.value.ticket.entityId;
-  result.queueAdvanced = true;
-  result.screenshots.push(await screenshot(page, indexed, "queue-advanced"));
-
   const endShift = page.getByRole("button", { name: "End shift" });
   assert.equal(
     await endShift.count(),
@@ -1235,7 +1612,17 @@ async function runBusiness(page, record, index) {
     "HUD end-shift action must be unique"
   );
   const endingSessionId = nextServing.value.session.sessionId;
-  await placePlayer(page, departure);
+  // Customer route points are authored on the GLB feet plane. Outside the
+  // shell, the native player settles on terrain roughly 1.5m lower (the clinic
+  // is 63.43 while its customer departure is Y=65). Use the exterior terrain
+  // plane for the player so this verifies leaving the building instead of
+  // failing the placement guard on ordinary gravity settling.
+  const playerDeparture = [
+    departure[0],
+    record.shellOrigin[1] - 0.5,
+    departure[2],
+  ];
+  await placePlayer(page, playerDeparture);
   await page.waitForSelector('[data-harthmere-business-shift-status="true"]', {
     state: "detached",
     timeout: timeoutMs,
@@ -1280,11 +1667,20 @@ async function main() {
       actor.page
     );
     persistReport();
-    const loaded = await actor.page.evaluate(() => ({
+    const streaming = await actor.page.evaluate(() => ({
       expected: globalThis.__harthmereBusinessInteriors.expectedCount,
-      count: globalThis.__harthmereBusinessInteriors.interiors().length,
+      loaded: globalThis.__harthmereBusinessInteriors.loadedCount(),
+      loading: globalThis.__harthmereBusinessInteriors.loadingCount(),
     }));
-    assert.deepEqual(loaded, { expected: 19, count: 19 });
+    assert.equal(streaming.expected, 19);
+    assert.ok(
+      streaming.loaded <= 2,
+      "Desktop business interiors must use bounded nearby streaming"
+    );
+    assert.ok(
+      streaming.loading <= 2,
+      "Desktop business interior loading must stay bounded"
+    );
     for (let index = 0; index < rows.length; index += 1) {
       const record = rows[index];
       if (!actor) {

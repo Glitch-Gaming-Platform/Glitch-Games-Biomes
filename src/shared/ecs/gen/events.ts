@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from events.ts.j2. Do not modify directly.
-// Content Hash: efb6000ba38a4bdf12c32728e6a0c408
+// Content Hash: 4e3af7ccbf56cedc3ef02eec46f7bd25
 
 import * as t from "@/shared/ecs/gen/types";
 import type { BiomesId } from "@/shared/ids";
@@ -29,6 +29,7 @@ export interface EventSet {
   readonly unmuckerEvent?: UnmuckerEvent[];
   readonly internalInventorySetEvent?: InternalInventorySetEvent[];
   readonly harthmereInventoryTransactionEvent?: HarthmereInventoryTransactionEvent[];
+  readonly harthmereRangedResourceAttackEvent?: HarthmereRangedResourceAttackEvent[];
   readonly harthmereChapter1WarpEvent?: HarthmereChapter1WarpEvent[];
   readonly harthmereQuestProgressEvent?: HarthmereQuestProgressEvent[];
   readonly harthmerePlaceableTransactionEvent?: HarthmerePlaceableTransactionEvent[];
@@ -191,6 +192,7 @@ interface SuperEventSet {
   readonly unmuckerEvent: UnmuckerEvent[];
   readonly internalInventorySetEvent: InternalInventorySetEvent[];
   readonly harthmereInventoryTransactionEvent: HarthmereInventoryTransactionEvent[];
+  readonly harthmereRangedResourceAttackEvent: HarthmereRangedResourceAttackEvent[];
   readonly harthmereChapter1WarpEvent: HarthmereChapter1WarpEvent[];
   readonly harthmereQuestProgressEvent: HarthmereQuestProgressEvent[];
   readonly harthmerePlaceableTransactionEvent: HarthmerePlaceableTransactionEvent[];
@@ -1190,6 +1192,34 @@ export class HarthmereInventoryTransactionEvent implements Event {
     this.standing_notoriety = standing_notoriety;
     this.standing_notoriety_floor = standing_notoriety_floor;
     this.authorization = authorization;
+  }
+}
+
+export interface HandlerHarthmereRangedResourceAttackEvent {
+  readonly kind: "harthmereRangedResourceAttackEvent";
+  readonly id: BiomesId;
+  target_id: t.OptionalBiomesId;
+  attack_time: t.F64;
+}
+
+export class HarthmereRangedResourceAttackEvent implements Event {
+  readonly kind = "harthmereRangedResourceAttackEvent";
+  readonly id: BiomesId;
+  target_id: t.ReadonlyOptionalBiomesId;
+  attack_time: t.ReadonlyF64;
+
+  constructor({
+    id = t.defaultBiomesId,
+    target_id = t.defaultOptionalBiomesId,
+    attack_time = t.defaultF64,
+  }: {
+    id?: BiomesId;
+    target_id?: t.ReadonlyOptionalBiomesId;
+    attack_time?: t.ReadonlyF64;
+  }) {
+    this.id = id;
+    this.target_id = target_id;
+    this.attack_time = attack_time;
   }
 }
 
@@ -2961,6 +2991,7 @@ export interface HandlerUpdatePlayerHealthEvent {
   maxHp: t.OptionalI32;
   damageSource: t.OptionalDamageSource;
   attackAbilityId: t.OptionalString;
+  attackTimingClass: t.OptionalString;
   attackTime: t.OptionalF64;
   impactPoint: t.OptionalVec3f;
 }
@@ -2973,6 +3004,7 @@ export class UpdatePlayerHealthEvent implements Event {
   maxHp: t.ReadonlyOptionalI32;
   damageSource: t.ReadonlyOptionalDamageSource;
   attackAbilityId: t.ReadonlyOptionalString;
+  attackTimingClass: t.ReadonlyOptionalString;
   attackTime: t.ReadonlyOptionalF64;
   impactPoint: t.ReadonlyOptionalVec3f;
 
@@ -2983,6 +3015,7 @@ export class UpdatePlayerHealthEvent implements Event {
     maxHp = t.defaultOptionalI32,
     damageSource = t.defaultOptionalDamageSource,
     attackAbilityId = t.defaultOptionalString,
+    attackTimingClass = t.defaultOptionalString,
     attackTime = t.defaultOptionalF64,
     impactPoint = t.defaultOptionalVec3f,
   }: {
@@ -2992,6 +3025,7 @@ export class UpdatePlayerHealthEvent implements Event {
     maxHp?: t.ReadonlyOptionalI32;
     damageSource?: t.ReadonlyOptionalDamageSource;
     attackAbilityId?: t.ReadonlyOptionalString;
+    attackTimingClass?: t.ReadonlyOptionalString;
     attackTime?: t.ReadonlyOptionalF64;
     impactPoint?: t.ReadonlyOptionalVec3f;
   }) {
@@ -3001,6 +3035,7 @@ export class UpdatePlayerHealthEvent implements Event {
     this.maxHp = maxHp;
     this.damageSource = damageSource;
     this.attackAbilityId = attackAbilityId;
+    this.attackTimingClass = attackTimingClass;
     this.attackTime = attackTime;
     this.impactPoint = impactPoint;
   }
@@ -3011,6 +3046,8 @@ export interface HandlerUpdateNpcHealthEvent {
   readonly id: BiomesId;
   hp: t.I32;
   damageSource: t.OptionalDamageSource;
+  attackTimingClass: t.OptionalString;
+  attackTime: t.OptionalF64;
 }
 
 export class UpdateNpcHealthEvent implements Event {
@@ -3018,19 +3055,27 @@ export class UpdateNpcHealthEvent implements Event {
   readonly id: BiomesId;
   hp: t.ReadonlyI32;
   damageSource: t.ReadonlyOptionalDamageSource;
+  attackTimingClass: t.ReadonlyOptionalString;
+  attackTime: t.ReadonlyOptionalF64;
 
   constructor({
     id = t.defaultBiomesId,
     hp = t.defaultI32,
     damageSource = t.defaultOptionalDamageSource,
+    attackTimingClass = t.defaultOptionalString,
+    attackTime = t.defaultOptionalF64,
   }: {
     id?: BiomesId;
     hp?: t.ReadonlyI32;
     damageSource?: t.ReadonlyOptionalDamageSource;
+    attackTimingClass?: t.ReadonlyOptionalString;
+    attackTime?: t.ReadonlyOptionalF64;
   }) {
     this.id = id;
     this.hp = hp;
     this.damageSource = damageSource;
+    this.attackTimingClass = attackTimingClass;
+    this.attackTime = attackTime;
   }
 }
 
@@ -5270,6 +5315,7 @@ export type AnyHandlerEvent =
   | HandlerUnmuckerEvent
   | HandlerInternalInventorySetEvent
   | HandlerHarthmereInventoryTransactionEvent
+  | HandlerHarthmereRangedResourceAttackEvent
   | HandlerHarthmereChapter1WarpEvent
   | HandlerHarthmereQuestProgressEvent
   | HandlerHarthmerePlaceableTransactionEvent
@@ -5431,6 +5477,7 @@ export type AnyEvent =
   | UnmuckerEvent
   | InternalInventorySetEvent
   | HarthmereInventoryTransactionEvent
+  | HarthmereRangedResourceAttackEvent
   | HarthmereChapter1WarpEvent
   | HarthmereQuestProgressEvent
   | HarthmerePlaceableTransactionEvent

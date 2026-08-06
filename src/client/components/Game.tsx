@@ -42,7 +42,7 @@ const Game: React.FunctionComponent<{
 
   useHarthmereGlitchBridge(Boolean(clientContext), clientContext);
   useHarthmereCutsceneLibrary(clientContext);
-  useCutscenePromoCapture(Boolean(clientContext));
+  useCutscenePromoCapture(clientContext);
 
   const startWorldLoadEffect = (context: ClientContext) => {
     if (loadEffectStarted.current) {

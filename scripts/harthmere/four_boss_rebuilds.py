@@ -1578,9 +1578,12 @@ ACTION_FRAMES = {
 
 
 def render_actions(definition, armature_obj, actions, output_dir):
-    frames = ACTION_FRAMES.get(definition.slug, ())
-    if not frames:
-        return
+    frames = (
+        *ACTION_FRAMES.get(definition.slug, ()),
+        ("BossStaggerLight", 4),
+        ("BossStaggerMedium", 18),
+        ("BossStaggerHeavy", 25),
+    )
     scale = definition.world_size[1] / core.BASE_BOX[2]
     armature_obj.scale = (scale,) * 3
     scene = bpy.context.scene

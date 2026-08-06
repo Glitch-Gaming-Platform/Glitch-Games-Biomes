@@ -138,10 +138,10 @@ describe("escort: jobs-board assignment", () => {
     assert.equal(escortOf(change)?.combatPolicy, "defend_self");
   });
 
-  it("keeps the default civilian policy for a generic board posting", () => {
-    // `fight_muck` belongs to authored story escorts, not to a posting a player
-    // can accept repeatedly.
-    assert.equal(JOBS_BOARD_ESCORT_DEFAULT_COMBAT_POLICY, "noncombatant");
+  it("lets a generic player escort defend itself and its leader without starting fights", () => {
+    // `fight_muck` belongs to authored story escorts. `defend_leader` reacts
+    // only after the escort or player is attacked.
+    assert.equal(JOBS_BOARD_ESCORT_DEFAULT_COMBAT_POLICY, "defend_leader");
   });
 
   it("deletes a companion once the job is no longer active", () => {

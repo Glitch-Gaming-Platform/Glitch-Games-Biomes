@@ -7,6 +7,7 @@ import {
   HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MAX_MS,
   HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MIN_MS,
   HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS,
+  HARTHMERE_JOBS_BOARD_MAX_ACTIVE_ACCEPTED_PER_SEEKER,
   HARTHMERE_BUSINESS_OWNER_MARKER_PREFIX,
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
   HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
@@ -813,6 +814,94 @@ describe("mmo_jobs_board_authority — issuers and abuse protections", () => {
         } as any,
         context({ actorGold: 100000 })
       ).warnings.includes("jobs_board_rejected:issuer_posting_limit")
+    );
+  });
+
+  it("reserves a separate three-job acceptance lane for authored Chapter 1 Grove work", () => {
+    const state = defaultHarthmereJobsBoardState(NOW);
+    const posting = (jobId: string, extra: Record<string, unknown> = {}) => ({
+      jobId,
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+      issuerKind: "guild" as const,
+      issuerId: `issuer_${jobId}`,
+      title: jobId,
+      description: jobId,
+      kind: "service" as const,
+      requirements: [],
+      rewardGold: 25,
+      escrowGold: 25,
+      reputationDelta: 0,
+      status: "active" as const,
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: NOW - 10_000,
+      deadlineAtMs: NOW + 100_000,
+      acceptedAtMs: NOW - 9_000,
+      acceptedByActorId: "seeker",
+      failurePenaltyGold: 0,
+      requiresFieldWork: false,
+      abuseFlags: [],
+      logs: [],
+      ...extra,
+    });
+    for (
+      let index = 0;
+      index < HARTHMERE_JOBS_BOARD_MAX_ACTIVE_ACCEPTED_PER_SEEKER;
+      index += 1
+    ) {
+      state.postings[`generic_${index}`] = posting(`generic_${index}`);
+    }
+    state.postings.chapter1 = posting("chapter1", {
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      title: "Stock the Road Rations Crate",
+      templateId: "town_gather_road_rations",
+      autoPosted: true,
+      source: "economy_auto_seed",
+      status: "open",
+      acceptedAtMs: undefined,
+      acceptedByActorId: undefined,
+    });
+    const accepted = reduceHarthmereJobsBoardMutation(
+      state,
+      {
+        requestId: "accept_chapter1_over_regular_limit",
+        actorId: "seeker",
+        nowMs: NOW,
+        operation: "accept_job",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: "chapter1",
+      } as any,
+      context()
+    );
+    assert.equal(accepted.jobsBoard.postings.chapter1.status, "active");
+    assert.equal(
+      accepted.warnings.includes("jobs_board_rejected:seeker_active_job_limit"),
+      false
+    );
+
+    accepted.jobsBoard.actorCooldowns.seeker.lastAcceptAtMs = undefined;
+    accepted.jobsBoard.postings.generic_extra = posting("generic_extra", {
+      status: "open",
+      acceptedAtMs: undefined,
+      acceptedByActorId: undefined,
+    });
+    const rejectedGeneric = reduceHarthmereJobsBoardMutation(
+      accepted.jobsBoard,
+      {
+        requestId: "reject_generic_over_regular_limit",
+        actorId: "seeker",
+        nowMs: NOW + HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS + 1,
+        operation: "accept_job",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: "generic_extra",
+      } as any,
+      context()
+    );
+    assert.ok(
+      rejectedGeneric.warnings.includes(
+        "jobs_board_rejected:seeker_active_job_limit"
+      )
     );
   });
 

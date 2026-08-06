@@ -58,6 +58,9 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
         };
 
         window.__clientContext = {
+          clientConfig: {
+            mobileDevice: false,
+          },
           audioManager: {
             getVolume: () => 0.4,
             playSound: () => {},
@@ -388,9 +391,16 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
       `);
       await page.addScriptTag({ content: await readFile(bundlePath, "utf8") });
 
-      await page.getByText(mappedFirstLine, { exact: true }).waitFor({
-        timeout: 10_000,
-      });
+      try {
+        await page.getByText(mappedFirstLine, { exact: true }).waitFor({
+          timeout: 10_000,
+        });
+      } catch (error) {
+        throw new Error(
+          `${error instanceof Error ? error.message : String(error)}\n` +
+            `Browser errors before first dialogue: ${browserErrors.join(" | ")}`
+        );
+      }
       const expressionDialog = page.locator(
         ".npc-quest-dialog-container[data-harthmere-dialogue-expression]"
       );

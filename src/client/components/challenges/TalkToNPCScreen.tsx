@@ -18,16 +18,21 @@ import { useWithUnseenEmptyTransition } from "@/client/util/hooks";
 import { TalkToNPCMultiQuestSelector } from "@/client/components/challenges/TalkToNPCMultiQuestSelector";
 import { JACKIE_ID } from "@/client/util/nux/state_machines";
 import { completeHarthmereDailyTaskSoon } from "@/client/components/challenges/harthmereDailyTasks";
+import {
+  CHAPTER1_OBJECTIVE_INTERACT_EVENT,
+  readChapter1ObjectiveWorldProjection,
+} from "@/client/components/challenges/Chapter1ObjectiveWorldState";
 import { HarthmereBusinessCustomerTalkDialog } from "@/client/components/harthmere_business/HarthmereBusinessCustomerTalkDialog";
 import { useHarthmereBusinessCustomerTalkTarget } from "@/client/components/harthmere_business/harthmereBusinessCustomerTalkState";
 import { HarthmereRequestBoardLiveContainer } from "@/client/components/harthmere_request_board/HarthmereRequestBoardLiveContainer";
 import { AdminDeleteEvent, AdminIceEvent } from "@/shared/ecs/gen/events";
 import { reportFunnelStage } from "@/shared/funnel";
+import { ch1ObjectiveOwnsNpcInteraction } from "@/shared/harthmere/ch1_interaction_surfaces";
 import { isHarthmereRequestBoardEntityId } from "@/shared/harthmere/native_request_boards";
 import type { BiomesId } from "@/shared/ids";
 import { deserializeNpcCustomState } from "@/shared/npc/serde";
 import { fireAndForget } from "@/shared/util/async";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export const AdminNPCButtons: React.FunctionComponent<{
   npcId: BiomesId;
@@ -96,8 +101,23 @@ export const TalkToNPCScreen: React.FunctionComponent<{
   const clientContext = useClientContext();
   const { resources, gardenHose, authManager } = clientContext;
   const isAdmin = authManager.currentUser.hasSpecialRole("admin");
-  const businessCustomerTalk =
+  const liveBusinessCustomerTalk =
     useHarthmereBusinessCustomerTalkTarget(talkingToNPCId);
+  const retainedBusinessCustomerTalk = useRef<{
+    entityId: BiomesId;
+    target: NonNullable<typeof liveBusinessCustomerTalk>;
+  }>();
+  if (liveBusinessCustomerTalk) {
+    retainedBusinessCustomerTalk.current = {
+      entityId: talkingToNPCId,
+      target: liveBusinessCustomerTalk,
+    };
+  }
+  const businessCustomerTalk =
+    liveBusinessCustomerTalk ??
+    (retainedBusinessCustomerTalk.current?.entityId === talkingToNPCId
+      ? retainedBusinessCustomerTalk.current.target
+      : undefined);
   const nativeNpcState = clientContext.reactResources.use(
     "/ecs/c/npc_state",
     talkingToNPCId
@@ -110,6 +130,11 @@ export const TalkToNPCScreen: React.FunctionComponent<{
     [nativeNpcState?.data]
   );
   const requestBoard = isHarthmereRequestBoardEntityId(talkingToNPCId);
+  const chapter1Objective = readChapter1ObjectiveWorldProjection();
+  const chapter1OwnsThisNpc = ch1ObjectiveOwnsNpcInteraction(
+    chapter1Objective,
+    Number(talkingToNPCId)
+  );
   const trueRelevantSteps = useRelevantStepsForEntity(talkingToNPCId);
   const [queryingStep, setQueryingStep] = useState(false);
   const [trackedQuest] = clientContext.mapManager.react.useTrackedQuestId();
@@ -125,13 +150,24 @@ export const TalkToNPCScreen: React.FunctionComponent<{
 
   useEffect(() => {
     if (talkingToNPCId) {
+      if (chapter1OwnsThisNpc) {
+        // Mouse/overlay Talk can still open the stock NPC modal before the
+        // central F-key dispatcher sees it. Route that alternate entry point
+        // back into the exact authenticated Chapter 1 objective and never let
+        // an unrelated accepted Grove quest masquerade as story dialogue.
+        onClose();
+        window.dispatchEvent(
+          new CustomEvent(CHAPTER1_OBJECTIVE_INTERACT_EVENT)
+        );
+        return;
+      }
       gardenHose.publish({
         kind: "talk_npc",
         npcId: talkingToNPCId,
       });
       completeHarthmereDailyTaskSoon("talk_neighbor");
     }
-  }, []);
+  }, [chapter1OwnsThisNpc, gardenHose, onClose, talkingToNPCId]);
 
   useEffect(() => {
     if (talkingToNPCId === JACKIE_ID) {
@@ -166,7 +202,16 @@ export const TalkToNPCScreen: React.FunctionComponent<{
   };
 
   let dialogContent: JSX.Element;
-  if (requestBoard) {
+  if (chapter1OwnsThisNpc) {
+    dialogContent = (
+      <TalkToNpc
+        talkingToNpcId={talkingToNPCId}
+        id="chapter1-story-routing"
+        dialogText=""
+        completeStep={() => {}}
+      />
+    );
+  } else if (requestBoard) {
     dialogContent = (
       <HarthmereRequestBoardLiveContainer
         boardEntityId={talkingToNPCId}
@@ -184,6 +229,7 @@ export const TalkToNPCScreen: React.FunctionComponent<{
       <HarthmereBusinessCustomerTalkDialog
         talkingToNPCId={talkingToNPCId}
         onClose={onClose}
+        retainedTarget={businessCustomerTalk}
       />
     );
   } else if (

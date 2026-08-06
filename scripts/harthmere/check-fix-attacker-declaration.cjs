@@ -14,19 +14,38 @@ function check(label, condition) {
   if (!condition) ok = false;
 }
 
-const marker = text.indexOf("harthmere-fix-attacker-declaration");
-const attackerDecl = text.indexOf("const attacker =", marker);
-const attackerMatch = text.indexOf('debugHarthmereRenderer("renderer.combat_event.attacker_match"', marker);
-const pulse = text.indexOf('this.startCombatPulse(attacker, "attack"', marker);
+const marker = text.indexOf("harthmere-rebuilt-combat-effect-handler");
+const handlerEnd = text.indexOf("\n  private faceCombatActorToward", marker);
+const handler = text.slice(marker, handlerEnd);
+const attackerDecl = handler.indexOf("const attacker = resolveCombatActor");
+const attackerMatch = handler.indexOf(
+  'debugHarthmereRenderer("renderer.combat_event.attacker_match"'
+);
+const pulse = handler.search(/this\.startCombatPulse\(\s*attacker,\s*"attack"/);
 
-check("fix marker exists", marker >= 0);
-check("attackerOffsetMatch is declared", text.includes("const attackerOffsetMatch = this.findCombatLifeByOffset(detail.attackerOffset);"));
-check("const attacker appears after marker", attackerDecl > marker);
-check("attacker debug appears after const attacker", attackerMatch > attackerDecl);
+check("rebuilt handler marker exists", marker >= 0);
+check(
+  "attacker resolver is declared",
+  handler.includes("const resolveCombatActor")
+);
+check("const attacker appears after resolver", attackerDecl >= 0);
+check(
+  "attacker debug appears after const attacker",
+  attackerMatch > attackerDecl
+);
 check("attacker pulse appears after const attacker", pulse > attackerDecl);
-check("no this.debugHarthmereRenderer calls remain", !text.includes("this.debugHarthmereRenderer("));
-check("robust physical sanitize remains", text.includes("harthmere-robust-physical-combat-sanitize"));
-check("physical marker still set", text.includes("detailAny.harthmereNoSparkBasic = true"));
+check(
+  "no this.debugHarthmereRenderer calls remain",
+  !text.includes("this.debugHarthmereRenderer(")
+);
+check(
+  "robust physical sanitize remains",
+  text.includes("harthmere-robust-physical-combat-sanitize")
+);
+check(
+  "physical marker still set",
+  text.includes("detail.harthmereNoSparkBasic = true")
+);
 
 console.log("");
 console.log(ok ? "RESULT: PASS" : "RESULT: FAIL");

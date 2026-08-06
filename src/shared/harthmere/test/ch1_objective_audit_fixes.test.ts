@@ -3,6 +3,11 @@
 import assert from "assert";
 import { CH1_QUESTS, ch1Quest } from "@/shared/harthmere/ch1_quests";
 import { CH1_ANCHORS, CH1_FLAGS } from "@/shared/harthmere/ch1_ids";
+import {
+  CH1_JOBS_BOARD_STEP_ID,
+  CH1_RECOVERED_TAB_STEP_ID,
+  ch1InteractionSurfaceForStep,
+} from "@/shared/harthmere/ch1_interaction_surfaces";
 import { ch1ObjectiveMaterialRequirements } from "@/shared/harthmere/ch1_material_objectives";
 import { ch1ObjectiveChoiceSpec } from "@/shared/harthmere/ch1_live_story";
 import {
@@ -245,12 +250,11 @@ describe("Chapter 1 objective audit fixes", () => {
    */
   describe("world object visibility contracts", () => {
     it("validates critical world objects are properly anchored", () => {
-      // Journal — referenced by multiple quests
-      assert.deepEqual(
-        ch1ObjectiveTarget("ch1_a2_q01_the_ledger_opens", "open_the_tab")
-          ?.position,
-        CH1_ANCHORS.fountain_lesson_board,
-        "the journal objective must point at the lesson-board journal"
+      // Recovered memories are a BiomesUI surface, not an invisible world prop.
+      assert.equal(
+        ch1InteractionSurfaceForStep("open_the_tab"),
+        "biomes_ui_recovered",
+        "the recovered-memory objective must not route to a world-space journal"
       );
 
       // Tea tin — Act 4 discovery
@@ -315,6 +319,22 @@ describe("Chapter 1 objective audit fixes", () => {
    * - Successor advancement
    */
   describe("objective completeness contracts", () => {
+    it("delegates exactly the Recovered and Jobs Board steps to existing UI surfaces", () => {
+      const delegated = CH1_QUESTS.flatMap((quest) =>
+        quest.steps.flatMap((step) => {
+          const surface = ch1InteractionSurfaceForStep(step.id);
+          return surface === "world" ? [] : [{ stepId: step.id, surface }];
+        })
+      );
+      assert.deepEqual(delegated, [
+        {
+          stepId: CH1_RECOVERED_TAB_STEP_ID,
+          surface: "biomes_ui_recovered",
+        },
+        { stepId: CH1_JOBS_BOARD_STEP_ID, surface: "jobs_board" },
+      ]);
+    });
+
     it("requires every objective to have a clear completion path", () => {
       for (const quest of CH1_QUESTS) {
         for (let i = 0; i < quest.steps.length; i++) {

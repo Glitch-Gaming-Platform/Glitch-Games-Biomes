@@ -18,6 +18,12 @@ import {
 import { normalizeHarthmereExtensionOutdoorFeetPosition } from "@/shared/harthmere/world_extension";
 import type { BiomesId } from "@/shared/ids";
 import { hasFishingRodIdentity } from "@/shared/harthmere/fishing_rods";
+import {
+  HARTHMERE_SUBLEVEL_YIELD_CAP,
+  harthmereSublevelRareChance,
+  harthmereSublevelWeightedProgress,
+  harthmereWeightedEfficiencyMultiplier,
+} from "@/shared/harthmere/harthmere_sublevel_benefits";
 
 export const HARTHMERE_GATHERING_NODE_AUTHORITY_VERSION =
   "harthmere-gathering-node-authority-2026-08-04" as const;
@@ -1106,6 +1112,14 @@ export const HARTHMERE_GATHERING_AUTHORITY_NODES: readonly HarthmereGatheringAut
     }
     return {
       ...node,
+      requiredSkill:
+        node.requiredSkill <= 1
+          ? 1
+          : node.requiredSkill === 2
+            ? 10
+            : node.requiredSkill === 3
+              ? 20
+              : 35,
       position: runtimeGatheringNodePosition(node),
       terrainFrame,
     };
@@ -1161,6 +1175,7 @@ export function resolveHarthmereGatheringAuthorityAttempt(input: {
   equippedItemIds: readonly string[];
   equippedBiomesItemIds?: readonly BiomesId[];
   professionLevel: number;
+  gatheringLevel?: number;
   nowMs: number;
   randomSeed: string;
 }): HarthmereGatheringAuthorityResult {
@@ -1213,21 +1228,43 @@ export function resolveHarthmereGatheringAuthorityAttempt(input: {
   const random = seededRandom(
     input.randomSeed + ":" + node.id + ":" + Math.trunc(input.nowMs)
   );
+  const specialist = node.profession === "mining" || node.profession === "fishing";
+  const skillLevels = {
+    gathering: input.gatheringLevel ?? input.professionLevel,
+    [node.profession]: input.professionLevel,
+  };
+  const weights = specialist
+    ? { gathering: 0.3, [node.profession]: 0.7 }
+    : { gathering: 1 };
+  const skillProgress = harthmereSublevelWeightedProgress(skillLevels, weights);
+  const yieldMultiplier = 1 + HARTHMERE_SUBLEVEL_YIELD_CAP * skillProgress;
+  const respawnMultiplier = harthmereWeightedEfficiencyMultiplier(
+    skillLevels,
+    weights
+  );
   const itemDeltas: Record<string, number> = {};
   for (const item of node.baseYield) {
+    const rolled = rollWhole(random, item.min, item.max);
     itemDeltas[item.itemId] =
-      (itemDeltas[item.itemId] ?? 0) + rollWhole(random, item.min, item.max);
+      (itemDeltas[item.itemId] ?? 0) +
+      Math.max(1, Math.round(rolled * yieldMultiplier));
   }
   for (const item of node.rareYield) {
-    if (random() <= Math.max(0, Math.min(1, item.chance))) {
+    if (
+      random() <=
+      harthmereSublevelRareChance(
+        item.chance,
+        1 + Math.round(skillProgress * 99)
+      )
+    ) {
       itemDeltas[item.itemId] =
         (itemDeltas[item.itemId] ?? 0) + rollWhole(random, item.min, item.max);
     }
   }
   const respawnSeconds = rollWhole(
     random,
-    node.minRespawnSeconds,
-    node.maxRespawnSeconds
+    Math.max(1, Math.round(node.minRespawnSeconds * respawnMultiplier)),
+    Math.max(1, Math.round(node.maxRespawnSeconds * respawnMultiplier))
   );
   return {
     ok: true,

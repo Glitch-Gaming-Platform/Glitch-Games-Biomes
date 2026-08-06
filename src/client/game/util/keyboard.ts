@@ -103,8 +103,8 @@ export const MovementKeys = [
   "ShiftRight",
   "KeyT",
   "KeyZ",
-  "KeyX",
-  "KeyC",
+  "KeyE",
+  "KeyQ",
 ];
 
 export type LocalKeyCode = Exclude<KeyCode, GlobalKeyCode>;

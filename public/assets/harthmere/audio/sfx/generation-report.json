@@ -1,70 +1,90 @@
 {
-  "version": "harthmere-sound-effects-elevenlabs-v6-indisworm",
-  "generatedAt": "2026-08-01T16:44:17.415Z",
-  "selected": 6,
-  "generated": 6,
-  "newlyGenerated": 6,
+  "version": "harthmere-sound-effects-elevenlabs-v7-ranged-resources",
+  "generatedAt": "2026-08-05T01:15:19.422Z",
+  "selected": 8,
+  "generated": 8,
+  "newlyGenerated": 8,
   "failed": 0,
   "records": [
     {
-      "id": "creature_indisworm_attack",
-      "path": "/assets/harthmere/audio/sfx/creature_indisworm_attack.webm",
-      "promptHash": "bfdf59fb1eb04a75aecc3e9919f7072694f083f0d39f91699b6e4228e683d343",
-      "requestedDurationSeconds": 0.95,
-      "actualDurationSeconds": 0.928,
-      "bytes": 12461,
+      "id": "arrow_flyby",
+      "path": "/assets/harthmere/audio/sfx/arrow_flyby.webm",
+      "promptHash": "ae58122198edbfecc7dd8e964d2c1663e9cbc4d26f2c55a4e26b5260da90ec7d",
+      "requestedDurationSeconds": 0.55,
+      "actualDurationSeconds": 0.528,
+      "bytes": 6617,
       "loop": false,
-      "generatedAt": "2026-08-01T16:44:14.931Z"
+      "generatedAt": "2026-08-05T01:15:17.652Z"
     },
     {
-      "id": "creature_indisworm_death",
-      "path": "/assets/harthmere/audio/sfx/creature_indisworm_death.webm",
-      "promptHash": "de6ca98afeaafd6ecbca73a890df82b8e05791153d08c8a7326fa10356eaa2bb",
-      "requestedDurationSeconds": 1.4,
-      "actualDurationSeconds": 1.368,
-      "bytes": 20545,
+      "id": "arrow_impact_flesh",
+      "path": "/assets/harthmere/audio/sfx/arrow_impact_flesh.webm",
+      "promptHash": "396d8dfd24a94f146c454bba5908b6217a4174f0fa2739ebcdae077723c1bd3b",
+      "requestedDurationSeconds": 0.55,
+      "actualDurationSeconds": 0.528,
+      "bytes": 7412,
       "loop": false,
-      "generatedAt": "2026-08-01T16:44:17.218Z"
+      "generatedAt": "2026-08-05T01:15:18.774Z"
     },
     {
-      "id": "creature_indisworm_hit",
-      "path": "/assets/harthmere/audio/sfx/creature_indisworm_hit.webm",
-      "promptHash": "ba344c115f5bb4f223d722469d1070b948902539ea0d449a482f81e033baf5d2",
-      "requestedDurationSeconds": 0.8,
-      "actualDurationSeconds": 0.808,
-      "bytes": 10794,
+      "id": "arrow_impact_hard",
+      "path": "/assets/harthmere/audio/sfx/arrow_impact_hard.webm",
+      "promptHash": "cfd7a98a10cad5dfcd4880bd28194fcecc22fe4e7e61b262ee4b866e1644723f",
+      "requestedDurationSeconds": 0.55,
+      "actualDurationSeconds": 0.528,
+      "bytes": 7041,
       "loop": false,
-      "generatedAt": "2026-08-01T16:44:14.923Z"
+      "generatedAt": "2026-08-05T01:15:19.131Z"
     },
     {
-      "id": "creature_indisworm_idle",
-      "path": "/assets/harthmere/audio/sfx/creature_indisworm_idle.webm",
-      "promptHash": "c8cbd6e9b3186dad2c21776cdaa7f382f697361c710f5107a682e73ee50b29ad",
-      "requestedDurationSeconds": 1.2,
-      "actualDurationSeconds": 1.208,
-      "bytes": 18713,
-      "loop": false,
-      "generatedAt": "2026-08-01T16:44:14.940Z"
-    },
-    {
-      "id": "indisworm_poison_spit_impact",
-      "path": "/assets/harthmere/audio/sfx/indisworm_poison_spit_impact.webm",
-      "promptHash": "82a2ec58aa2ae54058d701f3c8ba05fcb9a196b528237b2fbcd51c8dc4db1088",
+      "id": "bow_draw",
+      "path": "/assets/harthmere/audio/sfx/bow_draw.webm",
+      "promptHash": "59a6d68ccda5be3a1509deceaa23952be828dabd119284b8508adb90866241e7",
       "requestedDurationSeconds": 1,
       "actualDurationSeconds": 1.008,
-      "bytes": 11536,
+      "bytes": 15433,
       "loop": false,
-      "generatedAt": "2026-08-01T16:44:16.885Z"
+      "generatedAt": "2026-08-05T01:15:15.867Z"
     },
     {
-      "id": "indisworm_poison_spit_launch",
-      "path": "/assets/harthmere/audio/sfx/indisworm_poison_spit_launch.webm",
-      "promptHash": "20e77854bda6fe5fdb183b2959bac7961e460d2319148ea617cea54052b24206",
-      "requestedDurationSeconds": 0.85,
-      "actualDurationSeconds": 0.848,
-      "bytes": 9828,
+      "id": "bow_empty_click",
+      "path": "/assets/harthmere/audio/sfx/bow_empty_click.webm",
+      "promptHash": "638d2a3024a0d343890f74f28192bb84fab4881b1b558d77804cea31635929f6",
+      "requestedDurationSeconds": 0.5,
+      "actualDurationSeconds": 0.488,
+      "bytes": 7478,
       "loop": false,
-      "generatedAt": "2026-08-01T16:44:16.859Z"
+      "generatedAt": "2026-08-05T01:15:14.205Z"
+    },
+    {
+      "id": "bow_nock",
+      "path": "/assets/harthmere/audio/sfx/bow_nock.webm",
+      "promptHash": "bd0c147169784bc3cda7df84877313187476394158d420f721537ff0a3a61f3a",
+      "requestedDurationSeconds": 0.5,
+      "actualDurationSeconds": 0.488,
+      "bytes": 6551,
+      "loop": false,
+      "generatedAt": "2026-08-05T01:15:15.666Z"
+    },
+    {
+      "id": "bow_release",
+      "path": "/assets/harthmere/audio/sfx/bow_release.webm",
+      "promptHash": "dc92a6bc3621ba2c8ceb05cedf4f114072702ce44bac0a5bdbf7f58d9b7e0d52",
+      "requestedDurationSeconds": 0.6,
+      "actualDurationSeconds": 0.608,
+      "bytes": 8576,
+      "loop": false,
+      "generatedAt": "2026-08-05T01:15:17.190Z"
+    },
+    {
+      "id": "magic_empty_fizzle",
+      "path": "/assets/harthmere/audio/sfx/magic_empty_fizzle.webm",
+      "promptHash": "82b858cdbf8a7a151b049dd50ad762b377e8abc785c0e4aa5a27f012cbe89b0f",
+      "requestedDurationSeconds": 0.5,
+      "actualDurationSeconds": 0.488,
+      "bytes": 11650,
+      "loop": false,
+      "generatedAt": "2026-08-05T01:15:14.306Z"
     }
   ],
   "failures": []

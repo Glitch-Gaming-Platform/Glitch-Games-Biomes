@@ -1061,9 +1061,7 @@ export function formatHarthmereBusinessPlayerWarning(
   if (warning.includes("native_ecs_authority_required"))
     return "The world is still synchronizing this business. Wait a moment and try again.";
   const alreadyReadable =
-    /\s/.test(warning) &&
-    !/[_:]/.test(warning) &&
-    !/[a-z][A-Z]/.test(warning);
+    /\s/.test(warning) && !/[_:]/.test(warning) && !/[a-z][A-Z]/.test(warning);
   if (alreadyReadable) {
     return /[.!?]$/.test(warning) ? warning : `${warning}.`;
   }
@@ -1262,9 +1260,7 @@ export async function submitHarthmereBusinessEconomyMutation(
   );
   if (nativeMaterializationFailure) {
     throw new Error(
-      formatHarthmereBusinessPlayerWarning(
-        String(nativeMaterializationFailure)
-      )
+      formatHarthmereBusinessPlayerWarning(String(nativeMaterializationFailure))
     );
   }
   return body;
@@ -2027,10 +2023,10 @@ export function getHarthmereBusinessGrowthReport(
         session.failedTicketIds.length
       } customers still need service.`
     : activeOrders > 0
-    ? `${activeOrders} accepted order${
-        activeOrders === 1 ? "" : "s"
-      } need work.`
-    : "No active queue is blocking the floor.";
+      ? `${activeOrders} accepted order${
+          activeOrders === 1 ? "" : "s"
+        } need work.`
+      : "No active queue is blocking the floor.";
   const missed = stats.totalFailed + (session?.failedTicketIds.length ?? 0);
   const warning =
     blockers[0]?.description ??
@@ -2199,12 +2195,12 @@ export function getHarthmereBusinessShopfront(
                 listing.kind === "block"
                   ? "block"
                   : listing.kind === "recipe_book"
-                  ? "document"
-                  : listing.kind === "material"
-                  ? "crafting material"
-                  : listing.kind === "weapon"
-                  ? "weapon"
-                  : "furnishing"
+                    ? "document"
+                    : listing.kind === "material"
+                      ? "crafting material"
+                      : listing.kind === "weapon"
+                        ? "weapon"
+                        : "furnishing"
               ),
             })
           )
@@ -2471,9 +2467,9 @@ export function getHarthmereBusinessEmpirePanel(
     ),
     openBranchEligible: Boolean(
       business?.status === "open" &&
-        outpostBuildings.length &&
-        stats.currentTier >= 3 &&
-        business.balanceGold >= branchOpenCostGold
+      outpostBuildings.length &&
+      stats.currentTier >= 3 &&
+      business.balanceGold >= branchOpenCostGold
     ),
     warnings,
   };
@@ -3076,11 +3072,17 @@ export function createHarthmereBusinessInterfaceAdapter(options: {
         businessId,
         ...(count ? { count } : {}),
       }),
-    serveCustomer: (businessId, offerId, sessionId, ticketId, minigameAction) => {
+    serveCustomer: (
+      businessId,
+      offerId,
+      sessionId,
+      ticketId,
+      minigameAction
+    ) => {
       const customerEntityId = ticketId
-        ? current?.businessSystems.customerSessions?.[sessionId ?? ""]?.queue.find(
-            (ticket) => ticket.ticketId === ticketId
-          )?.entityId
+        ? current?.businessSystems.customerSessions?.[
+            sessionId ?? ""
+          ]?.queue.find((ticket) => ticket.ticketId === ticketId)?.entityId
         : undefined;
       return submit("serve_business_customer", {
         businessId,
@@ -3091,11 +3093,20 @@ export function createHarthmereBusinessInterfaceAdapter(options: {
         ...(minigameAction ? { minigameAction } : {}),
       });
     },
-    tickCustomerSession: (businessId, sessionId) =>
-      submit("tick_business_customer_session", {
+    tickCustomerSession: (businessId, sessionId) => {
+      const session = sessionId
+        ? current?.businessSystems.customerSessions?.[sessionId]
+        : undefined;
+      const ticket = session?.queue.find(
+        (candidate) => candidate.ticketId === session.currentTicketId
+      );
+      return submit("tick_business_customer_session", {
         businessId,
         ...(sessionId ? { sessionId } : {}),
-      }),
+        ...(ticket?.ticketId ? { ticketId: ticket.ticketId } : {}),
+        ...(ticket?.entityId ? { customerEntityId: ticket.entityId } : {}),
+      });
+    },
     endCustomerSession: (businessId, sessionId) =>
       submit("end_business_customer_session", {
         businessId,

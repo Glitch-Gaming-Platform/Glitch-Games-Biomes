@@ -49,6 +49,7 @@ import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import { EmoteEvent } from "@/shared/ecs/gen/events";
 import {
   HARTHMERE_CINEMATIC_EXPRESSIONS,
+  HARTHMERE_CINEMATIC_EXPRESSION_EASE_SECONDS,
   harthmereCinematicExpressionDurationMs,
   harthmereCinematicExpressionRepeat,
   harthmereCinematicExpressionSpec,
@@ -104,8 +105,10 @@ export type EmoteProperties = {
     // If true, the last frame of the animation will stick until the player moves.
     repeatType: RepeatType;
     easeInTime?: number;
+    easeOutTime?: number;
     notArms?: ActionPriority;
     cancelOnMove?: boolean;
+    durationSeconds?: number;
     itemOverrideSpan?: {
       start?: number;
       end?: number;
@@ -117,10 +120,12 @@ const HARTHMERE_CINEMATIC_EMOTE_PROPERTIES = Object.fromEntries(
     expression,
     {
       repeatType: harthmereCinematicExpressionRepeat(expression),
-      easeInTime: 0.08,
-      cancelOnMove:
-        harthmereCinematicExpressionSpec(expression).interaction !==
-        "locomotion",
+      easeInTime: HARTHMERE_CINEMATIC_EXPRESSION_EASE_SECONDS,
+      easeOutTime: HARTHMERE_CINEMATIC_EXPRESSION_EASE_SECONDS,
+      notArms: "ifIdle",
+      cancelOnMove: false,
+      durationSeconds:
+        harthmereCinematicExpressionSpec(expression).durationSeconds,
     },
   ])
 ) as Partial<EmoteProperties>;
@@ -136,6 +141,27 @@ export const EMOTE_PROPERTIES = {
     repeatType: { kind: "once" },
     easeInTime: 0.01,
     notArms: "ifIdle",
+    cancelOnMove: false,
+  },
+  rangedAim: {
+    repeatType: { kind: "repeat" },
+    easeInTime: 0.06,
+    easeOutTime: 0.06,
+    notArms: "noApply",
+    cancelOnMove: false,
+  },
+  rangedRelease: {
+    repeatType: { kind: "once" },
+    easeInTime: 0.025,
+    easeOutTime: 0.06,
+    notArms: "noApply",
+    cancelOnMove: false,
+  },
+  rangedReload: {
+    repeatType: { kind: "once" },
+    easeInTime: 0.05,
+    easeOutTime: 0.06,
+    notArms: "noApply",
     cancelOnMove: false,
   },
   magicChannel: {
@@ -250,6 +276,9 @@ function emoteDuration(
   emoteType: EmoteType,
   animationSystemState: AnimationSystemState<typeof playerSystem>
 ): number {
+  if (isHarthmereCinematicExpression(emoteType)) {
+    return harthmereCinematicExpressionSpec(emoteType).durationSeconds;
+  }
   return emoteType === "warp" ||
     emoteType === "warpHome" ||
     emoteType === "splash" ||
@@ -296,6 +325,7 @@ export class Player {
         emoteEndTime: number;
         emoteExpiryTime: number;
         emoteType: EmoteType;
+        attackVariationIndex?: 1 | 2 | 3 | 4;
         richEmoteComponents?: ReadonlyEmote["rich_emote_components"];
       }
     | undefined;
@@ -327,6 +357,13 @@ export class Player {
   private serverEmote: ReadonlyEmote | undefined;
   private serverEmoteUpdateTime: number | undefined;
   private lastMovementActionNonce: number | undefined;
+  private harthmereAttackVariationIndex = 0;
+  private harthmereAttackVariationLastAt = Number.NEGATIVE_INFINITY;
+
+  resetHarthmereAttackVariation() {
+    this.harthmereAttackVariationIndex = 0;
+    this.harthmereAttackVariationLastAt = Number.NEGATIVE_INFINITY;
+  }
   scale = 1.0;
   cameraMode?: CameraMode;
   lastJumpTime?: number;
@@ -439,7 +476,8 @@ export class Player {
     events: Events,
     resources: ClientResources | ClientReactResources,
     emoteType: EmoteType,
-    richEmoteComponents?: RichEmoteComponents
+    richEmoteComponents?: RichEmoteComponents,
+    attackVariationIndex?: 1 | 2 | 3 | 4
   ) {
     const mesh = resources.get("/scene/player/mesh", this.id);
     const time = resources.get("/clock").time;
@@ -455,7 +493,8 @@ export class Player {
             time,
             expiryTime,
             emoteType,
-            richEmoteComponents
+            richEmoteComponents,
+            attackVariationIndex
           );
           fireAndForget(
             events.publish(
@@ -511,7 +550,8 @@ export class Player {
     startTime: number,
     expiryTime: number,
     emoteType: EmoteType,
-    richEmoteComponents?: ReadonlyEmote["rich_emote_components"]
+    richEmoteComponents?: ReadonlyEmote["rich_emote_components"],
+    attackVariationIndex?: 1 | 2 | 3 | 4
   ) {
     const priorExpression = this.emoteInfo?.emoteType;
     if (
@@ -521,11 +561,27 @@ export class Player {
     ) {
       this.publishNeutralFacialExpression("cinematic-emote-replaced");
     }
+    const weaponAttack = emoteType === "attack1" || emoteType === "attack2";
+    if (weaponAttack) {
+      if (attackVariationIndex !== undefined) {
+        this.harthmereAttackVariationIndex = attackVariationIndex;
+      } else {
+        if (startTime - this.harthmereAttackVariationLastAt > 4) {
+          this.harthmereAttackVariationIndex = 0;
+        }
+        this.harthmereAttackVariationIndex =
+          (this.harthmereAttackVariationIndex % 4) + 1;
+      }
+      this.harthmereAttackVariationLastAt = startTime;
+    }
     this.emoteInfo = {
       emoteStartTime: startTime,
       emoteEndTime: startTime + emoteDuration(emoteType, animationSystemState),
       emoteExpiryTime: expiryTime,
       emoteType,
+      attackVariationIndex: weaponAttack
+        ? (this.harthmereAttackVariationIndex as 1 | 2 | 3 | 4)
+        : undefined,
       richEmoteComponents,
     };
     if (isHarthmereCinematicExpression(emoteType)) {
@@ -535,10 +591,7 @@ export class Player {
         expression: spec.face,
         source: "script",
         reason: `gameplay-emote:${emoteType}`,
-        durationMs:
-          spec.playback === "once"
-            ? harthmereCinematicExpressionDurationMs(emoteType)
-            : undefined,
+        durationMs: harthmereCinematicExpressionDurationMs(emoteType),
       });
     }
   }

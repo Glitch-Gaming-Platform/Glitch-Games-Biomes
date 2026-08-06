@@ -305,6 +305,10 @@ interface BaseClientResourcePaths {
   "/protection/material": PathDef<[], ProtectionMaterial>;
   "/protection/texture": PathDef<[], THREE.Texture>;
   "/protection/mesh": PathDef<[BiomesId], Optional<ProtectionMesh>>;
+  // HARTHMERE_CAYLEY_LAZY_LOAD: flips to true once the protection geometry
+  // module (and its 5.74 MB cayley WASM) has been dynamically imported. The
+  // protection generators depend on it so they re-run at that point.
+  "/protection/geometry_ready": PathDef<[], { ready: boolean }>;
 
   "/hotbar/index": PathDef<[], WrappedResourcePrimitive<number>>;
   "/hotbar/camera_mode": PathDef<[], WrappedResourcePrimitive<CameraItemMode>>;

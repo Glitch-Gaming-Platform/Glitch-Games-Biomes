@@ -26,6 +26,7 @@ export const zChatVoiceRequest = z.object({
   voice: z.string(),
   language: z.string().optional(),
   provider: zNpcVoiceProvider.default("elevenlabs"),
+  preferredFormat: z.enum(["source", "aac"]).optional(),
 });
 
 export type ChatVoiceRequest = z.infer<typeof zChatVoiceRequest>;
@@ -39,7 +40,7 @@ export type ChatVoiceResponse = z.infer<typeof zChatVoiceResponse>;
 export async function resolveChatVoiceRequest(
   body: ChatVoiceRequest
 ): Promise<ChatVoiceResponse> {
-  const { text, voice, language, provider } = body;
+  const { text, voice, language, provider, preferredFormat = "source" } = body;
   // Cache the exact text sent to the selected provider. ElevenLabs removes
   // visual-only markup before synthesis, while Azure receives trimmed text.
   const spokenText =
@@ -55,6 +56,7 @@ export async function resolveChatVoiceRequest(
     provider,
     text: spokenText,
     voice,
+    preferredFormat,
   });
   if (committedUrl) {
     return { url: committedUrl };
@@ -83,6 +85,7 @@ export async function resolveChatVoiceRequest(
     provider,
     text: spokenText,
     voice,
+    preferredFormat,
     generate: async () => {
       const result = elevenLabsConfig
         ? await synthesizeElevenLabsSpeech({

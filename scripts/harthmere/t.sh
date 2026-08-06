@@ -22,7 +22,7 @@
 #   scripts/harthmere/t.sh promo          # promo still registry (~1 s)
 #   scripts/harthmere/t.sh visuals        # terrain + promo tests/types (~3 s warm)
 #   scripts/harthmere/t.sh perf           # FPS/polling/save/telemetry contracts
-#   scripts/harthmere/t.sh combat         # melee acquisition + projectile/charge VFX + speed
+#   scripts/harthmere/t.sh combat         # targeting, retaliation, NPC damage, chase, and combat presentation
 #   scripts/harthmere/t.sh watch ch1      # re-run on save
 #   scripts/harthmere/t.sh types          # scoped typecheck     (~3 s)
 #   scripts/harthmere/t.sh types:stack    # focused stack wiring typecheck
@@ -213,11 +213,14 @@ BOARDS_E2E=(
 JOBS=(
   'src/shared/harthmere/test/harthmere_job_objective.test.ts'
   'src/shared/harthmere/test/jobs_board_*.test.ts'
+  'src/shared/harthmere/test/legacy_protection_escort_destinations.test.ts'
   'src/shared/harthmere/test/live_mode_jobs_board_proximity.test.ts'
   'src/shared/harthmere/test/mmo_jobs_board_*.test.ts'
   'src/client/components/harthmere_jobs_board/__tests__/*.test.ts'
   'src/client/components/challenges/HarthmereUnifiedHUD.jobsBoardContext.test.ts'
   'src/client/components/challenges/harthmereJobRewardBridge.test.ts'
+  'src/client/components/challenges/harthmereLiveModeClientEvents.test.ts'
+  'src/client/components/biomes_ui/adapters/__tests__/jobsBoardQuestMapAdapter.test.ts'
   'src/pages/api/harthmere/test/live_mode_jobs_board_state_api.test.ts'
 )
 # Post-Gimme quest arc (Hoedown -> Battery Not Included).
@@ -238,6 +241,8 @@ CUTSCENE=('src/shared/cutscene/test/*.test.ts')
 # Promo stills validate without a browser/stack/GPU; the capture needs all three.
 PROMO=('src/shared/cutscene/test/promo_scenes.test.ts')
 PERF=(
+  'src/client/components/ThreeObjectPreview.test.ts'
+  'src/client/game/glitch/harthmere_glitch_bridge_save_dedupe.test.ts'
   'src/client/game/renderers/static_object_matrices.test.ts'
   'src/server/glitch/test/harthmere_store_save_response.test.ts'
   'src/client/components/challenges/Chapter1NativeObjectivePrompt.test.ts'
@@ -258,14 +263,21 @@ PERF=(
 # and combat VFX were both broken in the shipped build while every existing suite
 # stayed green. These are the contracts that would have caught it.
 COMBAT=(
+  'src/client/components/challenges/harthmere_combat_lock_on.test.ts'
   'src/client/game/renderers/local_dev/harthmere_combat_vfx_always_on.test.ts'
+  'src/client/game/renderers/npc_stagger_effect.test.ts'
   'src/client/game/resources/melee_attack_region.test.ts'
   'src/client/game/renderers/local_dev/harthmere_projectiles.test.ts'
+  'src/shared/harthmere/test/future_stagger_animation_assets.test.ts'
   'src/shared/harthmere/test/native_chase_live_browser_runner_contract.test.ts'
   'src/shared/harthmere/test/native_player_attack_live_browser_runner_contract.test.ts'
   'src/shared/harthmere/test/premium_projectile_wiring.test.ts'
+  'src/shared/harthmere/test/anima_hill_combat_e2e.test.ts'
   'src/shared/npc/behavior/test/chase_attack_logic.test.ts'
   'src/shared/npc/behavior/test/npc_locomotion_selection.test.ts'
+  'src/shared/npc/test/simulated_combat_state.test.ts'
+  'src/shared/npc/test/stagger.test.ts'
+  'src/shared/npc/test/threat_targeting.test.ts'
 )
 # Deliberately NOT in COMBAT:
 #   src/client/game/interact/item_types/attack_destroy_delegate_item_spec.test.ts

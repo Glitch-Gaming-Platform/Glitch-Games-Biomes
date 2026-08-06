@@ -597,8 +597,8 @@ export function defaultBindings({
   bindings.bindKey("ShiftRight").toMotion("run");
 
   bindings.bindKey("KeyZ").toMotion("crouch");
-  bindings.bindKey("KeyX").toAction("dodge");
-  bindings.bindKey("KeyC").toAction("evade");
+  bindings.bindKey("KeyE").toAction("dodge");
+  bindings.bindKey("KeyQ").toAction("evade");
 
   bindings.bindKey("KeyF").toAction("flip");
   bindings.bindKey("KeyG").toAction("mirror");

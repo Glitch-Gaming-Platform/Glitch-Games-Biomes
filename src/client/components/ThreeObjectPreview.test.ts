@@ -1,37 +1,48 @@
 /// <reference types="mocha" />
 
-import { objectPreviewRenderScale } from "@/client/components/object_preview_render_scale";
+import {
+  shouldRenderThreeObjectPreview,
+  threeObjectPreviewDeltaSeconds,
+} from "@/client/components/ThreeObjectPreview";
 import assert from "assert";
+import fs from "fs";
+import path from "path";
 
-describe("object preview render scale", () => {
-  it("caps low-memory/mobile previews at 1x", () => {
+describe("ThreeObjectPreview performance lifecycle", () => {
+  it("renders only while the preview is visible, intersecting, and laid out", () => {
     assert.equal(
-      objectPreviewRenderScale({
-        devicePixelRatio: 3,
-        lowMemory: true,
+      shouldRenderThreeObjectPreview({
+        documentVisible: true,
+        intersecting: true,
+        hasLayout: true,
       }),
-      1
+      true
     );
+    for (const hidden of [
+      { documentVisible: false, intersecting: true, hasLayout: true },
+      { documentVisible: true, intersecting: false, hasLayout: true },
+      { documentVisible: true, intersecting: true, hasLayout: false },
+    ]) {
+      assert.equal(shouldRenderThreeObjectPreview(hidden), false);
+    }
   });
 
-  it("preserves normal desktop Retina previews", () => {
-    assert.equal(
-      objectPreviewRenderScale({
-        devicePixelRatio: 2,
-        lowMemory: false,
-      }),
-      2
-    );
+  it("uses a bounded manual frame delta instead of one THREE.Clock per preview", () => {
+    assert.equal(threeObjectPreviewDeltaSeconds(undefined, 1_000), 0);
+    assert.equal(threeObjectPreviewDeltaSeconds(1_000, 1_016), 0.016);
+    assert.equal(threeObjectPreviewDeltaSeconds(1_000, 2_000), 0.1);
+    assert.equal(threeObjectPreviewDeltaSeconds(2_000, 1_000), 0);
   });
 
-  it("honors an explicit render scale on every device", () => {
-    assert.equal(
-      objectPreviewRenderScale({
-        renderScale: 0.5,
-        devicePixelRatio: 3,
-        lowMemory: true,
-      }),
-      0.5
+  it("does not allocate a renderer before visibility or keep hidden previews on RAF", () => {
+    const source = fs.readFileSync(
+      path.join(process.cwd(), "src/client/components/ThreeObjectPreview.tsx"),
+      "utf8"
     );
+    assert.doesNotMatch(source, /new THREE\.Clock\(/);
+    assert.match(source, /this\.intersecting = false/);
+    assert.match(source, /new IntersectionObserver/);
+    assert.match(source, /setTimeout\(this\.renderFrame, 250\)/);
+    assert.match(source, /this\.shutdownRenderer\(\)/);
   });
 });

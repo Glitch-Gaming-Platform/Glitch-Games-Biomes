@@ -44,12 +44,12 @@ describe("Harthmere business live container refresh loading plan", () => {
     assert.deepStrictEqual(loadingEvents, [true, false, false, false, false]);
   });
 
-  it("opens the physical counter directly on the in-world shift control", () => {
+  it("opens every fresh physical-counter visit on the overview", () => {
     const source = readFileSync(
       "src/client/components/harthmere_business/HarthmereBusinessLiveContainer.tsx",
       "utf8"
     );
-    assert.match(source, /initialTab="customers"/);
-    assert.doesNotMatch(source, /initialTab="overview"/);
+    assert.match(source, /initialTab="overview"/);
+    assert.doesNotMatch(source, /initialTab="customers"/);
   });
 });

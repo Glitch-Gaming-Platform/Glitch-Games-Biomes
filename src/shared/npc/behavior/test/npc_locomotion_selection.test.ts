@@ -26,6 +26,21 @@ const base: NpcLocomotionInputs = {
 };
 
 describe("NPC locomotion priority selection", () => {
+  it("gives active stagger priority over evade, combat, and ambient movement", () => {
+    assert.equal(
+      selectNpcLocomotion({
+        ...base,
+        hasActiveStagger: true,
+        hasActiveEvade: true,
+        hasChaseAttack: true,
+        hasAttackTarget: true,
+        hasActiveSchedule: true,
+        canMeander: true,
+      }),
+      "stagger"
+    );
+  });
+
   it("starts an evade only for an incoming attack telegraph or a fresh hit", () => {
     assert.equal(
       npcShouldStartCombatEvade({
@@ -231,6 +246,18 @@ describe("NPC locomotion priority selection", () => {
         forwardSpeed: chaseSpeed,
       }),
       chaseSpeed
+    );
+  });
+
+  it("converts escort target speed into enough ground force to overcome friction", () => {
+    const escortSpeed = 6.6;
+    assert.equal(
+      npcGroundWalkingForceCoefficient({
+        locomotion: "escort",
+        fightSpeedBoostEligible: false,
+        forwardSpeed: escortSpeed,
+      }),
+      horizontalForceForTargetSpeed(escortSpeed, DEFAULT_ENVIRONMENT_PARAMS)
     );
   });
 });

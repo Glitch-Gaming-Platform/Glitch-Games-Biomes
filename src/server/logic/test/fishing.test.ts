@@ -2,11 +2,13 @@ import { GameEvent } from "@/server/shared/api/game_event";
 import { loadVoxeloo } from "@/server/shared/voxeloo";
 import {
   addGameUser,
+  editEntity,
   setItemAtSlotIndex,
   TestLogicApi,
 } from "@/server/test/test_helpers";
 import {
   MAX_SERVER_FISHING_ATTEMPT_SECONDS,
+  harthmereNativeFishingClaimSkillOutcome,
   validServerFishingAttemptSeconds,
   validServerFishingCatchBag,
 } from "@/server/logic/events/handlers/fishing";
@@ -16,7 +18,11 @@ import type { Biscuit } from "@/shared/bikkie/schema/attributes";
 import { FishingClaimEvent } from "@/shared/ecs/gen/events";
 import { countOf, createBag } from "@/shared/game/items";
 import { SNAPSHOT_FISHING_RODS } from "@/shared/harthmere/fishing_rods";
-import { readHarthmereNativeSkillTotalXp } from "@/shared/harthmere/harthmere_skill_progression";
+import {
+  readHarthmereNativeSkillTotalXp,
+  writeHarthmereNativeSkillTotalXp,
+} from "@/shared/harthmere/harthmere_skill_progression";
+import { harthmereSkillTotalXpCap } from "@/shared/harthmere/mmo_class_ability_collectibles";
 import { generateTestId } from "@/shared/test_helpers";
 import type { VoxelooModule } from "@/shared/wasm/types";
 import assert from "assert";
@@ -82,6 +88,60 @@ describe("native fishing authority", () => {
       readHarthmereNativeSkillTotalXp(player.trigger_state, "fishing") > 0,
       "a validated catch should award Fishing XP"
     );
+  });
+
+  it("grants the mastered deterministic bonus catch through the native handler", async () => {
+    const logic = new TestLogicApi(voxeloo);
+    const playerId = (await addGameUser(logic.world, generateTestId(), {})).id;
+    setItemAtSlotIndex(
+      logic.world,
+      playerId,
+      countOf(SNAPSHOT_FISHING_RODS[0].id),
+      0
+    );
+    editEntity(logic.world, playerId, (player) => {
+      for (const skillId of ["gathering", "fishing"]) {
+        writeHarthmereNativeSkillTotalXp(
+          player.mutableTriggerState(),
+          skillId,
+          harthmereSkillTotalXpCap(skillId)
+        );
+      }
+    });
+    const triggerState = logic.world.table.get(playerId)?.trigger_state;
+    let catchTime = 1;
+    while (
+      catchTime < 100 &&
+      !harthmereNativeFishingClaimSkillOutcome({
+        triggerState,
+        playerId,
+        catchTime,
+        caughtItemId: BikkieIds.koi,
+      }).bonusCatch
+    ) {
+      catchTime += 1;
+    }
+
+    await logic.publish(
+      new GameEvent(
+        playerId,
+        new FishingClaimEvent({
+          id: playerId,
+          bag: createBag(countOf(BikkieIds.koi)),
+          tool_ref: { kind: "item", idx: 0 },
+          catch_time: catchTime,
+        })
+      )
+    );
+
+    const player = logic.world.table.get(playerId)!;
+    const fishCount = [
+      ...(player.inventory?.hotbar ?? []),
+      ...(player.inventory?.items ?? []),
+    ]
+      .filter((slot) => slot?.item.id === BikkieIds.koi)
+      .reduce((sum, slot) => sum + Number(slot?.count ?? 0n), 0);
+    assert.equal(fishCount, 2);
   });
 
   it("rejects forged catches and invalid durations at the handler boundary", () => {

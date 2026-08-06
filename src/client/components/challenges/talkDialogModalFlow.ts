@@ -47,3 +47,13 @@ export function talkDialogShouldShowVoiceInputForTest(input: {
     input.hasVoiceInput && input.microphoneInputEnabled && input.actionCount > 0
   );
 }
+
+export function talkDialogShouldShowActionsForTest(input: {
+  typingComplete: boolean;
+  revealActionsImmediately: boolean;
+  hasContent: boolean;
+}) {
+  return (
+    input.hasContent && (input.typingComplete || input.revealActionsImmediately)
+  );
+}

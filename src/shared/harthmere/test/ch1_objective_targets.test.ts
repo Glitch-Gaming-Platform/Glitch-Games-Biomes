@@ -12,6 +12,12 @@ import {
 } from "@/shared/harthmere/ch1_dungeon_terrain";
 import { CH1_QUESTS } from "@/shared/harthmere/ch1_quests";
 import { CH1_ANCHORS } from "@/shared/harthmere/ch1_ids";
+import { ch1ObjectiveOwnsNpcInteraction } from "@/shared/harthmere/ch1_interaction_surfaces";
+import {
+  CH1_TESTIMONY_ROUTE,
+  CH1_THREE_ANSWER_ROUTE,
+} from "@/shared/harthmere/ch1_objective_routes";
+import { defaultCh1LiveGateRuntimeState } from "@/shared/harthmere/ch1_live_gate";
 
 describe("Chapter 1 objective targets", () => {
   it("gives all 80 objectives a player-facing instruction and named target", () => {
@@ -84,16 +90,126 @@ describe("Chapter 1 objective targets", () => {
     )!;
     assert.equal(examination.source, "npc");
     assert.deepEqual(examination.position, CH1_ANCHORS.greenlamp_lou_post);
+    assert.equal(examination.positionAuthority, "authored");
 
     const lou = ch1ObjectiveTarget("ch1_a6_q01_the_case", "hear_him_out")!;
     assert.equal(lou.source, "npc");
     assert.ok(lou.entityId);
     assert.deepEqual(lou.position, CH1_ANCHORS.returnstone_lou_post);
+    assert.equal(lou.positionAuthority, "authored");
     const sorrel = ch1ObjectiveTarget(
       "ch1_a5_d2_the_long_winter_mouth",
       "d2_sorrels_camp"
     )!;
     assert.equal(sorrel.source, "dungeon");
+  });
+
+  it("gives every Chapter 1 NPC phase exclusive ownership over normal NPC dialogue", () => {
+    const failures: string[] = [];
+    for (const quest of CH1_QUESTS) {
+      for (const step of quest.steps) {
+        if (!["talk_npc", "dialogue_choice"].includes(step.trigger)) continue;
+        const target = ch1ObjectiveTarget(quest.id, step.id)!;
+        const scope = `${quest.id}/${step.id}`;
+        if (target.entityId === undefined) {
+          failures.push(`${scope}: no canonical NPC entity`);
+          continue;
+        }
+        const projection = {
+          authoredStepId: step.id,
+          targetEntityId: Number(target.entityId),
+          trigger: step.trigger,
+        };
+        if (
+          !ch1ObjectiveOwnsNpcInteraction(
+            projection,
+            Number(target.entityId)
+          )
+        ) {
+          failures.push(`${scope}: Chapter 1 does not own its NPC modal`);
+        }
+        if (
+          ch1ObjectiveOwnsNpcInteraction(
+            projection,
+            Number(target.entityId) + 1
+          )
+        ) {
+          failures.push(`${scope}: Chapter 1 captures an unrelated NPC`);
+        }
+      }
+    }
+    assert.deepEqual(failures, []);
+  });
+
+  it("keeps every routed witness and answer NPC under Chapter 1 dialogue ownership", () => {
+    const testimonyQuestId = "ch1_a2_q03_the_night_you_came";
+    for (const [index, stop] of CH1_TESTIMONY_ROUTE.entries()) {
+      const runtime = defaultCh1LiveGateRuntimeState();
+      runtime.testimonies = CH1_TESTIMONY_ROUTE.slice(0, index).map(
+        (row) => row.id
+      );
+      const target = ch1ObjectiveTarget(
+        testimonyQuestId,
+        "collect_testimonies",
+        { runtime }
+      )!;
+      assert.equal(target.label, stop.label);
+      assert.equal(target.entityId, stop.entityId, stop.label);
+      assert.equal(
+        ch1ObjectiveOwnsNpcInteraction(
+          {
+            authoredStepId: "collect_testimonies",
+            targetEntityId: Number(target.entityId),
+            trigger: "talk_npc",
+          },
+          Number(stop.entityId)
+        ),
+        true,
+        stop.label
+      );
+    }
+
+    const answerQuestId = "ch1_a3_q01_a_button_in_the_sand";
+    const routeKey = `${answerQuestId}/the_three_answers`;
+    for (const [index, stop] of CH1_THREE_ANSWER_ROUTE.entries()) {
+      const runtime = defaultCh1LiveGateRuntimeState();
+      runtime.objectiveRouteProgress[routeKey] =
+        CH1_THREE_ANSWER_ROUTE.slice(0, index).map((row) => row.id);
+      const target = ch1ObjectiveTarget(answerQuestId, "the_three_answers", {
+        runtime,
+      })!;
+      assert.equal(target.label, stop.label);
+      assert.ok(target.entityId, `${stop.label}: no canonical entity`);
+      assert.equal(
+        ch1ObjectiveOwnsNpcInteraction(
+          {
+            authoredStepId: "the_three_answers",
+            targetEntityId: Number(target.entityId),
+            trigger: "talk_npc",
+          },
+          Number(target.entityId)
+        ),
+        true,
+        stop.label
+      );
+    }
+  });
+
+  it("distinguishes staged Chapter 1 puppets from genuinely live entity targets", () => {
+    const jackieAtFence = ch1ObjectiveTarget(
+      "ch1_a1_q05_the_fence_line",
+      "not_this_small"
+    )!;
+    assert.deepEqual(jackieAtFence.position, CH1_ANCHORS.gate_fence_sighting);
+    assert.ok(jackieAtFence.entityId);
+    assert.equal(jackieAtFence.positionAuthority, "authored");
+
+    const augur = ch1ObjectiveTarget(
+      "ch1_a1_q03_stand_him_up",
+      "seat_the_core"
+    )!;
+    assert.ok(augur.entityId);
+    assert.equal(augur.positionAuthority, "live_entity");
   });
 
   it("takes the Act 4 statement at the live Grove watch house", () => {

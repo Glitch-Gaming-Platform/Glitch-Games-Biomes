@@ -17,6 +17,8 @@ import {
   harthmereJobsBoardBusinessTemplatesForType,
   type HarthmereJobsBoardBusinessTemplate,
 } from "../../../shared/harthmere/jobs_board_business_templates";
+import { isCh1GroveJobPosting } from "@/shared/harthmere/ch1_interaction_surfaces";
+import { humanReadableHarthmereIdentifier } from "@/shared/harthmere/harthmere_readable_names";
 
 const TABS = ["available", "accepted", "posted", "post", "safety"] as const;
 type TabId = typeof TABS[number];
@@ -60,13 +62,18 @@ export function nextHarthmereJobsBoardGridIndexForKey({
   }
 }
 
-export function nextHarthmereJobsBoardTabForKey(tab: TabId, key: string) {
-  const index = TABS.indexOf(tab);
-  if (key === "Home") return TABS[0];
-  if (key === "End") return TABS[TABS.length - 1];
+export function nextHarthmereJobsBoardTabForKey(
+  tab: TabId,
+  key: string,
+  visibleTabs: readonly TabId[] = TABS
+) {
+  const tabs = visibleTabs.length > 0 ? visibleTabs : TABS;
+  const index = Math.max(0, tabs.indexOf(tab));
+  if (key === "Home") return tabs[0];
+  if (key === "End") return tabs[tabs.length - 1];
   if (key !== "ArrowRight" && key !== "ArrowLeft" && key !== "PageDown" && key !== "PageUp") return tab;
   const delta = key === "ArrowRight" || key === "PageDown" ? 1 : -1;
-  return TABS[(index + delta + TABS.length) % TABS.length];
+  return tabs[(index + delta + tabs.length) % tabs.length];
 }
 
 export function HarthmereJobsBoardPanel({
@@ -78,6 +85,7 @@ export function HarthmereJobsBoardPanel({
   onPostJob,
   onClose,
   pendingActionId,
+  chapter1Mode = false,
 }: {
   snapshot: HarthmereJobsBoardSnapshot;
   boardId?: string;
@@ -87,11 +95,11 @@ export function HarthmereJobsBoardPanel({
   onPostJob?: (payload: Record<string, unknown>) => void | Promise<void>;
   onClose?: () => void;
   pendingActionId?: string;
+  chapter1Mode?: boolean;
 }) {
   const [tab, setTab] = React.useState<TabId>("available");
   const panelRef = React.useRef<HTMLElement | null>(null);
   const tabRefs = React.useRef<Partial<Record<TabId, HTMLButtonElement | null>>>({});
-  const tabs = getHarthmereJobsBoardTabs(snapshot, boardId);
   const board = snapshot.boards[boardId];
   const boardDisplayName = displayNameForHarthmereJobsBoard(board);
   const actionSelector = "[data-harthmere-jobs-board-action='true']:not(:disabled)";
@@ -139,6 +147,26 @@ export function HarthmereJobsBoardPanel({
     () => Object.keys(snapshot.discoveredCollectibles ?? {}).sort(),
     [snapshot.discoveredCollectibles],
   );
+  const allAvailable = getHarthmereAvailableJobsPanel(
+    snapshot,
+    boardId,
+    Date.now(),
+    { chapter1Mode }
+  );
+  const allAccepted = getHarthmereMyJobsPanel(snapshot, Date.now(), boardId);
+  const available = chapter1Mode
+    ? allAvailable.filter(isCh1GroveJobPosting)
+    : allAvailable;
+  const accepted = chapter1Mode
+    ? allAccepted.filter(isCh1GroveJobPosting)
+    : allAccepted;
+  const tabs = chapter1Mode
+    ? [
+        { id: "available" as const, label: "Chapter 1 Jobs", count: available.length },
+        { id: "accepted" as const, label: "Accepted", count: accepted.length },
+      ]
+    : getHarthmereJobsBoardTabs(snapshot, boardId);
+  const visibleTabIds = tabs.map((item) => item.id as TabId);
   // HARTHMERE_JOBS_BOARD_STYLES: Theme tokens first, then jobs-board
   // overrides, so the panel inherits BiomesUI surfaces but layers its own
   // mobile-responsive grid on top.
@@ -178,6 +206,9 @@ export function HarthmereJobsBoardPanel({
       setRewardCollectibleId(availableCollectibleIds[0]);
     }
   }, [availableCollectibleIds, rewardCollectibleId]);
+  React.useEffect(() => {
+    if (!visibleTabIds.includes(tab)) setTab("available");
+  }, [tab, visibleTabIds.join("|")]);
   React.useEffect(() => {
     if (!board) return;
     void import("../challenges/LocalDevHarthmereQuests").then(
@@ -293,8 +324,11 @@ export function HarthmereJobsBoardPanel({
     if (event.key !== "PageDown" && event.key !== "PageUp") return;
     event.preventDefault();
     event.stopPropagation();
-    switchTab(nextHarthmereJobsBoardTabForKey(tab, event.key), "action");
-  }, [focusableElements, onClose, switchTab, tab]);
+    switchTab(
+      nextHarthmereJobsBoardTabForKey(tab, event.key, visibleTabIds),
+      "action"
+    );
+  }, [focusableElements, onClose, switchTab, tab, visibleTabIds]);
 
   const handleTabKeyDown = React.useCallback((event: React.KeyboardEvent<HTMLButtonElement>, itemTab: TabId) => {
     if (event.key === "ArrowDown") {
@@ -306,8 +340,11 @@ export function HarthmereJobsBoardPanel({
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
     event.stopPropagation();
-    switchTab(nextHarthmereJobsBoardTabForKey(itemTab, event.key), "tab");
-  }, [focusAction, switchTab]);
+    switchTab(
+      nextHarthmereJobsBoardTabForKey(itemTab, event.key, visibleTabIds),
+      "tab"
+    );
+  }, [focusAction, switchTab, visibleTabIds]);
 
   const handleActionKeyDown = React.useCallback((event: React.KeyboardEvent<HTMLButtonElement>) => {
     if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
@@ -432,8 +469,6 @@ export function HarthmereJobsBoardPanel({
       </div>
     );
   }
-  const available = getHarthmereAvailableJobsPanel(snapshot, boardId);
-  const accepted = getHarthmereMyJobsPanel(snapshot, Date.now(), boardId);
   const posted = getHarthmerePostedJobsPanel(snapshot, boardId);
   const safety = getHarthmereJobsBoardSafetyPanel(snapshot);
 
@@ -448,6 +483,7 @@ export function HarthmereJobsBoardPanel({
       role="document"
       aria-label={boardDisplayName}
       data-testid="harthmere-jobs-board-panel"
+      data-chapter1-jobs-board={chapter1Mode ? "take_jobs" : undefined}
       data-harthmere-jobs-board-interface="true"
       data-pointer-lock-policy="unlock-while-open"
       data-mouse-policy="show-while-open"
@@ -458,8 +494,12 @@ export function HarthmereJobsBoardPanel({
     >
       <header className="harthmere-jobs-board__header">
         <div>
-          <h2>{boardDisplayName}</h2>
-          <p>{board.location.district} · Jobs require in-person board interaction.</p>
+          <h2>{chapter1Mode ? "Chapter 1 Grove Jobs" : boardDisplayName}</h2>
+          <p>
+            {chapter1Mode
+              ? "Choose from these three Grove jobs. Complete each normal job objective, then return here to turn it in."
+              : `${board.location.district} · Jobs require in-person board interaction.`}
+          </p>
         </div>
         <button onClick={onClose} aria-label="Close jobs board">×</button>
       </header>
@@ -667,7 +707,9 @@ export function HarthmereJobsBoardPanel({
               <div className="harthmere-jobs-board__requirements">
                 {(selectedTemplate?.requirements ?? []).map((req, index) => (
                   <span key={`${req.itemId ?? req.serviceKind ?? req.targetId}-${index}`}>
-                    {req.itemId ? `${req.count ?? 1} ${req.itemId}` : `${req.serviceUnits ?? 1} ${req.serviceKind ?? "service"}`}
+                    {req.itemId
+                      ? `${req.count ?? 1} ${humanReadableHarthmereIdentifier(req.itemId)}`
+                      : `${req.serviceUnits ?? 1} ${humanReadableHarthmereIdentifier(req.serviceKind ?? "service")}`}
                     {req.targetName ? ` · ${req.targetName}` : ""}
                   </span>
                 ))}
@@ -682,7 +724,7 @@ export function HarthmereJobsBoardPanel({
                   <select value={rewardItemId} onChange={(event) => setRewardItemId(event.target.value)}>
                     {availableRewardItemIds.length === 0 && <option value="">No items available</option>}
                     {availableRewardItemIds.map((itemId) => (
-                      <option key={itemId} value={itemId}>{itemId}</option>
+                      <option key={itemId} value={itemId}>{humanReadableHarthmereIdentifier(itemId)}</option>
                     ))}
                   </select>
                 </label>
@@ -713,10 +755,10 @@ export function HarthmereJobsBoardPanel({
                     <button
                       key={item.itemId}
                       type="button"
-                      aria-label={`Remove ${item.itemId} reward`}
+                      aria-label={`Remove ${humanReadableHarthmereIdentifier(item.itemId)} reward`}
                       onClick={() => setRewardItems((current) => current.filter((entry) => entry.itemId !== item.itemId))}
                     >
-                      {item.count} {item.itemId} ×
+                      {item.count} {humanReadableHarthmereIdentifier(item.itemId)} ×
                     </button>
                   ))}
                 </div>
@@ -727,7 +769,7 @@ export function HarthmereJobsBoardPanel({
                   <select value={rewardCollectibleId} onChange={(event) => setRewardCollectibleId(event.target.value)}>
                     {availableCollectibleIds.length === 0 && <option value="">No discovered collectibles</option>}
                     {availableCollectibleIds.map((collectibleId) => (
-                      <option key={collectibleId} value={collectibleId}>{collectibleId}</option>
+                      <option key={collectibleId} value={collectibleId}>{humanReadableHarthmereIdentifier(collectibleId)}</option>
                     ))}
                   </select>
                 </label>
@@ -749,10 +791,10 @@ export function HarthmereJobsBoardPanel({
                     <button
                       key={collectibleId}
                       type="button"
-                      aria-label={`Remove ${collectibleId} collectible reward`}
+                      aria-label={`Remove ${humanReadableHarthmereIdentifier(collectibleId)} collectible reward`}
                       onClick={() => setRewardCollectibleIds((current) => current.filter((entry) => entry !== collectibleId))}
                     >
-                      {collectibleId} ×
+                      {humanReadableHarthmereIdentifier(collectibleId)} ×
                     </button>
                   ))}
                 </div>

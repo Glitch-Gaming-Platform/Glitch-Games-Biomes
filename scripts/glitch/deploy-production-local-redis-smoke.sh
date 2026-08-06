@@ -2431,6 +2431,7 @@ run_azure_world_sync_job() {
       HARTHMERE_SKIP_CONNECTOR_ROUTE_MATERIALIZATION="${HARTHMERE_SKIP_CONNECTOR_ROUTE_MATERIALIZATION:-0}" \
       HARTHMERE_SKIP_GROUNDING_PROBE="${HARTHMERE_SKIP_GROUNDING_PROBE:-0}" \
       HARTHMERE_SKIP_LIVE_CREATURE_GROUNDING_RECONCILE="${HARTHMERE_SKIP_LIVE_CREATURE_GROUNDING_RECONCILE:-0}" \
+      HARTHMERE_SKIP_TOWN_REPAIR_AUDIT="${HARTHMERE_SKIP_TOWN_REPAIR_AUDIT:-0}" \
     --output none
   unset registry_password
   HARTHMERE_WORLD_SYNC_JOB_CREATED=1
@@ -2889,16 +2890,31 @@ run_build_checks() {
 }
 
 build_artifacts() {
-  local build_id build_node_options
+  local build_id build_node_options disable_extra_town_offset
   # Coordinated release candidates are sometimes built from an intentionally
   # dirty shared worktree before the owners create commits. Let the build owner
   # supply the exact-current source fingerprint so two materially different
   # images cannot embed the same HEAD-only BUILD_ID.
   build_id="${BIOMES_BUILD_ID_OVERRIDE:-$(git rev-parse HEAD)}"
+  if [ -n "${BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET:-}" ] && \
+     [ -n "${NEXT_PUBLIC_BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET:-}" ] && \
+     [ "$BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET" != "$NEXT_PUBLIC_BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET" ]; then
+    echo "ERROR server/client Harthmere extra-town disable flags disagree at build time." >&2
+    exit 2
+  fi
+  disable_extra_town_offset="${NEXT_PUBLIC_BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET:-${BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET:-0}}"
+  case "$disable_extra_town_offset" in
+    0|1) ;;
+    *)
+      echo "ERROR Harthmere extra-town disable flag must be 0 or 1, got $disable_extra_town_offset." >&2
+      exit 2
+      ;;
+  esac
   # Bound both production compilers so a local release rehearsal cannot evict
   # Redis or the browser test it is about to run on memory-constrained Macs.
   build_node_options="--max-old-space-size=${BIOMES_BUILD_MAX_OLD_SPACE_MB:-6144}"
   log "Building Next client for production origin: $PROD_ORIGIN"
+  log "Compiling Harthmere extra-town disable flag: $disable_extra_town_offset"
   reset_build_outputs_preserving_caches
   GLITCH_RUNTIME=1 \
   GLITCH_LOCAL_ASSETS=1 \
@@ -2912,9 +2928,11 @@ build_artifacts() {
   BIOMES_CREATE_LOCAL_DEV_TERRAIN=1 \
   BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600 \
   BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z=0 \
+  BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET="$disable_extra_town_offset" \
   NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1 \
   NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600 \
   NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z=0 \
+  NEXT_PUBLIC_BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET="$disable_extra_town_offset" \
   NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=0 \
   NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=0 \
   NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE=1 \

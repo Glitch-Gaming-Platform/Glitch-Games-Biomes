@@ -57,6 +57,8 @@ public/assets/harthmere/audio/harthmere-fiddle-race-v3-fast-loop.mp3 -text -filt
 # These generated Chapter 1 asset sets stay below GitHub's per-file limit and
 # must remain cloneable while this repository's Git LFS budget is exhausted.
 public/assets/harthmere/audio/sfx/** -text -filter -merge -diff
+public/assets/harthmere/audio/mobile/core/** -text -filter -merge -diff
+public/assets/harthmere/audio/legacy-protected-areas/** -text -filter -merge -diff
 public/assets/harthmere/boss_attack_shape_previews/** -text -filter -merge -diff
 public/assets/harthmere/glb/boss_attack_shapes/** -text -filter -merge -diff
 public/assets/harthmere/glb/bosses/** -text -filter -merge -diff
@@ -64,10 +66,12 @@ public/assets/harthmere/glb/business_furniture/** -text -filter -merge -diff
 public/assets/harthmere/glb/business_interiors/** -text -filter -merge -diff
 public/assets/harthmere/glb/gathering_nodes/** -text -filter -merge -diff
 public/assets/harthmere/glb/jobs_boards/** -text -filter -merge -diff
+public/assets/harthmere/glb/items/chapter1/** -text -filter -merge -diff
 public/assets/harthmere/glb/projectiles/** -text -filter -merge -diff
 public/assets/harthmere/glb/quest/** -text -filter -merge -diff
 public/assets/harthmere/glb/request_boards/** -text -filter -merge -diff
 public/assets/harthmere/glb/weapons/** -text -filter -merge -diff
+public/assets/harthmere/gltf/characters/player_body_variants/** -text -filter -merge -diff
 public/assets/harthmere/inventory_icons/** -text -filter -merge -diff
 public/assets/harthmere/projectile_previews/** -text -filter -merge -diff
 public/assets/harthmere/weapon_icons/** -text -filter -merge -diff

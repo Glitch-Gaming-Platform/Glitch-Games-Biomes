@@ -83,6 +83,44 @@ describe("Harthmere additive-town interior manifest", () => {
     assert.ok(bench!.position[2] > mailPost!.z0);
     assert.ok(bench!.position[2] < mailPost!.z1);
 
+    const outgoing = fixtures.find(
+      (fixture) => fixture.fixtureId === "mail_post_house:mail_outgoing"
+    );
+    assert.ok(outgoing, "Mail Post outgoing bins were not safely placed");
+    assert.deepEqual(
+      outgoing!.clearanceSize,
+      [1, 0.92, 1],
+      "outgoing bins must reserve a conservative footprint beside the stair boundary"
+    );
+    assert.ok(mailPost!.stairs, "Mail Post must retain its authored stairs");
+    const stairSouthKeepClearBoundary = mailPost!.stairs!.z0 - 1.35;
+    const outgoingSouthEdge =
+      outgoing!.position[2] + outgoing!.clearanceSize[2] / 2;
+    assert.ok(
+      stairSouthKeepClearBoundary - outgoingSouthEdge >= 0.5,
+      "outgoing bins must retain at least 0.5m beyond the inclusive stair keep-clear boundary"
+    );
+
+    const authoredGroundFloor = new Map(
+      fixtures
+        .filter((fixture) => fixture.floor === 0)
+        .map((fixture) => [
+          fixture.fixtureId,
+          [fixture.position[0], fixture.position[2], fixture.yaw],
+        ])
+    );
+    assert.deepEqual(
+      authoredGroundFloor,
+      new Map([
+        ["mail_post_house:mail_counter", [518.15, -207.15, Math.PI]],
+        ["mail_post_house:mail_sorting", [518.15, -216.85, 0]],
+        ["mail_post_house:mail_scale", [518.15, -210.1, Math.PI / 2]],
+        ["mail_post_house:mail_secure", [527.85, -216.85, -Math.PI / 2]],
+        ["mail_post_house:mail_outgoing", [520.4, -217.4, 0]],
+        ["mail_post_house:mail_bench", [527.575, -214.175, Math.PI / 2]],
+      ])
+    );
+
     const plan = HARTHMERE_ADDITIVE_TOWN_INTERIOR_PLANS.find(
       (candidate) => candidate.buildingName === "mail_post_house"
     );
@@ -100,6 +138,15 @@ describe("Harthmere additive-town interior manifest", () => {
     assert.equal(
       new Set(denseOnly.map((fixture) => fixture.fixtureId)).size,
       plan!.fixtures.length
+    );
+    assert.notDeepEqual(
+      denseOnly
+        .filter((fixture) => fixture.floor === 0)
+        .map((fixture) => [fixture.position[0], fixture.position[2]]),
+      fixtures
+        .filter((fixture) => fixture.floor === 0)
+        .map((fixture) => [fixture.position[0], fixture.position[2]]),
+      "forced dense placement must exercise the safe fallback instead of authored coordinates"
     );
   });
 

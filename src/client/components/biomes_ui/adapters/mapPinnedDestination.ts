@@ -2,6 +2,7 @@ import type {
   NavigationAidKind,
   NavigationAidSpec,
 } from "@/client/game/helpers/navigation_aids";
+import { isCh1NativeQuestId } from "@/shared/harthmere/ch1_native_quests";
 import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
 import { linearMainStoryProgressOrderForTest } from "./mainQuestSelection";
 
@@ -55,7 +56,11 @@ export interface BiomesUIAutoDestinationQuest {
 export function automaticQuestDestinationMarkerForTest(input: {
   existingPin?: Pick<
     BiomesUIActiveMapPin,
-    "markerId" | "ownerQuestId" | "ownerStepId"
+    | "markerId"
+    | "label"
+    | "worldPosition"
+    | "ownerQuestId"
+    | "ownerStepId"
   >;
   quest?: BiomesUIAutoDestinationQuest;
   markers: readonly BiomesUIMapPinSourceMarker[];
@@ -68,12 +73,48 @@ export function automaticQuestDestinationMarkerForTest(input: {
   if (!marker || !finiteWorldPosition(marker.worldPosition)) {
     return undefined;
   }
+  const questOwnedMarker: BiomesUIMapPinSourceMarker = {
+    ...marker,
+    ownerQuestId: input.quest.questId,
+    ownerStepId: input.quest.currentStepId,
+  };
   const existingMarkerId = String(input.existingPin?.markerId ?? "").trim();
   if (existingMarkerId === markerId) {
-    return undefined;
+    // Quest-level fallback anchors intentionally reuse
+    // native_quest:<questId>:<questId> while their label and destination move
+    // with the active leaf. Refresh the persisted pin at that handoff; merely
+    // comparing marker ids left the HUD pointing at the previous objective
+    // (for example Cross the Dunes after the story had reached Salt Market).
+    const objectiveChanged = Boolean(
+      input.quest.currentStepId &&
+        input.existingPin?.ownerStepId !== input.quest.currentStepId
+    );
+    const labelChanged =
+      String(input.existingPin?.label ?? "").trim() !==
+      String(marker.label ?? "").trim();
+    const existingPosition = finiteWorldPosition(
+      input.existingPin?.worldPosition
+    );
+    const markerPosition = finiteWorldPosition(marker.worldPosition);
+    // Native fallback anchors can first resolve to the actor's current
+    // position, then asynchronously acquire the real NPC/position aid. Their
+    // marker id, label, and objective stay identical, so position drift must
+    // also refresh the persisted destination. Compare X/Z only because the
+    // active pin may be collision-grounded below an authored marker's Y.
+    const destinationChanged = Boolean(
+      existingPosition &&
+        markerPosition &&
+        Math.hypot(
+          existingPosition[0] - markerPosition[0],
+          existingPosition[2] - markerPosition[2]
+        ) >= 1
+    );
+    return objectiveChanged || labelChanged || destinationChanged
+      ? questOwnedMarker
+      : undefined;
   }
   if (!existingMarkerId) {
-    return marker;
+    return questOwnedMarker;
   }
 
   // A material-source pin selected from a quest is manual only for that
@@ -102,10 +143,17 @@ export function automaticQuestDestinationMarkerForTest(input: {
     existingStoryOrder >= 0 &&
     nextStoryOrder >= 0 &&
     existingStoryOrder < nextStoryOrder;
-  return existingBelongsToPriorQuestObjective ||
+  // Chapter 1 is a tightly sequenced story. At an objective handoff, stale
+  // side-quest/store pins must not continue pointing somewhere unrelated while
+  // the HUD names the new story destination. This effect only runs when the
+  // native quest projection changes, so a destination the player deliberately
+  // chooses afterward remains in place until the next Chapter 1 handoff.
+  const chapter1StoryHandoff = isCh1NativeQuestId(input.quest.questId);
+  return chapter1StoryHandoff ||
+    existingBelongsToPriorQuestObjective ||
     existingIsEarlierStepOfQuest ||
     existingIsPreviousStoryChapter
-    ? marker
+    ? questOwnedMarker
     : undefined;
 }
 

@@ -33,10 +33,12 @@ class FakeDocument {
 }
 
 describe("Biomes UI shortcut contract", () => {
-  it("reserves Z, X, and C for crouch, dodge, and evade at runtime", () => {
+  it("reserves Z, E, and Q for crouch, dodge, and evade at runtime", () => {
     assert.equal(isReservedGameplayShortcutKey("z"), true);
-    assert.equal(isReservedGameplayShortcutKey("X"), true);
-    assert.equal(isReservedGameplayShortcutKey(" c "), true);
+    assert.equal(isReservedGameplayShortcutKey("E"), true);
+    assert.equal(isReservedGameplayShortcutKey(" q "), true);
+    assert.equal(isReservedGameplayShortcutKey("x"), false);
+    assert.equal(isReservedGameplayShortcutKey("c"), false);
     assert.equal(isReservedGameplayShortcutKey("v"), false);
 
     const previousDocument = globalThis.document;
@@ -48,15 +50,15 @@ describe("Biomes UI shortcut contract", () => {
       const cleanup = installTabShortcuts(
         [
           { key: "z", label: "Z", tab: "guilds" },
-          { key: "x", label: "X", tab: "collections" },
-          { key: "c", label: "C", tab: "recovered" },
+          { key: "e", label: "E", tab: "collections" },
+          { key: "q", label: "Q", tab: "recovered" },
         ],
         (tab) => seen.push(tab),
         () => false
       );
       fakeDocument.keydown("z");
-      fakeDocument.keydown("x");
-      fakeDocument.keydown("c");
+      fakeDocument.keydown("e");
+      fakeDocument.keydown("q");
       cleanup();
       assert.deepEqual(seen, []);
     } finally {

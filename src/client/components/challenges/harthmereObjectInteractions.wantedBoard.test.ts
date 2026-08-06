@@ -187,4 +187,90 @@ describe("harthmere jobs board object target matching", () => {
       false
     );
   });
+
+  it("does not treat a board-turn-in gather source as a field hand-in", () => {
+    const todo = {
+      todoId: "todo_berries",
+      jobId: "job_berries",
+      actorId: "actor",
+      boardId: "harthmere_grove_market_jobs_board",
+      title: "Stock the Road Rations Crate",
+      todoText: "Gather berries.",
+      status: "active",
+      kind: "gather",
+      mapMarkerId: "grove_garden_edge_berries",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: 1,
+      dueAtMs: 2,
+      questBoardTodo: true,
+    } as any;
+    const job = {
+      jobId: "job_berries",
+      kind: "gather",
+      status: "active",
+      requiresFieldWork: false,
+      mapMarkerId: "grove_garden_edge_berries",
+      requirements: [
+        {
+          itemId: "wild_berries",
+          count: 6,
+          mapMarkerId: "grove_garden_edge_berries",
+        },
+      ],
+    } as any;
+
+    assert.equal(
+      harthmereJobsBoardObjectMatchesFieldTarget({
+        objectId: "grove_garden_edge_berries",
+        label: "Garden Edge Berries",
+        todo,
+        job,
+      }),
+      false
+    );
+  });
+
+  it("matches the authored Coop supply box as a delivery pickup", () => {
+    const todo = {
+      todoId: "todo_coop",
+      jobId: "job_coop",
+      actorId: "actor",
+      boardId: "harthmere_grove_market_jobs_board",
+      title: "Run the Coop Food Parcel",
+      todoText: "Collect the parcel.",
+      status: "active",
+      kind: "delivery",
+      mapMarkerId: "grove_mail_bank_satchel",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: 1,
+      dueAtMs: 2,
+      questBoardTodo: true,
+    } as any;
+    const job = {
+      jobId: "job_coop",
+      kind: "delivery",
+      status: "active",
+      requiresFieldWork: true,
+      requirements: [
+        {
+          itemId: "sealed_package",
+          count: 1,
+          pickupMarkerId: "coop_supply_box",
+          mapMarkerId: "grove_mail_bank_satchel",
+        },
+      ],
+    } as any;
+
+    assert.equal(
+      harthmereJobsBoardObjectMatchesFieldTarget({
+        objectId: "coop_supply_box",
+        label: "Old Supply Box",
+        todo,
+        job,
+      }),
+      true
+    );
+  });
 });

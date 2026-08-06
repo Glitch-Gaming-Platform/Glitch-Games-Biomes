@@ -85,7 +85,7 @@ function fakeDefaultInputSetup() {
 }
 
 describe("Input", () => {
-  it("binds Z to crouch, X to dodge, and C to evade", () => {
+  it("binds Z to crouch, E to dodge, and Q to evade", () => {
     const { documentTarget, input } = fakeDefaultInputSetup();
 
     documentTarget.emit("keydown", fakeKeyboardEvent("KeyZ"));
@@ -93,16 +93,16 @@ describe("Input", () => {
     documentTarget.emit("keyup", fakeKeyboardEvent("KeyZ"));
     assert.equal(input.motion("crouch"), 0);
 
-    documentTarget.emit("keydown", fakeKeyboardEvent("KeyX"));
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyE"));
     assert.equal(input.action("dodge"), true);
     assert.equal(input.action("evade"), false);
-    documentTarget.emit("keyup", fakeKeyboardEvent("KeyX"));
+    documentTarget.emit("keyup", fakeKeyboardEvent("KeyE"));
     assert.equal(input.action("dodge"), false);
 
-    documentTarget.emit("keydown", fakeKeyboardEvent("KeyC"));
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyQ"));
     assert.equal(input.action("evade"), true);
     assert.equal(input.action("dodge"), false);
-    documentTarget.emit("keyup", fakeKeyboardEvent("KeyC"));
+    documentTarget.emit("keyup", fakeKeyboardEvent("KeyQ"));
     assert.equal(input.action("evade"), false);
   });
 
@@ -113,15 +113,15 @@ describe("Input", () => {
     input.emitter.on("dodge", () => (dodges += 1));
     input.emitter.on("evade", () => (evades += 1));
 
-    documentTarget.emit("keydown", fakeKeyboardEvent("KeyX"));
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyE"));
     documentTarget.emit(
       "keydown",
-      fakeKeyboardEvent("KeyX", undefined, { repeat: true })
+      fakeKeyboardEvent("KeyE", undefined, { repeat: true })
     );
-    documentTarget.emit("keydown", fakeKeyboardEvent("KeyC"));
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyQ"));
     documentTarget.emit(
       "keydown",
-      fakeKeyboardEvent("KeyC", undefined, { repeat: true })
+      fakeKeyboardEvent("KeyQ", undefined, { repeat: true })
     );
     assert.equal(dodges, 1);
     assert.equal(evades, 1);
@@ -130,14 +130,14 @@ describe("Input", () => {
   it("latches a quick desktop dodge or evade tap until the script consumes it", () => {
     const { documentTarget, input } = fakeDefaultInputSetup();
 
-    documentTarget.emit("keydown", fakeKeyboardEvent("KeyX"));
-    documentTarget.emit("keyup", fakeKeyboardEvent("KeyX"));
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyE"));
+    documentTarget.emit("keyup", fakeKeyboardEvent("KeyE"));
     assert.equal(input.action("dodge"), false);
     assert.equal(input.consumeActionPress("dodge"), true);
     assert.equal(input.consumeActionPress("dodge"), false);
 
-    documentTarget.emit("keydown", fakeKeyboardEvent("KeyC"));
-    documentTarget.emit("keyup", fakeKeyboardEvent("KeyC"));
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyQ"));
+    documentTarget.emit("keyup", fakeKeyboardEvent("KeyQ"));
     assert.equal(input.action("evade"), false);
     assert.equal(input.consumeActionPress("evade"), true);
     assert.equal(input.consumeActionPress("evade"), false);
@@ -146,20 +146,20 @@ describe("Input", () => {
   it("does not queue another one-shot action while its key remains held", () => {
     const { documentTarget, input } = fakeDefaultInputSetup();
 
-    documentTarget.emit("keydown", fakeKeyboardEvent("KeyX"));
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyE"));
     assert.equal(input.consumeActionPress("dodge"), true);
     documentTarget.emit(
       "keydown",
-      fakeKeyboardEvent("KeyX", undefined, { repeat: true })
+      fakeKeyboardEvent("KeyE", undefined, { repeat: true })
     );
     assert.equal(input.consumeActionPress("dodge"), false);
 
-    documentTarget.emit("keyup", fakeKeyboardEvent("KeyX"));
-    documentTarget.emit("keydown", fakeKeyboardEvent("KeyX"));
+    documentTarget.emit("keyup", fakeKeyboardEvent("KeyE"));
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyE"));
     assert.equal(input.consumeActionPress("dodge"), true);
   });
 
-  it("does not steal modified Z, X, or C browser shortcuts", () => {
+  it("does not steal modified Z, E, or Q browser shortcuts", () => {
     const { documentTarget, input } = fakeDefaultInputSetup();
 
     documentTarget.emit("keydown", {
@@ -167,11 +167,11 @@ describe("Input", () => {
       metaKey: true,
     });
     documentTarget.emit("keydown", {
-      ...fakeKeyboardEvent("KeyX"),
+      ...fakeKeyboardEvent("KeyE"),
       ctrlKey: true,
     });
     documentTarget.emit("keydown", {
-      ...fakeKeyboardEvent("KeyC"),
+      ...fakeKeyboardEvent("KeyQ"),
       altKey: true,
     });
 
@@ -242,11 +242,11 @@ describe("Input", () => {
     input.setSyntheticAction("evade", "mobile-b", false);
     assert.equal(input.action("evade"), false);
 
-    documentTarget.emit("keydown", fakeKeyboardEvent("KeyC"));
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyQ"));
     input.setSyntheticAction("evade", "mobile-a", true);
     input.setSyntheticAction("evade", "mobile-a", false);
     assert.equal(input.action("evade"), true);
-    documentTarget.emit("keyup", fakeKeyboardEvent("KeyC"));
+    documentTarget.emit("keyup", fakeKeyboardEvent("KeyQ"));
     assert.equal(input.action("evade"), false);
   });
 

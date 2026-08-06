@@ -18,6 +18,7 @@ import {
 import type { ReadonlyHealth } from "@/shared/ecs/gen/components";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import { anItem } from "@/shared/game/item";
+import { ProtectionSelector } from "@/shared/game/protection";
 import { ch1ElsewhenSlotAt } from "@/shared/harthmere/ch1_elsewhen_region";
 import { isHarthmereBossMusicEncounter } from "@/shared/harthmere/boss_music";
 import {
@@ -52,6 +53,103 @@ export const GROVE_MUSIC_REGION_BOUNDS = {
   minZ: -360,
   maxZ: -40,
 } as const;
+
+// Audited from snapshot_backup.json. Doc's Dock is the lower bound for this
+// group at 128 x 96 horizontal blocks (12,288 blocks²). Ordinary 32 x 32 and
+// 64 x 64 legacy claims are intentionally absent, as are generic Admin/WIP and
+// Mucked Restoro volumes that do not identify a player-facing place.
+export const LEGACY_LARGE_PROTECTED_AREA_MIN_HORIZONTAL_BLOCKS = 12_288;
+export const LEGACY_LARGE_PROTECTED_AREA_NAMES = [
+  "Arbre",
+  "Brickleberry Farms",
+  "Clodhopper Cabins",
+  "Colosseum Bot",
+  "Davinci's Drunken Temple",
+  "Doc's Dock",
+  "Feuille Gardens",
+  "Hexed Cemetery",
+  "Matt's Race",
+  "Merlin's Beard Bot",
+  "Mosslawn",
+  "Muckerhorn Basecamp",
+  "Nemours Estate",
+  "Rolland Pond",
+  "Stoke",
+  "Temple of the Sun",
+  "The Aqueducts",
+  "Watt",
+  "Winter Plains",
+] as const;
+
+export const LEGACY_PROTECTED_AREA_MUSIC_TRACKS = [
+  "legacy_area_red_rock",
+  "legacy_area_rainforest",
+  "legacy_area_grassland",
+  "legacy_area_frontier",
+] as const satisfies readonly AudioTrackType[];
+
+export type LegacyProtectedAreaMusicTrack =
+  (typeof LEGACY_PROTECTED_AREA_MUSIC_TRACKS)[number];
+
+function normalizeLegacyProtectedAreaName(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+const LEGACY_PROTECTED_AREA_CANONICAL_NAMES = new Map<string, string>([
+  ...LEGACY_LARGE_PROTECTED_AREA_NAMES.map(
+    (name) => [normalizeLegacyProtectedAreaName(name), name] as const
+  ),
+  // This older duplicate protects the Mosslawn footprint but predates the
+  // landmark metadata carried by the named Mossy Bot volume.
+  [normalizeLegacyProtectedAreaName("Mucked Mosslawn Bot"), "Mosslawn"],
+]);
+
+function canonicalLegacyProtectedAreaName(value: string | undefined) {
+  return value
+    ? LEGACY_PROTECTED_AREA_CANONICAL_NAMES.get(
+        normalizeLegacyProtectedAreaName(value)
+      )
+    : undefined;
+}
+
+function stableLegacyProtectedAreaHash(value: string) {
+  let hash = 0x811c9dc5;
+  for (const char of normalizeLegacyProtectedAreaName(value)) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash;
+}
+
+export function legacyProtectedAreaMusicTrack(
+  areaName: string
+): LegacyProtectedAreaMusicTrack | undefined {
+  const canonicalName = canonicalLegacyProtectedAreaName(areaName);
+  if (!canonicalName) {
+    return undefined;
+  }
+  return LEGACY_PROTECTED_AREA_MUSIC_TRACKS[
+    stableLegacyProtectedAreaHash(canonicalName) %
+      LEGACY_PROTECTED_AREA_MUSIC_TRACKS.length
+  ];
+}
+
+export function legacyProtectedAreaNameForOwner(
+  owner: ReadonlyEntity | undefined
+) {
+  // Snapshot-authored legacy robots have no created_by component. This guard
+  // prevents a player from renaming a normal small robot after a known place
+  // and accidentally claiming that area's music slot.
+  if (!owner || owner.created_by) {
+    return undefined;
+  }
+  return canonicalLegacyProtectedAreaName(
+    owner.landmark?.override_name ?? owner.label?.text
+  );
+}
 
 export function isGroveMusicPosition(position: {
   readonly [0]: number;
@@ -100,7 +198,8 @@ export function selectBackgroundMusicTrack(
   position?: { readonly [0]: number; readonly [2]: number },
   activeBossCombat = false,
   inCave = false,
-  activeMinigame = false
+  activeMinigame = false,
+  legacyProtectedAreaTrack?: LegacyProtectedAreaMusicTrack
 ): AudioTrackType {
   // Combat and authored dungeon cues own the soundtrack while active. Cave
   // music replaces ordinary regional exploration beds (including Muck), but
@@ -128,15 +227,28 @@ export function selectBackgroundMusicTrack(
     return "cave_music";
   }
 
+  // The Grove's authored regional theme owns the Grove even when a seam or
+  // nearby Muck surface raises the local corruption sample. Otherwise a
+  // cutscene ending beside the fence line immediately falls through to the
+  // generic/Muck world bed instead of returning to the place the player sees.
   if (muckyness > 0) {
+    if (
+      !legacyProtectedAreaTrack &&
+      position &&
+      isGroveMusicPosition(position)
+    ) {
+      return "grove_music";
+    }
     return "muck_music";
+  }
+  if (legacyProtectedAreaTrack) {
+    return legacyProtectedAreaTrack;
+  }
+  if (position && isGroveMusicPosition(position)) {
+    return "grove_music";
   }
   if (!position) {
     return "music";
-  }
-
-  if (isGroveMusicPosition(position)) {
-    return "grove_music";
   }
 
   const x = position[0];
@@ -182,6 +294,9 @@ export class AudioScript implements Script {
   private caveExitGraceUntil = -Infinity;
   private mountainExitGraceUntil = -Infinity;
   private environmentState = { inCave: false, onMountainTop: false };
+  private lastLegacyProtectedAreaCell = "";
+  private currentLegacyProtectedAreaTrack:
+    LegacyProtectedAreaMusicTrack | undefined;
 
   constructor(
     private readonly userId: BiomesId,
@@ -251,6 +366,50 @@ export class AudioScript implements Script {
     } catch {
       return false;
     }
+  }
+
+  private legacyProtectedAreaTrack(
+    position: readonly [number, number, number]
+  ) {
+    const cell = `${Math.floor(position[0])}|${Math.floor(
+      position[1]
+    )}|${Math.floor(position[2])}`;
+    if (cell === this.lastLegacyProtectedAreaCell) {
+      return this.currentLegacyProtectedAreaTrack;
+    }
+    this.lastLegacyProtectedAreaCell = cell;
+
+    const candidates: Array<{
+      areaName: string;
+      horizontalArea: number;
+      track: LegacyProtectedAreaMusicTrack;
+    }> = [];
+    for (const protection of this.table.scan(
+      ProtectionSelector.query.spatial.atPoint(position)
+    )) {
+      const ownerId = protection.created_by?.id;
+      const owner = ownerId ? this.table.get(ownerId) : undefined;
+      const areaName = legacyProtectedAreaNameForOwner(owner);
+      const track = areaName
+        ? legacyProtectedAreaMusicTrack(areaName)
+        : undefined;
+      if (!areaName || !track) {
+        continue;
+      }
+      const size = owner?.projects_protection?.size;
+      candidates.push({
+        areaName,
+        horizontalArea: size ? size[0] * size[2] : 0,
+        track,
+      });
+    }
+    candidates.sort(
+      (a, b) =>
+        b.horizontalArea - a.horizontalArea ||
+        a.areaName.localeCompare(b.areaName)
+    );
+    this.currentLegacyProtectedAreaTrack = candidates[0]?.track;
+    return this.currentLegacyProtectedAreaTrack;
   }
 
   private environmentAudioState(
@@ -343,6 +502,9 @@ export class AudioScript implements Script {
     );
     const activeMinigame = this.activeMinigame();
     const environment = this.environmentAudioState([...playerPos], nowSeconds);
+    const legacyProtectedAreaTrack = this.legacyProtectedAreaTrack([
+      ...playerPos,
+    ]);
     const currentMuckyness = muckyness.get();
     const backgroundMusicOverride =
       this.audioManager.getBackgroundMusicOverride();
@@ -356,7 +518,8 @@ export class AudioScript implements Script {
             playerPos,
             combatMusicState.activeBossCombat,
             environment.inCave,
-            activeMinigame
+            activeMinigame,
+            legacyProtectedAreaTrack
           ));
     this.audioManager.setBackgroundMusicTrack(selectedBackgroundMusic);
 

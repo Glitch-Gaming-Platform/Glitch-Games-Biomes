@@ -33,18 +33,30 @@ const spawnNpc = read("src/server/spawn/spawn_npc.ts");
 
 ok(
   "default rotate speed uses degrees-per-second, not radians",
-  /const DEFAULT_NPC_ROTATE_SPEED = 180;/.test(bikkie) && !/DEFAULT_NPC_ROTATE_SPEED = Math\.PI/.test(bikkie),
-  ["rotate_target.ts converts deg/s to radians; Math.PI caused ~3 deg/s turning"]
+  /const DEFAULT_NPC_ROTATE_SPEED = 180;/.test(bikkie) &&
+    !/DEFAULT_NPC_ROTATE_SPEED = Math\.PI/.test(bikkie),
+  [
+    "rotate_target.ts converts deg/s to radians; Math.PI caused ~3 deg/s turning",
+  ]
 );
 ok(
   "combat defaults use readable melee cone and real disengage hysteresis",
-  /attackFovDeg:\s*120/.test(npcTypes) && /disengageDistance:\s*24/.test(npcTypes) && /attackDistance:\s*2\.2/.test(npcTypes),
-  ["5 degree FOV and disengage==aggro made NPCs unable to hit and flap at aggro boundary"]
+  /attackFovDeg:\s*120/.test(npcTypes) &&
+    /disengageDistance:\s*24/.test(npcTypes) &&
+    /attackDistance:\s*2\.2/.test(npcTypes),
+  [
+    "5 degree FOV and disengage==aggro made NPCs unable to hit and flap at aggro boundary",
+  ]
 );
 ok(
   "chase movement no longer freezes when target is behind NPC",
-  /turnSlowdown\s*=\s*Math\.max\(\s*0\.35/.test(chase) && !/const speedMultiplier = Math\.max\(0, Math\.cos\(diffAngleToPlayer\)\)/.test(chase),
-  ["old cosine-only multiplier produced forwardSpeed=0 for targets behind the NPC"]
+  /turnSlowdown\s*=\s*Math\.max\(\s*0\.35/.test(chase) &&
+    !/const speedMultiplier = Math\.max\(0, Math\.cos\(diffAngleToPlayer\)\)/.test(
+      chase
+    ),
+  [
+    "old cosine-only multiplier produced forwardSpeed=0 for targets behind the NPC",
+  ]
 );
 ok(
   "only-if-attacked NPCs remember combat long enough to retaliate",
@@ -53,8 +65,14 @@ ok(
 );
 ok(
   "attack range approximates target collision capsule instead of origin only",
-  /TARGET_HITBOX_ATTACK_RANGE_CUSHION_METERS/.test(chase) && /effectiveAttackRadius/.test(chase) && /attackFovDeg \/ 2/.test(chase),
-  ["origin-to-origin distance caused large NPCs to miss targets already touching their body"]
+  /TARGET_HITBOX_ATTACK_RANGE_CUSHION_METERS/.test(chase) &&
+    /withinAttackReach\(\{[\s\S]{0,360}hitboxCushion:\s*TARGET_HITBOX_ATTACK_RANGE_CUSHION_METERS/.test(
+      chase
+    ) &&
+    /attackFovDeg \/ 2/.test(chase),
+  [
+    "origin-to-origin distance caused large NPCs to miss targets already touching their body",
+  ]
 );
 ok(
   "dead NPCs stop running behavior logic",
@@ -63,13 +81,20 @@ ok(
 );
 ok(
   "corpse linger is longer and death zeroes residual velocity",
-  /const NPC_CORPSE_LINGER_SECS = 90;/.test(modifyHealth) && (/mutableRigidBody\(\)\.velocity\s*=\s*\[0, 0, 0\]/.test(modifyHealth) || /setRigidBody\(\{\s*velocity:\s*\[0, 0, 0\]/s.test(modifyHealth)),
-  ["30s hard expiry felt like NPCs vanished; residual velocity made corpses slide"]
+  /const NPC_CORPSE_LINGER_SECS = 90;/.test(modifyHealth) &&
+    (/mutableRigidBody\(\)\.velocity\s*=\s*\[0, 0, 0\]/.test(modifyHealth) ||
+      /setRigidBody\(\{\s*velocity:\s*\[0, 0, 0\]/s.test(modifyHealth)),
+  [
+    "30s hard expiry felt like NPCs vanished; residual velocity made corpses slide",
+  ]
 );
 ok(
   "size variation remains uniform on all axes",
-  /return \[overallScale, overallScale, overallScale\];/.test(spawnNpc) && !/xScale|yScale|zScale/.test(spawnNpc),
-  ["per-axis scale sampling squashed/stretched NPCs and broke capsule consistency"]
+  /return \[overallScale, overallScale, overallScale\];/.test(spawnNpc) &&
+    !/xScale|yScale|zScale/.test(spawnNpc),
+  [
+    "per-axis scale sampling squashed/stretched NPCs and broke capsule consistency",
+  ]
 );
 
 console.log("");

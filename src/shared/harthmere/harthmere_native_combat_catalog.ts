@@ -8,6 +8,7 @@ import {
 } from "@/shared/harthmere/live_entity_production_seed";
 import {
   harthmereNativeNpcCombatProfileForSeed,
+  withHarthmereNativeNpcManaCosts,
   type HarthmereNativeNpcCombatProfile,
 } from "@/shared/harthmere/harthmere_native_combat";
 import { harthmereBossNativeCombatTuningForEntity } from "@/shared/harthmere/boss_attack_catalog";
@@ -125,6 +126,8 @@ export function harthmereNativeNpcCombatProfileForEntity(input: {
     killXp: base?.killXp ?? Math.max(100, tuning.level * 35),
     isBoss: true,
     projectileVisualId: tuning.attacks[0]?.projectileVisualId,
-    rangedAttacks: tuning.attacks,
+    rangedAttacks: withHarthmereNativeNpcManaCosts(tuning.attacks),
+    maxMana: Math.max(base?.maxMana ?? 0, 450 + tuning.level * 30),
+    manaRegenPerSecond: Math.max(base?.manaRegenPerSecond ?? 0, 1.5),
   };
 }

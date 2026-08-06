@@ -21,6 +21,11 @@ import {
 } from "./jobsBoardLiveAdapter";
 import { useHarthmereJobsBoard } from "./useHarthmereJobsBoard";
 import { HarthmereJobsBoardPanel } from "./HarthmereJobsBoardPanel";
+import { readChapter1ObjectiveWorldProjection } from "@/client/components/challenges/Chapter1ObjectiveWorldState";
+import {
+  CH1_JOBS_BOARD_STEP_ID,
+  ch1InteractionSurfaceForStep,
+} from "@/shared/harthmere/ch1_interaction_surfaces";
 
 // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN:
 // Mirrors the authority module's constants. Hardcoded here so the container
@@ -93,6 +98,12 @@ export function HarthmereJobsBoardLiveContainer({
     physicalBoardId ??
     snapshot?.defaultBoardId ??
     HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID;
+  const chapter1Projection = readChapter1ObjectiveWorldProjection();
+  const chapter1Mode =
+    activeBoardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID &&
+    chapter1Projection?.authoredStepId === CH1_JOBS_BOARD_STEP_ID &&
+    ch1InteractionSurfaceForStep(chapter1Projection.authoredStepId) ===
+      "jobs_board";
 
   const run = React.useCallback(
     async (actionId: string, op: () => Promise<HarthmereJobsBoardSnapshot>) => {
@@ -292,6 +303,7 @@ export function HarthmereJobsBoardLiveContainer({
       <HarthmereJobsBoardPanel
         snapshot={snapshot}
         boardId={activeBoardId}
+        chapter1Mode={chapter1Mode}
         onAcceptJob={onAcceptJob}
         onCompleteJob={onCompleteJob}
         onCancelJob={onCancelJob}

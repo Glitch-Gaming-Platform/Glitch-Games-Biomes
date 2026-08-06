@@ -39,6 +39,30 @@ import { TickUpdates } from "@/shared/npc/updates";
 import { removeFalsyInPlace } from "@/shared/util/object";
 import type { DeepReadonly } from "@/shared/util/type_helpers";
 
+type BusinessCustomerSnapshot = DeepReadonly<
+  NonNullable<DeserializedNpcState["businessCustomer"]>
+>;
+
+function cloneBusinessCustomerVec3(value: DeepReadonly<Vec3>): Vec3 {
+  return [value[0], value[1], value[2]];
+}
+
+function shouldPreserveLocalBusinessCustomerProgress(
+  current: BusinessCustomerSnapshot | undefined,
+  external: BusinessCustomerSnapshot | undefined
+) {
+  if (!current || !external || current.progressAtSeconds === undefined) {
+    return false;
+  }
+  return (
+    current.sessionId === external.sessionId &&
+    current.ticketId === external.ticketId &&
+    current.phase === external.phase &&
+    (external.progressAtSeconds === undefined ||
+      current.progressAtSeconds >= external.progressAtSeconds)
+  );
+}
+
 export class SimulatedNpc {
   public type;
   private readonly events: AnyEvent[] = [];
@@ -52,20 +76,60 @@ export class SimulatedNpc {
   }
 
   updateFromExternal(external: ReadonlyEntity) {
+    const currentEntity = this.patchableEntity.asReadonlyEntity();
+    const currentState = this.state;
+    const externalState = deserializeNpcCustomState(external.npc_state?.data);
+    const preserveBusinessProgress =
+      shouldPreserveLocalBusinessCustomerProgress(
+        currentState.businessCustomer,
+        externalState.businessCustomer
+      );
+    if (preserveBusinessProgress) {
+      const currentBusiness = currentState.businessCustomer!;
+      externalState.businessCustomer = {
+        ...externalState.businessCustomer!,
+        waypoints: currentBusiness.waypoints.map(cloneBusinessCustomerVec3),
+        waypointIndex: currentBusiness.waypointIndex,
+        pathfinding: currentBusiness.pathfinding
+          ? {
+              position: cloneBusinessCustomerVec3(
+                currentBusiness.pathfinding.position
+              ),
+              searchTime: currentBusiness.pathfinding.searchTime,
+              path: {
+                nodes: currentBusiness.pathfinding.path.nodes.map((node) => ({
+                  position: cloneBusinessCustomerVec3(node.position),
+                })),
+              },
+            }
+          : undefined,
+        progressPosition: currentBusiness.progressPosition
+          ? cloneBusinessCustomerVec3(currentBusiness.progressPosition)
+          : undefined,
+        progressAtSeconds: currentBusiness.progressAtSeconds,
+      };
+      externalState.rotateTarget = currentState.rotateTarget;
+    }
     this.patchableEntity = new PatchableEntity(
       removeFalsyInPlace({
-        ...this.patchableEntity.asReadonlyEntity(),
+        ...currentEntity,
         health: external.health,
         npc_metadata: NpcMetadata.clone(external?.npc_metadata),
-        position: external.position
-          ? Position.clone(external.position)
-          : undefined,
-        orientation: external.orientation
-          ? Orientation.clone(external.orientation)
-          : undefined,
-        rigid_body: external.rigid_body
-          ? RigidBody.clone(external.rigid_body)
-          : undefined,
+        position: preserveBusinessProgress
+          ? Position.clone(currentEntity.position)
+          : external.position
+            ? Position.clone(external.position)
+            : undefined,
+        orientation: preserveBusinessProgress
+          ? Orientation.clone(currentEntity.orientation)
+          : external.orientation
+            ? Orientation.clone(external.orientation)
+            : undefined,
+        rigid_body: preserveBusinessProgress
+          ? RigidBody.clone(currentEntity.rigid_body)
+          : external.rigid_body
+            ? RigidBody.clone(external.rigid_body)
+            : undefined,
         size: external.size ? Size.clone(external.size) : undefined,
         movement_state: external.movement_state
           ? MovementState.clone(external.movement_state)
@@ -73,9 +137,11 @@ export class SimulatedNpc {
         npc_combat_state: external.npc_combat_state
           ? NpcCombatState.clone(external.npc_combat_state)
           : undefined,
-        npc_state: external.npc_state
-          ? NpcState.clone(external.npc_state)
-          : undefined,
+        npc_state: preserveBusinessProgress
+          ? NpcState.create({ data: serializeNpcCustomState(externalState) })
+          : external.npc_state
+            ? NpcState.clone(external.npc_state)
+            : undefined,
       }) as Npc
     );
     // A live HybridWorld create can be observed first through a partial view
@@ -202,19 +268,30 @@ export class SimulatedNpc {
     );
   }
 
-  private syncPublicRangedAttackPresentation() {
+  private syncPublicCombatPresentation() {
     const current = this.patchableEntity.npcCombatState();
-    const attackTarget = current?.attack_target;
-    if (attackTarget === undefined) {
-      return;
-    }
+    const attackTarget =
+      this.state.chaseAttack?.attackTarget ?? current?.attack_target;
     const privateRangedAttack = this.state.chaseAttack?.rangedAttack;
     const rangedAttack =
       privateRangedAttack?.targetId === attackTarget
         ? privateRangedAttack
         : undefined;
     const aimPoint = rangedAttack?.aimPoint;
+    const stagger = this.state.damageReaction?.stagger;
+    const poise = this.state.damageReaction?.poise;
+    const poiseMax = this.state.damageReaction?.poiseMax;
+    if (
+      attackTarget === undefined &&
+      rangedAttack === undefined &&
+      stagger === undefined &&
+      poiseMax === undefined
+    ) {
+      if (current) this.patchableEntity.clearNpcCombatState();
+      return;
+    }
     const unchanged =
+      current?.attack_target === attackTarget &&
       current?.ranged_attack_ability_id === rangedAttack?.abilityId &&
       current?.ranged_attack_projectile_visual_id ===
         rangedAttack?.projectileVisualId &&
@@ -223,6 +300,18 @@ export class SimulatedNpc {
         rangedAttack?.chargeTimeSecs &&
       current?.ranged_attack_release_time === rangedAttack?.releaseTime &&
       current?.ranged_attack_result === rangedAttack?.result &&
+      current?.stagger_kind === stagger?.kind &&
+      current?.stagger_start_time === stagger?.startTime &&
+      current?.stagger_expiry_time === stagger?.expiryTime &&
+      current?.stagger_sequence === this.state.damageReaction?.sequence &&
+      current?.poise === poise &&
+      current?.poise_max === poiseMax &&
+      (current?.stagger_direction === undefined
+        ? stagger?.direction === undefined
+        : stagger?.direction !== undefined &&
+          current.stagger_direction[0] === stagger.direction[0] &&
+          current.stagger_direction[1] === stagger.direction[1] &&
+          current.stagger_direction[2] === stagger.direction[2]) &&
       (current?.ranged_attack_aim_point === undefined
         ? aimPoint === undefined
         : aimPoint !== undefined &&
@@ -242,12 +331,19 @@ export class SimulatedNpc {
         ranged_attack_release_time: rangedAttack?.releaseTime,
         ranged_attack_aim_point: aimPoint ? [...aimPoint] : undefined,
         ranged_attack_result: rangedAttack?.result,
+        stagger_kind: stagger?.kind,
+        stagger_start_time: stagger?.startTime,
+        stagger_expiry_time: stagger?.expiryTime,
+        stagger_direction: stagger ? [...stagger.direction] : undefined,
+        stagger_sequence: this.state.damageReaction?.sequence,
+        poise,
+        poise_max: poiseMax,
       })
     );
   }
 
   attack(
-    target: BiomesId,
+    target: ReadonlyEntity,
     damage: number,
     attack?: {
       attackAbilityId?: string;
@@ -255,10 +351,25 @@ export class SimulatedNpc {
       impactPoint: Readonly<Vec3>;
     }
   ) {
-    log.debug(`NPC ${this.id} attacks ${target} for ${damage} damage.`);
+    log.debug(`NPC ${this.id} attacks ${target.id} for ${damage} damage.`);
+    if (target.npc_metadata) {
+      this.events.push(
+        new UpdateNpcHealthEvent({
+          id: target.id,
+          hp: -damage,
+          damageSource: {
+            kind: "attack",
+            attacker: this.id,
+            dir: undefined,
+          },
+          attackTime: attack?.attackTime,
+        })
+      );
+      return;
+    }
     this.events.push(
       new UpdatePlayerHealthEvent({
-        id: target,
+        id: target.id,
         hpDelta: -damage,
         damageSource: {
           kind: "attack",
@@ -295,7 +406,7 @@ export class SimulatedNpc {
         this.patchableEntity.setNpcState(NpcState.create({ data: serialized }));
       }
     }
-    this.syncPublicRangedAttackPresentation();
+    this.syncPublicCombatPresentation();
     const delta = this.patchableEntity.finish() as AsDelta<Npc>;
     if (!delta && this.events.length === 0) {
       return;

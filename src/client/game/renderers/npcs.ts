@@ -6,6 +6,10 @@ import type { Scenes } from "@/client/game/renderers/scenes";
 import { drawLimitValueWithTweak } from "@/client/game/resources/graphics_settings";
 import { harthmereEnsureRenderableNpcEntity } from "@/client/game/resources/harthmere_npc_render_compat";
 import type { ClientResources } from "@/client/game/resources/types";
+import {
+  npcMeshLoadLimitForDevice,
+  preserveAllPuppetNpcsForDevice,
+} from "@/client/game/util/mobile_player_mesh_budget";
 import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
 import { isHarthmereRequestBoardEntityId } from "@/shared/harthmere/native_request_boards";
 import type { BiomesId } from "@/shared/ids";
@@ -65,7 +69,16 @@ export const makeNpcsRenderer = (
           (cutsceneNpcIds ??= new Set()).add(entityId);
         }
       }
-      let mustKeepNpcIds = cutsceneNpcIds ? new Set(cutsceneNpcIds) : undefined;
+      const preserveAllPuppetNpcs = preserveAllPuppetNpcsForDevice(
+        clientConfig.mobileDevice,
+        resources.get("/scene/cutscene").active
+      );
+      const alwaysIncludePuppetNpcIds = preserveAllPuppetNpcs
+        ? cutsceneNpcIds
+        : undefined;
+      let mustKeepNpcIds = alwaysIncludePuppetNpcIds
+        ? new Set(alwaysIncludePuppetNpcIds)
+        : undefined;
       if (becomeNpc.kind === "active") {
         (mustKeepNpcIds ??= new Set()).add(becomeNpc.entityId);
       }
@@ -76,9 +89,12 @@ export const makeNpcsRenderer = (
         camera,
         (q) => table.scan(q),
         NpcMetadataSelector,
-        drawLimitValueWithTweak(
-          resources,
-          tweaks.clientRendering.npcRenderLimit
+        npcMeshLoadLimitForDevice(
+          clientConfig.mobileDevice,
+          drawLimitValueWithTweak(
+            resources,
+            tweaks.clientRendering.npcRenderLimit
+          )
         ),
         {
           mustKeep: mustKeepNpcIds,
@@ -109,7 +125,7 @@ export const makeNpcsRenderer = (
           entities.push(entity);
         }
       }
-      for (const entityId of cutsceneNpcIds ?? []) {
+      for (const entityId of alwaysIncludePuppetNpcIds ?? []) {
         if (entities.some((entity) => Number(entity.id) === entityId)) {
           continue;
         }

@@ -2,6 +2,7 @@ import type { ClientContext } from "@/client/game/context";
 import {
   cloneMaterials,
   gltfToBasePassThree,
+  replaceThreeMaterials,
 } from "@/client/game/renderers/util";
 import type {
   ClientResourceDeps,
@@ -10,6 +11,7 @@ import type {
 import {
   WORLD_TO_VOX_SCALE,
   gltfDispose,
+  gltfToThree,
   parseGltf,
 } from "@/client/game/util/gltf_helpers";
 import {
@@ -26,11 +28,19 @@ import type {
 } from "@/galois/interface/types/data";
 import { makeBlockItemMaterial } from "@/gen/client/game/shaders/block_item";
 import { makeFloraItemMaterial } from "@/gen/client/game/shaders/flora_item";
+import { makeBasicMaterial } from "@/gen/client/game/shaders/basic";
 import { staticUrlForAttribute } from "@/shared/bikkie/schema/binary";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import type { Disposable } from "@/shared/disposable";
 import { makeDisposable } from "@/shared/disposable";
 import type { Item } from "@/shared/game/item";
+import {
+  CH1_ITEM_WORLD_PRESENTATION_SCALE,
+  getCh1ItemVisualAsset,
+  resolveCh1ItemGltfBaseColor,
+} from "@/shared/harthmere/ch1_item_visual_assets";
+import { harthmereNativeItemIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
+import { getHarthmerePremiumWeapon } from "@/shared/harthmere/premium_weapon_catalog";
 import { log } from "@/shared/logging";
 import { affineToMatrix } from "@/shared/math/affine";
 import type { RegistryLoader } from "@/shared/registry";
@@ -44,15 +54,33 @@ import { ok } from "assert";
 import * as THREE from "three";
 import { DoubleSide, Mesh } from "three";
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
+import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 
 interface ItemMeshInstanceImpl {
   three: THREE.Object3D;
   handAttachmentTransform?: THREE.Matrix4;
+  animationClipNames?: readonly string[];
+  updateAnimation?: (clipName: string, localTimeSeconds: number) => void;
+  socketWorldPosition?: (socketName: string) => THREE.Vector3 | undefined;
 }
 export type ItemMeshInstance = Disposable<ItemMeshInstanceImpl>;
 
 // Allows efficient creation of an instance of an item mesh.
 export type ItemMeshFactory = () => ItemMeshInstance;
+
+export function harthmereChapter1ItemCanonicalBaseColor(
+  material: THREE.Material
+): [number, number, number] | undefined {
+  const value = material.userData.harthmereChapter1CanonicalBaseColor;
+  if (
+    !Array.isArray(value) ||
+    value.length < 3 ||
+    !value.slice(0, 3).every((channel) => Number.isFinite(channel))
+  ) {
+    return undefined;
+  }
+  return [Number(value[0]), Number(value[1]), Number(value[2])];
+}
 
 async function makeBlockItemMesh(
   _clientContext: ClientContext,
@@ -220,6 +248,163 @@ async function gltfToItemMesh(
   );
 }
 
+async function makeHarthmerePremiumItemMesh(item: Item) {
+  const semanticItemId =
+    harthmereNativeItemIdForBiomesId(Number(item.id)) ?? String(item.id);
+  const premium = getHarthmerePremiumWeapon(semanticItemId);
+  if (!premium) return undefined;
+
+  const gltf = await parseGltf(await binaryFetch(premium.assetUrl));
+  // `gltfToBasePassThree` intentionally uses ordinary Object3D.clone(), which
+  // is correct for static item meshes but leaves a SkinnedMesh skeleton bound
+  // to bones outside the cloned hierarchy. Premium bows are rigged, so their
+  // very first clone must be skeleton-aware; otherwise the later instance
+  // clone contains undefined bones and Three.js throws from
+  // SkinnedMesh.computeBoundingSphere while equipping the bow.
+  const template = SkeletonUtils.clone(gltfToThree(gltf));
+  const [materials] = replaceThreeMaterials(template, true, true);
+  template.traverse((child) => {
+    const skinned = child as THREE.SkinnedMesh;
+    if (!skinned.isSkinnedMesh) return;
+    if (skinned.skeleton.bones.some((bone) => !bone)) {
+      throw new Error(
+        `${semanticItemId} contains a detached premium-item skeleton`
+      );
+    }
+    // The player entity is already culled as one renderable. Recomputing a
+    // dynamic bounding sphere for each tiny held bow segment is redundant and
+    // is exactly the Three.js path that exposed detached skeleton state.
+    skinned.frustumCulled = false;
+  });
+  // Premium assets are authored in world meters. Native wearable/player
+  // meshes use voxel units, so keep the same conversion as ordinary GLTF item
+  // meshes while retaining the authored grip-at-origin transform.
+  template.scale.setScalar(WORLD_TO_VOX_SCALE);
+  const clips = [...gltf.animations];
+
+  return makeDisposable(
+    () => {
+      const three = SkeletonUtils.clone(template);
+      const [instMats] = cloneMaterials(three);
+      const mixer = new THREE.AnimationMixer(three);
+      let activeClipName: string | undefined;
+      let activeAction: THREE.AnimationAction | undefined;
+      const updateAnimation = (clipName: string, localTimeSeconds: number) => {
+        const clip = clips.find(({ name }) => name === clipName);
+        if (!clip) return;
+        if (activeClipName !== clipName) {
+          activeAction?.stop();
+          activeClipName = clipName;
+          activeAction = mixer.clipAction(clip);
+          activeAction.reset();
+          activeAction.clampWhenFinished = true;
+          activeAction.setLoop(
+            /idle|aim/i.test(clipName) ? THREE.LoopRepeat : THREE.LoopOnce,
+            /idle|aim/i.test(clipName) ? Number.POSITIVE_INFINITY : 1
+          );
+          activeAction.play();
+        }
+        const safeTime = Math.max(0, Number(localTimeSeconds) || 0);
+        const clipTime =
+          /idle|aim/i.test(clipName) && clip.duration > 0
+            ? safeTime % clip.duration
+            : Math.min(safeTime, clip.duration);
+        mixer.setTime(clipTime);
+      };
+      return makeDisposable(
+        {
+          three,
+          handAttachmentTransform: new THREE.Matrix4(),
+          animationClipNames: clips.map(({ name }) => name),
+          updateAnimation,
+          socketWorldPosition: (socketName: string) => {
+            const socket = three.getObjectByName(socketName);
+            if (!socket) return undefined;
+            three.updateWorldMatrix(true, true);
+            return socket.getWorldPosition(new THREE.Vector3());
+          },
+        },
+        () => {
+          mixer.stopAllAction();
+          mixer.uncacheRoot(three);
+          instMats.forEach((material) => material.dispose());
+        }
+      );
+    },
+    () => {
+      gltfDispose(gltf);
+      materials.forEach((material) => material.dispose());
+    }
+  );
+}
+
+async function makeHarthmereChapter1ItemMesh(item: Item) {
+  const semanticItemId =
+    harthmereNativeItemIdForBiomesId(Number(item.id)) ?? String(item.id);
+  const authored = getCh1ItemVisualAsset(semanticItemId);
+  if (!authored) return undefined;
+
+  const gltf = await parseGltf(await binaryFetch(authored.assetUrl));
+  const canonicalMaterials = gltf.parser.json.materials as
+    | Array<{
+        name?: string;
+        pbrMetallicRoughness?: { baseColorFactor?: number[] };
+      }>
+    | undefined;
+  const [template, materials] = gltfToBasePassThree(
+    gltf,
+    (material) => {
+      const materialIndex = gltf.parser.associations.get(material)?.materials;
+      const baseColor = resolveCh1ItemGltfBaseColor(
+        material.name,
+        materialIndex,
+        canonicalMaterials,
+        material.color.toArray() as [number, number, number]
+      );
+      const next = makeBasicMaterial({
+        baseColor,
+        map: material.map ?? new THREE.Texture(),
+        useMap: !!material.map,
+        vertexColors: material.vertexColors,
+      });
+      next.name = material.name;
+      next.userData = {
+        ...material.userData,
+        harthmereChapter1CanonicalBaseColor: baseColor,
+        harthmereChapter1GltfMaterialName: material.name,
+        harthmereChapter1GltfMaterialIndex: materialIndex,
+      };
+      return next;
+    },
+    true,
+    true
+  );
+  // Chapter 1 props are authored in meters. The avatar hand socket shrinks a
+  // literal real-world prop into the sleeve, so apply the shared readable
+  // voxel-world multiplier after the ordinary meter-to-voxel conversion.
+  template.scale.setScalar(
+    WORLD_TO_VOX_SCALE * CH1_ITEM_WORLD_PRESENTATION_SCALE
+  );
+
+  return makeDisposable(
+    () => {
+      const three = template.clone();
+      const [instanceMaterials] = cloneMaterials(three);
+      return makeDisposable(
+        {
+          three,
+          handAttachmentTransform: new THREE.Matrix4(),
+        },
+        () => instanceMaterials.forEach((material) => material.dispose())
+      );
+    },
+    () => {
+      gltfDispose(gltf);
+      materials.forEach((material) => material.dispose());
+    }
+  );
+}
+
 function itemMeshPath(item: Item) {
   // Based on the item attributes, decide how to fetch or create the mesh.
   const meshPath = (() => {
@@ -244,7 +429,25 @@ function itemMeshPath(item: Item) {
   return undefined;
 }
 
-function makeMissingItemMesh(item: Item, reason: unknown): ItemMeshFactory {
+function proceduralFallbackMaterial(color: number) {
+  // Procedural item fallbacks can be selected and attached after the player
+  // avatar has already been coerced into the MRT/base material family. A stock
+  // MeshStandardMaterial added at that point makes the marked player root
+  // mixed (`base,three`), sends the stock shader into the MRT pass, and causes
+  // a draw-buffer error every frame. Keep fallback items in the same generated
+  // base pass as ordinary loaded item meshes so late hotbar selection remains
+  // renderer-safe.
+  return makeBasicMaterial({
+    baseColor: new THREE.Color(color).toArray() as [number, number, number],
+    useMap: false,
+    vertexColors: false,
+  });
+}
+
+export function makeMissingItemMesh(
+  item: Item,
+  reason: unknown
+): ItemMeshFactory {
   if (item.id === BikkieIds.spikefish) {
     // Spikefish is a fishing reward without authored item-mesh JSON in the
     // production Bikkie snapshot. Give it an intentional fish silhouette
@@ -263,11 +466,7 @@ function makeMissingItemMesh(item: Item, reason: unknown): ItemMeshFactory {
     });
     return makeDisposable(
       () => {
-        const material = new THREE.MeshStandardMaterial({
-          color: 0x6fb6c4,
-          roughness: 0.55,
-          metalness: 0.15,
-        });
+        const material = proceduralFallbackMaterial(0x6fb6c4);
         const group = new THREE.Group();
         group.add(
           new Mesh(body, material),
@@ -299,11 +498,7 @@ function makeMissingItemMesh(item: Item, reason: unknown): ItemMeshFactory {
 
   return makeDisposable(
     () => {
-      const material = new THREE.MeshStandardMaterial({
-        color: 0xb8874f,
-        roughness: 0.9,
-        metalness: 0.0,
-      });
+      const material = proceduralFallbackMaterial(0xb8874f);
       return makeDisposable(
         {
           three: new Mesh(geometry, material),
@@ -384,6 +579,24 @@ async function makeItemMesh(
   deps: ClientResourceDeps,
   { item }: ItemMeshKey
 ): Promise<ItemMeshFactory> {
+  try {
+    const chapter1 = await makeHarthmereChapter1ItemMesh(item);
+    if (chapter1) return chapter1;
+  } catch (error) {
+    log.warn("Failed to load authored Chapter 1 item mesh", {
+      id: item.id,
+      error,
+    });
+  }
+  try {
+    const premium = await makeHarthmerePremiumItemMesh(item);
+    if (premium) return premium;
+  } catch (error) {
+    log.warn("Failed to load authored Harthmere premium item mesh", {
+      id: item.id,
+      error,
+    });
+  }
   if (item.mesh) {
     try {
       return await gltfToItemMesh(

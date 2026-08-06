@@ -190,6 +190,7 @@ describe("mmo_farming_food_stamina", () => {
       recipeId: "7031555443006367",
       stationKind: "campfire",
       nowMs: NOW,
+      cookingSkillLevel: 100,
     });
     assert.ok(wrongStation.warnings.includes("cooking_rejected:missing_station:oven"));
 
@@ -197,6 +198,7 @@ describe("mmo_farming_food_stamina", () => {
       recipeId: "7031555443006367",
       stationKind: "oven",
       nowMs: NOW,
+      cookingSkillLevel: 100,
     });
     assert.deepEqual(cooked.warnings, []);
     assert.equal(cooked.state.inventory["7539420629350036"], 0);
@@ -263,6 +265,7 @@ describe("mmo_farming_food_stamina", () => {
       stationKind: "cookpot",
       count: 2,
       nowMs: NOW,
+      cookingSkillLevel: 10,
     });
 
     assert.deepEqual(result.warnings, []);
@@ -300,6 +303,7 @@ describe("mmo_farming_food_stamina", () => {
       recipeId: "worker_meal",
       stationKind: "campfire",
       nowMs: NOW,
+      cookingSkillLevel: 10,
     });
     assert.ok(missingStation.warnings.includes("cooking_rejected:missing_station:cookpot"));
 
@@ -307,6 +311,7 @@ describe("mmo_farming_food_stamina", () => {
       recipeId: "worker_meal",
       stationKind: "cookpot",
       nowMs: NOW,
+      cookingSkillLevel: 10,
     });
     assert.ok(missingInput.warnings.includes("cooking_rejected:missing_input:fresh_carrot"));
 

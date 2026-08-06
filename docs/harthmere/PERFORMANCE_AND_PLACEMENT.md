@@ -1,9 +1,59 @@
 # Harthmere Performance And Placement Guide
 
-Last updated: 2026-08-03
+Last updated: 2026-08-05
 
 This guide is the current operating contract for Harthmere placement,
 streaming, NPC grounding, quest markers, and performance diagnostics.
+
+## August 5 Production Battle FPS Incident
+
+The production `last_battle.har`/`last_battle.log` capture covered about 163
+seconds and reproduced the combat slowdown at 3-14 FPS. The game-owned evidence
+was:
+
+- six independent `ThreeObjectPreview` WebGL renderers initialized immediately
+  before the first 3 FPS sample;
+- 855 Chrome long `requestAnimationFrame` handler warnings;
+- 173 Chapter 1 gate state POSTs, 144 objective state POSTs, and 78 story state
+  POSTs in the same short session;
+- 28 `storeSave` calls, more than one bridge controller's minimum cadence allows,
+  indicating an async stopped-controller timer leak;
+- 67 player-voice polls and 20 signaling packets while player voice was enabled;
+- additional ad/YouTube/AMP work in the outer `www.glitch.fun` host. That outer
+  work is real contention but cannot be fixed in the game repository.
+
+The grouped game hotfix is deliberately frame-budget first:
+
+1. `ThreeObjectPreview` waits for a real IntersectionObserver sample before
+   allocating WebGL, renders only while visible/intersecting/laid out, drops its
+   renderer while hidden, and checks inactive previews at 4 Hz instead of
+   running a full RAF loop. It also uses one bounded manual delta rather than a
+   deprecated `THREE.Clock` per preview.
+2. A stopped Glitch bridge cannot resume after install/cloud-restore awaits and
+   install a second autosave/progression/heartbeat stack. Timer installation is
+   both lifecycle-gated and idempotent.
+3. Chapter 1 proximity reconciliation remains responsive at 2 seconds, while
+   story projection reconciliation moves to 6 seconds. Mutations and story
+   events still refresh immediately, so this removes redundant POST/render churn
+   rather than delaying authored actions.
+4. Lock-on target projection is sampled at 80 ms and publishes only one compact
+   target state. It reuses the existing combat actor registry and native attack
+   authority; it does not add a second AI, damage, or renderer loop.
+
+Regression commands:
+
+```bash
+scripts/harthmere/t.sh perf
+scripts/harthmere/t.sh combat
+node_modules/.bin/mocha --config .mocharc.json \
+  src/client/game/interact/item_types/attack_destroy_delegate_item_spec.test.ts
+node_modules/.bin/tsc -p tsconfig.ch1renderer.json --noEmit
+```
+
+Live acceptance must exercise preview panels before fighting, then compare an
+idle and multi-enemy sample on the exact final artifact. A root health response,
+source inspection, or a screenshot without FPS/renderer/console evidence is not
+an FPS pass.
 
 The core rule has two coordinate spaces. The original snapshot/Grove terrain is
 hilly and must be sampled. The additive Harthmere extension is deliberately
@@ -126,7 +176,7 @@ Current guardrails:
   consume in `draw()` — is how the combat VFX and the player weapon rig both
   ended up computing every frame in production and drawing nothing.
 - **Never disable an adaptive system in order to make a device start
-  conservatively.** Set its *starting value* and *clamp its range* instead.
+  conservatively.** Set its _starting value_ and _clamp its range_ instead.
   `forceRenderScale = 0.5` on mobile looked like a conservative default but it
   short-circuits `computeRenderScale` before the `dynamic` branch, which
   disabled the entire quality ladder on phones — the same defect finding 13
@@ -269,8 +319,10 @@ The source response installed for this evidence:
   renderer timing cvals so the next production sample identifies the remaining
   renderer share directly.
 
-This batch does not reduce the 192 m dynamic view-distance floor and does not
-change explicit Low/Safe graphics modes.
+That earlier batch did not reduce the then-current 192 m dynamic view-distance
+floor and did not change explicit Low/Safe graphics modes. The August 4 headed
+combat follow-up below supersedes that floor with a measured 128 m desktop
+minimum after proving the remaining slowdown was CPU-bound.
 
 ### Production follow-up — 2026-08-03 (captured session)
 
@@ -320,7 +372,7 @@ Guardrails added (these belong with the ones in
 Two adaptivity defects were closed in the same pass:
 
 - **Dynamic render scale required a GPU timer.** Without
-  `EXT_disjoint_timer_query_webgl2` the client pinned a *fixed* render scale for
+  `EXT_disjoint_timer_query_webgl2` the client pinned a _fixed_ render scale for
   the whole session — `[3840, 2160]` on `high`, a 4K internal resolution with no
   way to back off. That extension is routinely missing in embedded iframes,
   which is exactly how Glitch hosts this game. Dynamic scale is now always
@@ -350,14 +402,14 @@ Everything below is gated on `clientConfig.mobileDevice`, or on a clamp set
 that is `undefined` on desktop. Desktop render scale, draw distance, frame
 pacing, context-loss handling, atlas decode, and controls are unchanged.
 
-| Change | Mobile behaviour | Desktop behaviour |
-| --- | --- | --- |
-| Touch action cluster | Hold-capable Primary/Secondary plus Draw/Target/Heavy/Spark | Not mounted |
-| Device profile + clamped ladder | `constrained`/`standard`/`capable`, dynamic within range | Unclamped, unchanged |
-| Render frame cap | 30 FPS render target; simulation unpaced | Uncapped |
-| WebGL context restore | Rebuild via `reattach()`, loss logged as a warning | `log.fatal`, unchanged |
-| Atlas decode | Payload released per field | Same shared decoder (see below) |
-| `viewport-fit=cover` | Safe-area insets resolve | Insets are 0 either way |
+| Change                          | Mobile behaviour                                                                                                  | Desktop behaviour               |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| Touch action cluster            | One context-sensitive Primary (tap mine/use/light, hold mine/heavy), clear Place/alternate-use, Target, and Spark | Not mounted                     |
+| Device profile + clamped ladder | `constrained`/`standard`/`capable`, dynamic within range                                                          | Unclamped, unchanged            |
+| Render frame cap                | 30 FPS render target; simulation unpaced                                                                          | Uncapped                        |
+| WebGL context restore           | Rebuild via `reattach()`, loss logged as a warning                                                                | `log.fatal`, unchanged          |
+| Atlas decode                    | Payload released per field                                                                                        | Same shared decoder (see below) |
+| `viewport-fit=cover`            | Safe-area insets resolve                                                                                          | Insets are 0 either way         |
 
 **One change in this batch is not mobile-gated.** Five call sites decoded
 base64 with `new Uint8Array(Buffer.from(data, "base64").buffer)`, which
@@ -378,12 +430,61 @@ sessions were running: draw distance drives retained terrain meshes and
 therefore WebContent footprint, not just frame time. Explicit `forceDrawDistance`
 / `forceRenderScale` / `forceGraphicsQuality` URL diagnostics still win.
 
-**Not measured.** This batch is a code-path argument plus unit coverage. It has
-not been run on the connected iPhone and is not deployed. The next physical
-pass should confirm: no new jetsam event over ten minutes in both orientations;
-`renderer:graphics:settings` moving within the clamps rather than sitting
-still; a sustained 30 FPS render interval; and that mine, place, and each
-combat control resolve the same server events as their desktop equivalents.
+### Consolidated iOS performance path
+
+The later physical-phone work extends the original batch. Keep these changes
+together when reviewing or bisecting mobile residency; applying only one or two
+of them recreates failure shapes that the complete path avoids:
+
+- iPhone low-memory Voxeloo reservation is one eighth of the desktop default.
+  The independently scaled mobile resource graph is capped at 8,000 nodes; the
+  block-mesh label cap and desktop capacities are unchanged. The 8,000 value is
+  deliberate: a 6,000 cap repeatedly rebuilt a measured roughly 6,400-node
+  movement working set and increased allocation/compression churn.
+- Render scale and draw distance use the mobile device ladder, and only rendered
+  frames are paced at about 30 FPS. Simulation, input, and networking continue
+  at their normal cadence.
+- Camera far-plane sanitization prevents an invalid first-frame projection from
+  entering native `VisibilitySharder.scan()`, where the phone and desktop native
+  GPU paths could synchronously wedge before terrain draw returned.
+- Projectile, business-interior, and additive-town GLB catalogues no longer
+  launch their entire catalogues during module construction. They use bounded
+  nearby/on-demand streaming instead.
+- Character animation actions are lazy and reclaimable on mobile. A physical
+  iPhone trace found 119 actions / 5,712 cloned tracks per NPC and 314 actions /
+  7,536 cloned tracks per player, even when only idle was visible. Phones now
+  create non-idle movement, combat, and the 71 cinematic-expression actions on
+  first use, then uncache each clone after its blend reaches zero. Desktop keeps
+  the established eager action graph.
+- Mobile clamped one-shots use the shared animation timestamp as their terminal
+  condition. This prevents iOS WebKit from resetting a completed expression
+  when `AnimationAction.isRunning()` is false but WebKit has not set the Three.js
+  `paused` flag; desktop playback remains on its existing path.
+- Fixed-build physical evidence for this path used
+  `warm-ios-dialog-memory-20260805-r1`: sampled NPCs started with one idle
+  action and sampled players with two idle-layer actions. Jackie's one-second
+  `relief` action materialized only for the dialogue beat, stopped at its final
+  frame, and remained stopped in a later sample. The fixed WebContent process
+  still received memory-pressure notifications at a measured post-load
+  footprint of `1,040,994,880` bytes, but the bounded retest produced no
+  memory-highwater kill. Treat this as proof of the action-graph reduction, not
+  as a claim that all iOS memory pressure or the full ten-minute stability gate
+  is closed.
+- Background music loads the selected track rather than every track. Mobile
+  uses AAC-LC `.m4a` variants after the first real touch while preserving the
+  original audio files; desktop keeps its streaming media-element path.
+- Atlas decode uses exact-size buffers and releases mobile base64 payload fields
+  after decode. Particle fallback textures declare their actual RGBA shape, and
+  packed texture construction rejects malformed byte lengths early.
+- WebGL context loss stops the phone render loop and rebuilds through
+  `reattach()` instead of promising recovery with no recovery path.
+- The service-worker catalogue excludes Harthmere GLB/FBX, generated inventory
+  icons, and voice-catalogue paths; custom-origin gzip covers game chunks,
+  `/at`, `sw.js`, and Bikkie responses.
+
+Physical iPhone acceptance must still be reported against the exact immutable
+build under test. A source pass or desktop emulation is not evidence for jetsam,
+native WebGL, safe-area, real-touch, or orientation behavior.
 
 Still open after this batch: KTX2/gltfpack over the NPC assets (0 `.ktx2` files
 shipped, `big_mucker` still 15.5 MB), the binary atlas format, and `useWorker`.
@@ -397,13 +498,17 @@ because the client is CPU-bound.
 For Glitch/embed sessions, `src/client/game/client_config.ts` sets:
 
 ```ts
-ret.dynamicMinDrawDistance = 192;
+ret.dynamicMinDrawDistance = 128;
 ```
 
 This has the following behavior:
 
-- Auto/dynamic graphics retain at least 192 m of terrain and synchronization
+- Auto/dynamic graphics retain at least 128 m of terrain and synchronization
   distance.
+- The former 192 m minimum is intentionally retired: a headed Apple M1 Max
+  combat sample measured 26.5 ms CPU render time versus 4.535 ms GPU time and
+  27.78 median FPS. The old floor prevented the adaptive controller from
+  shedding the CPU-heavy terrain/ECS radius.
 - Dynamic quality can still lower render scale when the GPU is the bottleneck.
 - Explicit Low or Safe Mode remains allowed to select a shorter fixed distance.
 - `minDrawDistance` remains available as the hard URL/config override.
@@ -517,7 +622,7 @@ Current behavior:
 - meshes use normal Three.js frustum culling;
 - node groups beyond the active draw distance are hidden, which also removes
   their point lights from Three.js's global light collection;
-- the world itself retains the 192 m dynamic minimum described above;
+- the world itself retains the 128 m dynamic minimum described above;
 - static business/jobs-board debug bridges are installed once per renderer;
 - quest-marker debug snapshots publish at 2 Hz rather than every frame.
 
@@ -829,7 +934,7 @@ ECS, Redis, Anima, and Gaia upgrades can improve server tick throughput,
 replication latency, simulation capacity, or operational reliability. They do
 not reduce the browser's scene traversal and draw submission unless they also
 change how much data or how many visible entities the client receives. Any such
-change must preserve the 192 m render-distance contract and should use client
+change must preserve the 128 m render-distance contract and should use client
 LOD, aggregation, or lower update frequency rather than hiding the world.
 
 Current recommendation after the completed platform upgrade:
@@ -917,6 +1022,63 @@ profile JavaScript, hierarchy traversal, draw-call submission, resource
 notifications, animation, marker projections, and terrain preparation before
 lowering render scale.
 
+### Battle-entry emergency degradation
+
+The August 4 battle capture reported 2–14 FPS, 256 WebGL
+`GL_INVALID_OPERATION` draw failures caused by missing fragment outputs, and
+671 long `requestAnimationFrame` handlers. The complete portion of its truncated
+HAR remained network-successful, so low FPS must be diagnosed from renderer and
+main-thread evidence before changing combat range or server authority.
+
+Keep these safeguards together:
+
+- Mixed scene roots that are not explicitly coerced player base scenes render
+  through the normal Three.js pass. Sending an ordinary mixed-material root to
+  the MRT/base pass can invalidate every draw and flood the console.
+- Premium projectile prototypes load on demand. Battle entry must not compile
+  the entire projectile catalogue before the player fires anything.
+- Dynamic settings retain the normal 110-sample stabilization window, but may
+  begin reduction-only emergency decisions after 24 samples when median frame
+  time is at least 50 ms. At 2 FPS this removes roughly 43 seconds of avoidable
+  delay before the first quality reduction. The emergency window must never be
+  used to raise quality.
+- Desktop Harthmere auto graphics use a 128 m dynamic minimum. The previous
+  192 m floor kept the CPU-bound battle scene at 27.78 median FPS even though
+  GPU time was only 4.535 ms; lowering render scale would not address that
+  bottleneck. Explicit Low/Safe modes and the mobile 64 m emergency ladder are
+  unchanged.
+- Browser acceptance records median FPS plus the selected render scale and draw
+  distance before and during combat, including both the requested adaptive
+  value and the effective post-floor value. It also rejects the
+  missing-fragment-output WebGL signature even if the final health mutation
+  succeeds.
+
+### Late held-item attachment can reintroduce the MRT failure
+
+The August 5 production continuation
+`www.glitch.fun-1785941783106.{har,log}` isolated the remaining marked-player
+edge case. Its HAR was truncated, but all 13 complete requests returned 2xx;
+the only request above one second was a 1.59-second voice poll. The console then
+logged this exact sequence:
+
+1. native item `8761900000000001` (`item_augur9_core_cell`) had no authored
+   mesh path and used the procedural item fallback;
+2. the marked player root became `base,three` with
+   `MeshStandardMaterial,RawShaderMaterial` and was routed to the base pass;
+3. Chrome emitted 256 active-draw-buffer/missing-fragment-output errors;
+4. 299 long animation-frame-handler warnings followed, with Aegis samples of
+   2, 11, 14, 10, and 12 FPS.
+
+The general mixed-root fallback was already correct for unmarked objects. The
+remaining defect was timing: the player body is coerced before a selected item
+is attached, so a procedural fallback created later could still introduce a
+stock Three.js material beneath a marked root. Generic missing-item and
+Spikefish procedural fallbacks now use the generated `BasePassMaterial` family.
+The regression attaches each fallback beneath a marked player root, traverses
+every descendant material, rejects stock `MeshStandardMaterial`, and requires
+the root to classify as base-only. Loaded GLTF, premium skinned bow, socket,
+and skeleton-aware clone paths are unchanged.
+
 ## Change and Deployment Safety
 
 Performance investigation, production log collection, browser inspection, and
@@ -926,9 +1088,10 @@ instruction.
 
 Status at this document update:
 
-- The 192 m dynamic view-distance floor and the earlier React/NPC performance
-  batch were present in production revision `biomes-node-vnet--0000215`
-  inspected on 2026-08-02.
+- The former 192 m dynamic view-distance floor and the earlier React/NPC
+  performance batch were present in production revision
+  `biomes-node-vnet--0000215` inspected on 2026-08-02. Current source replaces
+  only that auto-graphics floor with the measured 128 m contract.
 - The final static-matrix, frame-setup, Chapter 1 polling, save-response, outbox,
   and renderer-cval changes described above are source-only until an explicitly
   authorized build/deployment includes them.
@@ -1040,3 +1203,56 @@ individual offender.
 | `src/shared/harthmere/town_production_polish.ts`                          | Render budgets, LOD distances, streaming pre-warm                      |
 | `scripts/harthmere/check-biomes-harthmere.cjs`                            | Static invariants for the current runtime contract                     |
 | `scripts/harthmere/check-harthmere-performance-response.cjs`              | Regression guard for the installed performance fixes                   |
+
+## Mobile AAC catalogue beyond music
+
+The mobile audio optimization now includes short effects, environmental beds,
+and committed NPC speech without removing any desktop/original asset. The
+generated inventory is 3,117 AAC-LC/M4A files:
+
+| Family                        |     Originals | Original bytes | Mobile AAC bytes | Reduction |
+| ----------------------------- | ------------: | -------------: | ---------------: | --------: |
+| NPC speech                    |     2,164 MP3 |     306.08 MiB |       159.87 MiB |     47.8% |
+| Harthmere effects/ambience    | 840 Opus/WebM |      10.07 MiB |         7.06 MiB |     29.9% |
+| Packaged non-music core audio |      113 WebM |       3.74 MiB |         2.72 MiB |     27.2% |
+| **Total**                     |     **3,117** | **319.88 MiB** |   **169.65 MiB** | **47.0%** |
+
+The six core WebM files belonging to the music, muck-music, and cave-music
+families are not duplicated here; the earlier mobile music pass already owns
+their selected AAC tracks. This removes about 26 MiB of redundant output from
+the image and repository.
+
+Selection is deliberately not “AAC everywhere.” Apple mobile WebKit prefers
+AAC-LC for WebAudio buffers. Android retains WebM/Opus when supported and uses
+AAC only as fallback. Mobile NPC speech prefers AAC because it streams through
+an audio element and the reviewed catalogue is materially smaller; desktop
+continues using the source MP3. This preserves Opus efficiency where it is
+already reliable while avoiding Apple decode incompatibilities.
+
+Compressed format does not eliminate WebAudio PCM allocation. Mobile one-shot
+and stopped-loop cleanup therefore invalidates `/audio/buffer` after the Three
+audio node disconnects. The next repeated sound may decode again, trading a
+small first-play cost for bounded phone residency. Desktop does not take this
+path and retains its low-latency decoded cache.
+
+The reproducible generator/auditor is
+`scripts/harthmere/generate-mobile-audio-variants.cjs`. Its report is written to
+`artifacts/mobile-audio-variants-report.json`; originals are never overwritten.
+
+## Final combat-FPS Chrome guard — August 5, 2026
+
+The desktop acceptance separated one more setup flood from the game renderer.
+Browser-control environments can expose Pointer Lock yet reject it with
+`WrongDocumentError` because the canvas belongs to a document that is no
+longer valid for locking. The pointer-lock manager treats that result as
+terminal, falls back to focused keyboard/mouse input, and cancels the 125 ms
+retry interval immediately. This removes up to forty rejected lock attempts
+and warning objects from the first five seconds of gameplay.
+
+Do not infer that every remaining low sample is a tier-3 graphics failure. A
+same-scene `forceGraphicsQuality=low` comparison stayed at 14 FPS while exactly
+one `game` WebGL renderer existed and the host was saturated by unrelated VM,
+browser, compiler, and snapshot-scan work. Because reducing postprocessing,
+flora, entity limits, and draw distance did not change the result, the correct
+next gate is an identical sample on a released host—not a speculative global
+quality downgrade.

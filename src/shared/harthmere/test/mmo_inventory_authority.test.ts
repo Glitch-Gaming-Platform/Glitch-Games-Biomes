@@ -195,6 +195,15 @@ before(() => {
     bundleQuantity: 5,
     bundlePrice: 37,
   });
+  registerHarthmereVendorEntry({
+    vendorId: "material_bundle_vendor",
+    itemId: "iron_ore",
+    buyPrice: 8,
+    sellPrice: 3,
+    stock: 5,
+    bundleQuantity: 5,
+    bundlePrice: 37,
+  });
 
   registerHarthmereCraftingRecipe({
     recipeId: "smelt_iron",
@@ -432,6 +441,58 @@ describe("Vendor buy", () => {
     assert.ok(result.ok, result.errors?.join(", "));
     assert.strictEqual(result.itemDeltas.health_potion, 5);
     assert.strictEqual(result.goldDelta, -37);
+  });
+
+  it("routes a material purchase into storage even when the backpack is full", () => {
+    const snap = makeSnapshot({
+      gold: 100,
+      items: { iron_sword: HARTHMERE_DEFAULT_INVENTORY_SLOTS },
+      materialStorage: {},
+    });
+    const result = reduceHarthmereInventoryMutation(
+      makeReq({
+        kind: "buy_from_vendor",
+        vendorId: "material_bundle_vendor",
+        itemId: "iron_ore",
+        count: 5,
+      }),
+      makeCtx(snap, {
+        vendorPurchaseDestination: {
+          kind: "material_storage",
+          maxSlots: 32,
+        },
+      })
+    );
+
+    assert.ok(result.ok, result.errors?.join(", "));
+    assert.deepEqual(result.itemDeltas, {});
+    assert.strictEqual(result.materialStorageDeltas.iron_ore, 5);
+    assert.strictEqual(result.goldDelta, -37);
+  });
+
+  it("rejects a new material stack when material storage is full", () => {
+    const snap = makeSnapshot({
+      gold: 100,
+      materialStorage: { iron_sword: 1 },
+    });
+    const result = reduceHarthmereInventoryMutation(
+      makeReq({
+        kind: "buy_from_vendor",
+        vendorId: "material_bundle_vendor",
+        itemId: "iron_ore",
+        count: 5,
+      }),
+      makeCtx(snap, {
+        vendorPurchaseDestination: {
+          kind: "material_storage",
+          maxSlots: 1,
+        },
+      })
+    );
+
+    assert.equal(result.ok, false);
+    assert.ok(result.errors.includes("material_storage_full"));
+    assert.strictEqual(result.goldDelta, 0);
   });
 
   it("rejects forged partial bundle quantities", () => {

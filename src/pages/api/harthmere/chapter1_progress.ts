@@ -45,6 +45,10 @@ import {
 } from "@/shared/harthmere/ch1_native_quests";
 import { ch1ObjectiveTarget } from "@/shared/harthmere/ch1_objective_targets";
 import { ch1ObjectiveRequirementState } from "@/shared/harthmere/ch1_objective_requirements";
+import {
+  ch1InteractionSurfaceForStep,
+  countDistinctCompletedCh1GroveJobs,
+} from "@/shared/harthmere/ch1_interaction_surfaces";
 import { ch1ItemDisplayName } from "@/shared/harthmere/ch1_items";
 import { CH1_IGNITION, CH1_QUESTS } from "@/shared/harthmere/ch1_quests";
 import {
@@ -123,6 +127,7 @@ const zResponse = z.object({
   targetLabel: z.string().optional(),
   targetPosition: z.tuple([z.number(), z.number(), z.number()]).optional(),
   targetEntityId: zBiomesId.optional(),
+  targetPositionAuthority: z.enum(["authored", "live_entity"]).optional(),
   trigger: z.string().optional(),
   actionLabel: z.string().optional(),
   interactionRadius: z.number().optional(),
@@ -297,13 +302,11 @@ function completedGroveJobCount(
   actorId: string,
   startedAtMs: number
 ) {
-  return Object.values(jobsBoard.postings).filter(
-    (job) =>
-      job.acceptedByActorId === actorId &&
-      job.townId === "harthmere_grove" &&
-      job.status === "completed" &&
-      Number(job.completedAtMs ?? 0) >= startedAtMs
-  ).length;
+  return countDistinctCompletedCh1GroveJobs(
+    Object.values(jobsBoard.postings),
+    actorId,
+    startedAtMs
+  );
 }
 
 function groveJobObjectiveStartedAtMs(player: {
@@ -393,6 +396,29 @@ function stateForPlayer(
       vendorTransactions: context.vendorTransactions,
     },
   });
+  if (
+    ch1InteractionSurfaceForStep(active.step.id) === "biomes_ui_recovered"
+  ) {
+    return {
+      ok: true,
+      status: "active",
+      questId: active.quest.id,
+      questTitle: active.quest.title,
+      challengeId: active.challengeId,
+      stepId: active.stepId,
+      authoredStepId: active.step.id,
+      objective: active.step.objective,
+      targetLabel: "BiomesUI: MEM — Recovered",
+      trigger: active.step.trigger,
+      actionLabel: "Open Recovered",
+      interactionRadius: 0,
+      distance: 0,
+      withinRange: true,
+      requirement,
+      showNavigationAid: false,
+      exitGuidance,
+    };
+  }
   return {
     ok: true,
     status: "active",
@@ -405,6 +431,7 @@ function stateForPlayer(
     targetLabel: target.label,
     targetPosition: [...target.position],
     targetEntityId: target.entityId,
+    targetPositionAuthority: target.positionAuthority,
     trigger: target.trigger,
     actionLabel: target.actionLabel,
     interactionRadius: target.interactionRadius,
@@ -478,8 +505,8 @@ async function addChapter1Experience(
           stepId === "d2_hanged_wood"
             ? "The Hanged Wood"
             : stepId === "d2_longhouse"
-            ? "The Drowned Longhouse"
-            : "The Cistern Stair",
+              ? "The Drowned Longhouse"
+              : "The Cistern Stair",
         phase: aliveEnemies > 0 ? "listening" : "quiet",
         detail:
           aliveEnemies > 0
@@ -510,10 +537,10 @@ async function addChapter1Experience(
           phase === "patrol"
             ? "It has not noticed you. The lore cache route remains open."
             : phase === "charge"
-            ? "Its horned charge is fast and narrow. Use the court's pillars and keep moving."
-            : phase === "unbalanced"
-            ? "The horns are gone. It turns slowly and fights badly now."
-            : "The guardian is still.",
+              ? "Its horned charge is fast and narrow. Use the court's pillars and keep moving."
+              : phase === "unbalanced"
+                ? "The horns are gone. It turns slowly and fights badly now."
+                : "The guardian is still.",
         hp: Number(health?.hp ?? 0),
         maxHp: Number(health?.maxHp ?? 0),
       },
@@ -574,10 +601,10 @@ async function addChapter1Experience(
           phase === "hearth_fails"
             ? "The hearth is dying. Darkness makes every hit worse."
             : phase === "same_day_again"
-            ? "The hall resets every ninety seconds, but damage to the Winter persists."
-            : phase === "year_breaks"
-            ? "The loop has broken. Snow is becoming rain inside the hall."
-            : "The stopped year has ended.",
+              ? "The hall resets every ninety seconds, but damage to the Winter persists."
+              : phase === "year_breaks"
+                ? "The loop has broken. Snow is becoming rain inside the hall."
+                : "The stopped year has ended.",
         hp: Number(health?.hp ?? 0),
         maxHp: Number(health?.maxHp ?? 0),
         timerMs:
@@ -599,7 +626,11 @@ async function resolveChapter1EntityTarget(
   player: { position(): { v: readonly [number, number, number] } | undefined },
   worldApi: WorldApi
 ): Promise<Chapter1ProgressState> {
-  if (state.status !== "active" || state.targetEntityId === undefined) {
+  if (
+    state.status !== "active" ||
+    state.targetEntityId === undefined ||
+    state.targetPositionAuthority === "authored"
+  ) {
     return state;
   }
   const target = await worldApi.get(state.targetEntityId);
@@ -695,11 +726,11 @@ export default biomesApiHandler(
         const stepId = ch1NativeQuestStepId(questId, stepIndex);
         return Boolean(
           challengeId !== undefined &&
-            stepId !== undefined &&
-            isTriggerFired(
-              player.triggerState()?.by_root.get(challengeId),
-              stepId
-            )
+          stepId !== undefined &&
+          isTriggerFired(
+            player.triggerState()?.by_root.get(challengeId),
+            stepId
+          )
         );
       },
     });

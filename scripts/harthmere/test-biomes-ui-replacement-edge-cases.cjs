@@ -384,6 +384,11 @@ notContains(
   "hotbar does not capture E/interact"
 );
 notContains(
+  hotbar,
+  'toLowerCase() === "q"',
+  "hotbar does not capture Q/evade to throw the held item"
+);
+notContains(
   adapters,
   'KeyR: "daily"',
   "replacement key bridge leaves R to native Recipes"
@@ -421,7 +426,6 @@ contains(hotbar, "/^[1-9]$/.test(e.key)", "hotbar supports number keys 1-9");
 contains(hotbar, "ArrowLeft", "hotbar supports ArrowLeft");
 contains(hotbar, "ArrowRight", "hotbar supports ArrowRight");
 contains(hotbar, "Enter", "hotbar supports Enter/use");
-contains(hotbar, 'e.key.toLowerCase() === "q"', "hotbar supports Q/drop");
 contains(hotbar, "iconIsImage", "hotbar renders real item icon URLs as images");
 contains(nav, 'role="tablist"', "nav rail has tablist role");
 contains(nav, "ArrowRight", "nav rail supports ArrowRight");

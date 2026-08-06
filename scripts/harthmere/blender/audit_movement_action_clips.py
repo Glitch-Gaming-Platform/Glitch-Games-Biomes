@@ -104,6 +104,8 @@ def analyse(action, fps):
 
 def main():
     bpy.ops.wm.open_mainfile(filepath=SRC, load_ui=False)
+    if bpy.context.object and bpy.context.object.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
     fps = bpy.context.scene.render.fps / max(1, bpy.context.scene.render.fps_base)
 
     report = {"fps": fps, "clips": {}}

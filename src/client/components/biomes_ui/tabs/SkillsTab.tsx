@@ -14,6 +14,8 @@ interface Skill {
   title: string;
   description?: string;
   trainingActions?: readonly string[];
+  currentEffects?: readonly string[];
+  nextUnlock?: { level: number; label: string };
 }
 interface CharacterStats {
   level: number;
@@ -196,6 +198,30 @@ export const SkillsTab: React.FunctionComponent<{
                     }}
                   >
                     How to improve: {s.trainingActions.join(" · ")}
+                  </div>
+                )}
+                {s.currentEffects && s.currentEffects.length > 0 && (
+                  <div
+                    data-skill-current-effects={s.id}
+                    style={{
+                      marginTop: 5,
+                      fontSize: 10,
+                      color: "var(--biomes-fg)",
+                    }}
+                  >
+                    Current effects: {s.currentEffects.join(" · ")}
+                  </div>
+                )}
+                {s.nextUnlock && (
+                  <div
+                    data-skill-next-unlock={s.id}
+                    style={{
+                      marginTop: 4,
+                      fontSize: 10,
+                      color: "var(--biomes-edge-cyan)",
+                    }}
+                  >
+                    Next unlock at level {s.nextUnlock.level}: {s.nextUnlock.label}
                   </div>
                 )}
               </div>

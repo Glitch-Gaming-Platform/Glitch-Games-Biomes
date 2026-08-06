@@ -492,8 +492,17 @@ function validateCh1Scene(def: unknown, phase: string): CutsceneDef {
 function withCh1SafeCoverage(def: CutsceneDef): CutsceneDef {
   return {
     ...def,
-    shots: def.shots.map((shot) => ({
+    shots: def.shots.map((shot, index) => ({
       ...shot,
+      // Chapter 1 is dialogue- and memory-heavy. Hard cuts between authored
+      // cameras read as camera teleports on lower-frame-rate clients, so all
+      // interior cuts use the runtime's shortest-path position/orientation
+      // blend. The opening remains covered by the normal prewarm fade, and
+      // explicitly authored fades remain fades.
+      transitionIn:
+        index === 0 ? "fade" : shot.transitionIn === "fade" ? "fade" : "blend",
+      blendSeconds:
+        index === 0 ? shot.blendSeconds : Math.max(0.55, shot.blendSeconds),
       camera:
         shot.camera.kind === "overShoulder" && shot.camera.pullout < 2.2
           ? { ...shot.camera, pullout: 2.2 }

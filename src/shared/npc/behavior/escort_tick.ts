@@ -226,7 +226,7 @@ export function escortTick(
     }
   }
 
-  if (decision.speedFraction > 0) {
+  if (decision.runSpeedMultiplier > 0) {
     mutable.rotateTarget = yaw([
       anchor[0] - npc.position[0],
       0,
@@ -244,5 +244,7 @@ export function escortTick(
     action: decision.action,
   });
 
-  return { forwardSpeed: getNpcRunSpeed(npc.type) * decision.speedFraction };
+  return {
+    forwardSpeed: getNpcRunSpeed(npc.type) * decision.runSpeedMultiplier,
+  };
 }

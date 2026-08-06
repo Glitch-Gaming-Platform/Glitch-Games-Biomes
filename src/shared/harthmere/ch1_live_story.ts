@@ -507,11 +507,11 @@ export function ch1RechargeLiveAugur9(
       },
       consumedItemId: itemId,
     };
-  } catch (error) {
+  } catch {
     return {
       ok: false,
       runtime,
-      reason: error instanceof Error ? error.message : String(error),
+      reason: "That item cannot recharge AUGUR-9.",
     };
   }
 }

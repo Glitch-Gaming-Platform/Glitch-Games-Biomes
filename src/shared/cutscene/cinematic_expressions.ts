@@ -6,12 +6,7 @@ export type HarthmereCinematicExpression = keyof typeof catalog;
 
 export type HarthmereCinematicExpressionPlayback = "once" | "loop" | "hold";
 export type HarthmereCinematicExpressionInteraction =
-  | "solo"
-  | "targeted"
-  | "paired"
-  | "stance"
-  | "locomotion"
-  | "idle";
+  "solo" | "targeted" | "paired" | "stance" | "locomotion" | "idle";
 
 export interface HarthmereCinematicExpressionSpec {
   clip: string;
@@ -88,7 +83,10 @@ export const HARTHMERE_CINEMATIC_EXPRESSION_CLIPS = Object.freeze([
 export interface HarthmereCinematicAnimationDefinition {
   fileAnimationName: string;
   backupFileAnimationNames: string[];
+  additive: true;
 }
+
+export const HARTHMERE_CINEMATIC_EXPRESSION_EASE_SECONDS = 0.12;
 
 export const HARTHMERE_CINEMATIC_ANIMATION_DEFINITIONS = Object.fromEntries(
   HARTHMERE_CINEMATIC_EXPRESSIONS.map((expression) => {
@@ -98,6 +96,7 @@ export const HARTHMERE_CINEMATIC_ANIMATION_DEFINITIONS = Object.fromEntries(
       {
         fileAnimationName: spec.clip,
         backupFileAnimationNames: [...spec.fallbacks],
+        additive: true,
       },
     ];
   })
@@ -137,8 +136,7 @@ export interface HarthmereCinematicExpressionPlaybackCursor {
   time: number;
 }
 
-export interface HarthmereCinematicExpressionPlaybackTransition
-  extends HarthmereCinematicExpressionPlaybackCursor {
+export interface HarthmereCinematicExpressionPlaybackTransition extends HarthmereCinematicExpressionPlaybackCursor {
   started: boolean;
   ended: boolean;
 }
@@ -159,8 +157,8 @@ export function harthmereCinematicExpressionPlaybackTransition(
   const normalizedTime = Number.isFinite(time) ? Math.max(0, time) : 0;
   const restarted = Boolean(
     expression &&
-      prior?.expression === expression &&
-      normalizedTime + 1e-3 < prior.time
+    prior?.expression === expression &&
+    normalizedTime + 1e-3 < prior.time
   );
   return {
     expression,

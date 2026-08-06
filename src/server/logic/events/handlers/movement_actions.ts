@@ -5,7 +5,6 @@ import { MovementState } from "@/shared/ecs/gen/components";
 import {
   PLAYER_MOVEMENT_ACTION_TIMING,
   createMovementActionState,
-  movementActionIsActive,
   movementActionIsOnCooldown,
   movementActionStaminaCost,
   normalizeMovementActionDirection,
@@ -54,20 +53,10 @@ export const movementActionEventHandler = makeEventHandler(
         return;
       }
 
-      // Never let a second action start on top of a live one. Cooldowns happen
-      // to cover this for the current table (every cooldown exceeds its own
-      // duration), but that is a tuning coincidence rather than a rule, and a
-      // stacked action would restart the i-frame window mid-flight.
-      //
-      // Note the residual gap: the client gates double jump on its own jump
-      // count (`isDoubleJumpAttempt`), and the server cannot yet confirm it
-      // because airborne state is not replicated. Cooldown and stamina bound
-      // the abuse, and the action grants no invulnerability or displacement, so
-      // the exposure today is a stamina drain. Closing it properly needs jump
-      // count or grounded state on MovementState.
-      if (movementActionIsActive(previous, nowSeconds)) {
-        return;
-      }
+      // Once cooldown has elapsed, a new action replaces any visual recovery
+      // tail still present on the previous state. This is not stacked motion:
+      // the component below is replaced atomically, so only the new action's
+      // displacement and i-frame window remain authoritative.
 
       const vitals = readHarthmereNativeVitals(delta.triggerState());
       const staminaCost = movementActionStaminaCost(event.action);

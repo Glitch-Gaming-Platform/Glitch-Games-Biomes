@@ -21,6 +21,21 @@ The visual fixture matrix, invisible collision seeds, and native cooking
 station seeds all use the shared conversion helper. Do not hand-copy the
 offset into another table.
 
+## 2026-08-05 — Mail Post import safety must not depend on crate rounding
+
+The outgoing Mail Post crate was originally authored at `z=-216.85`, only
+`0.07m` from the inclusive stair keep-clear boundary when using the generated
+`0.86m` crate depth. The isolated source catalogue and compiled-module import
+could pass while the real production `/at` dependency graph threw
+`mail_post_house:mail_outgoing has no safe interior slot`.
+
+The permanent correction uses `z=-217.4` and reserves a conservative
+`1m x 1m` clearance footprint for that fixture even though the rendered mesh is
+slightly smaller. Do not author fixtures on inclusive clearance edges or rely
+on sub-decimetre floating-point gaps. Release evidence must include the exact
+production `/at` URL, because importing the catalogue alone does not execute
+the complete SSR dependency graph.
+
 ## 2026-08-03 — Blender selected builds write a partial catalogue manifest
 
 `generate_business_furniture_catalogue.py --only ...` is a smoke-build tool.

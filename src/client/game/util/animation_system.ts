@@ -24,6 +24,8 @@ export type AnimationDefinition = {
   fileAnimationName: string;
   backupFileAnimationNames?: string[];
   timeScale?: number;
+  /** Convert the clip to a delta from its first frame before layer masking. */
+  additive?: boolean;
 };
 
 // Defines layer properties for inclusion in an AnimationSystem.
@@ -50,14 +52,17 @@ export class AnimationSystem<
   A extends { [K in string]: AnimationDefinition } & {
     idle: AnimationDefinition;
   },
-  L extends { [K in string]: LayerDefinition }
+  L extends { [K in string]: LayerDefinition },
 > {
   public readonly animationNames: StringKeyOf<A>[];
   public readonly layerNames: StringKeyOf<L>[];
 
   // Note all AnimationSystem properties are readonly, call `newState()` to
   // instantiate animation state associated with a given mesh.
-  constructor(public readonly animations: A, public readonly layers: L) {
+  constructor(
+    public readonly animations: A,
+    public readonly layers: L
+  ) {
     this.animationNames = Array.from(
       Object.keys(animations)
     ) as StringKeyOf<A>[];
@@ -94,7 +99,7 @@ export class AnimationSystem<
     return (x: AnimationName<this>) => {
       const action = layerActions[x];
       if (!action) {
-        return 0.0;
+        return state.durations[x] ?? 0.0;
       }
       return action.getClip().duration / action.timeScale;
     };
@@ -152,7 +157,10 @@ export class AnimationSystem<
           return;
         }
 
-        accum.animations[x] = action.state;
+        accum.animations[x] = {
+          ...action.state,
+          playbackRate: action.playbackRates?.[x],
+        };
         anyAnimationsApplied = true;
       }
     });
@@ -258,6 +266,31 @@ export class AnimationSystem<
       }
     });
 
+    // Mobile character meshes defer their large animation catalog until an
+    // action is actually visible. Materialize after weight smoothing so an
+    // `ifIdle` expression that resolved onto a layer is treated exactly like
+    // an eagerly-created action from this point onward.
+    (Object.keys(state.actions) as LayerName<this>[]).forEach((layer) => {
+      (Object.keys(state.actions[layer]) as AnimationName<this>[]).forEach(
+        (animation) => {
+          if (
+            state.actions[layer][animation] ||
+            state.layerWeights[layer][animation] === 0 ||
+            !state.deferredAnimationNames?.has(animation) ||
+            state.failedDeferredActions?.[layer]?.has(animation)
+          ) {
+            return;
+          }
+          const action = state.createDeferredAction?.(layer, animation);
+          if (action) {
+            state.actions[layer][animation] = action;
+          } else {
+            state.failedDeferredActions?.[layer]?.add(animation);
+          }
+        }
+      );
+    });
+
     // First record the time/progress of any currently playing animations on
     // any layer, so that if we start the same animation on another layer, we
     // can synchronize their timings.
@@ -294,6 +327,18 @@ export class AnimationSystem<
             // It's running and it shouldn't be, so stop it.
             action.enabled = false;
           }
+          if (
+            state.reclaimDeferredActions &&
+            state.deferredAnimationNames?.has(a)
+          ) {
+            // A phone should not retain every expression it has encountered.
+            // Remove the zero-weight clone and its Three.js binding state; a
+            // later use recreates it from the single retained source clip.
+            const clip = action.getClip();
+            action.stop();
+            state.mixer.uncacheAction(clip);
+            state.actions[l][a] = undefined;
+          }
         } else {
           const desiredWeights = accum.layers[l].desiredWeights;
           if (!desiredWeights || desiredWeights[a] === 0) {
@@ -308,6 +353,13 @@ export class AnimationSystem<
             const anim = accum.animations[a];
             ok(anim);
 
+            const actionWithBaseRate = action as THREE.AnimationAction & {
+              biomesBaseTimeScale?: number;
+            };
+            action.timeScale =
+              (actionWithBaseRate.biomesBaseTimeScale ?? 1) *
+              (anim.playbackRate ?? 1);
+
             if (anim.repeat.kind === "once") {
               action.loop = THREE.LoopOnce;
               action.clampWhenFinished = true;
@@ -318,11 +370,27 @@ export class AnimationSystem<
               }
             }
 
+            const stableOnceElapsed =
+              (state.mixer.time - anim.startTime) * Math.abs(action.timeScale);
+            const stableOnceReachedEnd =
+              state.stabilizeClampedOnceAnimations &&
+              anim.repeat.kind === "once" &&
+              anim.repeat.clampWhenFinished &&
+              stableOnceElapsed >= action.getClip().duration - 1 / 120;
+            if (stableOnceReachedEnd) {
+              // WebKit can report a completed LoopOnce action as not running
+              // without setting `paused`. The old restart branch then reset it
+              // every render frame, which looked like an infinite expression
+              // loop on iOS. Pin the authored final frame from the shared
+              // animation timestamp instead of relying on that engine flag.
+              action.enabled = true;
+              action.paused = true;
+              action.time = action.getClip().duration;
+            }
             const onceAnimationIsClamped =
               anim.repeat.kind === "once" &&
               anim.repeat.clampWhenFinished &&
-              action.paused &&
-              oldWeight !== 0;
+              (stableOnceReachedEnd || (action.paused && oldWeight !== 0));
             if (!action.isRunning() && !onceAnimationIsClamped) {
               // It's *not* running, but it should be, so start it.
               action.reset();
@@ -347,7 +415,8 @@ export class AnimationSystem<
   newState<T extends Partial<Record<AnimationName<this>, number>>>(
     meshScene: THREE.Object3D,
     animations: THREE.AnimationClip[],
-    animationTimingTweaks?: T
+    animationTimingTweaks?: T,
+    options?: AnimationSystemStateOptions<this>
   ): AnimationSystemState<this> {
     const mixer = new THREE.AnimationMixer(meshScene);
     const targetNodeNames = collectAnimationTargetNodeNames(meshScene);
@@ -379,46 +448,100 @@ export class AnimationSystem<
       return mixer.clipAction(anim);
     };
 
+    const animationTimeScale = (
+      animation: AnimationName<this>,
+      definition: AnimationDefinition
+    ) => {
+      let timeScale = definition.timeScale ?? 1;
+      if (
+        animationTimingTweaks &&
+        (animation as string) in animationTimingTweaks
+      ) {
+        timeScale *= animationTimingTweaks[animation] as number;
+      }
+      return timeScale;
+    };
+
+    const makeAction = (
+      layerDefinition: LayerDefinition,
+      animation: AnimationName<this>,
+      definition: AnimationDefinition
+    ) => {
+      const animationNames = [
+        definition.fileAnimationName,
+        ...(definition.backupFileAnimationNames ?? []),
+      ];
+      let action: THREE.AnimationAction | undefined;
+      for (const animationName of animationNames) {
+        action = clipByName(
+          animationName,
+          definition.additive ?? false,
+          layerDefinition.re,
+          !!layerDefinition.negateRe
+        );
+        if (action) {
+          break;
+        }
+      }
+      if (!action) {
+        return undefined;
+      }
+      action.weight = 0;
+      action.timeScale = animationTimeScale(animation, definition);
+      (
+        action as THREE.AnimationAction & { biomesBaseTimeScale?: number }
+      ).biomesBaseTimeScale = action.timeScale;
+      action.play();
+      action.enabled = false;
+      return action;
+    };
+
     const makeLayer = (layerDefinition: LayerDefinition) => {
       return Object.fromEntries(
         (
           Object.entries(this.animations) as [
             AnimationName<this>,
-            AnimationDefinition
+            AnimationDefinition,
           ][]
         ).map(([k, v]) => {
-          const animationNames = [
-            v.fileAnimationName,
-            ...(v.backupFileAnimationNames ?? []),
+          return [
+            k,
+            options?.deferredAnimationNames?.has(k)
+              ? undefined
+              : makeAction(layerDefinition, k, v),
           ];
-          let action: THREE.AnimationAction | undefined;
-          for (const animationName of animationNames) {
-            action = clipByName(
-              animationName,
-              false,
-              layerDefinition.re,
-              !!layerDefinition.negateRe
-            );
-            if (action) {
-              break;
-            }
-          }
-          if (!action) {
-            return [k, action];
-          }
-          action.weight = 0;
-
-          action.timeScale = v.timeScale ?? 1;
-          if (animationTimingTweaks && (k as string) in animationTimingTweaks) {
-            action.timeScale *= animationTimingTweaks[k] as number;
-          }
-          action.play();
-          action.enabled = false;
-
-          return [k, action];
         })
       );
     };
+
+    const durations = Object.fromEntries(
+      (
+        Object.entries(this.animations) as [
+          AnimationName<this>,
+          AnimationDefinition,
+        ][]
+      ).map(([animation, definition]) => {
+        const source = [
+          definition.fileAnimationName,
+          ...(definition.backupFileAnimationNames ?? []),
+        ]
+          .map((name) => animations.find((clip) => clip.name === name))
+          .find(Boolean);
+        return [
+          animation,
+          source
+            ? source.duration / animationTimeScale(animation, definition)
+            : 0,
+        ];
+      })
+    ) as Record<AnimationName<this>, number>;
+
+    const failedDeferredActions = Object.fromEntries(
+      (Object.keys(this.layers) as LayerName<this>[]).map((layer) => [
+        layer,
+        new Set<AnimationName<this>>(),
+      ])
+    ) as { [K in LayerName<this>]: Set<AnimationName<this>> };
 
     return {
       mixer,
@@ -433,6 +556,20 @@ export class AnimationSystem<
           this.createEmptyAnimationWeights(),
         ])
       ) as { [K in LayerName<this>]: Weights<this> },
+      durations,
+      deferredAnimationNames: options?.deferredAnimationNames,
+      failedDeferredActions,
+      reclaimDeferredActions: options?.reclaimDeferredActions ?? false,
+      stabilizeClampedOnceAnimations:
+        options?.stabilizeClampedOnceAnimations ?? false,
+      createDeferredAction: options?.deferredAnimationNames
+        ? (layer, animation) =>
+            makeAction(
+              this.layers[layer],
+              animation,
+              this.animations[animation]
+            )
+        : undefined,
     };
   }
 }
@@ -553,8 +690,7 @@ type LayerWeights<A extends AnyAnimationSystem> = {
 };
 
 export type RepeatType =
-  | { kind: "repeat" }
-  | { kind: "once"; clampWhenFinished?: boolean };
+  { kind: "repeat" } | { kind: "once"; clampWhenFinished?: boolean };
 
 // Information about a specific animation and how it should play, which is to
 // apply across *all* layers (though not all layers may be playing the
@@ -569,6 +705,8 @@ interface AnimationStatus {
    * way out, so it snapped on and drifted off.
    */
   easeOutTime?: number;
+  /** Dynamic multiplier on top of the clip definition's authored time scale. */
+  playbackRate?: number;
 }
 
 type AnimationStatuses<A extends AnyAnimationSystem> = {
@@ -611,6 +749,8 @@ export type ActionPriority =
 export type AnimationAction<A extends AnyAnimationSystem> = {
   weights: Weights<A>;
   state: AnimationStatus;
+  /** Per-clip cadence, used by locomotion blends driven by actual speed. */
+  playbackRates?: Partial<Record<AnimationName<A>, number>>;
   layers: {
     [K in LayerName<A>]: ActionPriority;
   };
@@ -628,4 +768,21 @@ export type AnimationSystemState<A extends AnyAnimationSystem> = {
   layerWeights: { [K in LayerName<A>]: Weights<A> };
   mixer: THREE.AnimationMixer;
   actions: ThreeActions<A>;
+  durations: Record<AnimationName<A>, number>;
+  deferredAnimationNames?: ReadonlySet<AnimationName<A>>;
+  failedDeferredActions?: {
+    [K in LayerName<A>]: Set<AnimationName<A>>;
+  };
+  reclaimDeferredActions: boolean;
+  stabilizeClampedOnceAnimations: boolean;
+  createDeferredAction?: (
+    layer: LayerName<A>,
+    animation: AnimationName<A>
+  ) => THREE.AnimationAction | undefined;
+};
+
+export type AnimationSystemStateOptions<A extends AnyAnimationSystem> = {
+  deferredAnimationNames?: ReadonlySet<AnimationName<A>>;
+  reclaimDeferredActions?: boolean;
+  stabilizeClampedOnceAnimations?: boolean;
 };

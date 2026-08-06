@@ -757,8 +757,17 @@ const ITEMS: HarthmereItemDefinition[] = [
     category: "weapon",
     durabilityMax: 90,
     repairable: true,
-    stats: { rangedAttack: 8, weight: 3 },
+    stats: { rangedAttack: 5, weight: 3 },
     salvageOutputs: [{ itemId: "wood_plank", count: 1 }],
+  }),
+  item("hunting_arrow", "Hunting Arrow", {
+    maxStackSize: 200,
+    baseValue: 1,
+    isCraftingMaterial: false,
+    category: "ammunition",
+    stats: { damage: 5, weight: 0.08 },
+    description:
+      "A straight ash shaft with restrained linen fletching and a forged steel hunting point. Bows consume one arrow from the backpack per release.",
   }),
   item("road_repair_kit", "Road Repair Kit", {
     baseValue: 35,
@@ -2968,12 +2977,12 @@ export function ensureHarthmereProductionCraftingCatalogue() {
           weapon.quality === "legendary"
             ? 95
             : weapon.quality === "epic"
-            ? 85
-            : weapon.quality === "rare"
-            ? 70
-            : weapon.quality === "uncommon"
-            ? 45
-            : 20,
+              ? 85
+              : weapon.quality === "rare"
+                ? 70
+                : weapon.quality === "uncommon"
+                  ? 45
+                  : 20,
         stats: {
           ...(weapon.attackPoints !== undefined
             ? { attackPoints: weapon.attackPoints }

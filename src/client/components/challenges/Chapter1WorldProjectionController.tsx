@@ -13,6 +13,8 @@ import { setCh1WorldPhaseEffectIds } from "@/client/game/renderers/ch1_world_pha
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import React, { useEffect } from "react";
 
+export const CHAPTER1_PROJECTION_RECONCILE_INTERVAL_MS = 6_000;
+
 export interface Chapter1ProjectionResponse {
   staging: Array<{
     key?: string;
@@ -177,7 +179,10 @@ export const Chapter1WorldProjectionController: React.FunctionComponent =
       };
       window.addEventListener("chapter1-story-updated", onStoryUpdated);
       document.addEventListener("visibilitychange", onVisibilityChange);
-      const timer = window.setInterval(() => void refresh(), 2_000);
+      const timer = window.setInterval(
+        () => void refresh(),
+        CHAPTER1_PROJECTION_RECONCILE_INTERVAL_MS
+      );
       return () => {
         disposed = true;
         window.clearInterval(timer);

@@ -31,13 +31,13 @@ adapter props so callers can wire real state before enabling them.
 | ------------ | ----------------- | -------- | ------------------------------------------------- |
 | Today        | `tab.daily`       | **R**    | daily care-loop state + reward claims             |
 | Inventory    | `tab.inventory`   | **I**    | `useHarthmereInventoryState()`                    |
-| Abilities    | `tab.abilities`   | **B**    | `useHarthmereClassSkillState()` (abilities slice) |
+| Abilities    | `tab.abilities`   | —        | `useHarthmereClassSkillState()` (abilities slice) |
 | Skills       | `tab.skills`      | **K**    | `useHarthmereClassSkillState()` (skills slice)    |
 | Classes      | `tab.classes`     | **Y**    | `chooseHarthmereClass()` / class definitions      |
 | Land         | `tab.land`        | **L**    | scaffold — Biome plot model TBD                   |
 | Loot         | `tab.loot`        | **O**    | recent inventory log entries                      |
 | Guilds       | `tab.guilds`      | **G**    | `useHarthmereGuildState()`                        |
-| Banking      | `tab.banking`     | **P**    | `inventory.bank` + currency totals                |
+| Banking      | `tab.banking`     | **B**    | `inventory.bank` + currency totals                |
 | Map & Quests | `tab.map`         | **M**    | mission state + live map marker adapter           |
 | Collections  | `tab.collections` | **C**    | existing `CollectionsScreen` data                 |
 | Inbox        | `tab.inbox`       | **V**    | existing inbox notifications resource             |
@@ -136,7 +136,8 @@ against the canonical Road Ahead mission source.
 - **Tab rail** (`BiomesNav`): ←/→ to move focus, Enter/Space to activate,
   Home/End to jump to first/last, direct shortcut keys to open.
 - **Hotbar** (`BiomesHotbar`): 1..9 to select directly, ←/→ to shift
-  selection, Enter to use, Q to drop.
+  selection, Enter to use. Throwing is available only through the explicit
+  **Throw 1** button; Q remains owned by gameplay evade.
 - **Slot grids** (`RovingGrid` — used by Inventory, Banking vault,
   Collections, Classes): arrow keys move one cell, Home/End jump to row
   start/end, Ctrl+Home/End jump to grid corners, PageUp/Down jump 3

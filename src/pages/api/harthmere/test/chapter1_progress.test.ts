@@ -39,19 +39,21 @@ describe("Chapter 1 native progress API", () => {
     assert.equal(active?.step.id, quest.steps[1].id);
   });
 
-  it("publishes an entity target for real Chapter 1 NPC conversations", () => {
+  it("publishes both entity identity and staged-position authority", () => {
     const quest = CH1_QUESTS[0];
     const targetStep = quest.steps.findIndex((step) => step.id === "kit_check");
     assert.ok(targetStep >= 0);
     // The resolver contract is covered in the shared target suite; this API
-    // assertion protects the field that lets MapManager follow the one live
-    // canonical Jackie instead of a stale authored coordinate.
+    // assertions protect the split between identity (acting/name) and position
+    // authority (a per-player staged puppet must not snap back to shared ECS).
     const source = fs.readFileSync(
       path.join(process.cwd(), "src/pages/api/harthmere/chapter1_progress.ts"),
       "utf8"
     );
     assert.match(source, /targetEntityId: target\.entityId/);
+    assert.match(source, /targetPositionAuthority: target\.positionAuthority/);
     assert.match(source, /resolveChapter1EntityTarget/);
+    assert.match(source, /state\.targetPositionAuthority === "authored"/);
   });
 
   it("never exposes a later quest while an earlier authored quest is active", () => {

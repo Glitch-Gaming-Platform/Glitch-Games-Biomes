@@ -50,13 +50,13 @@ async function main() {
 
   const keys = [
     ["KeyI", "tab.inventory"],
-    ["KeyB", "tab.abilities"],
+    ["KeyP", "tab.farming"],
+    ["KeyB", "tab.banking"],
     ["KeyK", "tab.skills"],
     ["KeyY", "tab.classes"],
     ["KeyL", "tab.land"],
     ["KeyO", "tab.loot"],
     ["KeyG", "tab.guilds"],
-    ["KeyP", "tab.banking"],
     ["KeyM", "tab.map"],
     ["BracketRight", "tab.collections"],
     ["KeyV", "tab.inbox"],

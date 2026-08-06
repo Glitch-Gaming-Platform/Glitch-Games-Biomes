@@ -30,6 +30,7 @@ import { ParticleSystem } from "@/client/game/resources/particles";
 import type { ClientResources } from "@/client/game/resources/types";
 import { getActiveRendererController } from "@/client/game/renderers/capture_bridge";
 import type { Script } from "@/client/game/scripts/script_controller";
+import { selectBackgroundMusicTrack } from "@/client/game/scripts/audio";
 import { publishHarthmereLiveCreatureSnapshot } from "@/client/game/scripts/harthmere_live_creature_bridge_script";
 import {
   combatImpactParticleMaterials,
@@ -330,6 +331,24 @@ export class CutsceneDirectorScript implements Script {
         player.velocity = [0, 0, 0];
         player.previousPosition = [...player.position];
       });
+    }
+    if (this.activeDef) {
+      const localPlayer = this.resources.get("/scene/local_player");
+      // Cinematic emotes are eager player emotes, not puppet metadata. They
+      // must be explicitly cancelled or the body/face can remain in the final
+      // expression after camera authority returns to gameplay.
+      localPlayer.player.eagerCancelEmote(this.events);
+      // Re-enter ambient playback from the visible local-player region rather
+      // than retaining a scene's generic music or waiting on a lagging ECS
+      // position. The normal AudioScript tick remains authoritative for combat,
+      // caves and minigames immediately afterward.
+      this.audioManager?.setBackgroundMusicTrack(
+        selectBackgroundMusicTrack(
+          this.resources.get("/camera/environment").muckyness.get(),
+          false,
+          localPlayer.player.position
+        )
+      );
     }
     this.runtime = undefined;
     this.activeDef = undefined;
@@ -952,8 +971,8 @@ export class CutsceneDirectorScript implements Script {
           movementAnimation === "evade"
             ? PLAYER_MOVEMENT_ACTION_TIMING.evade.durationSeconds
             : movementAnimation === "doubleJump"
-            ? PLAYER_MOVEMENT_ACTION_TIMING.doubleJump.durationSeconds
-            : PLAYER_MOVEMENT_ACTION_TIMING.dodge.durationSeconds;
+              ? PLAYER_MOVEMENT_ACTION_TIMING.doubleJump.durationSeconds
+              : PLAYER_MOVEMENT_ACTION_TIMING.dodge.durationSeconds;
         localPlayer.player.beginCutsceneMovementAnimation(
           movementAnimation,
           startTime,
@@ -985,8 +1004,8 @@ export class CutsceneDirectorScript implements Script {
       effect.actor.kind === "entity"
         ? effect.actor.entityId
         : effect.actor.kind === "ghost"
-        ? effect.actor.ghostId
-        : undefined;
+          ? effect.actor.ghostId
+          : undefined;
     if (id === undefined) {
       return;
     }
@@ -1059,7 +1078,7 @@ export class CutsceneDirectorScript implements Script {
         cameraPosition: camera.three.position.toArray() as [
           number,
           number,
-          number
+          number,
         ],
         cameraOrientation: orientation,
         capturedAt: Date.now(),

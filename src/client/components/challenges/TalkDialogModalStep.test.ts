@@ -1,6 +1,7 @@
 import {
   talkDialogAdvanceDecisionForTest,
   talkDialogHasChoiceActionsForTest,
+  talkDialogShouldShowActionsForTest,
   talkDialogShouldShowVoiceInputForTest,
   talkDialogVoiceInputBlocksAdvanceForTest,
 } from "@/client/components/challenges/talkDialogModalFlow";
@@ -190,6 +191,33 @@ describe("TalkDialogModalStep conversation flow guards", () => {
         actionCount: 0,
       }),
       false
+    );
+  });
+
+  it("can reveal time-limited service actions while request text is still typing", () => {
+    assert.equal(
+      talkDialogShouldShowActionsForTest({
+        typingComplete: false,
+        revealActionsImmediately: true,
+        hasContent: true,
+      }),
+      true
+    );
+    assert.equal(
+      talkDialogShouldShowActionsForTest({
+        typingComplete: false,
+        revealActionsImmediately: false,
+        hasContent: true,
+      }),
+      false
+    );
+    assert.equal(
+      talkDialogShouldShowActionsForTest({
+        typingComplete: true,
+        revealActionsImmediately: false,
+        hasContent: true,
+      }),
+      true
     );
   });
 });

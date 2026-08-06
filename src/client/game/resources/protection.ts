@@ -1,9 +1,3 @@
-import { toQuads } from "@/cayley/graphics/aabbs";
-import { buildQuadIndices } from "@/cayley/graphics/geometry";
-import { toLines } from "@/cayley/graphics/rects";
-import type { Array3 } from "@/cayley/numerics/arrays";
-import { fromArray, makeArray } from "@/cayley/numerics/arrays";
-import { concat } from "@/cayley/numerics/manipulate";
 import type { ClientContext } from "@/client/game/context";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
@@ -24,9 +18,11 @@ import {
 import { makeDisposable } from "@/shared/disposable";
 import type { Entity } from "@/shared/ecs/gen/entities";
 import type { BiomesId } from "@/shared/ids";
+import { log } from "@/shared/logging";
 import { anchorAndSizeToAABB, unionAABB } from "@/shared/math/linear";
 import type { AABB, Vec2, Vec3, Vec4 } from "@/shared/math/types";
 import type { RegistryLoader } from "@/shared/registry";
+import { fireAndForget } from "@/shared/util/async";
 import * as THREE from "three";
 
 export type ProtectionBoundary = {
@@ -252,45 +248,98 @@ function genProtectionMaterial(deps: ClientResourceDeps) {
   }
 }
 
-function addTexCoords(vertices: Array3<"F32">) {
-  const [n, q, v] = vertices.shape;
-  return makeArray("F32", [n, q, v + 2])
-    .view()
-    .merge(":,:,:-2", vertices)
-    .merge(":,:,-2:", [
-      [
-        [0, 0],
-        [1, 0],
-        [1, 1],
-        [0, 1],
-      ],
-    ])
-    .eval();
+// HARTHMERE_CAYLEY_LAZY_LOAD (2026-08-04 asset loading audit, finding 3)
+//
+// The protection field geometry helpers live in `protection_geometry.ts`, which
+// statically imports the 5.74 MB cayley numerics WASM. Because webpack is
+// configured with `asyncWebAssembly`, a static import here would make this
+// module -- and therefore `resources/init.ts`, and therefore client boot --
+// await that download. Protection fields are cosmetic and most sessions never
+// see one, so the module is pulled in on first use instead.
+//
+// While it is loading, the generators below return "nothing to draw". The
+// `/protection/geometry_ready` global resource is flipped once the import
+// resolves, and because every generator reads it, the resource system
+// re-generates them at that point. That is the same dependency-injection
+// pattern the rest of the resource layer uses; no polling, no timers.
+type ProtectionGeometryModule =
+  typeof import("@/client/game/resources/protection_geometry");
+
+let protectionGeometry: ProtectionGeometryModule | undefined;
+let protectionGeometryLoad: Promise<void> | undefined;
+let onProtectionGeometryReady: (() => void) | undefined;
+
+/**
+ * Returns the geometry module if it is already resident, otherwise starts
+ * loading it and returns undefined. Never throws: a failed load leaves
+ * protection fields undrawn rather than breaking the frame.
+ */
+function ensureProtectionGeometry(): ProtectionGeometryModule | undefined {
+  if (protectionGeometry) {
+    return protectionGeometry;
+  }
+  if (!protectionGeometryLoad) {
+    protectionGeometryLoad =
+      import("@/client/game/resources/protection_geometry")
+        .then((loaded) => {
+          protectionGeometry = loaded;
+          onProtectionGeometryReady?.();
+        })
+        .catch((error) => {
+          log.warn("Failed to load protection field geometry (cayley WASM)", {
+            error,
+          });
+          // Allow a later request to retry rather than pinning the failure.
+          protectionGeometryLoad = undefined;
+        });
+  }
+  return undefined;
 }
 
-function addBackFaces(vertices: Array3<"F32">) {
-  return concat([vertices, vertices.view().flip([false, true, false]).eval()]);
+/** Test seam: report whether the lazy module has been pulled in yet. */
+export function protectionGeometryLoadedForTest() {
+  return protectionGeometry !== undefined;
 }
 
-function buildProtectionGeometry(fields: AABB[]) {
-  const vertices = addBackFaces(
-    addTexCoords(toQuads(fromArray("F32", [fields.length, 2, 3], fields)))
-  );
-  const indices = buildQuadIndices(vertices.shape[0]);
-
-  // Convert to three.
-  const ret = new THREE.BufferGeometry();
-  const vbo = new THREE.InterleavedBuffer(vertices.data, 5);
-  ret.setAttribute("position", new THREE.InterleavedBufferAttribute(vbo, 3, 0));
-  ret.setAttribute("texCoord", new THREE.InterleavedBufferAttribute(vbo, 2, 3));
-  ret.setIndex(new THREE.BufferAttribute(indices, 1));
-  ret.computeVertexNormals();
-  return ret;
+/**
+ * The border of a single rectangle, without touching WASM.
+ *
+ * This is the robot placement preview's only case, and it is the one that has to
+ * feel instant -- the player is holding the robot and moving it around. The
+ * general union-of-rectangles outline needs the lazily loaded module.
+ */
+function singleRectBorder([min, max]: [Vec2, Vec2]): [Vec2, Vec2][] {
+  const [x0, z0] = min;
+  const [x1, z1] = max;
+  return [
+    [
+      [x0, z0],
+      [x1, z0],
+    ],
+    [
+      [x1, z0],
+      [x1, z1],
+    ],
+    [
+      [x1, z1],
+      [x0, z1],
+    ],
+    [
+      [x0, z1],
+      [x0, z0],
+    ],
+  ];
 }
 
 function genProtectionMesh(deps: ClientResourceDeps, id: BiomesId) {
   const tweaks = deps.get("/tweaks");
   if (tweaks.protectionField.shader === "none") {
+    return;
+  }
+  // Depend on the flag so this regenerates when the geometry module arrives.
+  deps.get("/protection/geometry_ready");
+  const geometry = ensureProtectionGeometry();
+  if (!geometry) {
     return;
   }
 
@@ -309,8 +358,8 @@ function genProtectionMesh(deps: ClientResourceDeps, id: BiomesId) {
   // Build and return a new mesh Build and return a new mesh
   // TODO: Replace aabb below with fields once toQuads is good to go.
   const material = deps.get("/protection/material");
-  const geometry = buildProtectionGeometry(fields);
-  const three = new THREE.Mesh(geometry, material.three);
+  const bufferGeometry = geometry.buildProtectionGeometry(fields);
+  const three = new THREE.Mesh(bufferGeometry, material.three);
   return makeDisposable(
     {
       three,
@@ -322,7 +371,9 @@ function genProtectionMesh(deps: ClientResourceDeps, id: BiomesId) {
       },
     },
     () => {
-      geometry.dispose();
+      // The lazily imported module is process-wide; only this mesh's concrete
+      // BufferGeometry is owned by the resource instance.
+      bufferGeometry.dispose();
     }
   );
 }
@@ -339,12 +390,21 @@ export function getRobotProtectionBoundary(
     ]);
   }
 
-  // Generate the lines along the border of the interior.
-  const border = toLines(fromArray("F32", [fields.length, 2, 2], interior));
-
+  // HARTHMERE_CAYLEY_LAZY_LOAD: a single field -- the robot placement preview,
+  // and the common case for a lone robot -- is just the four edges of one
+  // rectangle, so it never waits for (or downloads) the WASM. Merged fields need
+  // the real union outline; until that module lands the map simply draws the
+  // interior without its border.
+  if (interior.length === 0) {
+    return { interior, border: [] };
+  }
+  if (interior.length === 1) {
+    return { interior, border: singleRectBorder(interior[0]) };
+  }
+  const geometry = ensureProtectionGeometry();
   return {
     interior,
-    border: border.js() as [Vec2, Vec2][],
+    border: geometry ? geometry.unionRectBorder(interior) : [],
   };
 }
 
@@ -353,14 +413,30 @@ function genRobotMapBoundary(deps: ClientResourceDeps, id: BiomesId) {
   if (!aabb) {
     return;
   }
+  // Re-generate once the union-outline module is available.
+  deps.get("/protection/geometry_ready");
 
   return getRobotProtectionBoundary(fields);
 }
 
 export function addProtectionResources(
-  _loader: RegistryLoader<ClientContext>,
+  loader: RegistryLoader<ClientContext>,
   builder: ClientResourcesBuilder
 ) {
+  // HARTHMERE_CAYLEY_LAZY_LOAD: flipped once the geometry module resolves; the
+  // protection generators depend on it, so the resource system regenerates them
+  // at that moment instead of leaving the field permanently undrawn.
+  builder.addGlobal("/protection/geometry_ready", { ready: false });
+  onProtectionGeometryReady = () => {
+    fireAndForget(
+      loader
+        .get("resources")
+        .then((resources) =>
+          resources.set("/protection/geometry_ready", { ready: true })
+        )
+    );
+  };
+
   builder.add("/protection/creator_boundary", genCreatorBoundary);
   builder.add("/protection/landmark_boundary", genLandmarkBoundary);
   builder.add("/protection/team_boundary", genTeamBoundary);

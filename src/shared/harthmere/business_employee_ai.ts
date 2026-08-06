@@ -13,6 +13,7 @@ import {
   createHarthmereBusinessServiceProceduralClip,
   renderHarthmereBusinessServiceFrameSvg,
 } from "./business_service_procedural_animations";
+import { harthmereSublevelTradeBonus } from "./harthmere_sublevel_benefits";
 
 export const HARTHMERE_BUSINESS_EMPLOYEE_AI_VERSION =
   "harthmere-business-employee-ai" as const;
@@ -577,9 +578,17 @@ export function interviewHarthmereBusinessEmployeeCandidate(
 export function negotiateHarthmereBusinessEmployeeCandidate(
   candidate: HarthmereBusinessEmployeeCandidate,
   offeredWageGoldPerDay: number,
+  persuasionLevel = 1,
 ): HarthmereBusinessEmployeeNegotiationResult {
   const offer = Math.max(1, Math.trunc(Number(offeredWageGoldPerDay) || 0));
-  const minimumAccepted = Math.max(1, Math.floor(candidate.wageAskGoldPerDay * (candidate.personality === "ambitious" ? 0.95 : 0.82)));
+  const minimumAccepted = Math.max(
+    1,
+    Math.floor(
+      candidate.wageAskGoldPerDay *
+        (candidate.personality === "ambitious" ? 0.95 : 0.82) *
+        (1 - harthmereSublevelTradeBonus(persuasionLevel)),
+    ),
+  );
   const rounds = candidate.negotiationRounds + 1;
   if (rounds >= 3) {
     return {

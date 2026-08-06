@@ -212,6 +212,8 @@ const zBehaviorRangedAttackParams = z
       .optional(),
     /** Biological/technological attacks may use an elemental damage type without spell charging. */
     magic: z.boolean().optional(),
+    /** Finite caster resource spent exactly once when the cast is created. */
+    manaCost: z.number().gte(0).optional(),
     animationClip: z
       .enum([
         "Attack",
@@ -314,6 +316,16 @@ const zBehaviorChaseAttackParams = z
       .describe(
         "Optional cooldown-gated ranged attacks used in addition to the normal close-range strike."
       ),
+    maxMana: z
+      .number()
+      .gte(0)
+      .optional()
+      .describe("Finite mana pool available to NPC magic attacks."),
+    manaRegenPerSecond: z
+      .number()
+      .gte(0)
+      .optional()
+      .describe("Server-owned NPC mana regeneration rate."),
   })
   .refine(
     (x) =>

@@ -1,5 +1,8 @@
 import { secondsSinceEpoch } from "@/shared/ecs/config";
-import type { ReadonlyWorldMetadata } from "@/shared/ecs/gen/components";
+import {
+  MovementState,
+  type ReadonlyWorldMetadata,
+} from "@/shared/ecs/gen/components";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import { CollisionHelper } from "@/shared/game/collision";
 import {
@@ -77,6 +80,10 @@ import {
 import type { MovementType } from "@/shared/npc/npc_types";
 import type { BehaviorChaseAttackParams } from "@/shared/npc/npc_types";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
+import {
+  advanceHarthmereNpcStagger,
+  harthmereNpcStaggerEligible,
+} from "@/shared/npc/stagger";
 import {
   DEFAULT_ENVIRONMENT_PARAMS,
   NPC_FLYING_ENVIRONMENT_PARAMS,
@@ -237,6 +244,7 @@ function baseChaseAttackParams(
 // The single locomotion behavior an NPC runs this tick. Exactly one is chosen
 // per tick by strict priority; see `selectNpcLocomotion`.
 export type NpcLocomotionChoice =
+  | "stagger"
   | "evade"
   | "swim"
   | "fly"
@@ -252,6 +260,7 @@ export type NpcLocomotionChoice =
   | "idle";
 
 export interface NpcLocomotionInputs {
+  hasActiveStagger?: boolean;
   hasActiveEvade?: boolean;
   swim: boolean;
   fly: boolean;
@@ -275,6 +284,9 @@ export interface NpcLocomotionInputs {
 export function selectNpcLocomotion(
   inputs: NpcLocomotionInputs
 ): NpcLocomotionChoice {
+  if (inputs.hasActiveStagger) {
+    return "stagger";
+  }
   if (inputs.hasActiveEvade) {
     return "evade";
   }
@@ -321,6 +333,100 @@ export function selectNpcLocomotion(
     return "hostileIdleWander";
   }
   return "idle";
+}
+
+function npcLastDamageDirection(
+  env: Environment,
+  npc: SimulatedNpc
+): ReadonlyVec3 | undefined {
+  const source = npc.health.lastDamageSource;
+  if (source?.kind !== "attack") return undefined;
+  if (source.dir?.every(Number.isFinite)) return source.dir;
+  const attacker = env.resources.get("/ecs/entity", source.attacker);
+  if (!attacker?.position?.v) return undefined;
+  return sub(npc.position, attacker.position.v);
+}
+
+export function updateHarthmereNpcStagger(
+  env: Environment,
+  npc: SimulatedNpc,
+  nowSeconds: number
+) {
+  const profile = harthmereNativeNpcCombatProfileForEntity({
+    entityId: npc.id,
+    typeId: npc.metadata.type_id,
+    displayName: [npc.label, npc.type.displayName, npc.type.name]
+      .filter(Boolean)
+      .join(" "),
+    maxHp: npc.health.maxHp,
+  });
+  if (!harthmereNpcStaggerEligible(profile)) {
+    return { active: false, profile };
+  }
+
+  const damageAmount = Math.max(0, -(npc.health.lastDamageAmount ?? 0));
+  const result = advanceHarthmereNpcStagger({
+    state: npc.state.damageReaction
+      ? {
+          ...npc.state.damageReaction,
+          stagger: npc.state.damageReaction.stagger
+            ? {
+                ...npc.state.damageReaction.stagger,
+                direction: [...npc.state.damageReaction.stagger.direction],
+              }
+            : undefined,
+        }
+      : undefined,
+    nowSeconds,
+    maxHp: npc.health.maxHp,
+    level: profile?.level ?? 1,
+    damageTime: npc.health.lastDamageTime,
+    damageAmount,
+    damageIsAttack: npc.health.lastDamageSource?.kind === "attack",
+    damageDirection: npcLastDamageDirection(env, npc),
+  });
+  if (result.changed) {
+    npc.mutableState().damageReaction = result.state;
+  }
+  if (!result.triggered) {
+    return { active: result.active, profile };
+  }
+
+  const chaseState = npc.mutableState().chaseAttack;
+  if (chaseState) {
+    cancelPendingMeleeAttack(chaseState, nowSeconds);
+    const ranged = chaseState.rangedAttack;
+    const releaseTime = ranged?.releaseTime ?? ranged?.castTime;
+    if (
+      ranged &&
+      ranged.result === undefined &&
+      releaseTime !== undefined &&
+      nowSeconds < releaseTime
+    ) {
+      ranged.result = "miss";
+      ranged.resolvedAt = nowSeconds;
+    }
+    chaseState.rangedGlobalCooldownUntil = Math.max(
+      chaseState.rangedGlobalCooldownUntil ?? 0,
+      result.triggered.expiryTime + 0.2
+    );
+  }
+  if (npc.movementState?.action) {
+    npc.setMovementState(
+      MovementState.create({
+        ...npc.movementState,
+        action: undefined,
+        action_expiry_time: nowSeconds,
+        invulnerability_expiry_time: nowSeconds,
+        cooldown_expiry_time: Math.max(
+          npc.movementState.cooldown_expiry_time,
+          result.triggered.expiryTime
+        ),
+        direction: [...npc.movementState.direction],
+      })
+    );
+  }
+  return { active: true, profile };
 }
 
 export function npcShouldStartCombatEvade({
@@ -416,13 +522,15 @@ export function npcGroundWalkingForceCoefficient(input: {
   fightSpeedBoostEligible: boolean;
   forwardSpeed: number;
 }): number {
-  // Business customer routes author their pace in metres per second, just like
-  // chase and escort behavior. `forwardWalkingForce` consumes acceleration,
-  // however, and a raw 2-4 value is completely cancelled by the ordinary
-  // ground friction at Anima's fixed tick rate. Convert this route explicitly
-  // so customers actually move while leaving every historical locomotion path
-  // unchanged.
-  if (input.locomotion === "businessCustomer") {
+  // Business customer routes and escorts author their pace in metres per second.
+  // `forwardWalkingForce` consumes acceleration, however, and a raw 2-8 value is
+  // mostly cancelled by ordinary ground friction at Anima's fixed tick rate.
+  // Convert these target-speed locomotion paths explicitly so they reach the
+  // requested pace instead of looking like a slow walk.
+  if (
+    input.locomotion === "businessCustomer" ||
+    input.locomotion === "escort"
+  ) {
     return horizontalForceForTargetSpeed(
       input.forwardSpeed,
       DEFAULT_ENVIRONMENT_PARAMS
@@ -532,6 +640,8 @@ export function npcTickLogic(
   // tripping strict-null checks.
   const behavior = getNpcBehavior(npc.type);
   const chaseAttack = effectiveChaseAttackParams(npc, behavior);
+  const nowSeconds = secondsSinceEpoch();
+  const stagger = updateHarthmereNpcStagger(env, npc, nowSeconds);
 
   // HARTHMERE_ESCORT: an escort's target comes from its combat POLICY, never from
   // proximity aggro. An escort that picks its own fights turns a delivery quest
@@ -546,8 +656,9 @@ export function npcTickLogic(
     updateAttackTarget(env, npc, chaseAttack);
   }
 
-  const nowSeconds = secondsSinceEpoch();
-  maybeStartNpcCombatEvade(env, npc, nowSeconds);
+  if (!stagger.active) {
+    maybeStartNpcCombatEvade(env, npc, nowSeconds);
+  }
   const activeEvade = movementActionIsActive(npc.movementState, nowSeconds);
 
   let forwardSpeed = 0;
@@ -556,7 +667,8 @@ export function npcTickLogic(
 
   let force = nullForce;
 
-  const fleeOutput = !chaseAttack ? fleeFromThreatTick(env, npc) : undefined;
+  const fleeOutput =
+    !stagger.active && !chaseAttack ? fleeFromThreatTick(env, npc) : undefined;
 
   // HARTHMERE_SCHEDULE_FOLLOW_LOGIC_INSTALL_MARKER: an NPC with authored
   // schedule entries should follow its route. This must take precedence over
@@ -567,6 +679,7 @@ export function npcTickLogic(
   );
 
   const locomotion = selectNpcLocomotion({
+    hasActiveStagger: stagger.active,
     hasActiveEvade: activeEvade,
     swim: Boolean(behavior.swim),
     fly: Boolean(behavior.fly),
@@ -584,6 +697,11 @@ export function npcTickLogic(
   });
 
   switch (locomotion) {
+    case "stagger":
+      // The initial damage impulse still passes through shared physics below,
+      // but AI-authored movement and attacks are suspended until recovery.
+      forwardSpeed = 0;
+      break;
     case "evade": {
       const profile = npcEvadeProfileForDescriptor(
         npc.label,
@@ -702,7 +820,11 @@ export function npcTickLogic(
         }
       : undefined;
 
-  rotateTargetTick(npc, getNpcRotateSpeed(npc.type), dtSecs);
+  rotateTargetTick(
+    npc,
+    getNpcRotateSpeed(npc.type) * (locomotion === "stagger" ? 0.22 : 1),
+    dtSecs
+  );
   const focusedOrientationAfterRotate = focusedBusinessProbe
     ? [...npc.orientation]
     : undefined;

@@ -211,7 +211,8 @@ const ACT_1: readonly Ch1QuestDef[] = [
       {
         id: "seat_the_core",
         title: "Seat the Core",
-        objective: "Fit a core cell and bring the unit up.",
+        objective:
+          "Luis put a Core Cell in your pack. Return to AUGUR-9 and fit it to bring the unit up.",
         trigger: "interact",
         targetLabel: "AUGUR-9",
         inventoryRequirements: [
@@ -325,10 +326,11 @@ const ACT_2: readonly Ch1QuestDef[] = [
       },
       {
         id: "open_the_tab",
-        title: "Open the Ledger",
-        objective: "Start writing down what comes back.",
+        title: "Open Recovered Memories",
+        objective:
+          "Press J to open BiomesUI, then select MEM — Recovered.",
         trigger: "interact",
-        targetLabel: "Journal",
+        targetLabel: "BiomesUI: MEM — Recovered",
         fragmentId: "frag_a4_echo_defends_itself",
         note: "The 'defends itself' echo is seeded HERE, in Act 2, at low confidence, so that on replay the player can see it was always there.",
       },

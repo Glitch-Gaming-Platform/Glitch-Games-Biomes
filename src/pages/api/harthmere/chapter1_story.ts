@@ -436,10 +436,15 @@ export default biomesApiHandler(
       if (result.consumedItemId) {
         const count = nativeItems[result.consumedItemId] ?? 0;
         if (count < 1) {
+          const itemName =
+            ch1ItemDisplayName(
+              result.consumedItemId,
+              state.chapter1.flags
+            ) ?? "that recharge cell";
           return {
             ...project(state, activeObjective),
             ok: false,
-            reason: `You do not have ${result.consumedItemId}.`,
+            reason: `You do not have ${itemName}.`,
           };
         }
       }

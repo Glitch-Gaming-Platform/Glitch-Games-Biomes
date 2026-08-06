@@ -33,7 +33,13 @@ import { ok } from "assert";
 import {
   awardHarthmereNativeSkillXp,
   harthmereNativeFarmingSkillAwards,
+  readHarthmereNativeSkillLevel,
 } from "@/shared/harthmere/harthmere_skill_progression";
+import {
+  harthmereDeterministicYieldCount,
+  harthmereSublevelEfficiencyMultiplier,
+  harthmereSublevelYieldMultiplier,
+} from "@/shared/harthmere/harthmere_sublevel_benefits";
 
 const TREE_SEED_IDS = new Set<BiomesId>([
   BikkieIds.oakSeed,
@@ -133,7 +139,16 @@ export const tillSoilEventHandler = makeEventHandler("tillSoilEvent", {
       (acc, block) => acc + blockDestructionTimeMs(block, slot?.item),
       0
     );
-    decrementItemDurability(inventory, event.tool_ref, totalDestroyTime / 2);
+    const farmingLevel = readHarthmereNativeSkillLevel(
+      player.triggerState(),
+      "farming"
+    );
+    decrementItemDurability(
+      inventory,
+      event.tool_ref,
+      (totalDestroyTime / 2) *
+        harthmereSublevelEfficiencyMultiplier(farmingLevel)
+    );
 
     // Modify terrain shard
     const tilledSoilTerrainId = getTerrainID("soil");
@@ -259,6 +274,9 @@ export const plantSeedEventHandler = makeEventHandler("plantSeedEvent", {
         water_at: undefined,
         fully_grown_at: undefined,
         next_stage_at: undefined,
+        skill_growth_time_multiplier: harthmereSublevelEfficiencyMultiplier(
+          readHarthmereNativeSkillLevel(player.triggerState(), "farming")
+        ),
       },
       container_inventory: { items: [] },
       locked_in_place: {},
@@ -360,7 +378,9 @@ export const fertilizePlantEventHandler = makeEventHandler(
     mergeKey: (event) => event.id,
     involves: (event) => ({
       plant: q.id(event.id).with("farming_plant_component"),
-      player: q.id(event.user_id).with("inventory", "player_behavior"),
+      player: q
+        .id(event.user_id)
+        .with("inventory", "player_behavior", "trigger_state"),
     }),
     apply({ plant, player }, event, context) {
       // Remove one fertilizer from the player's inventory.
@@ -389,7 +409,9 @@ export const fertilizePlantEventHandler = makeEventHandler(
 export const harvestPlantEventHandler = makeEventHandler("harvestPlantEvent", {
   mergeKey: (event) => event.id,
   involves: (event) => ({
-    plant: q.id(event.plant_id).with("farming_plant_component", "position"),
+    plant: q
+      .id(event.plant_id)
+      .with("farming_plant_component", "position", "container_inventory"),
     player: q.id(event.id).with("position", "trigger_state"),
   }),
   apply({ plant, player }, event) {
@@ -418,6 +440,24 @@ export const harvestPlantEventHandler = makeEventHandler("harvestPlantEvent", {
     // The authoritative plant id plus the server-read player/plant distance is
     // sufficient validation; exact equality with a client voxel silently
     // rejected legitimate harvests.
+
+    const farmingLevel = readHarthmereNativeSkillLevel(
+      player.triggerState(),
+      "farming"
+    );
+    const yieldMultiplier = harthmereSublevelYieldMultiplier(farmingLevel);
+    const container = plant.mutableContainerInventory();
+    container.items = container.items.map((entry, index) => {
+      if (!entry || anItem(entry.item.id).isSeed) {
+        return entry;
+      }
+      const count = harthmereDeterministicYieldCount({
+        baseCount: Number(entry.count),
+        multiplier: yieldMultiplier,
+        seed: `${plant.id}:${entry.item.id}:${index}`,
+      });
+      return { ...entry, count: BigInt(count) };
+    });
 
     plantComponent.player_actions.push({
       kind: "harvest",

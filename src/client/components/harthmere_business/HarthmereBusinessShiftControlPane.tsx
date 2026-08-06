@@ -1,4 +1,5 @@
 import * as React from "react";
+import { HARTHMERE_BUSINESS_CUSTOMERS_PER_SHIFT } from "@/shared/harthmere/business_customer_simulator";
 
 import {
   formatHarthmereBusinessPlayerWarning,
@@ -26,7 +27,10 @@ export function HarthmereBusinessShiftControlPane({
     setPending(true);
     setError(undefined);
     try {
-      await adapter.startCustomerSession(businessId);
+      await adapter.startCustomerSession(
+        businessId,
+        HARTHMERE_BUSINESS_CUSTOMERS_PER_SHIFT
+      );
       onShiftStarted?.();
     } catch (cause) {
       setError(

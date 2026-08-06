@@ -192,6 +192,7 @@ MATERIALS = {
     "wood_light": mat("wood-light", COLORS["wood_light"], 0.0, 0.64),
     "leather": mat("leather", COLORS["leather"], 0.0, 0.86),
     "cloth": mat("cloth", COLORS["cloth"], 0.0, 0.8),
+    "linen": mat("linen-string", rgba(0xD7C7A2), 0.0, 0.92),
     "blue": mat("blue", COLORS["blue"], 0.38, 0.33),
     "blue_bright": mat("blue-bright", COLORS["blue_bright"], 0.3, 0.26, 0.5),
     "parchment": mat("parchment", COLORS["parchment"], 0.0, 0.88),
@@ -432,24 +433,103 @@ def build_sword(specification, collection, root):
     add_rivets(collection, root, [(-guard_width * 0.75, 0, -0.02), (guard_width * 0.75, 0, -0.02)], golden)
 
 
+def parent_to_bone(obj, armature, bone_name):
+    if obj.type != "MESH":
+        raise TypeError(f"Expected rigid bow mesh for {bone_name}, got {obj.type}")
+    vertex_group = obj.vertex_groups.new(name=bone_name)
+    vertex_group.add(range(len(obj.data.vertices)), 1.0, "REPLACE")
+    modifier = obj.modifiers.new("BowRig", "ARMATURE")
+    modifier.object = armature
+    modifier.use_deform_preserve_volume = False
+    return obj
+
+
 def build_bow(specification, collection, root):
     golden = "golden" in specification.id
     strung = specification.id == "strung_bow"
-    limb = MATERIALS["gold"] if golden else MATERIALS["wood_light"]
-    core = MATERIALS["wood"]
-    points_left = [(0, 0, -0.58), (-0.22, 0, -0.36), (-0.35, 0, 0), (-0.26, 0, 0.42), (-0.08, 0, 0.7)]
-    points_right = [(0, 0, -0.58), (0.22, 0, -0.36), (0.35, 0, 0), (0.26, 0, 0.42), (0.08, 0, 0.7)]
-    for prefix, points in (("Left", points_left), ("Right", points_right)):
-        for index in range(len(points) - 1):
-            between(collection, root, f"{prefix}Limb_{index}", points[index], points[index + 1], 0.055, core if index in (1, 2) else limb, 7)
-    cube(collection, root, "WrappedRiser", (0, 0, 0.02), (0.1, 0.085, 0.24), MATERIALS["leather"], edge=0.04)
-    for z in (-0.52, 0.62):
-        cylinder(collection, root, f"TipCap_{z}", (0, 0, z), 0.075, 0.12, MATERIALS["gold"] if golden else MATERIALS["bone"], 8)
-    string_mat = MATERIALS["gold_bright"] if golden else MATERIALS["edge"]
-    between(collection, root, "StringLeft", (-0.0, 0.02, -0.64), (-0.02 if strung else -0.12, -0.02, 0.02), 0.012, string_mat, 4)
-    between(collection, root, "StringRight", (-0.02 if strung else -0.12, -0.02, 0.02), (0, 0.02, 0.76), 0.012, string_mat, 4)
-    wrap_grip(collection, root, -0.13, 0.17, 0.115, MATERIALS["cloth"] if strung else MATERIALS["leather"], 5)
-    add_rivets(collection, root, [(0, -0.1, -0.17), (0, -0.1, 0.2)], golden)
+    limb_outer = MATERIALS["gold"] if golden else MATERIALS["wood_light"]
+    limb_inner = MATERIALS["brass"] if golden else MATERIALS["wood"]
+    accent = MATERIALS["blue"] if strung else MATERIALS["gold"] if golden else MATERIALS["bone"]
+
+    armature_data = bpy.data.armatures.new(f"{specification.id}_BowRig")
+    armature = bpy.data.objects.new("BowRig", armature_data)
+    collection.objects.link(armature)
+    armature.parent = root
+    armature["harthmereBowRig"] = True
+    root["harthmereBowRigObject"] = armature.name
+
+    bpy.context.view_layer.objects.active = armature
+    armature.select_set(True)
+    bpy.ops.object.mode_set(mode="EDIT")
+    bones = {
+        "LowerTip": ((0.0, 0.0, -0.70), (-0.24, 0.0, -0.48)),
+        "LowerLimb": ((-0.24, 0.0, -0.48), (-0.34, 0.0, -0.20)),
+        "LowerFade": ((-0.34, 0.0, -0.20), (0.0, 0.0, 0.0)),
+        "UpperFade": ((0.0, 0.0, 0.0), (-0.34, 0.0, 0.20)),
+        "UpperLimb": ((-0.34, 0.0, 0.20), (-0.24, 0.0, 0.48)),
+        "UpperTip": ((-0.24, 0.0, 0.48), (0.0, 0.0, 0.70)),
+        "StringTop": ((0.0, 0.0, 0.70), (0.0, 0.0, 0.0)),
+        "StringBottom": ((0.0, 0.0, -0.70), (0.0, 0.0, 0.0)),
+        "NockedArrow": ((0.0, 0.34, 0.0), (0.0, -0.72, 0.0)),
+        "Riser": ((0.0, 0.0, -0.20), (0.0, 0.0, 0.20)),
+        "ArrowSocket": ((0.0, -0.78, 0.0), (0.0, -0.88, 0.0)),
+        "GripSocket": ((0.0, 0.0, 0.0), (0.0, -0.10, 0.0)),
+        "LeftHandSocket": ((0.0, -0.04, 0.0), (0.0, -0.14, 0.0)),
+        "RightHandSocket": ((0.0, 0.34, 0.0), (0.0, 0.24, 0.0)),
+        "FXSocket": ((0.0, -0.70, 0.0), (0.0, -0.80, 0.0)),
+        "TrailSocket": ((0.0, -0.20, 0.0), (0.0, -0.30, 0.0)),
+    }
+    for name, (head, tail) in bones.items():
+        bone = armature_data.edit_bones.new(name)
+        bone.head = head
+        bone.tail = tail
+        if name in ("ArrowSocket", "RightHandSocket", "FXSocket", "TrailSocket"):
+            bone.parent = armature_data.edit_bones["NockedArrow"]
+            bone.use_deform = False
+        elif name in ("GripSocket", "LeftHandSocket"):
+            bone.parent = armature_data.edit_bones["Riser"]
+            bone.use_deform = False
+    bpy.ops.object.mode_set(mode="OBJECT")
+    armature.select_set(False)
+
+    segment_materials = {
+        "LowerTip": limb_outer,
+        "LowerLimb": limb_outer,
+        "LowerFade": limb_inner,
+        "UpperFade": limb_inner,
+        "UpperLimb": limb_outer,
+        "UpperTip": limb_outer,
+    }
+    for name in ("LowerTip", "LowerLimb", "LowerFade", "UpperFade", "UpperLimb", "UpperTip"):
+        start, end = bones[name]
+        radius = 0.050 if "Tip" in name else 0.062 if "Limb" in name else 0.070
+        part = between(collection, root, name, start, end, radius, segment_materials[name], 8)
+        parent_to_bone(part, armature, name)
+
+    riser = cube(collection, root, "WrappedRiser", (0, 0, 0), (0.095, 0.085, 0.22), MATERIALS["leather"], edge=0.04)
+    parent_to_bone(riser, armature, "Riser")
+    for index, z in enumerate((-0.66, 0.66)):
+        cap = cylinder(collection, root, f"ReinforcedTip_{index}", (0, 0, z), 0.068, 0.13, accent, 8)
+        parent_to_bone(cap, armature, "LowerTip" if z < 0 else "UpperTip")
+    for z in (-0.14, -0.07, 0.0, 0.07, 0.14):
+        wrap = torus(collection, root, f"RiserWrap_{z}", (0, 0, z), 0.11, 0.014, MATERIALS["cloth"] if strung else MATERIALS["leather"], segments=10)
+        parent_to_bone(wrap, armature, "Riser")
+
+    top_string = between(collection, root, "StringTopMesh", bones["StringTop"][0], bones["StringTop"][1], 0.010, MATERIALS["linen"], 5)
+    bottom_string = between(collection, root, "StringBottomMesh", bones["StringBottom"][0], bones["StringBottom"][1], 0.010, MATERIALS["linen"], 5)
+    parent_to_bone(top_string, armature, "StringTop")
+    parent_to_bone(bottom_string, armature, "StringBottom")
+
+    shaft = cylinder(collection, root, "NockedArrowShaft", (0, -0.16, 0), 0.018, 0.96, MATERIALS["wood_light"], 8, rotation=(math.pi / 2, 0, 0), edge=0.008)
+    tip = cone(collection, root, "NockedArrowBroadhead", (0, -0.69, 0), 0.055, 0.18, MATERIALS["steel"], 5, rotation=(math.pi / 2, 0, 0), edge=0.012)
+    nock = cylinder(collection, root, "NockedArrowNock", (0, 0.34, 0), 0.028, 0.08, accent, 6, rotation=(math.pi / 2, 0, 0), edge=0.008)
+    for arrow_part in (shaft, tip, nock):
+        parent_to_bone(arrow_part, armature, "NockedArrow")
+    for side in (-1, 1):
+        feather = cube(collection, root, f"NockedArrowFletching_{side}", (side * 0.045, 0.25, 0), (0.04, 0.12, 0.012), MATERIALS["cloth"] if not golden else MATERIALS["gold_bright"], rotation=(0, 0, side * 0.15), edge=0.006)
+        parent_to_bone(feather, armature, "NockedArrow")
+
+    return armature
 
 
 def build_crossbow(specification, collection, root):
@@ -766,7 +846,130 @@ BUILDERS: Dict[str, Callable] = {
 }
 
 
+def reset_bow_pose(armature):
+    for pose_bone in armature.pose.bones:
+        pose_bone.rotation_mode = "XYZ"
+        pose_bone.location = (0, 0, 0)
+        pose_bone.rotation_euler = (0, 0, 0)
+        pose_bone.scale = (1, 1, 1)
+
+
+def key_bow_pose(armature, frame, draw=0.0, arrow_scale=1.0, settle=0.0, sway=0.0, reload_offset=0.0):
+    reset_bow_pose(armature)
+    draw = max(-0.2, min(1.0, draw))
+    string_angle = math.radians(23.0 * draw + 4.0 * settle)
+    string_scale = math.sqrt(0.70 ** 2 + (0.30 * max(0.0, draw)) ** 2) / 0.70
+    armature.pose.bones["StringTop"].rotation_euler.x = string_angle
+    armature.pose.bones["StringBottom"].rotation_euler.x = -string_angle
+    armature.pose.bones["StringTop"].scale.y = string_scale
+    armature.pose.bones["StringBottom"].scale.y = string_scale
+
+    flex = math.radians(4.5 * draw - 1.8 * settle)
+    armature.pose.bones["UpperLimb"].rotation_euler.x = -flex
+    armature.pose.bones["UpperTip"].rotation_euler.x = -flex * 1.35
+    armature.pose.bones["LowerLimb"].rotation_euler.x = flex
+    armature.pose.bones["LowerTip"].rotation_euler.x = flex * 1.35
+    armature.pose.bones["UpperFade"].rotation_euler.x = -flex * 0.45
+    armature.pose.bones["LowerFade"].rotation_euler.x = flex * 0.45
+
+    arrow = armature.pose.bones["NockedArrow"]
+    arrow.location.y = -0.30 * max(0.0, draw)
+    arrow.location.x = reload_offset
+    arrow.scale = (arrow_scale, arrow_scale, arrow_scale)
+    armature.pose.bones["Riser"].rotation_euler.z = math.radians(sway)
+
+    for pose_bone in armature.pose.bones:
+        pose_bone.keyframe_insert("location", frame=frame)
+        pose_bone.keyframe_insert("rotation_euler", frame=frame)
+        pose_bone.keyframe_insert("scale", frame=frame)
+
+
+def polish_action_curves(action):
+    fcurves = getattr(action, "fcurves", None)
+    if fcurves is None:
+        fcurves = []
+        for layer in getattr(action, "layers", []) or []:
+            for strip in getattr(layer, "strips", []) or []:
+                for bag in getattr(strip, "channelbags", []) or []:
+                    fcurves.extend(bag.fcurves)
+    for fcurve in fcurves:
+        for point in fcurve.keyframe_points:
+            point.interpolation = "BEZIER"
+            point.handle_left_type = "AUTO_CLAMPED"
+            point.handle_right_type = "AUTO_CLAMPED"
+
+
+def animate_bow(root, specification):
+    armature = next(
+        child for child in root.children_recursive
+        if child.type == "ARMATURE" and child.get("harthmereBowRig")
+    )
+    armature.animation_data_create()
+    clip_poses = {
+        "IdleAim_24": [
+            (1, 0.08, 1.0, 0.0, -0.7, 0.0),
+            (13, 0.12, 1.0, 0.0, 0.7, 0.0),
+            (25, 0.08, 1.0, 0.0, -0.7, 0.0),
+        ],
+        "AimDraw_24": [
+            (1, 0.08, 1.0, 0.0, 0.0, 0.0),
+            (6, 0.48, 1.0, 0.0, -0.5, 0.0),
+            (12, 1.0, 1.0, 0.0, 0.3, 0.0),
+            (25, 1.0, 1.0, 0.0, -0.3, 0.0),
+        ],
+        # Frame 8 at 24 fps is 0.292 s: visually coincident with the
+        # authoritative 0.280-second bow impact/release point.
+        "Release_24": [
+            (1, 0.08, 1.0, 0.0, 0.0, 0.0),
+            (5, 0.72, 1.0, 0.0, -0.5, 0.0),
+            (7, 1.0, 1.0, 0.0, 0.0, 0.0),
+            (8, -0.12, 0.001, -1.0, 0.0, 0.0),
+            (9, 0.12, 0.001, 0.8, 0.0, 0.0),
+            (11, -0.05, 0.001, -0.45, 0.0, 0.0),
+            (13, 0.0, 0.001, 0.0, 0.0, 0.0),
+        ],
+        "Recover_24": [
+            (1, 0.0, 0.001, 0.0, 0.0, 0.0),
+            (8, 0.0, 0.001, 0.0, 0.6, 0.0),
+            (14, 0.02, 1.0, 0.0, -0.4, 0.08),
+            (20, 0.08, 1.0, 0.0, 0.0, 0.0),
+        ],
+        "Reload_24": [
+            (1, 0.0, 0.001, 0.0, 0.0, 0.18),
+            (7, 0.0, 0.001, 0.0, 0.5, 0.10),
+            (12, 0.04, 1.0, 0.0, -0.5, 0.02),
+            (18, 0.08, 1.0, 0.0, 0.0, 0.0),
+        ],
+    }
+    for clip_name, poses in clip_poses.items():
+        action = bpy.data.actions.new(f"{specification.id}__{clip_name}")
+        action["harthmereExportClip"] = clip_name
+        armature.animation_data.action = action
+        for frame, draw, arrow_scale, settle, sway, reload_offset in poses:
+            key_bow_pose(
+                armature,
+                frame,
+                draw=draw,
+                arrow_scale=arrow_scale,
+                settle=settle,
+                sway=sway,
+                reload_offset=reload_offset,
+            )
+        action.frame_start = min(pose[0] for pose in poses)
+        action.frame_end = max(pose[0] for pose in poses)
+        polish_action_curves(action)
+        track = armature.animation_data.nla_tracks.new()
+        track.name = clip_name
+        strip = track.strips.new(clip_name, 1, action)
+        strip.name = clip_name
+        armature.animation_data.action = None
+    reset_bow_pose(armature)
+
+
 def animate(root, specification):
+    if specification.builder == "bow":
+        animate_bow(root, specification)
+        return
     root.animation_data_create()
     action = bpy.data.actions.new(
         f"{specification.id}__{specification.idle_clip}"
@@ -837,6 +1040,10 @@ def export_glb(root, path, specification):
             export_format="GLB",
             use_selection=True,
             export_animations=True,
+            export_animation_mode=(
+                "NLA_TRACKS" if specification.builder == "bow" else "ACTIONS"
+            ),
+            export_merge_animation="NLA_TRACK",
             export_frame_range=True,
             export_yup=True,
             export_apply=False,
@@ -989,6 +1196,8 @@ def main():
     previews = repo / "public/assets/harthmere/weapon_previews"
     icons = repo / "public/assets/harthmere/weapon_icons"
     blend_path = repo / "src/galois/data/weapons/harthmere_premium_weapons.blend"
+    if args.only:
+        blend_path = repo / "src/galois/data/weapons/harthmere_premium_bows.blend"
     output.mkdir(parents=True, exist_ok=True)
     previews.mkdir(parents=True, exist_ok=True)
     icons.mkdir(parents=True, exist_ok=True)
@@ -1039,13 +1248,25 @@ def main():
         root.location = ((index % columns) * 2.8, (index // columns) * 2.8, 0)
         collection["harthmereWeaponLabel"] = specification.label
 
+    manifest_path = output / "manifest.json"
+    if args.only and manifest_path.exists():
+        previous = json.loads(manifest_path.read_text())
+        previous_by_id = {
+            entry["id"]: entry for entry in previous.get("weapons", [])
+        }
+        previous_by_id.update({entry["id"]: entry for entry in generated})
+        generated = [
+            previous_by_id[entry.id]
+            for entry in WEAPONS
+            if entry.id in previous_by_id
+        ]
     manifest = {
-        "version": "harthmere-premium-voxel-weapons-v1",
+        "version": "harthmere-premium-voxel-weapons-v2-animated-bows",
         "blenderVersion": bpy.app.version_string,
         "count": len(generated),
         "weapons": generated,
     }
-    (output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     bpy.ops.wm.save_as_mainfile(filepath=str(blend_path))
     print(json.dumps(manifest, indent=2))
     return 0

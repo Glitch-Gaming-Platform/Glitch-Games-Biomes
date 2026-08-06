@@ -11,7 +11,7 @@ import { secondsSinceEpoch } from "@/shared/ecs/config";
 import { NpcState } from "@/shared/ecs/gen/components";
 import type * as ecs from "@/shared/ecs/gen/types";
 import type { SellToEntityEvent } from "@/shared/firehose/events";
-import { resolveItemAttributeId } from "@/shared/game/item";
+import { anItem, resolveItemAttributeId } from "@/shared/game/item";
 import { createBag } from "@/shared/game/items";
 import { itemBagToString } from "@/shared/game/items_serde";
 import { sellPrice } from "@/shared/game/sales";
@@ -27,6 +27,7 @@ import {
   scaleCreatureCombatStats,
 } from "@/shared/npc/creature_level";
 import { getAabbForEntity } from "@/shared/game/entity_sizes";
+import { diffAngle } from "@/shared/math/angles";
 import { attackIntervalSeconds } from "@/shared/game/damage";
 import { movementActionIsInvulnerable } from "@/shared/game/movement_actions";
 import {
@@ -36,10 +37,17 @@ import {
   normalizev,
   scale,
   sub,
+  yaw,
 } from "@/shared/math/linear";
+import {
+  bodyVerticalGap,
+  horizontalDistance,
+} from "@/shared/npc/behavior/combat_geometry";
+import { canAttackTarget } from "@/shared/npc/behavior/chase_attack";
 import {
   applyHarthmereNativeAttackStats,
   awardHarthmereNativeCombatXp,
+  harthmereNativeAttackCadenceDecision,
   harthmereNativeItemCombatProfile,
   harthmereNativeItemDefinitionForBiomesId,
   readHarthmereNativeCombatProgression,
@@ -56,6 +64,14 @@ import {
   readHarthmereNativeVitals,
   writeHarthmereNativeVitals,
 } from "@/shared/harthmere/harthmere_native_vitals";
+import {
+  HARTHMERE_ARROW_DAMAGE,
+  consumeHarthmereRangedResourceReceipt,
+  harthmereRangedResourceKind,
+  harthmereRangedResourceReceiptMatches,
+  isHarthmereBowWeapon,
+  readHarthmereRangedResourceReceipt,
+} from "@/shared/harthmere/harthmere_ranged_resources";
 import { any } from "@/shared/util/helpers";
 import { ok } from "assert";
 import { HARTHMERE_NATIVE_NPC_MELEE_MAX_CENTER_DISTANCE } from "@/shared/harthmere/combat_reach";
@@ -64,6 +80,7 @@ import { harthmereSharedLiveCreatureRespawnRegistry } from "@/shared/harthmere/l
 import { recordHarthmereJobsBoardNativeKill } from "@/shared/harthmere/jobs_board_native_kill_ledger";
 import {
   awardHarthmereNativeSkillXp,
+  harthmereNativeCombatSublevelMultipliers,
   harthmereNativeCombatSkillAwards,
   harthmereNativeGatheringSkillAwards,
 } from "@/shared/harthmere/harthmere_skill_progression";
@@ -189,10 +206,17 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
     dropIds: newIds(MAX_DROPS_FOR_SPEC),
     attacker:
       event.damageSource?.kind === "attack"
-        ? q.player(event.damageSource.attacker)
+        ? q.player(event.damageSource.attacker).optional()
+        : undefined,
+    npcAttacker:
+      event.damageSource?.kind === "attack"
+        ? q
+            .id(event.damageSource.attacker)
+            .with("health", "position", "size", "npc_metadata", "npc_state")
+            .optional()
         : undefined,
   }),
-  apply: ({ npc, attacker }, event, context) => {
+  apply: ({ npc, attacker, npcAttacker }, event, context) => {
     if (npc.health().hp <= 0) {
       // Health updates have no effect on dead NPCs.
       return;
@@ -234,6 +258,7 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
       ? readCreatureProgression(deserializedNpcState)
       : undefined;
     let hpDelta = event.hp;
+    let authoritativeFixedArrowDamage = false;
     let energyWeaponForResistance: HarthmereEnergyWeaponDefinition | undefined;
     let pendingEnergySpecialSoundId:
       | "photon_shield_overheat"
@@ -252,336 +277,592 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
           remainingTargets: number;
         }
       | undefined;
+    let acceptedAttackCadence:
+      ReturnType<typeof harthmereNativeAttackCadenceDecision> | undefined;
 
     if (event.damageSource?.kind === "attack") {
-      const attackerPosition = attacker?.position();
-      if (!attackerPosition) return;
-
-      if (nativeProfile) {
-        // Native Harthmere damage is computed from the attacker's ECS-selected
-        // item. Client hp, item ids, levels, and cooldowns are observations only.
-        if (!attacker?.has("player_status")) return;
-        if ((attacker.delta().health()?.hp ?? 0) <= 0) {
-          // Match the native player-damage path: death disables attacks until
-          // the authoritative respawn/health transaction revives the player.
+      if (npcAttacker) {
+        if (npcAttacker.id === npc.id || npcAttacker.health().hp <= 0) {
           return;
         }
-        if (nativeProfile.behaviorKind === "sentinel") {
-          // Protected robots/training sentinels are authored as non-attackable.
-          // Enforce that on the server as well as in cursor filtering so a
-          // forged UpdateNpcHealthEvent cannot reproduce the robot-only kill.
-          return;
-        }
-        const nowMs = Date.now();
-        const burn = deserializedNpcState.energyWeapon?.burn;
-        const helixWeapon = getHarthmereEnergyWeapon("helix_projector");
-        const authorizedBurnTick = Boolean(
-          burn &&
-          helixWeapon &&
-          burn.source === attacker.id &&
-          burn.ticksRemaining > 0 &&
-          nowMs + 50 >= burn.nextTickAtMs &&
-          event.hp < 0
-        );
-        if (authorizedBurnTick && burn && helixWeapon) {
-          hpDelta = -burn.tickDamage;
-          energyWeaponForResistance = helixWeapon;
-          pendingEnergySpecialSoundId = "helix_energy_burn";
-          pendingEnergySpecialAtMs = nowMs;
-          if (burn.ticksRemaining <= 1) {
-            if (deserializedNpcState.energyWeapon) {
-              delete deserializedNpcState.energyWeapon.burn;
-            }
-          } else {
-            burn.ticksRemaining -= 1;
-            burn.nextTickAtMs +=
-              helixWeapon.special.kind === "energy_burn"
-                ? helixWeapon.special.tickIntervalMs
-                : 900;
-          }
-        }
-
-        const selectedRef = attacker.inventory.inventory().selected;
-        const selected = attacker.inventory.get(selectedRef);
-        const definition = harthmereNativeItemDefinitionForBiomesId(
-          selected?.item.id
-        );
-        const itemProfile = harthmereNativeItemCombatProfile(selected?.item);
-        const energyWeapon = getHarthmereEnergyWeapon(
-          itemProfile?.energyWeaponId
-        );
+        const now = secondsSinceEpoch();
+        const serializedAttackerState = npcAttacker.npcState().data;
+        const attackerState = serializedAttackerState.length
+          ? deserializeNpcCustomState(serializedAttackerState)
+          : deserializeNpcCustomState(undefined);
+        const chaseState = attackerState.chaseAttack;
         if (
-          !authorizedBurnTick &&
-          definition &&
-          (!itemProfile || itemProfile.damagePerHit <= 0)
-        ) {
-          log.debug("Rejected Harthmere attack with non-combat selected item", {
-            attackerId: attacker.id,
-            targetId: npc.id,
-            itemId: selected?.item.id,
-          });
-          return;
-        }
-
-        const progression = readHarthmereNativeCombatProgression(
-          attacker.delta().triggerState()
-        );
-        const authorization = readHarthmereEnergySecondaryAuthorization(
-          attacker.delta().triggerState()
-        );
-        const targetPosition = npc.position().v;
-        const secondaryDamage =
-          !authorizedBurnTick &&
-          energyWeapon &&
-          authorization?.weaponId === energyWeapon.id &&
-          authorization.primaryTargetId !== npc.id &&
-          nowMs - authorization.startedAtMs >= 0 &&
-          nowMs - authorization.startedAtMs <=
-            HARTHMERE_ENERGY_SECONDARY_WINDOW_MS &&
-          !harthmereEnergySecondaryAlreadyHit(
-            attacker.delta().triggerState(),
-            npc.id,
-            authorization.startedAtMs
-          )
-            ? energySecondaryDamage({
-                weapon: energyWeapon,
-                mode: authorization.mode,
-                attackerPosition,
-                targetPosition,
-                origin: authorization.origin,
-                primaryKilled: authorization.primaryKilled,
-              })
-            : undefined;
-        const authorizedSecondary =
-          secondaryDamage !== undefined &&
-          authorization !== undefined &&
-          consumeHarthmereEnergySecondaryTarget(
-            attacker.delta().mutableTriggerState(),
-            npc.id,
-            authorization.startedAtMs
-          );
-
-        if (authorizedSecondary && energyWeapon && secondaryDamage) {
-          hpDelta = -secondaryDamage;
-          energyWeaponForResistance = energyWeapon;
-          if (
-            authorization?.mode === "singularity" &&
-            energyWeapon.special.kind === "singularity"
-          ) {
-            const pull = normalizev(sub(authorization.origin, targetPosition));
-            npc.setRigidBody({
-              velocity: add(
-                npc.rigidBody().velocity,
-                scale(energyWeapon.special.pullStrength, pull)
-              ),
-            });
-          }
-        }
-
-        if (
-          !authorizedBurnTick &&
-          !authorizedSecondary &&
-          progression.level < (itemProfile?.levelRequirement ?? 1)
-        ) {
-          log.debug("Rejected under-level Harthmere weapon use", {
-            attackerId: attacker.id,
-            targetId: npc.id,
-            level: progression.level,
-            requiredLevel: itemProfile?.levelRequirement,
-          });
-          return;
-        }
-        const vitals = readHarthmereNativeVitals(
-          attacker.delta().triggerState()
-        );
-        if (
-          !authorizedBurnTick &&
-          !authorizedSecondary &&
-          (itemProfile?.manaCost ?? 0) > vitals.mana
-        ) {
-          log.debug("Rejected Harthmere spell with insufficient native mana", {
-            attackerId: attacker.id,
-            targetId: npc.id,
-            mana: vitals.mana,
-            requiredMana: itemProfile?.manaCost,
-          });
-          return;
-        }
-        const intervalMs = Math.round(
-          1000 *
-            (itemProfile?.intervalSecs ?? attackIntervalSeconds(selected?.item))
-        );
-        if (
-          !authorizedBurnTick &&
-          !authorizedSecondary &&
-          nowMs - progression.lastAttackMs < intervalMs
+          chaseState?.attackTarget !== npc.id ||
+          event.attackTime === undefined
         ) {
           return;
         }
 
-        if (!authorizedBurnTick && !authorizedSecondary) {
-          const reach = itemProfile?.reach ?? 3.5;
+        let authorizedDamage: number | undefined;
+        let receiptKey: string | undefined;
+        const meleeReceipt = chaseState.meleeAttack;
+        if (
+          meleeReceipt &&
+          meleeReceipt.targetId === npc.id &&
+          Math.abs(meleeReceipt.attackTime - event.attackTime) <= 0.001
+        ) {
           const targetAabb = getAabbForEntity(npc.asReadonlyEntity());
-          const distanceToTarget = targetAabb
-            ? Math.sqrt(distSqToAABB(attackerPosition, targetAabb))
-            : Number.POSITIVE_INFINITY;
-          if (!targetAabb || distanceToTarget > reach) {
-            log.debug("Rejected out-of-range Harthmere attack", {
-              attackerId: attacker.id,
-              targetId: npc.id,
-              reach,
-            });
+          const targetPosition = npc.position().v;
+          const targetHeight = targetAabb
+            ? targetAabb[1][1] - targetAabb[0][1]
+            : npc.size().v[1];
+          const direction = yaw(sub(targetPosition, meleeReceipt.originPoint));
+          const validReceipt = Boolean(
+            targetAabb &&
+            meleeReceipt.impactPoint &&
+            meleeReceipt.result === "hit" &&
+            meleeReceipt.lineOfSightAtImpact === true &&
+            meleeReceipt.resolvedAt !== undefined &&
+            meleeReceipt.resolvedAt + 0.1 >= meleeReceipt.impactTime &&
+            meleeReceipt.resolvedAt <= meleeReceipt.expiresAt + 0.1 &&
+            now + 0.1 >= meleeReceipt.impactTime &&
+            now - meleeReceipt.resolvedAt <= 2 &&
+            meleeReceipt.attackDamage > 0 &&
+            distSqToAABB(meleeReceipt.impactPoint, targetAabb) <= 0.75 * 0.75 &&
+            canAttackTarget({
+              horizontalDistance: horizontalDistance(
+                meleeReceipt.originPoint,
+                targetPosition
+              ),
+              verticalGap: bodyVerticalGap({
+                attackerFeetY: meleeReceipt.originPoint[1],
+                attackerHeight: npcAttacker.size().v[1],
+                targetFeetY: targetAabb[0][1],
+                targetHeight,
+              }),
+              targetOrientationDiff: diffAngle(direction, meleeReceipt.castYaw),
+              attackRadius: meleeReceipt.attackDistance,
+              attackFovDeg: meleeReceipt.attackFovDeg,
+              verticalReach: meleeReceipt.verticalReach,
+              attackerPosition: meleeReceipt.originPoint,
+              attackerSize: npcAttacker.size().v,
+              targetPosition,
+            })
+          );
+          if (!validReceipt) {
+            return;
+          }
+          authorizedDamage = meleeReceipt.attackDamage;
+          receiptKey = `npc-melee:${npcAttacker.id}:${meleeReceipt.attackTime}`;
+        } else {
+          const rangedState = chaseState.rangedAttack;
+          const releaseTime = rangedState
+            ? (rangedState.releaseTime ??
+              rangedState.castTime + (rangedState.chargeTimeSecs ?? 0))
+            : undefined;
+          const attackerProfile = harthmereNativeNpcCombatProfileForEntity({
+            entityId: npcAttacker.id,
+            typeId: npcAttacker.npcMetadata().type_id,
+            displayName: npcAttacker.label()?.text,
+            maxHp: npcAttacker.health().maxHp,
+          });
+          const rangedAttack = attackerProfile?.rangedAttacks?.find(
+            ({ abilityId }) => abilityId === rangedState?.abilityId
+          );
+          const recordedHit = Boolean(
+            rangedState?.hitTargetIds?.includes(npc.id) ??
+            rangedState?.targetId === npc.id
+          );
+          if (
+            !attackerProfile ||
+            !rangedState ||
+            !rangedAttack ||
+            releaseTime === undefined ||
+            Math.abs(releaseTime - event.attackTime) > 0.001 ||
+            rangedState.result !== "hit" ||
+            !recordedHit ||
+            rangedState.resolvedAt === undefined ||
+            now + 0.1 < rangedState.impactTime ||
+            now - rangedState.resolvedAt > 3
+          ) {
+            return;
+          }
+          authorizedDamage = scaleCreatureCombatStats(
+            {
+              maxHp: attackerProfile.maxHp,
+              attackDamage: rangedAttack.attackDamage,
+              attackIntervalSecs: attackerProfile.attackIntervalSecs,
+              walkSpeed: attackerProfile.walkSpeed,
+              runSpeed: attackerProfile.runSpeed,
+              killXp: attackerProfile.killXp,
+            },
+            readCreatureProgression(attackerState).level
+          ).attackDamage;
+          receiptKey = `npc-ranged:${npcAttacker.id}:${rangedState.abilityId}:${releaseTime}`;
+        }
+
+        if (!receiptKey || !authorizedDamage || authorizedDamage <= 0) {
+          return;
+        }
+        deserializedNpcState.npcAttackReceipts ??= {};
+        for (const [key, acceptedAt] of Object.entries(
+          deserializedNpcState.npcAttackReceipts
+        )) {
+          if (now - acceptedAt > 60) {
+            delete deserializedNpcState.npcAttackReceipts[key];
+          }
+        }
+        if (deserializedNpcState.npcAttackReceipts[receiptKey] !== undefined) {
+          return;
+        }
+        deserializedNpcState.npcAttackReceipts[receiptKey] = now;
+        npc.setNpcState(
+          NpcState.create({
+            data: serializeNpcCustomState(deserializedNpcState),
+          })
+        );
+        hpDelta = -Math.max(1, Math.round(authorizedDamage));
+      } else {
+        const attackerPosition = attacker?.position();
+        if (!attackerPosition) return;
+
+        if (nativeProfile) {
+          // Native Harthmere damage is computed from the attacker's ECS-selected
+          // item. Client hp, item ids, levels, and cooldowns are observations only.
+          if (!attacker?.has("player_status")) return;
+          if ((attacker.delta().health()?.hp ?? 0) <= 0) {
+            // Match the native player-damage path: death disables attacks until
+            // the authoritative respawn/health transaction revives the player.
+            return;
+          }
+          if (nativeProfile.behaviorKind === "sentinel") {
+            // Protected robots/training sentinels are authored as non-attackable.
+            // Enforce that on the server as well as in cursor filtering so a
+            // forged UpdateNpcHealthEvent cannot reproduce the robot-only kill.
+            return;
+          }
+          const nowMs = Date.now();
+          const burn = deserializedNpcState.energyWeapon?.burn;
+          const helixWeapon = getHarthmereEnergyWeapon("helix_projector");
+          const authorizedBurnTick = Boolean(
+            burn &&
+            helixWeapon &&
+            burn.source === attacker.id &&
+            burn.ticksRemaining > 0 &&
+            nowMs + 50 >= burn.nextTickAtMs &&
+            event.hp < 0
+          );
+          if (authorizedBurnTick && burn && helixWeapon) {
+            hpDelta = -burn.tickDamage;
+            energyWeaponForResistance = helixWeapon;
+            pendingEnergySpecialSoundId = "helix_energy_burn";
+            pendingEnergySpecialAtMs = nowMs;
+            if (burn.ticksRemaining <= 1) {
+              if (deserializedNpcState.energyWeapon) {
+                delete deserializedNpcState.energyWeapon.burn;
+              }
+            } else {
+              burn.ticksRemaining -= 1;
+              burn.nextTickAtMs +=
+                helixWeapon.special.kind === "energy_burn"
+                  ? helixWeapon.special.tickIntervalMs
+                  : 900;
+            }
+          }
+
+          const selectedRef = attacker.inventory.inventory().selected;
+          const selected = attacker.inventory.get(selectedRef);
+          const rangedResourceReceipt = readHarthmereRangedResourceReceipt(
+            attacker.delta().triggerState()
+          );
+          const receiptItem = rangedResourceReceipt.itemId
+            ? anItem(rangedResourceReceipt.itemId)
+            : undefined;
+          const paidRangedResourceAttack = Boolean(
+            receiptItem &&
+            harthmereRangedResourceReceiptMatches(
+              attacker.delta().triggerState(),
+              {
+                attackTime: event.attackTime,
+                itemId: receiptItem.id,
+                targetId: npc.id,
+                nowMs,
+              }
+            )
+          );
+          const attackItem = paidRangedResourceAttack
+            ? receiptItem
+            : selected?.item;
+          authoritativeFixedArrowDamage = Boolean(
+            paidRangedResourceAttack &&
+            rangedResourceReceipt.kind === "arrow" &&
+            isHarthmereBowWeapon(attackItem)
+          );
+          const definition = harthmereNativeItemDefinitionForBiomesId(
+            attackItem?.id
+          );
+          const itemProfile = harthmereNativeItemCombatProfile(attackItem);
+          if (
+            harthmereRangedResourceKind(attackItem) &&
+            !paidRangedResourceAttack
+          ) {
+            return;
+          }
+          if (paidRangedResourceAttack) {
+            consumeHarthmereRangedResourceReceipt(
+              attacker.delta().mutableTriggerState()
+            );
+          }
+          const energyWeapon = getHarthmereEnergyWeapon(
+            itemProfile?.energyWeaponId
+          );
+          if (
+            !authorizedBurnTick &&
+            definition &&
+            (!itemProfile || itemProfile.damagePerHit <= 0)
+          ) {
+            log.debug(
+              "Rejected Harthmere attack with non-combat selected item",
+              {
+                attackerId: attacker.id,
+                targetId: npc.id,
+                itemId: attackItem?.id,
+              }
+            );
             return;
           }
 
-          let baseDamage = energyWeapon
-            ? harthmereEnergyWeaponDamageAtDistance(
-                energyWeapon,
-                distanceToTarget
-              )
-            : (itemProfile?.damagePerHit ??
-              Math.max(
-                1,
-                Math.round(((selected?.item.dps ?? 16) * intervalMs) / 1000)
-              ));
-          const overheat = deserializedNpcState.energyWeapon?.shieldOverheat;
-          const photonSidearm = getHarthmereEnergyWeapon("photon_sidearm");
-          if (
+          const progression = readHarthmereNativeCombatProgression(
+            attacker.delta().triggerState()
+          );
+          const authorization = readHarthmereEnergySecondaryAuthorization(
+            attacker.delta().triggerState()
+          );
+          const targetPosition = npc.position().v;
+          const secondaryDamage =
+            !authorizedBurnTick &&
             energyWeapon &&
-            overheat &&
-            overheat.untilMs > nowMs &&
-            photonSidearm?.special.kind === "shield_overheat"
-          ) {
-            baseDamage = Math.max(
-              1,
-              Math.round(
-                baseDamage * photonSidearm.special.followupDamageMultiplier
-              )
-            );
-          }
-          if (
-            energyWeapon?.special.kind === "tenth_shot_overcharge" &&
-            advanceHarthmerePulseCarbineShotCount(
-              attacker.delta().mutableTriggerState()
-            ) %
-              energyWeapon.special.shotInterval ===
-              0
-          ) {
-            pendingEnergySpecialSoundId = "pulse_carbine_overcharge";
-            pendingEnergySpecialAtMs = nowMs;
-            baseDamage = Math.max(
-              1,
-              Math.round(baseDamage * energyWeapon.special.damageMultiplier)
-            );
-          }
-
-          const attackerStats = harthmereNativeLevelStats(progression.level);
-          const targetStats = harthmereNativeLevelStats(nativeProfile.level);
-          const statDamage = applyHarthmereNativeAttackStats({
-            baseDamage,
-            kind: itemProfile?.kind ?? "unarmed",
-            stats: attackerStats,
-            targetEvasion: targetStats.evasion,
-            criticalSeed: [
-              attacker.id,
+            authorization?.weaponId === energyWeapon.id &&
+            authorization.primaryTargetId !== npc.id &&
+            nowMs - authorization.startedAtMs >= 0 &&
+            nowMs - authorization.startedAtMs <=
+              HARTHMERE_ENERGY_SECONDARY_WINDOW_MS &&
+            !harthmereEnergySecondaryAlreadyHit(
+              attacker.delta().triggerState(),
               npc.id,
-              progression.lastAttackMs,
-              selected?.item.id,
-            ],
-          });
-          const levelFactor = Math.max(
-            0.65,
-            Math.min(1.75, 1 + (progression.level - nativeProfile.level) * 0.04)
-          );
-          hpDelta = -Math.max(1, Math.round(statDamage.damage * levelFactor));
-          energyWeaponForResistance = energyWeapon;
+              authorization.startedAtMs
+            )
+              ? energySecondaryDamage({
+                  weapon: energyWeapon,
+                  mode: authorization.mode,
+                  attackerPosition,
+                  targetPosition,
+                  origin: authorization.origin,
+                  primaryKilled: authorization.primaryKilled,
+                })
+              : undefined;
+          const authorizedSecondary =
+            secondaryDamage !== undefined &&
+            authorization !== undefined &&
+            consumeHarthmereEnergySecondaryTarget(
+              attacker.delta().mutableTriggerState(),
+              npc.id,
+              authorization.startedAtMs
+            );
 
-          if (
-            energyWeapon?.special.kind === "shield_overheat" &&
-            statDamage.critical
-          ) {
-            deserializedNpcState.energyWeapon ??= {};
-            deserializedNpcState.energyWeapon.shieldOverheat = {
-              source: attacker.id,
-              untilMs: nowMs + energyWeapon.special.durationMs,
-            };
-            pendingEnergySpecialSoundId = "photon_shield_overheat";
-            pendingEnergySpecialAtMs = nowMs;
-          } else if (energyWeapon?.special.kind === "energy_burn") {
-            deserializedNpcState.energyWeapon ??= {};
-            deserializedNpcState.energyWeapon.burn = {
-              source: attacker.id,
-              weaponId: "helix_projector",
-              tickDamage: energyWeapon.special.tickDamage,
-              ticksRemaining: energyWeapon.special.ticks,
-              nextTickAtMs: nowMs + energyWeapon.special.tickIntervalMs,
-            };
-            pendingEnergySpecialSoundId = "helix_energy_burn";
-            pendingEnergySpecialAtMs = nowMs;
-            pendingEnergyAuthorization = {
-              mode: "penetration",
-              weaponId: energyWeapon.id,
-              startedAtMs: nowMs,
-              origin: [targetPosition[0], targetPosition[1], targetPosition[2]],
-              remainingTargets: energyWeapon.special.penetrationTargets,
-            };
-          } else if (energyWeapon?.special.kind === "nova") {
-            pendingEnergyAuthorization = {
-              mode: "nova",
-              weaponId: energyWeapon.id,
-              startedAtMs: nowMs,
-              origin: [targetPosition[0], targetPosition[1], targetPosition[2]],
-              remainingTargets: HARTHMERE_ENERGY_MAX_SECONDARY_TARGETS,
-            };
-          } else if (energyWeapon?.special.kind === "singularity") {
-            pendingEnergySpecialSoundId = "singularity_gravity_collapse";
-            pendingEnergySpecialAtMs = nowMs;
-            pendingEnergyAuthorization = {
-              mode: "singularity",
-              weaponId: energyWeapon.id,
-              startedAtMs: nowMs,
-              origin: [targetPosition[0], targetPosition[1], targetPosition[2]],
-              remainingTargets: HARTHMERE_ENERGY_MAX_SECONDARY_TARGETS,
-            };
+          if (authorizedSecondary && energyWeapon && secondaryDamage) {
+            hpDelta = -secondaryDamage;
+            energyWeaponForResistance = energyWeapon;
+            if (
+              authorization?.mode === "singularity" &&
+              energyWeapon.special.kind === "singularity"
+            ) {
+              const pull = normalizev(
+                sub(authorization.origin, targetPosition)
+              );
+              npc.setRigidBody({
+                velocity: add(
+                  npc.rigidBody().velocity,
+                  scale(energyWeapon.special.pullStrength, pull)
+                ),
+              });
+            }
           }
 
-          writeHarthmereNativeCombatProgression(
-            attacker.delta().mutableTriggerState(),
-            { lastAttackMs: nowMs }
-          );
-          awardHarthmereNativeSkillXp(
-            attacker.delta().mutableTriggerState(),
-            harthmereNativeCombatSkillAwards({
+          if (
+            !authorizedBurnTick &&
+            !authorizedSecondary &&
+            progression.level < (itemProfile?.levelRequirement ?? 1)
+          ) {
+            log.debug("Rejected under-level Harthmere weapon use", {
+              attackerId: attacker.id,
+              targetId: npc.id,
+              level: progression.level,
+              requiredLevel: itemProfile?.levelRequirement,
+            });
+            return;
+          }
+          const sublevel = harthmereNativeCombatSublevelMultipliers(
+            attacker.delta().triggerState(),
+            {
               itemId: itemProfile?.itemId,
               kind: itemProfile?.kind ?? "unarmed",
-              damage: -hpDelta,
-            })
+              targetDescriptor: `${nativeProfile.key} ${nativeProfile.displayName}`,
+            }
           );
-          const manaCost = itemProfile?.manaCost ?? 0;
-          if (manaCost > 0) {
-            writeHarthmereNativeVitals(attacker.delta().mutableTriggerState(), {
-              mana: vitals.mana - manaCost,
-            });
-          }
-          const durabilityCostMs = itemProfile?.durabilityCostMs ?? 0;
-          if (selected && durabilityCostMs > 0) {
-            decrementItemDurability(
-              attacker.inventory,
-              selectedRef,
-              durabilityCostMs
+          const effectiveManaCost = Math.max(
+            0,
+            Math.round((itemProfile?.manaCost ?? 0) * sublevel.efficiency)
+          );
+          const vitals = readHarthmereNativeVitals(
+            attacker.delta().triggerState()
+          );
+          if (
+            !authorizedBurnTick &&
+            !authorizedSecondary &&
+            !paidRangedResourceAttack &&
+            effectiveManaCost > vitals.mana
+          ) {
+            log.debug(
+              "Rejected Harthmere spell with insufficient native mana",
+              {
+                attackerId: attacker.id,
+                targetId: npc.id,
+                mana: vitals.mana,
+                requiredMana: effectiveManaCost,
+              }
             );
+            return;
           }
-        }
-      } else {
-        const npcPosition = npc.staleOk().position().v;
-        const dx = attackerPosition[0] - npcPosition[0];
-        const dy = attackerPosition[1] - npcPosition[1];
-        const dz = attackerPosition[2] - npcPosition[2];
-        if (
-          dx * dx + dy * dy + dz * dz >
-          HARTHMERE_NATIVE_NPC_MELEE_MAX_CENTER_DISTANCE ** 2
-        ) {
-          return;
+          const intervalMs = Math.round(
+            1000 *
+              (itemProfile?.intervalSecs ?? attackIntervalSeconds(attackItem))
+          );
+          if (!authorizedBurnTick && !authorizedSecondary) {
+            acceptedAttackCadence = paidRangedResourceAttack
+              ? {
+                  allowed: true,
+                  timingClass: undefined,
+                  damageMultiplier: 1,
+                  progression: {
+                    lastAttackMs: rangedResourceReceipt.authorizedAtMs,
+                  },
+                }
+              : harthmereNativeAttackCadenceDecision({
+                  progression,
+                  nowMs,
+                  itemIntervalMs: intervalMs,
+                  itemKind: itemProfile?.kind ?? "unarmed",
+                  requestedTimingClass: event.attackTimingClass,
+                });
+            if (!acceptedAttackCadence.allowed) {
+              return;
+            }
+          }
+
+          if (!authorizedBurnTick && !authorizedSecondary) {
+            const reach = itemProfile?.reach ?? 3.5;
+            const targetAabb = getAabbForEntity(npc.asReadonlyEntity());
+            const distanceToTarget = targetAabb
+              ? Math.sqrt(distSqToAABB(attackerPosition, targetAabb))
+              : Number.POSITIVE_INFINITY;
+            if (!targetAabb || distanceToTarget > reach) {
+              log.debug("Rejected out-of-range Harthmere attack", {
+                attackerId: attacker.id,
+                targetId: npc.id,
+                reach,
+              });
+              return;
+            }
+
+            let baseDamage = energyWeapon
+              ? harthmereEnergyWeaponDamageAtDistance(
+                  energyWeapon,
+                  distanceToTarget
+                )
+              : (itemProfile?.damagePerHit ??
+                Math.max(
+                  1,
+                  Math.round(((attackItem?.dps ?? 16) * intervalMs) / 1000)
+                ));
+            const overheat = deserializedNpcState.energyWeapon?.shieldOverheat;
+            const photonSidearm = getHarthmereEnergyWeapon("photon_sidearm");
+            if (
+              energyWeapon &&
+              overheat &&
+              overheat.untilMs > nowMs &&
+              photonSidearm?.special.kind === "shield_overheat"
+            ) {
+              baseDamage = Math.max(
+                1,
+                Math.round(
+                  baseDamage * photonSidearm.special.followupDamageMultiplier
+                )
+              );
+            }
+            if (
+              energyWeapon?.special.kind === "tenth_shot_overcharge" &&
+              advanceHarthmerePulseCarbineShotCount(
+                attacker.delta().mutableTriggerState()
+              ) %
+                energyWeapon.special.shotInterval ===
+                0
+            ) {
+              pendingEnergySpecialSoundId = "pulse_carbine_overcharge";
+              pendingEnergySpecialAtMs = nowMs;
+              baseDamage = Math.max(
+                1,
+                Math.round(baseDamage * energyWeapon.special.damageMultiplier)
+              );
+            }
+
+            const attackerStats = harthmereNativeLevelStats(progression.level);
+            const targetStats = harthmereNativeLevelStats(nativeProfile.level);
+            const statDamage = authoritativeFixedArrowDamage
+              ? { damage: HARTHMERE_ARROW_DAMAGE, critical: false }
+              : applyHarthmereNativeAttackStats({
+                  baseDamage,
+                  kind: itemProfile?.kind ?? "unarmed",
+                  stats: attackerStats,
+                  targetEvasion: targetStats.evasion,
+                  criticalSeed: [
+                    attacker.id,
+                    npc.id,
+                    progression.lastAttackMs,
+                    attackItem?.id,
+                  ],
+                });
+            const levelFactor = Math.max(
+              0.65,
+              Math.min(
+                1.75,
+                1 + (progression.level - nativeProfile.level) * 0.04
+              )
+            );
+            hpDelta = authoritativeFixedArrowDamage
+              ? -HARTHMERE_ARROW_DAMAGE
+              : -Math.max(
+                  1,
+                  Math.round(
+                    statDamage.damage *
+                      sublevel.potency *
+                      levelFactor *
+                      (acceptedAttackCadence?.damageMultiplier ?? 1)
+                  )
+                );
+            energyWeaponForResistance = energyWeapon;
+
+            if (
+              energyWeapon?.special.kind === "shield_overheat" &&
+              statDamage.critical
+            ) {
+              deserializedNpcState.energyWeapon ??= {};
+              deserializedNpcState.energyWeapon.shieldOverheat = {
+                source: attacker.id,
+                untilMs:
+                  nowMs +
+                  Math.round(
+                    energyWeapon.special.durationMs * sublevel.statusPotency
+                  ),
+              };
+              pendingEnergySpecialSoundId = "photon_shield_overheat";
+              pendingEnergySpecialAtMs = nowMs;
+            } else if (energyWeapon?.special.kind === "energy_burn") {
+              deserializedNpcState.energyWeapon ??= {};
+              deserializedNpcState.energyWeapon.burn = {
+                source: attacker.id,
+                weaponId: "helix_projector",
+                tickDamage: Math.max(
+                  1,
+                  Math.round(
+                    energyWeapon.special.tickDamage * sublevel.statusPotency
+                  )
+                ),
+                ticksRemaining: energyWeapon.special.ticks,
+                nextTickAtMs: nowMs + energyWeapon.special.tickIntervalMs,
+              };
+              pendingEnergySpecialSoundId = "helix_energy_burn";
+              pendingEnergySpecialAtMs = nowMs;
+              pendingEnergyAuthorization = {
+                mode: "penetration",
+                weaponId: energyWeapon.id,
+                startedAtMs: nowMs,
+                origin: [
+                  targetPosition[0],
+                  targetPosition[1],
+                  targetPosition[2],
+                ],
+                remainingTargets: energyWeapon.special.penetrationTargets,
+              };
+            } else if (energyWeapon?.special.kind === "nova") {
+              pendingEnergyAuthorization = {
+                mode: "nova",
+                weaponId: energyWeapon.id,
+                startedAtMs: nowMs,
+                origin: [
+                  targetPosition[0],
+                  targetPosition[1],
+                  targetPosition[2],
+                ],
+                remainingTargets: HARTHMERE_ENERGY_MAX_SECONDARY_TARGETS,
+              };
+            } else if (energyWeapon?.special.kind === "singularity") {
+              pendingEnergySpecialSoundId = "singularity_gravity_collapse";
+              pendingEnergySpecialAtMs = nowMs;
+              pendingEnergyAuthorization = {
+                mode: "singularity",
+                weaponId: energyWeapon.id,
+                startedAtMs: nowMs,
+                origin: [
+                  targetPosition[0],
+                  targetPosition[1],
+                  targetPosition[2],
+                ],
+                remainingTargets: HARTHMERE_ENERGY_MAX_SECONDARY_TARGETS,
+              };
+            }
+
+            writeHarthmereNativeCombatProgression(
+              attacker.delta().mutableTriggerState(),
+              acceptedAttackCadence?.progression ?? { lastAttackMs: nowMs }
+            );
+            awardHarthmereNativeSkillXp(
+              attacker.delta().mutableTriggerState(),
+              harthmereNativeCombatSkillAwards({
+                itemId: itemProfile?.itemId,
+                kind: itemProfile?.kind ?? "unarmed",
+                damage: -hpDelta,
+              })
+            );
+            const manaCost = effectiveManaCost;
+            if (!paidRangedResourceAttack && manaCost > 0) {
+              writeHarthmereNativeVitals(
+                attacker.delta().mutableTriggerState(),
+                {
+                  mana: vitals.mana - manaCost,
+                }
+              );
+            }
+            const durabilityCostMs = Math.max(
+              0,
+              Math.round(
+                (itemProfile?.durabilityCostMs ?? 0) * sublevel.efficiency
+              )
+            );
+            if (!paidRangedResourceAttack && selected && durabilityCostMs > 0) {
+              decrementItemDurability(
+                attacker.inventory,
+                selectedRef,
+                durabilityCostMs
+              );
+            }
+          }
+        } else {
+          const npcPosition = npc.staleOk().position().v;
+          const dx = attackerPosition[0] - npcPosition[0];
+          const dy = attackerPosition[1] - npcPosition[1];
+          const dz = attackerPosition[2] - npcPosition[2];
+          if (
+            dx * dx + dy * dy + dz * dz >
+            HARTHMERE_NATIVE_NPC_MELEE_MAX_CENTER_DISTANCE ** 2
+          ) {
+            return;
+          }
         }
       }
     }
@@ -589,6 +870,7 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
     if (
       nativeProfile &&
       creatureProgression &&
+      !authoritativeFixedArrowDamage &&
       event.damageSource?.kind === "attack" &&
       hpDelta < 0
     ) {
@@ -717,11 +999,13 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
         // level-owned value too (resource ceilings and backpack slots).
         syncHarthmereNativeLevelStats(attacker.delta());
       }
-      context.publish({
-        kind: "npcKilled",
-        entityId: event.damageSource.attacker,
-        npcTypeId,
-      });
+      if (attacker?.has("player_status")) {
+        context.publish({
+          kind: "npcKilled",
+          entityId: event.damageSource.attacker,
+          npcTypeId,
+        });
+      }
     }
 
     const npcSize = npc.size().v;

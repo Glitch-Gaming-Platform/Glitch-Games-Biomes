@@ -12,16 +12,33 @@ import assert from "assert";
 
 describe("Harthmere deliberate combat pacing", () => {
   it("gives every player attack a readable windup and punishable recovery", () => {
+    const minimumWindupMs = {
+      basic: 120,
+      heavy: 200,
+      ranged: 250,
+      magic: 400,
+    } as const;
+    const minimumRecoveryMs = {
+      basic: 400,
+      heavy: 600,
+      ranged: 600,
+      magic: 700,
+    } as const;
     for (const [kind, timing] of Object.entries(
       HARTHMERE_PLAYER_ATTACK_TIMINGS
     )) {
-      assert.ok(timing.windupMs >= 250, `${kind} windup is too short`);
+      const timingKind = kind as keyof typeof HARTHMERE_PLAYER_ATTACK_TIMINGS;
+      assert.ok(
+        timing.windupMs >= minimumWindupMs[timingKind],
+        `${kind} windup is too short`
+      );
       assert.ok(timing.impactMs > timing.windupMs, `${kind} has no active arc`);
-      assert.ok(timing.recoveryMs >= 600, `${kind} recovery is too short`);
+      assert.ok(
+        timing.recoveryMs >= minimumRecoveryMs[timingKind],
+        `${kind} recovery is too short`
+      );
       assert.equal(
-        harthmerePlayerAttackCommitmentMs(
-          kind as keyof typeof HARTHMERE_PLAYER_ATTACK_TIMINGS
-        ),
+        harthmerePlayerAttackCommitmentMs(timingKind),
         timing.impactMs + timing.recoveryMs
       );
       assert.equal(

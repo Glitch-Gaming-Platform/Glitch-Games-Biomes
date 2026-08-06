@@ -1,5 +1,5 @@
 {
-  "version": "harthmere-premium-voxel-weapons-v1",
+  "version": "harthmere-premium-voxel-weapons-v2-animated-bows",
   "blenderVersion": "5.2.0 LTS",
   "count": 47,
   "weapons": [
@@ -438,20 +438,20 @@
       "assetUrl": "/assets/harthmere/glb/weapons/hunter_bow.glb",
       "previewUrl": "/assets/harthmere/weapon_previews/hunter_bow.png",
       "inventoryIconUrl": "/assets/harthmere/weapon_icons/hunter_bow.png",
-      "triangleCount": 4020,
+      "triangleCount": 4028,
       "bounds": {
         "min": [
-          -0.4023907780647278,
-          -0.1293182373046875,
-          -0.6467238664627075
+          -0.39417019486427307,
+          -0.11403118818998337,
+          -0.7339764833450317
         ],
         "max": [
-          0.40297359228134155,
-          0.12591256201267242,
-          0.7678385376930237
+          0.11974410712718964,
+          0.3567327857017517,
+          0.7339763641357422
         ]
       },
-      "bytes": 66124
+      "bytes": 160028
     },
     {
       "id": "golden_bow",
@@ -463,20 +463,20 @@
       "assetUrl": "/assets/harthmere/glb/weapons/golden_bow.glb",
       "previewUrl": "/assets/harthmere/weapon_previews/golden_bow.png",
       "inventoryIconUrl": "/assets/harthmere/weapon_icons/golden_bow.png",
-      "triangleCount": 4020,
+      "triangleCount": 4028,
       "bounds": {
         "min": [
-          -0.4023907780647278,
-          -0.1293182373046875,
-          -0.6467238664627075
+          -0.39417019486427307,
+          -0.11403118818998337,
+          -0.7339764833450317
         ],
         "max": [
-          0.40297359228134155,
-          0.12591256201267242,
-          0.7678385376930237
+          0.11974410712718964,
+          0.3567327857017517,
+          0.7339763641357422
         ]
       },
-      "bytes": 65684
+      "bytes": 160224
     },
     {
       "id": "strung_bow",
@@ -488,20 +488,20 @@
       "assetUrl": "/assets/harthmere/glb/weapons/strung_bow.glb",
       "previewUrl": "/assets/harthmere/weapon_previews/strung_bow.png",
       "inventoryIconUrl": "/assets/harthmere/weapon_icons/strung_bow.png",
-      "triangleCount": 4020,
+      "triangleCount": 4028,
       "bounds": {
         "min": [
-          -0.4023907780647278,
-          -0.1293182373046875,
-          -0.6451955437660217
+          -0.39417019486427307,
+          -0.11403118818998337,
+          -0.7339764833450317
         ],
         "max": [
-          0.40297359228134155,
-          0.12591256201267242,
-          0.7664768695831299
+          0.11974410712718964,
+          0.3567327857017517,
+          0.7339763641357422
         ]
       },
-      "bytes": 66460
+      "bytes": 160144
     },
     {
       "id": "one_handed_crossbow",

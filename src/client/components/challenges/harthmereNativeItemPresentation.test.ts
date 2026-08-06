@@ -20,6 +20,8 @@ import { getHarthmereItemDefinition } from "@/shared/harthmere/mmo_inventory_aut
 import {
   ensureHarthmereNativeItemCatalogue,
   harthmereBiscuitForItemDefinition,
+  harthmereNativePresentationSourceIdForTest,
+  mergeHarthmereNativePresentationSource,
 } from "@/shared/harthmere/harthmere_native_bikkie_items";
 import type { Biscuit } from "@/shared/bikkie/schema/attributes";
 import {
@@ -30,6 +32,8 @@ import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
 import { BikkieRuntime } from "@/shared/bikkie/active";
 import { NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID } from "@/shared/harthmere/native_road_ahead_contract";
 import { harthmereOriginalInventoryIconUrl } from "@/shared/harthmere/original_inventory_icons";
+import { CH1_ITEMS } from "@/shared/harthmere/ch1_items";
+import { BikkieIds } from "@/shared/bikkie/ids";
 
 describe("Harthmere native item presentation", () => {
   before(() => {
@@ -239,6 +243,35 @@ describe("Harthmere native item presentation", () => {
     );
     assert.equal(biscuit.icon, undefined);
     assert.equal(biscuit.id, harthmereNativeBiomesIdForItemId("antidote"));
+  });
+
+  it("gives every Chapter 1 plot item a held and dropped presentation donor", () => {
+    for (const item of CH1_ITEMS) {
+      assert.ok(
+        harthmereNativePresentationSourceIdForTest(item.id),
+        `${item.id}: no world presentation donor`
+      );
+    }
+  });
+
+  it("repairs an existing exact item overlay with missing donor mesh attributes", () => {
+    const merged = mergeHarthmereNativePresentationSource(
+      {
+        id: harthmereNativeBiomesIdForItemId("item_augur9_core_cell")!,
+        name: "harthmere_item_augur9_core_cell",
+        displayName: "Core Cell",
+        galoisIcon: "/exact-core-cell-icon.png",
+      } as Biscuit,
+      {
+        id: BikkieIds.powerCell,
+        name: "power_cell",
+        galoisPath: "items/power_cell",
+        meshGaloisPath: "items/power_cell_mesh",
+      } as Biscuit
+    );
+    assert.equal(merged?.galoisPath, "items/power_cell");
+    assert.equal(merged?.meshGaloisPath, "items/power_cell_mesh");
+    assert.equal(merged?.galoisIcon, "/exact-core-cell-icon.png");
   });
 
   it("keeps protected premium icon families out of the generated replacement map", () => {

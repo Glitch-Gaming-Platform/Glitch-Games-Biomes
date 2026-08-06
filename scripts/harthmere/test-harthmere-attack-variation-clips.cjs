@@ -1,60 +1,141 @@
 #!/usr/bin/env node
+"use strict";
+
 const fs = require("fs");
 const path = require("path");
-const root = process.argv[2] || process.cwd();
-const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
-const exists = (p) => fs.existsSync(path.join(root, p));
-let failures = 0;
-function check(label, cond, extra) {
-  if (cond) {
-    console.log(`OK ${label}`);
-  } else {
-    failures += 1;
-    console.log(`FAIL ${label}`);
-    if (extra) console.log(`  - ${extra}`);
+
+const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
+const failures = [];
+
+function check(condition, message) {
+  console.log(`${condition ? "OK" : "FAIL"} ${message}`);
+  if (!condition) failures.push(message);
+}
+
+function readGlb(filePath) {
+  const bytes = fs.readFileSync(filePath);
+  check(bytes.toString("utf8", 0, 4) === "glTF", `${filePath} is a GLB`);
+  const jsonLength = bytes.readUInt32LE(12);
+  return JSON.parse(
+    bytes.toString("utf8", 20, 20 + jsonLength).replace(/\0+$/, "")
+  );
+}
+
+const versions = JSON.parse(
+  fs.readFileSync(
+    path.join(root, "src/galois/js/interface/gen/asset_versions.json"),
+    "utf8"
+  )
+);
+const relativePublished = path.join(
+  "public/buckets/biomes-static",
+  versions.paths["wearables/animations"]
+);
+const publishedPath = path.join(root, relativePublished);
+check(fs.existsSync(publishedPath), `${relativePublished} exists`);
+const glb = readGlb(publishedPath);
+const clips = new Map(
+  (glb.animations || []).map((animation) => [animation.name, animation])
+);
+
+const directions = [
+  [1, "forehand", "wide_forehand", "horizontal_right_to_left"],
+  [2, "backhand", "backhand_return", "horizontal_left_to_right"],
+  [3, "descending", "descending_cleave", "high_right_to_low_left"],
+  [4, "rising", "rising_cut", "low_left_to_high_right"],
+];
+
+for (const [family, impactSeconds, durationSeconds] of [
+  ["Basic", 6 / 24, 17 / 24],
+  ["Heavy", 10 / 24, 26 / 24],
+]) {
+  const expected =
+    family === "Basic"
+      ? directions
+      : [
+          [1, "overhead", "overhead_cleave", "vertical_high_to_low"],
+          [2, "sweep", "broad_side_sweep", "horizontal_left_to_right"],
+          [3, "crusher", "backhand_crusher", "high_left_to_low_right"],
+          [4, "uppercut", "rising_finisher", "low_right_to_high_left"],
+        ];
+  for (const [index, style, direction, weaponArc] of expected) {
+    const name = `HarthmereBodyWeapon${family}_Variation${index}_24`;
+    const clip = clips.get(name);
+    check(Boolean(clip), `${relativePublished} ships ${name}`);
+    if (!clip) continue;
+    check(clip.channels?.length === 48, `${name} keys all 16 player bones`);
+    check(
+      clip.extras?.harthmereCombatProfile === "aaa-voxel-sword-v2",
+      `${name} identifies the authored AAA voxel profile`
+    );
+    check(
+      clip.extras?.direction === direction &&
+        clip.extras?.attackStyle === style,
+      `${name} direction is ${direction}`
+    );
+    check(clip.extras?.weaponArc === weaponArc, `${name} arc is ${weaponArc}`);
+    check(
+      Math.abs(clip.extras?.impactSeconds - impactSeconds) < 1e-6,
+      `${name} impact is ${impactSeconds.toFixed(3)} seconds`
+    );
+    check(
+      Math.abs(clip.extras?.durationSeconds - durationSeconds) < 1e-6,
+      `${name} recovery clock is ${durationSeconds.toFixed(3)} seconds`
+    );
+    check(
+      JSON.stringify((clip.extras?.phases || []).map((phase) => phase.name)) ===
+        JSON.stringify([
+          "anticipation",
+          "strike",
+          "impact",
+          "followThrough",
+          "recovery",
+        ]),
+      `${name} exports all five combat phases`
+    );
   }
 }
-console.log("== Harthmere attack variation clip tests current ==");
-console.log(`Root: ${root}`);
-console.log();
-check("attack variation manifest exists", exists("src/shared/harthmere/attack_variation_manifest.ts"));
-const manifest = read("src/shared/harthmere/attack_variation_manifest.ts");
-const playerAnimations = read("src/client/game/util/player_animations.ts");
-const hud = read("src/client/components/challenges/HarthmereUnifiedHUD.tsx");
-const combat = read("src/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem.tsx");
-const renderer = read("src/client/game/renderers/local_dev/harthmere_assets.ts");
-for (const family of ["basic", "heavy", "magic", "rangedRelease", "shieldBash", "toolUse"]) {
-  const count = (manifest.match(new RegExp(`v\\(\\"${family}\\"`, "g")) || []).length;
-  check(`${family} has 4 variations`, count === 4, `found ${count}`);
+
+for (const [name, source] of [
+  [
+    "HarthmereBodyWeaponBasic_Aligned_30",
+    "HarthmereBodyWeaponBasic_Variation1_24",
+  ],
+  [
+    "HarthmereBodyWeaponHeavy_Aligned_30",
+    "HarthmereBodyWeaponHeavy_Variation1_24",
+  ],
+]) {
+  const clip = clips.get(name);
+  check(Boolean(clip), `${relativePublished} ships ${name}`);
+  check(
+    clip?.extras?.alignedFallbackOf === source,
+    `${name} is an explicit authored fallback`
+  );
 }
-check("all variations are 24 keyframes / 24 fps", /frameCount:\s*24/.test(manifest) && /fps:\s*24/.test(manifest));
-check("variation manifest defines windup/impact/recovery metadata", /windupFrame/.test(manifest) && /impactFrame/.test(manifest) && /recoveryFrame/.test(manifest));
-check("variation picker avoids immediate repetition", /variant\.id !== last && variant\.id !== prior/.test(manifest));
-check("player animation system imports attack variation manifest", /attack_variation_manifest/.test(playerAnimations));
-check("player animation system exposes current variation selector marker", /HARTHMERE_ATTACK_VARIATION_VERSION/.test(playerAnimations));
-check("player animation system picks aligned basic attack variation", /pickHarthmereAttackVariation\(\s*"basic"/.test(playerAnimations));
-check("player animation system picks aligned heavy attack variation", /pickHarthmereAttackVariation\(\s*"heavy"/.test(playerAnimations));
-check("player animation system picks magic variation", /pickHarthmereAttackVariation\(\s*"magic"/.test(playerAnimations));
-check("HUD bridge preserves variation metadata for live tests", /attackVariationId/.test(hud) && /attackVariationFamily/.test(hud));
-check("combat system emits variation metadata", /attackVariationId/.test(combat) && /attackVariationFamily/.test(combat));
-check("renderer exposes attack variation debug bridge", /attackVariationAudit/.test(renderer));
-check("renderer supports weapon yaw/pitch bias from variation metadata", /weaponYawBiasDeg/.test(renderer) && /weaponPitchBiasDeg/.test(renderer));
-check("renderer supports handedness/side-aware variation playback", /attackSide/.test(renderer));
-check("edge-case contract covers locomotion and air legality", /locomotionAllowed/.test(manifest) && /airAllowed/.test(manifest));
 
-check("basic attack variations use four distinct body animation clip names", [1,2,3,4].every((i) => manifest.includes(`HarthmereBodyWeaponBasic_Variation${i}_24`)));
-check("heavy attack variations use four distinct body animation clip names", [1,2,3,4].every((i) => manifest.includes(`HarthmereBodyWeaponHeavy_Variation${i}_24`)));
-check("magic/ranged/shield/tool variations use concrete variation clip names", [
-  "HarthmereBodyMagicCast_Variation4_24",
-  "HarthmereBodyRangedRelease_Variation4_24",
-  "HarthmereBodyShieldBash_Variation4_24",
-  "HarthmereBodyToolUse_Variation4_24",
-].every((name) => manifest.includes(name)));
-check("player animation system defines concrete basic/heavy variation animation keys", [1,2,3,4].every((i) => playerAnimations.includes(`attack1Var${i}`) && playerAnimations.includes(`attack2Var${i}`)));
-check("player animation runtime selects a variation per attack start time", /getHarthmereAttackVariationEmoteType/.test(playerAnimations) && /harthmereCachedAttackVariationStartTime === emoteStartTime/.test(playerAnimations));
-check("player animation runtime plays the selected variation animation key", /singleAnimationWeight\(harthmereVariationEmoteType, 1\)/.test(playerAnimations));
+const runtime = fs.readFileSync(
+  path.join(root, "src/client/game/util/player_animations.ts"),
+  "utf8"
+);
+check(
+  runtime.includes('resolveAssetUrl("wearables/animations")') ||
+    fs
+      .readFileSync(
+        path.join(root, "src/client/game/resources/player_mesh.ts"),
+        "utf8"
+      )
+      .includes('resolveAssetUrl("wearables/animations")'),
+  "the player client resolves the same canonical wearables/animations artifact"
+);
+check(
+  /notArms:\s*"ifIdle"/.test(runtime),
+  "authored attack footwork plays while idle and locomotion owns moving legs"
+);
 
-check("full suite includes attack variation current test", exists("scripts/harthmere/test-harthmere-town-placement-suite.cjs") && /test-harthmere-attack-variation-clips\.cjs/.test(read("scripts/harthmere/test-harthmere-town-placement-suite.cjs")));
-console.log();
-console.log(failures ? `RESULT: FAIL (${failures})` : "RESULT: PASS");
-process.exit(failures ? 1 : 0);
+console.log(
+  failures.length
+    ? `RESULT: FAIL (${failures.length})`
+    : `RESULT: PASS published=${relativePublished} clips=${clips.size}`
+);
+process.exit(failures.length ? 1 : 0);

@@ -29,6 +29,9 @@ import {
 } from "@/shared/harthmere/ch1_quests";
 import {
   SNAPSHOT_GROVE_LANDMARKS,
+  SNAPSHOT_GROVE_NPCS,
+  snapshotGroveGroundedPosition,
+  snapshotGroveNpcEntityId,
   type SnapshotGroveLandmark,
 } from "@/shared/harthmere/snapshot_grove_content";
 import { groveLandmarkWorldPosition } from "@/shared/harthmere/grove/grove_waypoints";
@@ -54,6 +57,14 @@ export interface Ch1ObjectiveTarget {
   trigger: Ch1StepTrigger;
   actionLabel: string;
   entityId?: BiomesId;
+  /**
+   * Authored means the visible Chapter 1 body is a per-player staged puppet at
+   * position; the shared ECS entity may still be standing at its ordinary
+   * world post. Callers must not replace this coordinate with the ECS body's
+   * position. Live entity is reserved for targets such as AUGUR-9 whose real
+   * entity is the thing the player should follow.
+   */
+  positionAuthority: "authored" | "live_entity";
   source: "dungeon" | "npc" | "landmark" | "alias" | "district";
 }
 
@@ -120,6 +131,21 @@ function castMatchesTarget(displayName: string, target: string): boolean {
     return tokens(name).includes(wantTokens[0]) && wantTokens[0].length >= 4;
   }
   return containsTokenRun(name, want) || containsTokenRun(want, name);
+}
+
+function npcEntityIdForTargetLabel(
+  targetLabel: string | undefined
+): BiomesId | undefined {
+  const target = normalized(targetLabel);
+  if (!target) return undefined;
+  const cast = CH1_NEW_CAST.find((member) =>
+    castMatchesTarget(member.displayName, target)
+  );
+  if (cast) return cast.entityId;
+  const groveNpc = SNAPSHOT_GROVE_NPCS.find((npc) =>
+    castMatchesTarget(npc.displayName, target)
+  );
+  return groveNpc ? snapshotGroveNpcEntityId(groveNpc) : undefined;
 }
 
 function vec3(value: readonly [number, number, number]): Ch1Vec3 {
@@ -444,6 +470,7 @@ function minigameActionLabel(step: Ch1QuestStep): string {
 function actionLabel(step: Ch1QuestStep): string {
   if (step.id === "the_tea") return "Drink Jackie's breakfast tea";
   if (step.id === "kit_check") return "Let Jackie check your kit";
+  if (step.id === "seat_the_core") return "Install the Core Cell";
   switch (step.trigger) {
     case "talk_npc":
       return "Talk";
@@ -495,11 +522,25 @@ function targetPosition(
   step: Ch1QuestStep,
   stepIndex: number,
   context?: Ch1ObjectiveTargetContext
-): Pick<Ch1ObjectiveTarget, "position" | "source" | "entityId"> & {
+): Pick<
+  Ch1ObjectiveTarget,
+  "position" | "positionAuthority" | "source" | "entityId"
+> & {
   label?: string;
 } {
   const dungeon = dungeonTarget(quest, stepIndex);
-  if (dungeon) return { position: dungeon, source: "dungeon" };
+  if (dungeon) {
+    const entityId =
+      step.trigger === "talk_npc" || step.trigger === "dialogue_choice"
+        ? npcEntityIdForTargetLabel(step.targetLabel)
+        : undefined;
+    return {
+      position: dungeon,
+      positionAuthority: "authored",
+      source: "dungeon",
+      ...(entityId !== undefined ? { entityId } : {}),
+    };
+  }
 
   if (step.id === "collect_testimonies") {
     const next =
@@ -509,6 +550,7 @@ function targetPosition(
       ) ?? CH1_TESTIMONY_ROUTE[CH1_TESTIMONY_ROUTE.length - 1];
     return {
       position: ch1RouteStopPosition(next),
+      positionAuthority: "live_entity",
       source: "npc",
       label: next.label,
       entityId: next.entityId,
@@ -523,8 +565,10 @@ function targetPosition(
       ) ?? CH1_THREE_ANSWER_ROUTE[CH1_THREE_ANSWER_ROUTE.length - 1];
     return {
       position: ch1RouteStopPosition(next),
+      positionAuthority: "authored",
       source: "npc",
       label: next.label,
+      entityId: npcEntityIdForTargetLabel(next.label),
     };
   }
   if (step.id === "meet_the_suppliers") {
@@ -534,14 +578,17 @@ function targetPosition(
     if (next) {
       return {
         position: ch1RouteStopPosition(next),
+        positionAuthority: "authored",
         source: "npc",
         label: next.label,
+        entityId: npcEntityIdForTargetLabel(next.label),
       };
     }
   }
   if (step.id === "report_or_not") {
     return {
       position: vec3(CH1_SERGEANT_HOLT.position),
+      positionAuthority: "live_entity",
       source: "npc",
       label: "Grove Watch House",
       entityId: CH1_SERGEANT_HOLT.entityId,
@@ -563,6 +610,11 @@ function targetPosition(
       : undefined;
     return {
       position: CH1_ANCHORS[explicit.anchor],
+      // These overrides exist specifically because the per-player Chapter 1
+      // presentation moved the actor away from the shared ECS body's post.
+      // Keeping the entity id is useful for labels/acting, but its live
+      // position must never replace this authored interaction point.
+      positionAuthority: "authored",
       source: member ? "npc" : "alias",
       ...(member ? { entityId: member.entityId } : {}),
     };
@@ -579,20 +631,25 @@ function targetPosition(
     (landmark) => landmark.normalized === target
   );
   if (exactLandmark) {
-    return { position: exactLandmark.position, source: "landmark" };
+    const entityId = npcEntityIdForTargetLabel(step.targetLabel);
+    return {
+      position: exactLandmark.position,
+      positionAuthority: "authored",
+      source: entityId === undefined ? "landmark" : "npc",
+      ...(entityId !== undefined ? { entityId } : {}),
+    };
   }
 
   const alias = TARGET_ALIASES.get(target);
   if (alias) {
     // An alias may name a real cast member's post (Jackie, Doc). Carry the
     // entity id when it does so the prompt and marker can bind the body.
-    const aliasEntity = CH1_NEW_CAST.find((member) =>
-      castMatchesTarget(member.displayName, target)
-    );
+    const aliasEntityId = npcEntityIdForTargetLabel(step.targetLabel);
     return {
       position: vec3(alias),
-      source: "alias",
-      ...(aliasEntity ? { entityId: aliasEntity.entityId } : {}),
+      positionAuthority: "authored",
+      source: aliasEntityId === undefined ? "alias" : "npc",
+      ...(aliasEntityId !== undefined ? { entityId: aliasEntityId } : {}),
     };
   }
 
@@ -602,8 +659,25 @@ function targetPosition(
   if (cast) {
     const position = ch1CastPosition(cast.key, context, quest.id, step.id);
     if (position) {
-      return { position, source: "npc", entityId: cast.entityId };
+      return {
+        position,
+        positionAuthority: "live_entity",
+        source: "npc",
+        entityId: cast.entityId,
+      };
     }
+  }
+
+  const groveNpc = SNAPSHOT_GROVE_NPCS.find((npc) =>
+    castMatchesTarget(npc.displayName, target)
+  );
+  if (groveNpc) {
+    return {
+      position: snapshotGroveGroundedPosition(groveNpc.authoredPosition),
+      positionAuthority: "live_entity",
+      source: "npc",
+      entityId: snapshotGroveNpcEntityId(groveNpc),
+    };
   }
 
   const fuzzyLandmark = LANDMARKS.find(
@@ -613,13 +687,18 @@ function targetPosition(
         containsTokenRun(target, landmark.normalized))
   );
   if (fuzzyLandmark) {
-    return { position: fuzzyLandmark.position, source: "landmark" };
+    return {
+      position: fuzzyLandmark.position,
+      positionAuthority: "authored",
+      source: "landmark",
+    };
   }
 
   return {
     position: vec3(
       DISTRICT_FALLBACKS[normalized(quest.district)] ?? CH1_ANCHORS.jackie_post
     ),
+    positionAuthority: "authored",
     source: "district",
   };
 }
@@ -647,6 +726,7 @@ export function ch1ObjectiveTarget(
     trigger: step.trigger,
     actionLabel: actionLabel(step),
     entityId: resolved.entityId,
+    positionAuthority: resolved.positionAuthority,
     source: resolved.source,
   };
 }

@@ -114,4 +114,16 @@ describe("Harthmere per-player NPC projection", () => {
       /canTalk \|\| canTalkToProjectedNpc \|\| isNativeDialogueQuestObject/
     );
   });
+
+  it("does not load generated NPC meshes from overlay projection scans", () => {
+    const overlaySource = readFileSync(
+      path.join(process.cwd(), "src/client/game/scripts/overlays.ts"),
+      "utf8"
+    );
+    assert.doesNotMatch(
+      overlaySource,
+      /resources\.cached\(\s*"\/scene\/npc\/render_state"/,
+      "overlay/name/Talk registry scans must use their authoritative projected position without constructing every nearby NPC render state"
+    );
+  });
 });

@@ -423,7 +423,8 @@ export class FarmingGrowthPlantTicker implements BaseFarmingPlantTicker {
       this.spec.waterIntervalMs,
       stageSpec.timeMs,
       this.spec.deathTimeMs,
-      this.futureStageGrowthTimeMs(stage)
+      this.futureStageGrowthTimeMs(stage),
+      plantComponent.skill_growth_time_multiplier
     );
 
     if (plantComponent.wilt >= 1.0 && stageSpec.canWilt !== false) {

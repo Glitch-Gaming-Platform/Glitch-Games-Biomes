@@ -1,10 +1,10 @@
 export const HARTHMERE_COMBAT_INTERFACE_KEY_COPY = {
-  draw: "X",
+  draw: "'",
   target: "Tab",
-  basic: "B",
+  basic: "Mouse 1",
   heavy: "H",
   spark: "L",
-  pvp: "P",
+  pvp: "N",
 } as const;
 
 export type HarthmereInterfacePvpMode =

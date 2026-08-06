@@ -210,11 +210,11 @@ async function main() {
 
     report.check("sword yaw changes when bodyForward changes", Number.isFinite(directionResult.yawDelta) && directionResult.yawDelta > 0.5, JSON.stringify(directionResult));
 
-    await page.keyboard.press("KeyB");
+    await page.mouse.click(720, 450);
     await sleep(700);
-    await page.keyboard.press("KeyB");
+    await page.mouse.click(720, 450);
     await sleep(900);
-    await page.keyboard.press("KeyN");
+    await page.keyboard.press("KeyH");
     await sleep(900);
 
     const keyResult = await page.evaluate(() => {

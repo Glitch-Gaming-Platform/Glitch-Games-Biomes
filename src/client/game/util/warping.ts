@@ -178,6 +178,7 @@ async function initiateWarp(
   messageOnSuccess?: ChatMessage
 ) {
   const localPlayer = deps.resources.get("/scene/local_player");
+  localPlayer.resetCombatAttackState();
   localPlayer.warpingInfo = {
     startTime: getNowMs(),
   };

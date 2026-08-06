@@ -2,7 +2,9 @@ import assert from "assert";
 import { HARTHMERE_BUSINESS_INTERIORS } from "@/shared/harthmere/business_interior_runtime";
 import * as THREE from "three";
 import {
+  HARTHMERE_DESKTOP_BUSINESS_INTERIOR_MAX_LOADED,
   HARTHMERE_MOBILE_BUSINESS_INTERIOR_MAX_LOADED,
+  HarthmereBusinessInteriorsRenderer,
   harthmereBusinessInteriorLodForDistance,
   harthmereMobileBusinessInteriorIds,
   prepareHarthmereBusinessInteriorRoot,
@@ -59,7 +61,7 @@ describe("Harthmere combined business interior renderer", () => {
     }
   });
 
-  it("selects at most two nearby interiors for mobile and none across the world", () => {
+  it("uses a one-interior phone cap without changing the desktop cap", () => {
     const record = HARTHMERE_BUSINESS_INTERIORS[0];
     const center = new THREE.Vector3(
       record.assetWorldAnchor[0] + record.footprint.width / 2,
@@ -69,6 +71,14 @@ describe("Harthmere combined business interior renderer", () => {
     const nearby = harthmereMobileBusinessInteriorIds(center);
     assert.ok(nearby.includes(record.outpostId));
     assert.ok(nearby.length <= HARTHMERE_MOBILE_BUSINESS_INTERIOR_MAX_LOADED);
+    assert.equal(HARTHMERE_MOBILE_BUSINESS_INTERIOR_MAX_LOADED, 1);
+    assert.equal(HARTHMERE_DESKTOP_BUSINESS_INTERIOR_MAX_LOADED, 2);
+    assert.ok(
+      harthmereMobileBusinessInteriorIds(
+        center,
+        HARTHMERE_DESKTOP_BUSINESS_INTERIOR_MAX_LOADED
+      ).length <= HARTHMERE_DESKTOP_BUSINESS_INTERIOR_MAX_LOADED
+    );
     assert.deepEqual(
       harthmereMobileBusinessInteriorIds(
         new THREE.Vector3(100_000, 100_000, 100_000)
@@ -76,4 +86,33 @@ describe("Harthmere combined business interior renderer", () => {
       []
     );
   });
+
+  for (const mobileDevice of [false, true]) {
+    it(`does not request the complete interior catalogue at ${
+      mobileDevice ? "mobile" : "desktop"
+    } boot`, async () => {
+      const camera = new THREE.PerspectiveCamera();
+      camera.position.set(100_000, 100_000, 100_000);
+      const resources = {
+        get(resourcePath: string) {
+          assert.equal(resourcePath, "/scene/camera");
+          return { three: camera };
+        },
+      } as any;
+      const requested: string[] = [];
+      const renderer = new HarthmereBusinessInteriorsRenderer(
+        resources,
+        async (url) => {
+          requested.push(url);
+          return { scene: new THREE.Group(), animations: [] } as any;
+        },
+        mobileDevice
+      );
+
+      assert.deepEqual(requested, []);
+      renderer.draw({ three: new THREE.Scene() } as any, 0.3);
+      await Promise.resolve();
+      assert.deepEqual(requested, []);
+    });
+  }
 });

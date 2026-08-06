@@ -44,6 +44,12 @@ Cell = Tuple[int, int, int]
 FPS = 24
 BASE_BOX = (0.6, 0.6, 1.8)  # Blender X/Y/Z; Three receives X/Z/Y.
 
+BOSS_STAGGER_CLIPS = (
+    "BossStaggerLight",
+    "BossStaggerMedium",
+    "BossStaggerHeavy",
+)
+
 REQUIRED_CLIPS = (
     "Idle",
     "Walk",
@@ -57,6 +63,7 @@ REQUIRED_CLIPS = (
     "AreaAttack",
     "HitReact",
     "Stunned",
+    *BOSS_STAGGER_CLIPS,
     "Roar",
     "PhaseTransition",
     "Summon",
@@ -2052,6 +2059,155 @@ def pose_entry(
         entry["rotation"] = rotation
     if scale is not None:
         entry["scale"] = scale
+
+
+def boss_stagger_animation_pose(
+    definition: BossDefinition,
+    armature_obj: bpy.types.Object,
+    name: str,
+) -> Tuple[int, Dict[int, FramePose]]:
+    """Create a bespoke-rig whole-body stagger for every live boss.
+
+    Bosses intentionally do not execute these clips yet.  They are authored and
+    packaged now so later hyper-armor/poise work can select a real loss-of-
+    balance animation instead of stretching generic HitReact or Stunned clips.
+    """
+
+    severity = name.removeprefix("BossStagger").lower()
+    specs = {
+        "light": {
+            "end": 14,
+            "amplitude": 11.0,
+            "samples": ((1, 0.0, 0.0), (4, 1.0, -0.025), (8, -0.28, -0.010), (14, 0.0, 0.0)),
+        },
+        "medium": {
+            "end": 30,
+            "amplitude": 23.0,
+            "samples": ((1, 0.0, 0.0), (6, 0.48, -0.035), (11, 1.0, -0.090),
+                        (18, 0.72, -0.125), (24, -0.22, -0.040), (30, 0.0, 0.0)),
+        },
+        "heavy": {
+            "end": 58,
+            "amplitude": 39.0,
+            "samples": ((1, 0.0, 0.0), (7, 0.42, -0.050), (13, 1.0, -0.145),
+                        (25, 0.86, -0.205), (37, -0.34, -0.125),
+                        (48, 0.18, -0.045), (58, 0.0, 0.0)),
+        },
+    }
+    spec = specs[severity]
+    frames: Dict[int, FramePose] = {}
+    names = [bone.name for bone in armature_obj.pose.bones]
+    root = first_bone(armature_obj, ("Root",))
+    seed = sum((index + 1) * ord(character) for index, character in enumerate(definition.slug))
+    side = -1.0 if seed % 2 else 1.0
+
+    def matching(*tokens: str) -> List[str]:
+        return [
+            bone_name
+            for bone_name in names
+            if bone_name != root and any(token.lower() in bone_name.lower() for token in tokens)
+        ]
+
+    bodies = matching("body", "chest", "torso", "mantle")
+    heads = matching("head", "jaw", "neck")
+    arms = matching("arm", "forearm", "hand", "claw", "maul", "weapon", "fist")
+    legs = matching("leg", "thigh", "knee", "hoof", "foot")
+    wings = matching("wing")
+    tails = matching("tail")
+    secondary = matching(
+        "crown",
+        "bell",
+        "chain",
+        "emitter",
+        "helix",
+        "carapace",
+        "spore",
+        "cloak",
+        "strip",
+        "ring",
+        "vent",
+        "horn",
+    )
+
+    # Some highly abstract bosses have no literal Body bone.  The first
+    # non-root structural bone still receives the primary recoil.
+    if not bodies:
+        bodies = [bone_name for bone_name in names if bone_name != root][:1]
+
+    for frame, impulse, vertical in spec["samples"]:
+        amplitude = spec["amplitude"]
+        pitch = -amplitude * impulse
+        roll = amplitude * 0.58 * side * impulse
+        lateral = 0.018 * side * impulse * (1.35 if severity == "heavy" else 1.0)
+        pose_entry(
+            frames,
+            frame,
+            root,
+            location=(0.0, lateral, vertical),
+            rotation=(pitch * 0.18, 0.0, roll * 0.16),
+        )
+        for index, bone in enumerate(bodies):
+            phase = 1.0 - min(index, 4) * 0.07
+            pose_entry(
+                frames,
+                frame,
+                bone,
+                rotation=(pitch * phase, roll * 0.18, roll * phase),
+                location=(0.0, lateral * (0.8 + index * 0.08), vertical * 0.35),
+            )
+        for index, bone in enumerate(heads):
+            phase = 1.0 + min(index, 5) * 0.08
+            pose_entry(
+                frames,
+                frame,
+                bone,
+                rotation=(-pitch * 0.72 * phase, 0.0, -roll * 0.92 * phase),
+            )
+        for index, bone in enumerate(arms):
+            limb_side = -1.0 if (".L" in bone or "_L" in bone or index % 2 == 0) else 1.0
+            pose_entry(
+                frames,
+                frame,
+                bone,
+                rotation=(pitch * (0.62 + index % 3 * 0.08), roll * 0.18,
+                          limb_side * amplitude * 0.82 * impulse),
+            )
+        for index, bone in enumerate(legs):
+            limb_side = -1.0 if (".L" in bone or "_L" in bone or index % 2 == 0) else 1.0
+            buckle = abs(impulse) * amplitude * (0.68 if severity == "heavy" else 0.46)
+            pose_entry(
+                frames,
+                frame,
+                bone,
+                rotation=(buckle, 0.0, limb_side * roll * 0.22),
+            )
+        for index, bone in enumerate(wings):
+            wing_side = -1.0 if index % 2 == 0 else 1.0
+            pose_entry(
+                frames,
+                frame,
+                bone,
+                rotation=(pitch * 0.18, wing_side * amplitude * 0.75 * impulse,
+                          wing_side * roll * 0.48),
+            )
+        for index, bone in enumerate(tails):
+            lag = 1.0 + index * 0.22
+            pose_entry(
+                frames,
+                frame,
+                bone,
+                rotation=(-pitch * 0.12 * lag, 0.0, -roll * lag),
+            )
+        for index, bone in enumerate(secondary):
+            lag = 0.65 + (index % 4) * 0.12
+            pose_entry(
+                frames,
+                frame,
+                bone,
+                rotation=(-pitch * 0.12 * lag, roll * 0.08, -roll * lag),
+                scale=(1.0 + abs(impulse) * 0.035,) * 3,
+            )
+    return spec["end"], frames
 
 
 def breach_helix_animation_pose(
@@ -4497,7 +4653,11 @@ def create_action(
     name: str,
 ) -> bpy.types.Action:
     reset_pose(armature_obj)
-    if name in definition.special_clips:
+    if name in BOSS_STAGGER_CLIPS:
+        frame_end, frames = boss_stagger_animation_pose(
+            definition, armature_obj, name
+        )
+    elif name in definition.special_clips:
         frame_end, frames = special_animation_pose(
             name, armature_obj, definition.archetype
         )
@@ -4516,6 +4676,12 @@ def create_action(
                 transform.setdefault("scale", (0.02, 0.02, 0.02))
     action = bpy.data.actions.new(name=name)
     action.use_fake_user = True
+    if name in BOSS_STAGGER_CLIPS:
+        action["harthmereProfile"] = f"boss-{name.removeprefix('BossStagger').lower()}-stagger-v1"
+        action["harthmereFamily"] = "boss"
+        action["harthmereSeverity"] = name.removeprefix("BossStagger").lower()
+        action["harthmereAuthoredFps"] = FPS
+        action["harthmereRuntimeExecutionEnabled"] = False
     armature_obj.animation_data_create()
     armature_obj.animation_data.action = action
     for frame in sorted(frames):
@@ -4769,9 +4935,12 @@ def render_boss_action_stills(
             ("Slay", 84),
         ),
     }
-    action_frames = action_frames_by_slug.get(definition.slug)
-    if not action_frames:
-        return
+    action_frames = (
+        *action_frames_by_slug.get(definition.slug, ()),
+        ("BossStaggerLight", 4),
+        ("BossStaggerMedium", 18),
+        ("BossStaggerHeavy", 25),
+    )
     uniform_scale = definition.world_size[1] / BASE_BOX[2]
     armature_obj.scale = (uniform_scale,) * 3
     scene = bpy.context.scene

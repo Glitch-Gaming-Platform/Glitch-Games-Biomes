@@ -588,6 +588,7 @@ describe("Harthmere quest object procedural markers current", () => {
   it("draws the active Chapter 1 repair cart as a visible interaction target", () => {
     publishChapter1ObjectiveWorldProjection({
       key: "stand-him-up:gather-parts",
+      authoredStepId: "gather_parts",
       label: "Luis's Repair Cart",
       position: [490, 65, -206],
       trigger: "collect",

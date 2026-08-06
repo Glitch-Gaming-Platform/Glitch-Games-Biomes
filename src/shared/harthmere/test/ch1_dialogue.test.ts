@@ -183,7 +183,7 @@ describe("Chapter 1 authored dialogue", () => {
     const dialogue = CH1_OBJECTIVE_DIALOGUE.wake_up;
     const presented = ch1DialogueWithExitGuidanceForTest(
       dialogue,
-      "Next task: eat breakfast. Go to the table."
+      "Go to the table for breakfast; your map will mark the way."
     );
     assert.equal(
       presented?.pages.at(-1)?.expression,
@@ -191,7 +191,7 @@ describe("Chapter 1 authored dialogue", () => {
     );
   });
 
-  it("ends every Chapter 1 conversation with the next task and destination", () => {
+  it("ends every Chapter 1 conversation with a direct destination", () => {
     const runtime = defaultCh1LiveGateRuntimeState();
     const failures: string[] = [];
     for (const { quest, step } of steps) {
@@ -209,14 +209,17 @@ describe("Chapter 1 authored dialogue", () => {
       );
       const exit = presented?.pages.at(-1)?.text ?? "";
       if (
-        !/^(Make your choice here\. )?(?:Next task:|Chapter 1 is complete\.)/.test(
+        !/^(Make your choice here\. )?(?:Go to |Press J to open BiomesUI|Chapter 1 is complete\.)/.test(
           exit
         )
       ) {
-        failures.push(`${quest.id}/${step.id}: missing next-task exit`);
+        failures.push(`${quest.id}/${step.id}: missing direct handoff`);
       }
-      if (!/Go to |Chapter 1 is complete/.test(exit)) {
+      if (!/Go to |Press J to open BiomesUI|Chapter 1 is complete/.test(exit)) {
         failures.push(`${quest.id}/${step.id}: missing destination`);
+      }
+      if (/Next task:/i.test(exit)) {
+        failures.push(`${quest.id}/${step.id}: exposed mechanical Next task label`);
       }
     }
     assert.deepEqual(failures, []);

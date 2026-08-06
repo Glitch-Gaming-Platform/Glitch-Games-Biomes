@@ -23,6 +23,7 @@ import {
   harthmereJobsBoardQuestMarkerRuntimePositionForId,
 } from "../jobs_board_quest_marker_positions";
 import { harthmereJobItemSourceGuidance } from "../harthmere_job_objective";
+import { HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES } from "../mmo_jobs_board_authority";
 
 // The world-object interaction kinds the server will issue a receipt for
 // (HARTHMERE_AUTHORITATIVE_FALLBACK_INTERACTIONS in live_mode_backend).
@@ -167,6 +168,42 @@ describe("jobs board field targets", () => {
             `${template.templateId}:${
               req.itemId
             } points at unresolvable marker ${guidance!.markerId}`
+          );
+        }
+      }
+    }
+  });
+
+  it("gives every auto-seeded item job a locatable acquisition source", () => {
+    for (const template of HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES) {
+      for (const req of template.requirements) {
+        if (!req.itemId) continue;
+        const guidance = harthmereJobItemSourceGuidance({
+          kind: template.kind,
+          requirements: [req],
+          inventoryItems: {},
+        });
+        assert.ok(
+          guidance,
+          `${template.templateId}:${req.itemId} produces no acquisition guidance`
+        );
+        assert.notEqual(
+          guidance!.sourceKind,
+          "unknown",
+          `${template.templateId}:${req.itemId} fell back to generic copy`
+        );
+        if (guidance!.sourceKind !== "quest_grant") {
+          assert.ok(
+            guidance!.markerId || guidance!.markerPosition,
+            `${template.templateId}:${req.itemId} has no map destination`
+          );
+        } else {
+          assert.match(guidance!.hint, /check your backpack/i);
+        }
+        if (guidance!.markerId && !guidance!.markerPosition) {
+          assert.ok(
+            harthmereJobsBoardQuestMarkerPositionForId(guidance!.markerId),
+            `${template.templateId}:${req.itemId} points at unresolvable ${guidance!.markerId}`
           );
         }
       }

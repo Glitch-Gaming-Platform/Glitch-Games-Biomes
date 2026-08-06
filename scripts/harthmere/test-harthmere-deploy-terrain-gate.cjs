@@ -48,6 +48,10 @@ const TOWN_AUDIT = path.join(
   ROOT,
   "scripts/harthmere/audit-harthmere-town-repair.cjs"
 );
+const EXACT_OVERLAP_REPAIR = path.join(
+  ROOT,
+  "scripts/harthmere/repair-harthmere-exact-terrain-overlaps.cjs"
+);
 
 let failures = 0;
 function check(label, fn) {
@@ -63,6 +67,7 @@ function check(label, fn) {
 const reconcile = fs.readFileSync(RECONCILE, "utf8");
 const audit = fs.readFileSync(AUDIT, "utf8");
 const townRepair = fs.readFileSync(TOWN_REPAIR, "utf8");
+const exactOverlapRepair = fs.readFileSync(EXACT_OVERLAP_REPAIR, "utf8");
 
 /** Index of the phase CALL, not its function definition. */
 function callIndex(name) {
@@ -77,8 +82,24 @@ function callIndex(name) {
 }
 
 check("every terrain phase script exists", () => {
-  for (const file of [AUDIT, REPAIR, CLEAR, TOWN_REPAIR, TOWN_AUDIT]) {
+  for (const file of [
+    AUDIT,
+    REPAIR,
+    CLEAR,
+    TOWN_REPAIR,
+    TOWN_AUDIT,
+    EXACT_OVERLAP_REPAIR,
+  ]) {
     assert.ok(fs.existsSync(file), `missing ${path.relative(ROOT, file)}`);
+  }
+});
+
+check("the deploy calls exact terrain-overlap repair and verification", () => {
+  for (const phase of [
+    "repair_exact_terrain_overlaps",
+    "verify_exact_terrain_overlaps",
+  ]) {
+    assert.ok(callIndex(phase) >= 0, `${phase} is never called`);
   }
 });
 
@@ -161,6 +182,74 @@ check(
   }
 );
 
+check("exact-overlap repair brackets every downstream terrain writer", () => {
+  const repair = callIndex("repair_exact_terrain_overlaps");
+  const verify = callIndex("verify_exact_terrain_overlaps");
+  assert.ok(repair > callIndex("repair_harthmere_town"));
+  assert.ok(verify > repair);
+  for (const phase of [
+    "materialize_business_outposts",
+    "materialize_connector_route",
+    "materialize_chapter1_world_buildings",
+  ]) {
+    const index = callIndex(phase);
+    assert.ok(
+      index > repair && index < verify,
+      `${phase} must run after overlap repair and before its final gate`
+    );
+  }
+});
+
+check(
+  "town-only reconciliation also repairs and verifies exact overlaps",
+  () => {
+    const townOnly = reconcile.slice(
+      reconcile.indexOf('if [ "${HARTHMERE_TOWN_REPAIR_ONLY:-0}" = "1" ]'),
+      reconcile.indexOf("report_extension_terrain\n")
+    );
+    assert.ok(
+      townOnly.includes(
+        [
+          "repair_harthmere_town",
+          "repair_exact_terrain_overlaps",
+          "verify_exact_terrain_overlaps",
+          "verify_harthmere_town",
+        ].join("\n  ")
+      ),
+      "town-only mode can leave shadow terrain behind"
+    );
+  }
+);
+
+check(
+  "exact-overlap repair fails closed and has a separate readback gate",
+  () => {
+    assert.ok(
+      exactOverlapRepair.includes("planHarthmereExactTerrainOverlapRepair") &&
+        exactOverlapRepair.includes("harthmereTerrainBoxesEqual") &&
+        exactOverlapRepair.includes("Refusing to retire canonical terrain") &&
+        exactOverlapRepair.includes("shard_seed: null") &&
+        exactOverlapRepair.includes("HARTHMERE_EXACT_OVERLAP_REQUIRE_CLEAN") &&
+        exactOverlapRepair.includes("HARTHMERE_EXACT_TERRAIN_OVERLAP_READY"),
+      "overlap repair lacks exact-box/canonical guards or fatal readback"
+    );
+    const repairBody = reconcile.slice(
+      reconcile.indexOf("repair_exact_terrain_overlaps() {"),
+      reconcile.indexOf("verify_extension_terrain() {")
+    );
+    const verifyBody = reconcile.slice(
+      reconcile.indexOf("verify_exact_terrain_overlaps() {"),
+      reconcile.indexOf("materialize_business_outposts() {")
+    );
+    assert.ok(
+      repairBody.includes("APPLY=1") &&
+        verifyBody.includes("APPLY=0") &&
+        verifyBody.includes("HARTHMERE_EXACT_OVERLAP_REQUIRE_CLEAN=1"),
+      "reconciliation does not apply then independently verify overlap cleanup"
+    );
+  }
+);
+
 check(
   "the town repair is armed and its audit ignores only the separate water gate",
   () => {
@@ -203,6 +292,17 @@ check(
     );
   }
 );
+
+check("town repair accepts canonical persisted upper-building shards", () => {
+  assert.ok(
+    townRepair.includes("canonicalSpecForTerrainId(id)") &&
+      townRepair.includes("const box = entity.box?.()") &&
+      townRepair.includes("harthmereExtensionTerrainEntityIdForShard(") &&
+      townRepair.includes('entity ? "update" : "create"') &&
+      townRepair.includes("editor.create(canonicalChange.entity)"),
+    "town repair would reject or fail to create a valid upper-building shard omitted from the foundation spec list"
+  );
+});
 
 check("the report phase is non-fatal and the gate phase is not", () => {
   const reportBody = reconcile.slice(

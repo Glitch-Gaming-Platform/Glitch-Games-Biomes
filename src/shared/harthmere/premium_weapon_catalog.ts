@@ -390,7 +390,7 @@ export const HARTHMERE_PREMIUM_WEAPONS = [
     baseValue: 75,
     durabilityMax: 90,
     targetLength: 1.38,
-    attackPoints: 8,
+    attackPoints: 5,
     accuracy: 5,
     visualAliases: ["bow", "Bow_Wooden"],
     description:
@@ -407,7 +407,7 @@ export const HARTHMERE_PREMIUM_WEAPONS = [
     baseValue: 430,
     durabilityMax: 98,
     targetLength: 1.4,
-    attackPoints: 23,
+    attackPoints: 5,
     accuracy: 8,
     visualAliases: ["Bow_Golden"],
     description:
@@ -425,7 +425,7 @@ export const HARTHMERE_PREMIUM_WEAPONS = [
     durabilityMax: 82,
     requiredLevel: 4,
     targetLength: 1.36,
-    attackPoints: 18,
+    attackPoints: 5,
     accuracy: 7,
     visualAliases: ["bow_withString"],
     description:

@@ -104,7 +104,7 @@ export const LoginRelatedController: React.FunctionComponent<
 
   useEffectAsync(async () => {
     isLoggedIn.current = Boolean(await checkLoggedIn());
-  });
+  }, []);
 
   useEffect(() => {
     if (inputRef.current) {

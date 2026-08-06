@@ -3,6 +3,8 @@ import {
   HARTHMERE_TOOL_SOURCES,
   harthmereJobItemSourceDestinationsForAudit,
 } from "@/shared/harthmere/harthmere_job_objective";
+import { HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES } from "@/shared/harthmere/mmo_jobs_board_authority";
+import { harthmereObjectInteractionForLabel } from "@/shared/harthmere/object_interaction_semantics";
 import { harthmereJobsBoardQuestMarkerRuntimePositionForId } from "@/shared/harthmere/jobs_board_quest_marker_positions";
 import {
   harthmereBusinessToolListings,
@@ -41,6 +43,29 @@ describe("Harthmere item and tool source reachability", () => {
           source.markerPosition,
           marker?.position,
           `${source.itemId} direct position must match its shared marker`
+        );
+      }
+    }
+  });
+
+  it("keeps label-authored gather sources executable and separate from hand-in targets", () => {
+    for (const template of HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES) {
+      if (template.kind !== "gather" || template.targetId) continue;
+      for (const requirement of template.requirements) {
+        if (!requirement.itemId || !requirement.mapMarkerId) continue;
+        const marker = harthmereJobsBoardQuestMarkerRuntimePositionForId(
+          requirement.mapMarkerId
+        );
+        if (marker?.source !== "snapshot_landmark") continue;
+        assert.equal(
+          harthmereObjectInteractionForLabel({ label: marker.label })?.kind,
+          "gather",
+          `${template.templateId} source must expose an F gather interaction`
+        );
+        assert.equal(
+          template.requiresFieldWork,
+          false,
+          `${template.templateId} source must not double as the hand-in target`
         );
       }
     }

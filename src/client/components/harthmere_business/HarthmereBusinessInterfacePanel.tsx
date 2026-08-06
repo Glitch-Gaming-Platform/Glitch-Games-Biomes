@@ -25,6 +25,7 @@ import type {
   HarthmereBusinessVisibleInventoryItem,
   HarthmereBusinessWorldContext,
 } from "./businessInterfaceLiveAdapter";
+import { HARTHMERE_BUSINESS_CUSTOMERS_PER_SHIFT } from "@/shared/harthmere/business_customer_simulator";
 import {
   formatHarthmereBusinessPlayerWarning,
   harthmereBusinessServicePriceGold,
@@ -55,12 +56,7 @@ type OwnerTab =
   | "market"
   | "guild";
 type CustomerTab =
-  | "overview"
-  | "customers"
-  | "services"
-  | "shopfront"
-  | "status"
-  | "market";
+  "overview" | "customers" | "services" | "shopfront" | "status" | "market";
 type PanelTab = OwnerTab | CustomerTab;
 export type HarthmereBusinessInterfacePanelTab = PanelTab;
 
@@ -1667,8 +1663,8 @@ const OwnerDashboardPane: React.FunctionComponent<{
     : undefined;
   const canOpen = Boolean(
     business?.propertyId &&
-      business.townId &&
-      business.licenseLevel >= (type?.minimumLicenseLevel ?? 1)
+    business.townId &&
+    business.licenseLevel >= (type?.minimumLicenseLevel ?? 1)
   );
   const session = miniGame.activeSession;
   const shiftProgress = session
@@ -1690,7 +1686,12 @@ const OwnerDashboardPane: React.FunctionComponent<{
           type="button"
           data-business-backend-action="true"
           disabled={backendPending || Boolean(session)}
-          onClick={() => void adapter.startCustomerSession(businessId)}
+          onClick={() =>
+            void adapter.startCustomerSession(
+              businessId,
+              HARTHMERE_BUSINESS_CUSTOMERS_PER_SHIFT
+            )
+          }
           style={backendActionStyle(
             session ? disabledButtonStyle : startShiftButtonStyle,
             backendPending
@@ -1835,7 +1836,6 @@ const OwnerDashboardPane: React.FunctionComponent<{
     </div>
   );
 };
-
 
 const CustomerOverviewPane: React.FunctionComponent<{
   adapter: HarthmereBusinessInterfaceAdapter;
@@ -2377,10 +2377,10 @@ const ShopfrontGoodPurchaseCard: React.FunctionComponent<{
   const actionLabel = learned
     ? "Learned"
     : isRecipeBook
-    ? "Learn"
-    : purchaseCount > 1
-    ? `Buy x${purchaseCount}`
-    : "Buy";
+      ? "Learn"
+      : purchaseCount > 1
+        ? `Buy x${purchaseCount}`
+        : "Buy";
   return (
     <article
       className="harthmere-business-product-card"
@@ -3560,8 +3560,8 @@ const OperationsPane: React.FunctionComponent<{
                     {action.requiresWorldService
                       ? "Tracked field request"
                       : isCustomer
-                      ? "Business fulfillment"
-                      : "Owner operation"}
+                        ? "Business fulfillment"
+                        : "Owner operation"}
                   </span>
                   <span style={serviceBuyCtaStyle}>
                     {isCustomer ? "Buy Service" : "Run Operation"}

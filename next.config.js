@@ -28,6 +28,37 @@ const withPWA =
         dest: "public",
         register: false,
         swSrc: "./src/client/service_worker.ts",
+        // HARTHMERE_SERVICE_WORKER_MANIFEST (2026-08-04 asset loading audit,
+        // finding 2)
+        //
+        // next-pwa's default behaviour is to glob EVERY file under public/,
+        // md5 each one, and inject the resulting list into the service worker
+        // as `self.__WB_MANIFEST`. With this repo's public tree (~3.3 GB:
+        // buckets, assets/harthmere, splash, models, voices) that produced a
+        // 6.88 MB service worker whose payload was 13 113 occurrences of
+        // "harthmere" -- every .fbx, .glb, inventory icon and voice line, with
+        // a revision hash each.
+        //
+        // None of it was ever used. `src/client/service_worker.ts` is a
+        // Firebase background-push handler; it references `self.__WB_MANIFEST`
+        // only because next-pwa's InjectManifest plugin fails the build if the
+        // token is absent, and it never calls `precacheAndRoute`. So the
+        // browser downloaded 6.88 MB of dead JSON on first load and again after
+        // every deploy (a service worker script is revalidated independently of
+        // the hashed bundles).
+        //
+        // Passing an explicit array short-circuits the public-tree glob (see
+        // next-pwa/index.js: `if (!Array.isArray(manifestEntries))`), which also
+        // removes a full read-and-hash pass over public/ from every production
+        // build. Workbox still lists eligible webpack outputs in the injected
+        // token, but this worker never consumes that token, and the large
+        // unhashed public catalogue is the 6.88 MB regression being prevented.
+        //
+        // If real precaching is ever wanted, do NOT simply delete this line:
+        // add `precacheAndRoute(self.__WB_MANIFEST)` in the worker and scope the
+        // manifest with `publicExcludes` to the app shell, never the asset
+        // buckets.
+        additionalManifestEntries: [],
       })
     : (x) => x;
 

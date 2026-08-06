@@ -4,7 +4,9 @@ import type { BiomesId } from "@/shared/ids";
 import {
   addThreat,
   decayThreat,
+  pickRetaliationParticipantTarget,
   pickThreatPreferredTarget,
+  THREAT_PER_TAUNT,
   topThreat,
   type ThreatTable,
 } from "@/shared/npc/threat";
@@ -85,5 +87,54 @@ describe("threat-preferred target selection", () => {
       ]),
       2
     );
+  });
+});
+
+describe("multiplayer retaliation participant selection", () => {
+  const participants = [
+    { id: id(10), distanceSq: 9, threat: 25, openedEncounter: true },
+    { id: id(20), distanceSq: 4, threat: 0, openedEncounter: false },
+    { id: id(30), distanceSq: 16, threat: 0, openedEncounter: false },
+  ];
+
+  it("targets the player who opened the encounter first", () => {
+    assert.equal(pickRetaliationParticipantTarget(participants, 0), 10);
+  });
+
+  it("rotates deterministically across every nearby participant", () => {
+    assert.deepEqual(
+      [0, 1, 2, 3].map((index) =>
+        pickRetaliationParticipantTarget(participants, index)
+      ),
+      [10, 20, 30, 10]
+    );
+  });
+
+  it("lets responder ranks distribute a pack across multiple players", () => {
+    const targets = new Set(
+      [0, 1, 2].map((rank) =>
+        pickRetaliationParticipantTarget(participants, rank)
+      )
+    );
+    assert.deepEqual([...targets], [10, 20, 30]);
+  });
+
+  it("keeps an authored taunt above encounter rotation", () => {
+    assert.equal(
+      pickRetaliationParticipantTarget(
+        participants.map((candidate) =>
+          candidate.id === id(30)
+            ? { ...candidate, threat: THREAT_PER_TAUNT }
+            : candidate
+        ),
+        1
+      ),
+      30
+    );
+  });
+
+  it("handles empty and negative rotation inputs", () => {
+    assert.equal(pickRetaliationParticipantTarget([], 0), undefined);
+    assert.equal(pickRetaliationParticipantTarget(participants, -1), 30);
   });
 });

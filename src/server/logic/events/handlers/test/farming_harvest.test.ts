@@ -4,7 +4,11 @@ import { BikkieIds } from "@/shared/bikkie/ids";
 import { TriggerState } from "@/shared/ecs/gen/components";
 import { HarvestPlantEvent } from "@/shared/ecs/gen/events";
 import { EventSerde } from "@/shared/ecs/gen/json_serde";
-import { readHarthmereNativeSkillTotalXp } from "@/shared/harthmere/harthmere_skill_progression";
+import {
+  readHarthmereNativeSkillTotalXp,
+  writeHarthmereNativeSkillTotalXp,
+} from "@/shared/harthmere/harthmere_skill_progression";
+import { harthmereSkillTotalXpCap } from "@/shared/harthmere/mmo_class_ability_collectibles";
 import { generateTestId } from "@/shared/test_helpers";
 import assert from "assert";
 
@@ -13,11 +17,13 @@ function fakeHarvestPlant({
   seed = BikkieIds.raspberrySeed,
   position = [1, 2, 3],
   planter = generateTestId(),
+  harvestCount = 10n,
 }: {
   status?: string;
   seed?: number;
   position?: [number, number, number];
   planter?: ReturnType<typeof generateTestId>;
+  harvestCount?: bigint;
 } = {}) {
   const component = {
     planter,
@@ -25,13 +31,17 @@ function fakeHarvestPlant({
     seed,
     player_actions: [] as Array<{ kind: string; timestamp: number }>,
   };
+  const container = {
+    items: [{ item: { id: BikkieIds.pumpkin }, count: harvestCount }],
+  };
   const plant = {
     id: generateTestId(),
     position: () => ({ v: position }),
     staleOk: () => ({ position: () => ({ v: position }) }),
     mutableFarmingPlantComponent: () => component,
+    mutableContainerInventory: () => container,
   };
-  return { component, plant };
+  return { component, container, plant };
 }
 
 function fakeHarvestPlayer(position: [number, number, number] = [1, 2, 3]) {
@@ -106,6 +116,29 @@ describe("harvestPlantEventHandler", () => {
     );
 
     assert.equal(component.player_actions.length, 1);
+    assert.equal(component.player_actions[0].kind, "harvest");
+  });
+
+  it("adds the Farming yield benefit before Gaia materializes the native crop drop", () => {
+    const { component, container, plant } = fakeHarvestPlant();
+    const player = fakeHarvestPlayer();
+    writeHarthmereNativeSkillTotalXp(
+      player.triggerState(),
+      "farming",
+      harthmereSkillTotalXpCap("farming")
+    );
+
+    harvestPlantEventHandler.apply(
+      { plant, player } as any,
+      new HarvestPlantEvent({
+        id: generateTestId(),
+        plant_id: plant.id,
+        position: [1, 2, 3],
+      }),
+      {} as any
+    );
+
+    assert.equal(container.items[0].count, 12n);
     assert.equal(component.player_actions[0].kind, "harvest");
   });
 

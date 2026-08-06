@@ -10,6 +10,8 @@ import type { BiomesId } from "@/shared/ids";
 export const NPC_VOICE_AUDIO_CACHE_MANIFEST_VERSION =
   "npc-voice-audio-cache-v1";
 
+export type NpcVoicePreferredFormat = "source" | "aac";
+
 export interface NpcVoiceAudioCacheKeyInput {
   provider: string;
   synthesisIdentity: string;
@@ -29,6 +31,8 @@ export interface NpcVoiceAudioManifestRecording {
   voiceId?: string;
   textHash?: string;
   bytes?: number;
+  mobilePath?: string;
+  mobileBytes?: number;
 }
 
 export interface NpcVoiceAudioManifest {
@@ -45,8 +49,8 @@ interface StaticNpcVoiceManifestIndex {
   manifestPath: string;
   modifiedMs: number;
   provider: string;
-  byCacheKey: Map<string, string>;
-  byActorAndTextHash: Map<string, string>;
+  byCacheKey: Map<string, NpcVoiceAudioManifestRecording>;
+  byActorAndTextHash: Map<string, NpcVoiceAudioManifestRecording>;
 }
 
 let staticManifestCache: StaticNpcVoiceManifestIndex | undefined;
@@ -163,8 +167,8 @@ function loadStaticManifest(root = process.cwd()) {
       manifestPath,
       modifiedMs: 0,
       provider: "",
-      byCacheKey: new Map<string, string>(),
-      byActorAndTextHash: new Map<string, string>(),
+      byCacheKey: new Map<string, NpcVoiceAudioManifestRecording>(),
+      byActorAndTextHash: new Map<string, NpcVoiceAudioManifestRecording>(),
     } satisfies StaticNpcVoiceManifestIndex;
   }
   if (
@@ -177,8 +181,11 @@ function loadStaticManifest(root = process.cwd()) {
     const manifest = JSON.parse(
       fs.readFileSync(manifestPath, "utf8")
     ) as NpcVoiceAudioManifest;
-    const byCacheKey = new Map<string, string>();
-    const byActorAndTextHash = new Map<string, string>();
+    const byCacheKey = new Map<string, NpcVoiceAudioManifestRecording>();
+    const byActorAndTextHash = new Map<
+      string,
+      NpcVoiceAudioManifestRecording
+    >();
     for (const recording of manifest.recordings ?? []) {
       if (!recording.path) {
         continue;
@@ -191,7 +198,7 @@ function loadStaticManifest(root = process.cwd()) {
         ...(recording.cacheKeys ?? []),
       ]) {
         if (cacheKey) {
-          byCacheKey.set(cacheKey, recording.path);
+          byCacheKey.set(cacheKey, recording);
         }
       }
       const actorTextKey = actorAndTextHashKey({
@@ -199,7 +206,7 @@ function loadStaticManifest(root = process.cwd()) {
         textHash: recording.textHash,
       });
       if (actorTextKey && !byActorAndTextHash.has(actorTextKey)) {
-        byActorAndTextHash.set(actorTextKey, recording.path);
+        byActorAndTextHash.set(actorTextKey, recording);
       }
     }
     staticManifestCache = {
@@ -217,8 +224,8 @@ function loadStaticManifest(root = process.cwd()) {
       manifestPath,
       modifiedMs: stat.mtimeMs,
       provider: "",
-      byCacheKey: new Map<string, string>(),
-      byActorAndTextHash: new Map<string, string>(),
+      byCacheKey: new Map<string, NpcVoiceAudioManifestRecording>(),
+      byActorAndTextHash: new Map<string, NpcVoiceAudioManifestRecording>(),
     };
   }
 }
@@ -232,10 +239,29 @@ function audioDataUrl(audio: Buffer, extension = "mp3") {
   const contentType =
     extension === "wav"
       ? "audio/wav"
-      : extension === "ogg" || extension === "opus"
-        ? "audio/ogg"
-        : "audio/mpeg";
+      : extension === "m4a" || extension === "mp4" || extension === "aac"
+        ? "audio/mp4"
+        : extension === "ogg" || extension === "opus"
+          ? "audio/ogg"
+          : "audio/mpeg";
   return `data:${contentType};base64,${audio.toString("base64")}`;
+}
+
+function preferredCommittedRecordingPath(
+  recording: NpcVoiceAudioManifestRecording | undefined,
+  preferredFormat: NpcVoicePreferredFormat,
+  root: string
+) {
+  if (!recording) {
+    return undefined;
+  }
+  if (preferredFormat === "aac" && recording.mobilePath) {
+    const mobilePath = existingRelativePath(recording.mobilePath, root);
+    if (mobilePath) {
+      return mobilePath;
+    }
+  }
+  return existingRelativePath(recording.path, root);
 }
 
 export function findCachedNpcVoiceAudio(input: {
@@ -244,11 +270,12 @@ export function findCachedNpcVoiceAudio(input: {
   text?: string;
   voice?: string;
   extension?: string;
+  preferredFormat?: NpcVoicePreferredFormat;
   root?: string;
 }) {
   const root = input.root ?? process.cwd();
   const staticManifest = loadStaticManifest(root);
-  const staticPath =
+  const staticRecording =
     staticManifest.provider === input.provider
       ? (staticManifest.byCacheKey.get(input.cacheKey) ??
         staticManifest.byActorAndTextHash.get(
@@ -258,7 +285,12 @@ export function findCachedNpcVoiceAudio(input: {
           }) ?? ""
         ))
       : undefined;
-  if (staticPath && existingRelativePath(staticPath, root)) {
+  const staticPath = preferredCommittedRecordingPath(
+    staticRecording,
+    input.preferredFormat ?? "source",
+    root
+  );
+  if (staticPath) {
     return npcVoicePublicUrl(staticPath);
   }
   const runtimePath = npcVoiceRuntimeRelativePath(input);
@@ -279,6 +311,7 @@ export function findCommittedNpcVoiceAudio(input: {
   provider: string;
   text: string;
   voice: string;
+  preferredFormat?: NpcVoicePreferredFormat;
   root?: string;
 }) {
   const root = input.root ?? process.cwd();
@@ -290,12 +323,15 @@ export function findCommittedNpcVoiceAudio(input: {
     actorKey: actorKeyFromVoiceDescriptor(input.voice),
     textHash: npcVoiceTextHash(input.text),
   });
-  const staticPath = actorTextKey
+  const recording = actorTextKey
     ? staticManifest.byActorAndTextHash.get(actorTextKey)
     : undefined;
-  return staticPath && existingRelativePath(staticPath, root)
-    ? npcVoicePublicUrl(staticPath)
-    : undefined;
+  const staticPath = preferredCommittedRecordingPath(
+    recording,
+    input.preferredFormat ?? "source",
+    root
+  );
+  return staticPath ? npcVoicePublicUrl(staticPath) : undefined;
 }
 
 export async function writeCachedNpcVoiceAudio(input: {
@@ -348,6 +384,7 @@ export async function resolveNpcVoiceAudioUrl(input: {
   text?: string;
   voice?: string;
   extension?: string;
+  preferredFormat?: NpcVoicePreferredFormat;
   root?: string;
   generate: () => Promise<
     | {

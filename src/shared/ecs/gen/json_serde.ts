@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from json_serde.ts.j2. Do not modify directly.
-// Content Hash: 67dd156b59322b0204ed6b09f8bf5fc5
+// Content Hash: e156d5faab566174ddcff2213bac053c
 
 import * as c from "@/shared/ecs/gen/components";
 import * as e from "@/shared/ecs/gen/entities";
@@ -2518,6 +2518,9 @@ export class FarmingPlantComponentSerde {
     if (component.next_stage_at !== null) {
       data[17 - 1] = component.next_stage_at;
     }
+    if (component.skill_growth_time_multiplier !== null) {
+      data[18 - 1] = component.skill_growth_time_multiplier;
+    }
     return data;
   }
 
@@ -2608,6 +2611,15 @@ export class FarmingPlantComponentSerde {
       } else if (data.next_stage_at !== undefined) {
         fields.next_stage_at = t.deserializeOptionalF64(data.next_stage_at);
       }
+      if (data[18] !== undefined) {
+        fields.skill_growth_time_multiplier = t.deserializeOptionalF64(
+          data[18]
+        );
+      } else if (data.skill_growth_time_multiplier !== undefined) {
+        fields.skill_growth_time_multiplier = t.deserializeOptionalF64(
+          data.skill_growth_time_multiplier
+        );
+      }
     } else {
       for (let i = 0; i < data.length; i++) {
         if (data[i] === null || data[i] === undefined) {
@@ -2663,6 +2675,11 @@ export class FarmingPlantComponentSerde {
             break;
           case 17:
             fields.next_stage_at = t.deserializeOptionalF64(data[i]);
+            break;
+          case 18:
+            fields.skill_growth_time_multiplier = t.deserializeOptionalF64(
+              data[i]
+            );
             break;
         }
       }
@@ -4777,6 +4794,27 @@ export class NpcCombatStateSerde {
     if (component.ranged_attack_release_time !== null) {
       data[8 - 1] = component.ranged_attack_release_time;
     }
+    if (component.stagger_kind !== null) {
+      data[9 - 1] = component.stagger_kind;
+    }
+    if (component.stagger_start_time !== null) {
+      data[10 - 1] = component.stagger_start_time;
+    }
+    if (component.stagger_expiry_time !== null) {
+      data[11 - 1] = component.stagger_expiry_time;
+    }
+    if (component.stagger_direction !== null) {
+      data[12 - 1] = component.stagger_direction;
+    }
+    if (component.stagger_sequence !== null) {
+      data[13 - 1] = component.stagger_sequence;
+    }
+    if (component.poise !== null) {
+      data[14 - 1] = component.poise;
+    }
+    if (component.poise_max !== null) {
+      data[15 - 1] = component.poise_max;
+    }
     return data;
   }
 
@@ -4843,6 +4881,49 @@ export class NpcCombatStateSerde {
           data.ranged_attack_release_time
         );
       }
+      if (data[9] !== undefined) {
+        fields.stagger_kind = t.deserializeOptionalString(data[9]);
+      } else if (data.stagger_kind !== undefined) {
+        fields.stagger_kind = t.deserializeOptionalString(data.stagger_kind);
+      }
+      if (data[10] !== undefined) {
+        fields.stagger_start_time = t.deserializeOptionalF64(data[10]);
+      } else if (data.stagger_start_time !== undefined) {
+        fields.stagger_start_time = t.deserializeOptionalF64(
+          data.stagger_start_time
+        );
+      }
+      if (data[11] !== undefined) {
+        fields.stagger_expiry_time = t.deserializeOptionalF64(data[11]);
+      } else if (data.stagger_expiry_time !== undefined) {
+        fields.stagger_expiry_time = t.deserializeOptionalF64(
+          data.stagger_expiry_time
+        );
+      }
+      if (data[12] !== undefined) {
+        fields.stagger_direction = t.deserializeOptionalVec3f(data[12]);
+      } else if (data.stagger_direction !== undefined) {
+        fields.stagger_direction = t.deserializeOptionalVec3f(
+          data.stagger_direction
+        );
+      }
+      if (data[13] !== undefined) {
+        fields.stagger_sequence = t.deserializeOptionalF64(data[13]);
+      } else if (data.stagger_sequence !== undefined) {
+        fields.stagger_sequence = t.deserializeOptionalF64(
+          data.stagger_sequence
+        );
+      }
+      if (data[14] !== undefined) {
+        fields.poise = t.deserializeOptionalF64(data[14]);
+      } else if (data.poise !== undefined) {
+        fields.poise = t.deserializeOptionalF64(data.poise);
+      }
+      if (data[15] !== undefined) {
+        fields.poise_max = t.deserializeOptionalF64(data[15]);
+      } else if (data.poise_max !== undefined) {
+        fields.poise_max = t.deserializeOptionalF64(data.poise_max);
+      }
     } else {
       for (let i = 0; i < data.length; i++) {
         if (data[i] === null || data[i] === undefined) {
@@ -4881,6 +4962,27 @@ export class NpcCombatStateSerde {
             fields.ranged_attack_release_time = t.deserializeOptionalF64(
               data[i]
             );
+            break;
+          case 9:
+            fields.stagger_kind = t.deserializeOptionalString(data[i]);
+            break;
+          case 10:
+            fields.stagger_start_time = t.deserializeOptionalF64(data[i]);
+            break;
+          case 11:
+            fields.stagger_expiry_time = t.deserializeOptionalF64(data[i]);
+            break;
+          case 12:
+            fields.stagger_direction = t.deserializeOptionalVec3f(data[i]);
+            break;
+          case 13:
+            fields.stagger_sequence = t.deserializeOptionalF64(data[i]);
+            break;
+          case 14:
+            fields.poise = t.deserializeOptionalF64(data[i]);
+            break;
+          case 15:
+            fields.poise_max = t.deserializeOptionalF64(data[i]);
             break;
         }
       }
@@ -8939,6 +9041,24 @@ class HarthmereInventoryTransactionEventSerde {
     });
   }
 }
+class HarthmereRangedResourceAttackEventSerde {
+  static serialize(event: ev.HarthmereRangedResourceAttackEvent) {
+    return {
+      kind: "harthmereRangedResourceAttackEvent",
+      id: t.serializeBiomesId(event.id),
+      target_id: t.serializeOptionalBiomesId(event.target_id),
+      attack_time: event.attack_time,
+    };
+  }
+
+  static deserialize(data: any) {
+    return new ev.HarthmereRangedResourceAttackEvent({
+      id: t.deserializeBiomesId(data.id),
+      target_id: t.deserializeOptionalBiomesId(data.target_id),
+      attack_time: t.deserializeF64(data.attack_time),
+    });
+  }
+}
 class HarthmereChapter1WarpEventSerde {
   static serialize(event: ev.HarthmereChapter1WarpEvent) {
     return {
@@ -10043,6 +10163,7 @@ class UpdatePlayerHealthEventSerde {
       maxHp: event.maxHp,
       damageSource: t.serializeOptionalDamageSource(event.damageSource),
       attackAbilityId: event.attackAbilityId,
+      attackTimingClass: event.attackTimingClass,
       attackTime: event.attackTime,
       impactPoint: event.impactPoint,
     };
@@ -10056,6 +10177,7 @@ class UpdatePlayerHealthEventSerde {
       maxHp: t.deserializeOptionalI32(data.maxHp),
       damageSource: t.deserializeOptionalDamageSource(data.damageSource),
       attackAbilityId: t.deserializeOptionalString(data.attackAbilityId),
+      attackTimingClass: t.deserializeOptionalString(data.attackTimingClass),
       attackTime: t.deserializeOptionalF64(data.attackTime),
       impactPoint: t.deserializeOptionalVec3f(data.impactPoint),
     });
@@ -10068,6 +10190,8 @@ class UpdateNpcHealthEventSerde {
       id: t.serializeBiomesId(event.id),
       hp: event.hp,
       damageSource: t.serializeOptionalDamageSource(event.damageSource),
+      attackTimingClass: event.attackTimingClass,
+      attackTime: event.attackTime,
     };
   }
 
@@ -10076,6 +10200,8 @@ class UpdateNpcHealthEventSerde {
       id: t.deserializeBiomesId(data.id),
       hp: t.deserializeI32(data.hp),
       damageSource: t.deserializeOptionalDamageSource(data.damageSource),
+      attackTimingClass: t.deserializeOptionalString(data.attackTimingClass),
+      attackTime: t.deserializeOptionalF64(data.attackTime),
     });
   }
 }
@@ -11595,6 +11721,10 @@ export class EventSerde {
         return HarthmereInventoryTransactionEventSerde.serialize(
           event as ev.HarthmereInventoryTransactionEvent
         );
+      case "harthmereRangedResourceAttackEvent":
+        return HarthmereRangedResourceAttackEventSerde.serialize(
+          event as ev.HarthmereRangedResourceAttackEvent
+        );
       case "harthmereChapter1WarpEvent":
         return HarthmereChapter1WarpEventSerde.serialize(
           event as ev.HarthmereChapter1WarpEvent
@@ -12099,6 +12229,8 @@ export class EventSerde {
         return InternalInventorySetEventSerde.deserialize(data);
       case "harthmereInventoryTransactionEvent":
         return HarthmereInventoryTransactionEventSerde.deserialize(data);
+      case "harthmereRangedResourceAttackEvent":
+        return HarthmereRangedResourceAttackEventSerde.deserialize(data);
       case "harthmereChapter1WarpEvent":
         return HarthmereChapter1WarpEventSerde.deserialize(data);
       case "harthmereQuestProgressEvent":

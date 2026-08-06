@@ -195,13 +195,16 @@ export class ParticleSystemMaterials {
     return {
       sampleIndex: [1],
       numSampleIndex: 1,
-      colorMap: makeColorMapArray(new Uint8Array([0, 0, 0, 0]), 1, 1, 1, 3),
+      // These are already one complete transparent RGBA pixel. Declaring them
+      // as RGB used to rely on the old converter silently reading past the
+      // buffer; the strict atlas expander correctly rejects that corruption.
+      colorMap: makeColorMapArray(new Uint8Array([0, 0, 0, 0]), 1, 1, 1, 4),
       mreaMap: makeColorMapArray(
         new Uint8Array([0, 0, 0, 0]),
         1,
         1,
         1,
-        3,
+        4,
         false
       ),
       textureIndex: makeBufferTexture(new Uint32Array([0]), 1, 1),
@@ -261,7 +264,10 @@ export class ParticleSystem {
   private currentTime?: number;
   three: Object3D;
 
-  constructor(public materials: ParticleSystemMaterials, startTime?: number) {
+  constructor(
+    public materials: ParticleSystemMaterials,
+    startTime?: number
+  ) {
     this.three = new Object3D();
     this.three.frustumCulled = false;
     const mesh = new Mesh(materials.geometry, materials.material);

@@ -11,6 +11,7 @@ import { BikkieIds } from "@/shared/bikkie/ids";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import { getAabbForEntity } from "@/shared/game/entity_sizes";
 import { attackIntervalSeconds } from "@/shared/game/damage";
+import { anItem } from "@/shared/game/item";
 import { movementActionIsInvulnerable } from "@/shared/game/movement_actions";
 import { degToRad, diffAngle } from "@/shared/math/angles";
 import { distSqToAABB, sub, yaw } from "@/shared/math/linear";
@@ -33,6 +34,7 @@ import {
 import { deserializeNpcCustomState } from "@/shared/npc/serde";
 import {
   applyHarthmereNativeAttackStats,
+  harthmereNativeAttackCadenceDecision,
   harthmereNativeNpcChaseAttackParams,
   harthmereNativeItemCombatProfile,
   harthmereNativeItemDefinitionForBiomesId,
@@ -49,10 +51,21 @@ import {
   writeHarthmereNativeVitals,
 } from "@/shared/harthmere/harthmere_native_vitals";
 import {
+  HARTHMERE_ARROW_DAMAGE,
+  consumeHarthmereRangedResourceReceipt,
+  harthmereRangedResourceKind,
+  harthmereRangedResourceReceiptMatches,
+  isHarthmereBowWeapon,
+  readHarthmereRangedResourceReceipt,
+} from "@/shared/harthmere/harthmere_ranged_resources";
+import {
   awardHarthmereNativeSkillXp,
+  harthmereNativeCombatSublevelMultipliers,
   harthmereNativeCombatSkillAwards,
   harthmereNativeShieldSkillAwards,
+  readHarthmereNativeSkillLevel,
 } from "@/shared/harthmere/harthmere_skill_progression";
+import { harthmereSublevelPotencyMultiplier } from "@/shared/harthmere/harthmere_sublevel_benefits";
 
 const HARTHMERE_NPC_ATTACK_REPLAY_LEDGER_LIMIT = 160;
 
@@ -154,6 +167,8 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
     ) => {
       let authoritativeHp = event.hp;
       let authoritativeHpDelta = event.hpDelta;
+      let authoritativeFixedArrowDamage = false;
+      let shieldDamagePrevented = 0;
       if (event.damageSource?.kind === "attack") {
         if (
           movementActionIsInvulnerable(
@@ -494,15 +509,48 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
           );
           const selectedRef = attackerInventory.inventory().selected;
           const selected = attackerInventory.get(selectedRef);
+          const nowMs = Date.now();
+          const rangedResourceReceipt = readHarthmereRangedResourceReceipt(
+            attacker.triggerState()
+          );
+          const receiptItem = rangedResourceReceipt.itemId
+            ? anItem(rangedResourceReceipt.itemId)
+            : undefined;
+          const paidRangedResourceAttack = Boolean(
+            receiptItem &&
+            harthmereRangedResourceReceiptMatches(attacker.triggerState(), {
+              attackTime: event.attackTime,
+              itemId: receiptItem.id,
+              targetId: player.id,
+              nowMs,
+            })
+          );
+          const attackItem = paidRangedResourceAttack
+            ? receiptItem
+            : selected?.item;
+          authoritativeFixedArrowDamage = Boolean(
+            paidRangedResourceAttack &&
+            rangedResourceReceipt.kind === "arrow" &&
+            isHarthmereBowWeapon(attackItem)
+          );
           const definition = harthmereNativeItemDefinitionForBiomesId(
-            selected?.item.id
+            attackItem?.id
           );
           const usesNativeCombat =
             attackerProgress.migrationVersion > 0 || definition !== undefined;
           if (usesNativeCombat) {
-            const itemProfile = harthmereNativeItemCombatProfile(
-              selected?.item
-            );
+            const itemProfile = harthmereNativeItemCombatProfile(attackItem);
+            if (
+              harthmereRangedResourceKind(attackItem) &&
+              !paidRangedResourceAttack
+            ) {
+              return;
+            }
+            if (paidRangedResourceAttack) {
+              consumeHarthmereRangedResourceReceipt(
+                attacker.mutableTriggerState()
+              );
+            }
             // Harthmere-native items must have an explicit combat profile, but
             // original Biomes minigames still author their loadouts with
             // legacy Bikkie weapons (for example Mega Axe). Migrating a player
@@ -515,10 +563,24 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
             if (attackerProgress.level < (itemProfile?.levelRequirement ?? 1)) {
               return;
             }
+            const sublevel = harthmereNativeCombatSublevelMultipliers(
+              attacker.triggerState(),
+              {
+                itemId: itemProfile?.itemId,
+                kind: itemProfile?.kind ?? "melee",
+              }
+            );
+            const effectiveManaCost = Math.max(
+              0,
+              Math.round((itemProfile?.manaCost ?? 0) * sublevel.efficiency)
+            );
             const attackerVitals = readHarthmereNativeVitals(
               attacker.triggerState()
             );
-            if ((itemProfile?.manaCost ?? 0) > attackerVitals.mana) {
+            if (
+              !paidRangedResourceAttack &&
+              effectiveManaCost > attackerVitals.mana
+            ) {
               return;
             }
             const attackerPosition = attacker.position()?.v;
@@ -531,22 +593,36 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
             ) {
               return;
             }
-            const nowMs = Date.now();
             const intervalMs = Math.round(
               1000 *
-                (itemProfile?.intervalSecs ??
-                  attackIntervalSeconds(selected?.item))
+                (itemProfile?.intervalSecs ?? attackIntervalSeconds(attackItem))
             );
-            if (nowMs - attackerProgress.lastAttackMs < intervalMs) {
+            const attackCadence = paidRangedResourceAttack
+              ? {
+                  allowed: true,
+                  timingClass: undefined,
+                  damageMultiplier: 1,
+                  progression: {
+                    lastAttackMs: rangedResourceReceipt.authorizedAtMs,
+                  },
+                }
+              : harthmereNativeAttackCadenceDecision({
+                  progression: attackerProgress,
+                  nowMs,
+                  itemIntervalMs: intervalMs,
+                  itemKind: itemProfile?.kind ?? "melee",
+                  requestedTimingClass: event.attackTimingClass,
+                });
+            if (!attackCadence.allowed) {
               return;
             }
             writeHarthmereNativeCombatProgression(
               attacker.mutableTriggerState(),
-              { lastAttackMs: nowMs }
+              attackCadence.progression ?? { lastAttackMs: nowMs }
             );
-            if ((itemProfile?.manaCost ?? 0) > 0) {
+            if (!paidRangedResourceAttack && effectiveManaCost > 0) {
               writeHarthmereNativeVitals(attacker.mutableTriggerState(), {
-                mana: attackerVitals.mana - itemProfile!.manaCost,
+                mana: attackerVitals.mana - effectiveManaCost,
               });
             }
 
@@ -559,31 +635,42 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
               attackerProgress.level
             );
             const defenderStats = harthmereNativeLevelStats(defender.level);
-            const statDamage = applyHarthmereNativeAttackStats({
-              baseDamage:
-                itemProfile?.damagePerHit ??
-                Math.max(
-                  1,
-                  Math.round(((selected?.item.dps ?? 16) * intervalMs) / 1000)
-                ),
-              kind: itemProfile?.kind ?? "melee",
-              stats: attackerStats,
-              criticalSeed: [
-                attacker.id,
-                player.id,
-                attackerProgress.lastAttackMs,
-                selected?.item.id,
-              ],
-            });
-            const damage = mitigateHarthmereNativeIncomingDamage({
-              rawDamage: statDamage.damage,
-              armor: armor.armor + defenderStats.armor,
-              defense: armor.defense + defenderStats.defense,
-              evasion: armor.evasion + defenderStats.evasion,
-              accuracy: attackerStats.accuracy,
-              attackerLevel: attackerProgress.level,
-              defenderLevel: defender.level,
-            });
+            const statDamage = authoritativeFixedArrowDamage
+              ? { damage: HARTHMERE_ARROW_DAMAGE, critical: false }
+              : applyHarthmereNativeAttackStats({
+                  baseDamage:
+                    itemProfile?.damagePerHit ??
+                    Math.max(
+                      1,
+                      Math.round(((attackItem?.dps ?? 16) * intervalMs) / 1000)
+                    ),
+                  kind: itemProfile?.kind ?? "melee",
+                  stats: attackerStats,
+                  criticalSeed: [
+                    attacker.id,
+                    player.id,
+                    attackerProgress.lastAttackMs,
+                    attackItem?.id,
+                  ],
+                });
+            const damage = authoritativeFixedArrowDamage
+              ? HARTHMERE_ARROW_DAMAGE
+              : mitigateHarthmereNativeIncomingDamage({
+                  rawDamage: Math.max(
+                    1,
+                    Math.round(
+                      statDamage.damage *
+                        sublevel.potency *
+                        attackCadence.damageMultiplier
+                    )
+                  ),
+                  armor: armor.armor + defenderStats.armor,
+                  defense: armor.defense + defenderStats.defense,
+                  evasion: armor.evasion + defenderStats.evasion,
+                  accuracy: attackerStats.accuracy,
+                  attackerLevel: attackerProgress.level,
+                  defenderLevel: defender.level,
+                });
             authoritativeHp = undefined;
             authoritativeHpDelta = -damage;
             awardHarthmereNativeSkillXp(
@@ -594,11 +681,20 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
                 damage,
               })
             );
-            if (selected && (itemProfile?.durabilityCostMs ?? 0) > 0) {
+            if (
+              !paidRangedResourceAttack &&
+              selected &&
+              (itemProfile?.durabilityCostMs ?? 0) > 0
+            ) {
               decrementItemDurability(
                 attackerInventory,
                 selectedRef,
-                itemProfile!.durabilityCostMs
+                Math.max(
+                  1,
+                  Math.round(
+                    itemProfile!.durabilityCostMs * sublevel.efficiency
+                  )
+                )
               );
             }
           }
@@ -607,19 +703,48 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
 
       if (
         event.damageSource?.kind === "attack" &&
+        !authoritativeFixedArrowDamage &&
         authoritativeHpDelta !== undefined &&
         authoritativeHpDelta < 0
       ) {
+        const equippedItemIds = [...(player.wearing()?.items.values() ?? [])]
+          .map(
+            (item) => harthmereNativeItemDefinitionForBiomesId(item.id)?.itemId
+          )
+          .filter((itemId): itemId is string => Boolean(itemId));
+        if (equippedItemIds.some((itemId) => /shield|buckler/i.test(itemId))) {
+          const incoming = -authoritativeHpDelta;
+          const shieldPotency = harthmereSublevelPotencyMultiplier(
+            readHarthmereNativeSkillLevel(
+              player.triggerState(),
+              "shield_mastery"
+            )
+          );
+          const shieldSkillBonusPrevented =
+            incoming > 1
+              ? Math.max(
+                  0,
+                  Math.min(
+                    incoming - 1,
+                    Math.round(incoming * (shieldPotency - 1))
+                  )
+                )
+              : 0;
+          // Base shield armor was already included in the authoritative
+          // mitigation above. Credit that real block for mastery progression,
+          // while only the learned potency bonus removes additional HP here.
+          shieldDamagePrevented =
+            incoming > 1 ? Math.max(1, shieldSkillBonusPrevented) : 0;
+          authoritativeHpDelta = -Math.max(
+            1,
+            incoming - shieldSkillBonusPrevented
+          );
+        }
         awardHarthmereNativeSkillXp(
           player.mutableTriggerState(),
           harthmereNativeShieldSkillAwards({
-            equippedItemIds: [...(player.wearing()?.items.values() ?? [])]
-              .map(
-                (item) =>
-                  harthmereNativeItemDefinitionForBiomesId(item.id)?.itemId
-              )
-              .filter((itemId): itemId is string => Boolean(itemId)),
-            damageTaken: -authoritativeHpDelta,
+            equippedItemIds,
+            damagePrevented: shieldDamagePrevented,
           })
         );
       }

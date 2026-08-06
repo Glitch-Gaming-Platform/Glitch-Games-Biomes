@@ -4,7 +4,7 @@ const path = require("path");
 const { makeReporter } = require("./harthmere-town-rule-test-utils.cjs");
 
 const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
-const report = makeReporter("Harthmere live B-key animation action-chain tests current", root);
+const report = makeReporter("Harthmere live primary-click animation action-chain tests current", root);
 const url = process.env.HARTHMERE_E2E_URL || "http://localhost:3000/at/Joe";
 const timeoutMs = Number(process.env.HARTHMERE_E2E_TIMEOUT_MS || 45000);
 
@@ -66,9 +66,10 @@ async function main() {
       };
     });
 
-    // First B may draw the weapon depending on persisted state. After a short
-    // cooldown, the next B must resolve a real basic attack animation chain.
-    await page.keyboard.press("KeyB");
+    // The first primary click may draw the weapon depending on persisted
+    // state. After a short cooldown, the next click must resolve a real basic
+    // attack animation chain. B is reserved for Bank.
+    await page.mouse.click(400, 300);
     await new Promise((resolve) => setTimeout(resolve, 650));
     await page.evaluate(() => {
       window.__harthmereForwardArcRuntime = {
@@ -82,7 +83,7 @@ async function main() {
         source: "animation_action_chain_live_test",
       };
     });
-    await page.keyboard.press("KeyB");
+    await page.mouse.click(400, 300);
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     const result = await page.evaluate(() => {
@@ -113,10 +114,10 @@ async function main() {
       };
     });
 
-    report.check("KeyB was captured by the hard Harthmere router", result.routerLog.some((entry) => entry?.code === "KeyB" || entry?.action === "basic"), result.routerLog.slice(0, 10).map((entry) => JSON.stringify(entry)));
-    report.check("KeyB produced a basic attack-animation event", result.attackEvents.some((entry) => entry.detail?.attack === "basic"), result.attackEvents.map((entry) => JSON.stringify(entry)));
-    report.check("KeyB produced a visible sword attack animation event without combatDebug", result.swordEvents.some((entry) => entry.detail?.action === "attack" && entry.detail?.attack === "basic"), result.swordEvents.map((entry) => JSON.stringify(entry)));
-    report.check("KeyB produced a physical player_swing combat effect", result.combatEvents.some((entry) => entry.detail?.visualKind === "player_swing" && entry.detail?.effectKind === "physical"), result.combatEvents.map((entry) => JSON.stringify(entry)).slice(0, 20));
+    report.check("KeyB remains absent from the hard combat router", !result.routerLog.some((entry) => entry?.code === "KeyB" || entry?.action === "basic"), result.routerLog.slice(0, 10).map((entry) => JSON.stringify(entry)));
+    report.check("primary click produced a basic attack-animation event", result.attackEvents.some((entry) => entry.detail?.attack === "basic"), result.attackEvents.map((entry) => JSON.stringify(entry)));
+    report.check("primary click produced a visible sword attack animation event without combatDebug", result.swordEvents.some((entry) => entry.detail?.action === "attack" && entry.detail?.attack === "basic"), result.swordEvents.map((entry) => JSON.stringify(entry)));
+    report.check("primary click produced a physical player_swing combat effect", result.combatEvents.some((entry) => entry.detail?.visualKind === "player_swing" && entry.detail?.effectKind === "physical"), result.combatEvents.map((entry) => JSON.stringify(entry)).slice(0, 20));
     report.check("player_swing carries swingForward", Array.isArray(result.lastSwing?.detail?.swingForward), JSON.stringify(result.lastSwing));
     report.check("attack animation direction matches visible bodyForward", typeof result.dot === "number" && result.dot > 0.98, `dot=${result.dot}; runtime=${JSON.stringify(result.runtime)}; swing=${JSON.stringify(result.lastSwing?.detail?.swingForward)}`);
   } finally {

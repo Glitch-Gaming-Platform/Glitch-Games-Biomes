@@ -1,4 +1,6 @@
 import {
+  canDirectlyTalkToHarthmereBusinessCustomer,
+  harthmereBusinessCustomerEffectivePhase,
   harthmereBusinessCustomerTalkTargetCount,
   publishHarthmereBusinessCustomerTalkTargets,
   clearHarthmereBusinessCustomerTalkTarget,
@@ -13,6 +15,89 @@ import path from "path";
 describe("business customer talk routing", () => {
   const owner = "routing-test";
   afterEach(() => resetHarthmereBusinessCustomerTalkStateForTest());
+
+  it("offers direct F when either synchronized serving source is ready", () => {
+    for (const ready of [
+      {
+        currentTicket: true,
+        entityPresent: true,
+        nativePhase: "serving",
+        sessionSpatialPhase: "entering",
+        visible: true,
+      },
+      {
+        currentTicket: true,
+        entityPresent: true,
+        nativePhase: "entering",
+        sessionSpatialPhase: "serving",
+        visible: true,
+      },
+    ]) {
+      assert.equal(canDirectlyTalkToHarthmereBusinessCustomer(ready), true);
+    }
+    for (const unavailable of [
+      {
+        currentTicket: false,
+        entityPresent: true,
+        nativePhase: "serving",
+        sessionSpatialPhase: "serving",
+        visible: true,
+      },
+      {
+        currentTicket: true,
+        entityPresent: false,
+        nativePhase: "serving",
+        sessionSpatialPhase: "serving",
+        visible: true,
+      },
+      {
+        currentTicket: true,
+        entityPresent: true,
+        nativePhase: "entering",
+        sessionSpatialPhase: "entering",
+        visible: true,
+      },
+      {
+        currentTicket: true,
+        entityPresent: true,
+        nativePhase: "serving",
+        sessionSpatialPhase: "serving",
+        visible: false,
+      },
+    ]) {
+      assert.equal(
+        canDirectlyTalkToHarthmereBusinessCustomer(unavailable),
+        false
+      );
+    }
+  });
+
+  it("presents one effective serving phase when ECS and economy disagree", () => {
+    assert.equal(
+      harthmereBusinessCustomerEffectivePhase({
+        currentTicket: true,
+        nativePhase: "entering",
+        sessionSpatialPhase: "serving",
+      }),
+      "serving"
+    );
+    assert.equal(
+      harthmereBusinessCustomerEffectivePhase({
+        currentTicket: true,
+        nativePhase: "serving",
+        sessionSpatialPhase: "entering",
+      }),
+      "serving"
+    );
+    assert.equal(
+      harthmereBusinessCustomerEffectivePhase({
+        currentTicket: false,
+        nativePhase: "queued",
+        sessionSpatialPhase: "serving",
+      }),
+      "queued"
+    );
+  });
 
   it("exposes only the active session customer by exact native entity id", () => {
     const target = {
@@ -95,9 +180,40 @@ describe("business customer talk routing", () => {
       ),
       "utf8"
     );
-    assert.ok(hud.includes("Talk to this customer to choose"));
+    assert.ok(hud.includes("Talk to {customerName}"));
+    assert.ok(hud.includes('shortcut="F"'));
     assert.equal(hud.includes("data-business-offer-id"), false);
     assert.ok(dialog.includes("additionalActions={serviceActions}"));
+    assert.ok(
+      dialog.includes("revealActionsImmediately={target.ready}"),
+      "timed service choices must not wait for the shared NPC typewriter"
+    );
+    assert.ok(
+      dialog.includes("`<text>${target.askLine} ${status}</text>`"),
+      "a ready timed request and its actions must share one dialog step"
+    );
+    assert.ok(
+      dialog.includes("frozenTarget.current ??= liveTarget ?? retainedTarget"),
+      "an open request must not restart its typewriter on patience polling"
+    );
+    assert.ok(
+      dialog.includes("createHarthmereBusinessCustomerServiceFeedback")
+    );
+    assert.ok(dialog.includes("data-business-customer-result="));
+    assert.ok(dialog.includes("data-business-customer-gold-earned="));
+    assert.ok(dialog.includes("data-business-customer-progress-earned="));
+    assert.ok(dialog.includes("data-business-customer-result-message="));
+    assert.ok(dialog.includes('role="status"'));
+    assert.ok(dialog.includes("HARTHMERE_BUSINESS_RESULT_DISPLAY_MS = 3_000"));
+    assert.ok(dialog.includes("Continue to next customer"));
+    assert.ok(dialog.includes("Next customer in 3 seconds."));
+    assert.ok(dialog.includes("window.setTimeout("));
+    assert.ok(dialog.includes('key="business-customer-result"'));
+    assert.ok(dialog.includes('followUpText: "Checking your answer…"'));
+    assert.ok(
+      dialog.includes("data-business-customer-target-source="),
+      "an open business dialog must identify live versus retained routing"
+    );
     assert.equal(dialog.includes('name: "Chit Chat"'), false);
     assert.equal(dialog.includes('name: "Ask about this place"'), false);
     assert.ok(
@@ -328,6 +444,66 @@ describe("business customer talk registry covers the whole queue", () => {
     assert.equal(source.includes('{ left: "50%", top: 150 }'), false);
   });
 
+  it("renders an authoritative patience bar for every materialized waiting customer", () => {
+    const source = readFileSync(
+      path.join(
+        process.cwd(),
+        "src/client/components/harthmere_business/HarthmereBusinessShiftHUD.tsx"
+      ),
+      "utf8"
+    );
+    assert.ok(source.includes("<HarthmereBusinessPatienceBar"));
+    assert.ok(source.includes("patience={patience}"));
+    assert.ok(source.includes('entry.status === "waiting"'));
+    assert.ok(source.includes(".map((entry) => ("));
+  });
+
+  it("keeps patience reconciliation alive across live-adapter identity changes", () => {
+    const source = readFileSync(
+      path.join(
+        process.cwd(),
+        "src/client/components/harthmere_business/HarthmereBusinessShiftHUD.tsx"
+      ),
+      "utf8"
+    );
+    assert.ok(source.includes("const tickAdapter = React.useRef(adapter)"));
+    assert.ok(source.includes("tickAdapter.current = adapter"));
+    const tickEffect = source.slice(
+      source.indexOf("const tick = async"),
+      source.indexOf("const wasInside = previousInsideBusiness.current")
+    );
+    assert.ok(tickEffect.includes("void tick()"));
+    assert.ok(tickEffect.includes("tickInFlight.current"));
+    assert.ok(
+      tickEffect.includes(
+        "}, [businessId, session?.sessionId, session?.status]);"
+      )
+    );
+    assert.equal(
+      tickEffect.includes(
+        "}, [adapter, businessId, session?.sessionId, session?.status]);"
+      ),
+      false
+    );
+  });
+
+  it("sends exact current-customer ECS evidence with patience ticks", () => {
+    const source = readFileSync(
+      path.join(
+        process.cwd(),
+        "src/client/components/harthmere_business/businessInterfaceLiveAdapter.ts"
+      ),
+      "utf8"
+    );
+    const tick = source.slice(
+      source.indexOf("tickCustomerSession: (businessId, sessionId)"),
+      source.indexOf("endCustomerSession:")
+    );
+    assert.ok(tick.includes("session.currentTicketId"));
+    assert.ok(tick.includes("ticketId: ticket.ticketId"));
+    assert.ok(tick.includes("customerEntityId: ticket.entityId"));
+  });
+
   it("ends the actor-owned shift after the player remains outside the business", () => {
     const source = readFileSync(
       path.join(
@@ -383,5 +559,59 @@ describe("business customer talk registry covers the whole queue", () => {
       biomesMount.includes("<HarthmereBusinessWorldInteraction"),
       false
     );
+  });
+
+  it("routes real F to a registered shift customer before the nearby board", () => {
+    const cursor = readFileSync(
+      path.join(
+        process.cwd(),
+        "src/client/components/overlays/inspected/CursorInspectionOverlayComponent.tsx"
+      ),
+      "utf8"
+    );
+    const dispatcher = readFileSync(
+      path.join(
+        process.cwd(),
+        "src/client/components/challenges/worldInteractionDispatcher.ts"
+      ),
+      "utf8"
+    );
+    const hud = readFileSync(
+      path.join(
+        process.cwd(),
+        "src/client/components/harthmere_business/HarthmereBusinessShiftHUD.tsx"
+      ),
+      "utf8"
+    );
+    assert.ok(cursor.includes("useHarthmereBusinessCustomerTalkTarget"));
+    assert.ok(cursor.includes("isBusinessCustomerTalkShortcut"));
+    assert.ok(
+      cursor.includes("shortcut.title.trim().toLowerCase() ===") &&
+        cursor.includes("inspectText.trim().toLowerCase()")
+    );
+    assert.ok(
+      cursor.includes("WORLD_INTERACTION_PRIORITY.activeBusinessCustomer")
+    );
+    assert.ok(
+      hud.includes("canDirectlyTalkToHarthmereBusinessCustomer({"),
+      "the customer card must gate its own direct F interaction"
+    );
+    assert.ok(hud.includes('keyCode="KeyF"'));
+    assert.ok(
+      hud.includes(
+        "worldInteractionCandidateId={`harthmere:business-customer:${entityId}`}"
+      )
+    );
+    assert.ok(
+      hud.includes("WORLD_INTERACTION_PRIORITY.activeBusinessCustomer")
+    );
+    assert.ok(hud.includes('reactResources.set("/game_modal", {'));
+    assert.ok(hud.includes('kind: "talk_to_npc"'));
+    assert.ok(hud.includes("Talk to {customerName}"));
+    assert.ok(
+      hud.includes("harthmereBusinessCustomerDisplayName(entry.npcId)")
+    );
+    assert.ok(dispatcher.includes("activeBusinessCustomer: 16_000"));
+    assert.ok(dispatcher.includes("jobsBoard: 15_000"));
   });
 });

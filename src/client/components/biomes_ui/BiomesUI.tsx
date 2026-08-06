@@ -7,6 +7,7 @@ import {
 } from "@/client/components/contexts/pointerLockModalPolicy";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { containMobileControlEvent } from "@/client/components/mobileControlEvents";
 import { emitHarthmereGlitchBehaviorEvent } from "@/client/game/glitch/harthmere_glitch_behavior_events";
 import { installBiomesUITheme } from "./theme/biomesUITheme";
 import { BiomesNav } from "./nav/BiomesNav";
@@ -215,6 +216,7 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
       <QuestInviteHUD adapter={adapters?.questInvites} />
       <PlayerInviteModal
         open={playerInviteOpen}
+        mobile={phoneLayout}
         onClose={() => setPlayerInviteOpen(false)}
       />
       {paneMode === "overlay" && activeTab !== null && (
@@ -245,7 +247,28 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
           <button
             type="button"
             aria-label="Close Biomes UI"
-            onClick={() => onActiveTabChange(null)}
+            onPointerDown={(event) => {
+              if (!phoneLayout) {
+                return;
+              }
+              // MOBILE_BIOMES_UI_CLOSE_TOUCH: iOS may deliver a complete
+              // pointer/touch sequence without synthesizing click. Close on
+              // touch-down like the phone HUD open controls, before the button
+              // unmounts with the overlay.
+              containMobileControlEvent(event);
+              onActiveTabChange(null);
+            }}
+            onClick={(event) => {
+              if (phoneLayout) {
+                containMobileControlEvent(event);
+                // Preserve keyboard activation while avoiding a second close
+                // after a browser that does synthesize click for touch.
+                if (event.detail !== 0) {
+                  return;
+                }
+              }
+              onActiveTabChange(null);
+            }}
             style={{
               position: "absolute",
               top: phoneLayout ? "max(8px, env(safe-area-inset-top))" : 18,

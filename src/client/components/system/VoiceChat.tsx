@@ -1,4 +1,8 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import {
+  browserMobileAudioCapabilityEnvironment,
+  shouldPreferMobileAacForVoice,
+} from "@/client/game/util/mobile_audio_variants";
 import { useTypedStorageItem } from "@/client/util/typed_local_storage";
 import type {
   ChatVoiceRequest,
@@ -95,7 +99,7 @@ export const VoiceChat: React.FunctionComponent<{
   language?: string;
   playbackKey?: string;
 }> = ({ text, voice, language, playbackKey }) => {
-  const { audioManager } = useClientContext();
+  const { audioManager, clientConfig } = useClientContext();
   const [npcSpeechEnabled] = useTypedStorageItem(
     "settings.voice.npcSpeechEnabled",
     true
@@ -107,6 +111,16 @@ export const VoiceChat: React.FunctionComponent<{
   const audioRef = React.useRef<HTMLAudioElement>(null);
   const latestText = React.useRef(text);
   const latestRequestKey = React.useRef("");
+  const preferredFormat = React.useMemo(
+    () =>
+      shouldPreferMobileAacForVoice(
+        clientConfig.mobileDevice,
+        browserMobileAudioCapabilityEnvironment()
+      )
+        ? "aac"
+        : "source",
+    [clientConfig.mobileDevice]
+  );
 
   latestText.current = text;
 
@@ -155,6 +169,7 @@ export const VoiceChat: React.FunctionComponent<{
             voice: requestVoice,
             language,
             provider: npcSpeechProvider,
+            preferredFormat,
           },
           { signal: controller.signal }
         );
@@ -200,7 +215,15 @@ export const VoiceChat: React.FunctionComponent<{
       }
       clearVoiceChatAudioElementForTest(audio);
     };
-  }, [text, voice, language, playbackKey, npcSpeechEnabled, npcSpeechProvider]);
+  }, [
+    text,
+    voice,
+    language,
+    playbackKey,
+    npcSpeechEnabled,
+    npcSpeechProvider,
+    preferredFormat,
+  ]);
 
   return (
     <audio

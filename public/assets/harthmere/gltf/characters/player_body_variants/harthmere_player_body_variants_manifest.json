@@ -1,5 +1,5 @@
 {
-  "version": "harthmere-body-weapon-aligned-clips-v8",
+  "version": "harthmere-body-weapon-aligned-clips",
   "variantCount": 36,
   "clipCount": 73,
   "bodyTypes": [
@@ -148,5 +148,22 @@
     "HarthmereBodyToolHeavyUse_Aligned_30",
     "HarthmereBodyItemUse_Aligned_30"
   ],
-  "alignedBodyWeaponFrameCount": 30
+  "alignedBodyWeaponFrameCount": 30,
+  "alignedBodyWeaponClips": [
+    "HarthmereBodyWeaponIdleDrawn_Aligned_30",
+    "HarthmereBodyWeaponBasic_Aligned_30",
+    "HarthmereBodyWeaponHeavy_Aligned_30",
+    "HarthmereBodyWeaponDraw_Aligned_30",
+    "HarthmereBodyWeaponSheathe_Aligned_30",
+    "HarthmereBodyWeaponBlock_Aligned_30",
+    "HarthmereBodyShieldBash_Aligned_30",
+    "HarthmereBodyRangedDraw_Aligned_30",
+    "HarthmereBodyRangedRelease_Aligned_30",
+    "HarthmereBodyRangedReload_Aligned_30",
+    "HarthmereBodyMagicCast_Aligned_30",
+    "HarthmereBodyMagicChannel_Aligned_30",
+    "HarthmereBodyToolUse_Aligned_30",
+    "HarthmereBodyToolHeavyUse_Aligned_30",
+    "HarthmereBodyItemUse_Aligned_30"
+  ]
 }

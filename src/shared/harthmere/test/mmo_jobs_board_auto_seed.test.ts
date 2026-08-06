@@ -22,6 +22,7 @@ import {
   HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
   HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD,
   HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_FLOOR,
+  HARTHMERE_ESCORT_DESTINATION_MIN_DISTANCE,
   defaultHarthmereJobsBoardState,
   harthmereAutoSeedTemplateRequirementsObtainable,
   isHarthmereExoticMatterMiningTemplateId,
@@ -49,6 +50,7 @@ import {
   isHarthmereExoticMatterMaterialItemId,
 } from "../exotic_matter_caves";
 import { isKnownHarthmereJobsBoardExecutableItemId } from "../jobs_board_business_templates";
+import { CH1_GROVE_JOB_TEMPLATE_IDS } from "../ch1_interaction_surfaces";
 
 const NOW = 1_800_000_000_000;
 
@@ -180,6 +182,19 @@ describe("mmo_jobs_board_authority — economy auto-seed (current)", () => {
       assert.ok(job.escrowGold === job.rewardGold);
       assert.equal(job.boardId, HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID);
     }
+  });
+
+  it("always primes the three Chapter 1 Grove jobs before generic work", () => {
+    const result = seed(defaultHarthmereJobsBoardState(NOW));
+    const templateIds = new Set(
+      autoPostings(result.jobsBoard).map((job) => job.templateId)
+    );
+    assert.deepEqual(
+      CH1_GROVE_JOB_TEMPLATE_IDS.filter(
+        (templateId) => !templateIds.has(templateId)
+      ),
+      []
+    );
   });
 
   it("is deterministic for a given nowMs (same input → same job ids and templates)", () => {
@@ -527,7 +542,7 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
     }
   });
 
-  it("adds random pickup and drop-off markers to generated item-delivery jobs", () => {
+  it("uses physical pickup markers and preserves authored delivery pickups", () => {
     const pickupsByTemplate = new Map<string, Set<string>>();
     const dropoffsByTemplate = new Map<string, Set<string>>();
     const seen = new Set<string>();
@@ -547,9 +562,17 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
             req.pickupMarkerId,
             `${job.templateId} should require a pickup marker`
           );
+          const pickupMarker = harthmereJobsBoardQuestMarkerPositionForId(
+            req.pickupMarkerId
+          );
           assert.ok(
-            harthmereJobsBoardQuestMarkerPositionForId(req.pickupMarkerId),
+            pickupMarker,
             `${job.templateId} pickup marker should resolve`
+          );
+          assert.notEqual(
+            pickupMarker!.source,
+            "business_outpost",
+            `${job.templateId} pickup must be an F-interactable prop, not an outpost navigation marker`
           );
           assert.ok(
             req.mapMarkerId,
@@ -576,8 +599,17 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
       });
     }
 
+    assert.ok(seen.has("npc_delivery_apples"));
+    assert.deepEqual(
+      [...(pickupsByTemplate.get("npc_delivery_apples") ?? [])],
+      ["coop_supply_box"]
+    );
+    assert.ok(
+      (dropoffsByTemplate.get("npc_delivery_apples")?.size ?? 0) > 1,
+      "Run the Coop should keep its physical Coop pickup while drop-offs rotate"
+    );
+
     for (const templateId of [
-      "npc_delivery_apples",
       "harthmere_town_market_delivery",
       "harthmere_npc_courier_bridge",
     ]) {
@@ -779,6 +811,34 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
     }
   });
 
+  it("routes every auto-seeded escort to a remote named protection landmark", () => {
+    let state = defaultHarthmereJobsBoardState(NOW);
+    for (let i = 0; i < 10; i += 1) {
+      state = seed(state, NOW + i * 1_000).jobsBoard;
+    }
+    const escort = Object.values(state.postings).find(
+      (job) => job.kind === "escort"
+    );
+    assert.ok(escort, "expected an auto-seeded escort job");
+    assert.match(escort!.mapMarkerId ?? "", /^legacy_protection_field:/);
+    const marker = harthmereJobsBoardQuestMarkerPositionForId(
+      escort!.mapMarkerId
+    );
+    assert.ok(marker, "escort destination must resolve on the shared map");
+    assert.ok(
+      Math.hypot(
+        marker!.position[0] - 501.99486179104775,
+        marker!.position[2] - -132.00350672753194
+      ) >= HARTHMERE_ESCORT_DESTINATION_MIN_DISTANCE,
+      "escort destination must not complete beside the board"
+    );
+    assert.equal(
+      escort!.requirements[0]?.targetName,
+      marker!.label,
+      "quest copy and map label must use the same player-readable name"
+    );
+  });
+
   it("auto-posted jobs accept and complete through the existing pipeline (rewards reach the seeker)", () => {
     const seeded = seed(defaultHarthmereJobsBoardState(NOW), NOW);
     // PICK BY WHAT THIS TEST EXERCISES, NOT BY DRAW ORDER.
@@ -879,6 +939,7 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
     );
     assert.ok(job, "Road Rations gather job should be auto-posted");
     assert.equal(job!.mapMarkerId, "grove_garden_edge_berries");
+    assert.equal(job!.requiresFieldWork, false);
 
     const accept = reduceHarthmereJobsBoardMutation(
       seeded.jobsBoard,

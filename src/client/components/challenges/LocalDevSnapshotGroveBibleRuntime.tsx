@@ -43,6 +43,7 @@ import {
   type SnapshotGroveLandmark,
   type SnapshotGroveNpc,
   type SnapshotGroveQuest,
+  type SnapshotGroveTrigger,
 } from "@/shared/harthmere/snapshot_grove_content";
 import {
   groveQuest,
@@ -324,7 +325,7 @@ function normalizeSnapshotGroveQuestState(
     })
   );
   const activeObjectiveIndex = activeQuestId
-    ? objectiveIndexByQuestId[activeQuestId] ?? 0
+    ? (objectiveIndexByQuestId[activeQuestId] ?? 0)
     : 0;
 
   return {
@@ -457,7 +458,8 @@ async function submitSnapshotGroveQuestStateToCloudSave(
   quest: SnapshotGroveQuest,
   state: SnapshotGroveQuestState,
   reason: string,
-  completedObjectiveIndex?: number
+  completedObjectiveIndex?: number,
+  evidenceTrigger?: SnapshotGroveTrigger
 ) {
   if (!isBrowser()) {
     return;
@@ -483,44 +485,42 @@ async function submitSnapshotGroveQuestStateToCloudSave(
   };
   let response: Response;
   try {
-    response = await defaultHarthmereLiveFetch(
-      "/api/harthmere/live_mode",
-      {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requestId,
-          idempotencyKey: requestId,
-          clientSentAtMs: Date.now(),
-          actionKind: "request_quest_state_update",
-          subsystem: "quest",
-          actorEntityVersion: 1,
-          zoneId: "the_grove",
-          payload: {
-            questId: quest.id,
-            source: "snapshot_grove",
-            title: quest.title,
-            completed,
-            stepId: `${quest.id}:${objectiveIndex}:${
-              quest.triggers[objectiveIndex] ?? "step"
-            }`,
-            progress: completed ? quest.objectives.length : objectiveIndex + 1,
-            objectiveIndex: completedObjectiveIndex,
-            objectiveProgress:
-              partialProgress?.objectiveIndex === objectiveIndex
-                ? {
-                    objectiveIndex,
-                    count: partialProgress.count,
-                    evidenceKeys: partialProgress.evidenceKeys,
-                  }
-                : undefined,
-            reason,
-          },
-          clientClaims: {},
-        }),
-      }
-    );
+    response = await defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requestId,
+        idempotencyKey: requestId,
+        clientSentAtMs: Date.now(),
+        actionKind: "request_quest_state_update",
+        subsystem: "quest",
+        actorEntityVersion: 1,
+        zoneId: "the_grove",
+        payload: {
+          questId: quest.id,
+          source: "snapshot_grove",
+          title: quest.title,
+          completed,
+          stepId: `${quest.id}:${objectiveIndex}:${
+            quest.triggers[objectiveIndex] ?? "step"
+          }`,
+          progress: completed ? quest.objectives.length : objectiveIndex + 1,
+          objectiveIndex: completedObjectiveIndex,
+          evidenceTrigger,
+          objectiveProgress:
+            partialProgress?.objectiveIndex === objectiveIndex
+              ? {
+                  objectiveIndex,
+                  count: partialProgress.count,
+                  evidenceKeys: partialProgress.evidenceKeys,
+                }
+              : undefined,
+          reason,
+        },
+        clientClaims: {},
+      }),
+    });
   } catch {
     throw new HarthmereQuestActionError(
       ["snapshot_grove_quest_rejected:network_error"],
@@ -552,13 +552,15 @@ function syncSnapshotGroveQuestStateToCloudSave(
   quest: SnapshotGroveQuest,
   state: SnapshotGroveQuestState,
   reason: string,
-  completedObjectiveIndex?: number
+  completedObjectiveIndex?: number,
+  evidenceTrigger?: SnapshotGroveTrigger
 ) {
   return submitSnapshotGroveQuestStateToCloudSave(
     quest,
     state,
     reason,
-    completedObjectiveIndex
+    completedObjectiveIndex,
+    evidenceTrigger
   );
 }
 
@@ -648,8 +650,8 @@ async function repairSnapshotGroveCompletionProjection() {
   const activeQuestId =
     local.activeQuestId && !completed.has(local.activeQuestId)
       ? local.activeQuestId
-      : liveActiveEntries.find(([questId]) => !completed.has(questId))?.[0] ??
-        [...accepted].find((questId) => !completed.has(questId));
+      : (liveActiveEntries.find(([questId]) => !completed.has(questId))?.[0] ??
+        [...accepted].find((questId) => !completed.has(questId)));
   const next = normalizeSnapshotGroveQuestState({
     ...local,
     acceptedQuestIds: [...accepted],
@@ -1124,7 +1126,8 @@ async function acceptSnapshotGroveQuest(
       quest,
       next,
       "accepted",
-      shouldSkipFirstStep ? 0 : undefined
+      shouldSkipFirstStep ? 0 : undefined,
+      shouldSkipFirstStep ? currentTriggerForQuest(quest, 0) : undefined
     );
   } catch (error) {
     console.warn(error);
@@ -1143,7 +1146,12 @@ async function advanceSnapshotGroveQuest(
   mapManager: any,
   reason: string,
   resources?: ReturnType<typeof useClientContext>["resources"],
-  evidence?: { count?: number; key?: string }
+  evidence?: {
+    count?: number;
+    key?: string;
+    expectedObjectiveIndex: number;
+    trigger: SnapshotGroveTrigger;
+  }
 ) {
   const state = readSnapshotGroveQuestState();
   if (state.completedQuestIds.includes(quest.id) || !quest.objectives.length) {
@@ -1156,6 +1164,17 @@ async function advanceSnapshotGroveQuest(
       snapshotGroveObjectiveIndexForQuest(state, quest.id)
     )
   );
+  // A movement/inventory/world callback can resolve after another callback has
+  // already advanced the quest. Never reinterpret that stale evidence as proof
+  // for the newly-current objective (the Billy lunch-pail incident advanced a
+  // collect step with an old near-location callback).
+  if (
+    !evidence ||
+    evidence.expectedObjectiveIndex !== safeObjectiveIndex ||
+    evidence.trigger !== currentTriggerForQuest(quest, safeObjectiveIndex)
+  ) {
+    return;
+  }
   const requiredCount = snapshotGroveObjectiveRequiredCount(
     quest,
     safeObjectiveIndex
@@ -1199,7 +1218,9 @@ async function advanceSnapshotGroveQuest(
       await syncSnapshotGroveQuestStateToCloudSave(
         quest,
         partial,
-        `${reason}:partial`
+        `${reason}:partial`,
+        undefined,
+        evidence.trigger
       );
     } catch (error) {
       console.warn(error);
@@ -1237,7 +1258,7 @@ async function advanceSnapshotGroveQuest(
           (questId) =>
             questId !== quest.id && !nextCompletedQuestIds.includes(questId)
         )
-      : state.activeQuestId ?? quest.id;
+      : (state.activeQuestId ?? quest.id);
   const next: SnapshotGroveQuestState = normalizeSnapshotGroveQuestState({
     ...state,
     acceptedQuestIds: [...new Set([...state.acceptedQuestIds, quest.id])],
@@ -1258,7 +1279,8 @@ async function advanceSnapshotGroveQuest(
       quest,
       next,
       reason,
-      safeObjectiveIndex
+      safeObjectiveIndex,
+      evidence.trigger
     );
   } catch (error) {
     console.warn(error);
@@ -1787,8 +1809,8 @@ function isSnapshotGroveContextualPracticeEvent(
     quest.id === "fountain_chat_channels" && objectiveIndex === 2
       ? "chat_say"
       : quest.id === "fountain_chat_channels" && objectiveIndex === 3
-      ? "chat_whisper"
-      : undefined;
+        ? "chat_whisper"
+        : undefined;
   if (
     !SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS.has(trigger as any) &&
     detail.practiceAction !== expectedChatAction
@@ -1854,8 +1876,8 @@ export function validateSnapshotGroveQuestEventContext(
     typeof detail.markerId === "string"
       ? detail.markerId
       : typeof detail.targetMarkerId === "string"
-      ? detail.targetMarkerId
-      : undefined;
+        ? detail.targetMarkerId
+        : undefined;
   if (
     eventMarkerId &&
     targetMarkerIds.length &&
@@ -2496,7 +2518,14 @@ export function useSnapshotGroveNpcDialog(
               activeQuest,
               mapManager,
               "completion_turn_in",
-              resources
+              resources,
+              {
+                expectedObjectiveIndex: activeObjectiveIndex,
+                trigger: currentTriggerForQuest(
+                  activeQuest,
+                  activeObjectiveIndex
+                )!,
+              }
             ),
         });
       }
@@ -2524,14 +2553,14 @@ export function useSnapshotGroveNpcDialog(
     // bank is used only when this NPC has no active or available quest.
     const line = quest
       ? npcLineForLikeability(npc)
-      : npcAmbientLineForLikeability(npc) ?? npcLineForLikeability(npc);
+      : (npcAmbientLineForLikeability(npc) ?? npcLineForLikeability(npc));
     const questCopy = completedQuest
       ? npcQuestDialogueCopy(npc, completedQuest, state, objectiveIndex)
       : !activeQuest && availableQuests.length > 1
-      ? `<text>I have a few short lessons set aside if you have a quiet minute. Pick whichever feels useful first.</text>`
-      : quest
-      ? npcQuestDialogueCopy(npc, quest, state, objectiveIndex)
-      : `<text>${defaultDialog || npc.shortDescription}</text>`;
+        ? `<text>I have a few short lessons set aside if you have a quiet minute. Pick whichever feels useful first.</text>`
+        : quest
+          ? npcQuestDialogueCopy(npc, quest, state, objectiveIndex)
+          : `<text>${defaultDialog || npc.shortDescription}</text>`;
 
     return {
       id: `${SNAPSHOT_GROVE_BIBLE_RUNTIME_VERSION}-${npc.id}-${
@@ -2632,6 +2661,8 @@ export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
                   typeof (contextualEvent as any).markerId === "string"
                     ? (contextualEvent as any).markerId
                     : undefined,
+                expectedObjectiveIndex: objectiveIndex,
+                trigger: currentTriggerForQuest(quest, objectiveIndex)!,
               }
             );
           }
@@ -2662,7 +2693,11 @@ export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
               quest,
               mapManager,
               "local inventory changed",
-              resources
+              resources,
+              {
+                expectedObjectiveIndex: objectiveIndex,
+                trigger: currentTriggerForQuest(quest, objectiveIndex)!,
+              }
             );
           }
         }
@@ -2692,7 +2727,11 @@ export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
               mapManager,
               String((event as any).recipeId ?? "craft"),
               resources,
-              { count: snapshotGroveEventCompletionCount(event as any) }
+              {
+                count: snapshotGroveEventCompletionCount(event as any),
+                expectedObjectiveIndex: objectiveIndex,
+                trigger: currentTriggerForQuest(quest, objectiveIndex)!,
+              }
             );
           }
         }
@@ -2752,6 +2791,8 @@ export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
                 typeof detail.objectId === "string"
                   ? detail.objectId
                   : (event as any).markerId,
+              expectedObjectiveIndex: objectiveIndex,
+              trigger: currentTriggerForQuest(quest, objectiveIndex)!,
             }
           );
         }
@@ -2787,7 +2828,11 @@ export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
               quest,
               mapManager,
               String((event as any).itemId ?? "item_use"),
-              resources
+              resources,
+              {
+                expectedObjectiveIndex: objectiveIndex,
+                trigger: currentTriggerForQuest(quest, objectiveIndex)!,
+              }
             );
           }
         }
@@ -2822,7 +2867,11 @@ export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
             mapManager,
             "arrived_at_marker",
             resources,
-            { key: marker.id }
+            {
+              key: marker.id,
+              expectedObjectiveIndex: objectiveIndex,
+              trigger,
+            }
           );
         }
       }
@@ -2957,8 +3006,8 @@ const SnapshotGroveMapHUDWithClientContext: React.FunctionComponent<{
   const status = state.completedQuestIds.includes(quest.id)
     ? "Completed"
     : state.acceptedQuestIds.includes(quest.id)
-    ? "In progress"
-    : "Available";
+      ? "In progress"
+      : "Available";
   const step = groveQuestStepCopy(quest, objectiveIndex, completedCount);
   const currentTrigger = currentTriggerForQuest(quest, objectiveIndex);
   const currentObjective =
@@ -3016,8 +3065,8 @@ const SnapshotGroveMapHUDWithClientContext: React.FunctionComponent<{
                     isActive
                       ? "h-1.5 bg-lime-300 flex-1 rounded-full shadow-[0_0_6px_rgba(190,242,100,0.7)]"
                       : isDone
-                      ? "h-1.5 bg-lime-300/60 flex-1 rounded-full"
-                      : "h-1.5 bg-white/15 flex-1 rounded-full"
+                        ? "h-1.5 bg-lime-300/60 flex-1 rounded-full"
+                        : "h-1.5 bg-white/15 flex-1 rounded-full"
                   }
                   title={`Step ${stepIndex + 1} of ${quest.objectives.length}`}
                 />
@@ -3040,42 +3089,46 @@ const SnapshotGroveMapHUDWithClientContext: React.FunctionComponent<{
             All marked stops
           </div>
           <div className="space-y-1">
-            {snapshotGroveQuestStepMarkerIds(quest).map((markerId, stepIndex) => {
-              const stepMarker = snapshotGroveLandmarkById(markerId);
-              const isActiveStep = stepIndex === objectiveIndex;
-              const isPastStep = stepIndex < objectiveIndex;
-              return (
-                <button
-                  key={`${quest.id}-${stepIndex}-${markerId}`}
-                  type="button"
-                  className={
-                    isActiveStep
-                      ? "border-lime-200/55 bg-lime-300/15 text-lime-50 flex w-full items-center justify-between rounded-md border px-2 py-1 text-left shadow-[0_0_10px_rgba(190,242,100,0.18)]"
-                      : "text-white/65 flex w-full items-center justify-between rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-left hover:bg-white/[0.08]"
-                  }
-                  onClick={() => {
-                    if (stepMarker) {
-                      pinSnapshotGroveLandmark(
-                        mapManager,
-                        stepMarker,
-                        snapshotGroveStepNavAidId(stepIndex)
-                      );
-                    }
-                  }}
-                >
-                  <span>
-                    {stepIndex + 1}. {stepMarker?.label ?? markerId}
-                  </span>
-                  <span
+            {snapshotGroveQuestStepMarkerIds(quest).map(
+              (markerId, stepIndex) => {
+                const stepMarker = snapshotGroveLandmarkById(markerId);
+                const isActiveStep = stepIndex === objectiveIndex;
+                const isPastStep = stepIndex < objectiveIndex;
+                return (
+                  <button
+                    key={`${quest.id}-${stepIndex}-${markerId}`}
+                    type="button"
                     className={
-                      isActiveStep ? "text-lime-100 font-bold" : "text-white/45"
+                      isActiveStep
+                        ? "border-lime-200/55 bg-lime-300/15 text-lime-50 flex w-full items-center justify-between rounded-md border px-2 py-1 text-left shadow-[0_0_10px_rgba(190,242,100,0.18)]"
+                        : "text-white/65 flex w-full items-center justify-between rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-left hover:bg-white/[0.08]"
                     }
+                    onClick={() => {
+                      if (stepMarker) {
+                        pinSnapshotGroveLandmark(
+                          mapManager,
+                          stepMarker,
+                          snapshotGroveStepNavAidId(stepIndex)
+                        );
+                      }
+                    }}
                   >
-                    {isActiveStep ? "NOW" : isPastStep ? "DONE" : "NEXT"}
-                  </span>
-                </button>
-              );
-            })}
+                    <span>
+                      {stepIndex + 1}. {stepMarker?.label ?? markerId}
+                    </span>
+                    <span
+                      className={
+                        isActiveStep
+                          ? "text-lime-100 font-bold"
+                          : "text-white/45"
+                      }
+                    >
+                      {isActiveStep ? "NOW" : isPastStep ? "DONE" : "NEXT"}
+                    </span>
+                  </button>
+                );
+              }
+            )}
           </div>
         </div>
       )}
@@ -3217,10 +3270,10 @@ export const SnapshotGroveJournalPanel: React.FunctionComponent<{}> = () => {
     const status = state.completedQuestIds.includes(quest.id)
       ? "done"
       : state.acceptedQuestIds.includes(quest.id)
-      ? "active"
-      : isUnlocked
-      ? "open"
-      : "soon";
+        ? "active"
+        : isUnlocked
+          ? "open"
+          : "soon";
     const giver = SNAPSHOT_GROVE_NPCS.find(
       (npc) => npc.id === snapshotGroveQuestGiverId(quest)
     );
@@ -3229,16 +3282,16 @@ export const SnapshotGroveJournalPanel: React.FunctionComponent<{}> = () => {
         ? quest.unlockedBy.kind === "fountain_completion_count"
           ? `Unlocks after ${quest.unlockedBy.minCompletedFountainLessons} fountain lessons (${fountainCompletedCount}/${quest.unlockedBy.minCompletedFountainLessons}).`
           : quest.unlockedBy.kind === "quest_accepted"
-          ? `Unlocks once you accept ${
-              SNAPSHOT_GROVE_QUESTS.find(
-                (q) => q.id === (quest.unlockedBy as any).questId
-              )?.title ?? "the prerequisite lesson"
-            }.`
-          : `Unlocks once you finish ${
-              SNAPSHOT_GROVE_QUESTS.find(
-                (q) => q.id === (quest.unlockedBy as any).questId
-              )?.title ?? "the prerequisite lesson"
-            }.`
+            ? `Unlocks once you accept ${
+                SNAPSHOT_GROVE_QUESTS.find(
+                  (q) => q.id === (quest.unlockedBy as any).questId
+                )?.title ?? "the prerequisite lesson"
+              }.`
+            : `Unlocks once you finish ${
+                SNAPSHOT_GROVE_QUESTS.find(
+                  (q) => q.id === (quest.unlockedBy as any).questId
+                )?.title ?? "the prerequisite lesson"
+              }.`
         : undefined;
     return (
       <div

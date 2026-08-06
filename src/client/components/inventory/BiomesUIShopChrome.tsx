@@ -1,4 +1,5 @@
 import { maybeUseExistingMiniPhoneContext } from "@/client/components/system/mini_phone/MiniPhoneContext";
+import { containMobileControlEvent } from "@/client/components/mobileControlEvents";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { installBiomesUITheme } from "@/client/components/biomes_ui/theme/biomesUITheme";
 import {
@@ -58,6 +59,7 @@ export const BiomesUIShopChrome: React.FunctionComponent<
     actions?: ReactNode;
     footer?: ReactNode;
     onClose?: () => void;
+    mobile?: boolean;
   }>
 > = ({
   title,
@@ -67,6 +69,7 @@ export const BiomesUIShopChrome: React.FunctionComponent<
   actions,
   footer,
   onClose,
+  mobile = false,
   children,
 }) => {
   const miniPhone = maybeUseExistingMiniPhoneContext();
@@ -136,7 +139,24 @@ export const BiomesUIShopChrome: React.FunctionComponent<
             type="button"
             className="biomes-ui-shop-screen__close"
             aria-label="Close shop"
-            onClick={closeShop}
+            onPointerDown={(event) => {
+              if (!mobile) {
+                return;
+              }
+              // MOBILE_BIOMES_UI_SHOP_CLOSE_TOUCH: physical iOS Safari can
+              // omit the synthetic click after a complete touch sequence.
+              containMobileControlEvent(event);
+              closeShop();
+            }}
+            onClick={(event) => {
+              if (mobile) {
+                containMobileControlEvent(event);
+                if (event.detail !== 0) {
+                  return;
+                }
+              }
+              closeShop();
+            }}
           >
             <span aria-hidden>Esc</span>
             Close

@@ -12,6 +12,7 @@ import { HARTHMERE_PREMIUM_WEAPON_VENDOR_STOCK } from "@/shared/harthmere/premiu
 
 export type HarthmereVendorCategory =
   | "weapon"
+  | "ammunition"
   | "armor"
   | "accessory"
   | "consumable"
@@ -190,10 +191,12 @@ export const HARTHMERE_VENDOR_CATALOG: Record<number, HarthmereVendorProfile> =
         { itemId: "wooden_shield", quantity: 1, price: 45 },
         { itemId: "rusty_pickaxe", quantity: 1, price: 30 },
         { itemId: "repair_voucher", quantity: 1, price: 20 },
+        { itemId: "hunting_arrow", quantity: 40, price: 40 },
         ...HARTHMERE_PREMIUM_WEAPON_VENDOR_STOCK,
       ],
       buys: [
         "weapon",
+        "ammunition",
         "armor",
         "tool",
         "crafting_material",
@@ -309,6 +312,7 @@ export const HARTHMERE_VENDOR_CATALOG: Record<number, HarthmereVendorProfile> =
         // "go get a repair/cleanup tool" objective is never a dead end.
         { itemId: "repair_mallet", quantity: 2, price: 30 },
         { itemId: "muck_rake", quantity: 2, price: 30 },
+        { itemId: "hunting_arrow", quantity: 40, price: 40 },
         ...HARTHMERE_PREMIUM_WEAPON_VENDOR_STOCK,
         // Building material counter: every staged home/business material has at
         // least one real vendor route in addition to its gathering route.
@@ -326,6 +330,7 @@ export const HARTHMERE_VENDOR_CATALOG: Record<number, HarthmereVendorProfile> =
       ],
       buys: [
         "weapon",
+        "ammunition",
         "armor",
         "tool",
         "crafting_material",

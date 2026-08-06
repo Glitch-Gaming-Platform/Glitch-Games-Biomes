@@ -1,0 +1,47 @@
+// Focused typecheck for Chapter 1 interaction ownership and delegated UI.
+//
+// This slice exists because the repository-wide TypeScript graph can exceed
+// the default Node heap. Use it for Journal/Recovered, Jobs Board priority,
+// player-facing name, and objective-prompt hotfixes before any scoped Next
+// refresh:
+//
+//   NODE_OPTIONS="--max-old-space-size=8192" \
+//     node_modules/.bin/tsc -p tsconfig.ch1interactions.json
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "tmp/ch1interactions.tsbuildinfo"
+  },
+  "include": [
+    "src/shared/harthmere/ch1_interaction_surfaces.ts",
+    "src/shared/harthmere/ch1_objective_targets.ts",
+    "src/shared/harthmere/ch1_objective_requirements.ts",
+    "src/shared/harthmere/ch1_quests.ts",
+    "src/shared/harthmere/harthmere_readable_names.ts",
+    "src/shared/harthmere/mmo_jobs_board_authority.ts",
+    "src/server/harthmere/ch1_dialogue.ts",
+    "src/pages/api/harthmere/chapter1_progress.ts",
+    "src/pages/api/harthmere/chapter1_story.ts",
+    "src/client/components/challenges/Chapter1ObjectiveWorldState.ts",
+    "src/client/components/challenges/Chapter1NativeObjectivePrompt.tsx",
+    "src/client/components/biomes_ui/BiomesUITypes.ts",
+    "src/client/components/biomes_ui/tabs/RecoveredTab.tsx",
+    "src/client/components/harthmere_jobs_board/jobsBoardLiveAdapter.ts",
+    "src/client/components/harthmere_jobs_board/HarthmereJobsBoardLiveContainer.tsx",
+    "src/client/components/harthmere_jobs_board/HarthmereJobsBoardPanel.tsx",
+    "src/client/components/challenges/Chapter1NativeObjectivePrompt.test.ts",
+    "src/client/components/harthmere_jobs_board/__tests__/HarthmereJobsBoardPanel.keyboard.test.tsx",
+    "src/shared/harthmere/test/ch1_dialogue.test.ts",
+    "src/shared/harthmere/test/ch1_live_story.test.ts",
+    "src/shared/harthmere/test/ch1_objective_audit_fixes.test.ts",
+    "src/shared/harthmere/test/ch1_objective_evidence_and_world.test.ts",
+    "src/shared/harthmere/test/ch1_objective_targets.test.ts",
+    "src/shared/harthmere/test/harthmere_readable_names.test.ts",
+    "src/shared/harthmere/test/mmo_jobs_board_auto_seed.test.ts",
+    "src/shared/harthmere/test/mmo_jobs_board_authority.test.ts",
+    "src/client/components/harthmere_jobs_board/__tests__/jobsBoardLiveAdapter.test.ts",
+    "modules.d.ts"
+  ]
+}

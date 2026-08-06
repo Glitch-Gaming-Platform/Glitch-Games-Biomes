@@ -34,6 +34,8 @@ import { z } from "zod";
 // that a normal .merge(...).merge(...).default({}) export can hit TS2589.
 const zNpcStateBase: any = z.object({
   cinematicPauseUntil: z.number().finite().optional(),
+  /** Short replay ledger for server-accepted NPC-to-NPC combat receipts. */
+  npcAttackReceipts: z.record(z.number().finite()).optional(),
   chapter1Encounter: z
     .object({
       brokenPartIds: z.array(z.string()).optional(),
@@ -119,6 +121,8 @@ export type NpcMemoryState = {
 export type DeserializedNpcState = {
   /** Refreshed by authorized shared cinematics; Anima holds authority until it expires. */
   cinematicPauseUntil?: number;
+  /** Short replay ledger for server-accepted NPC-to-NPC combat receipts. */
+  npcAttackReceipts?: Record<string, number>;
   /** Server-owned Chapter 1 boss state consumed by Anima and the story API. */
   chapter1Encounter?: {
     brokenPartIds?: string[];
@@ -203,6 +207,8 @@ export type DeserializedNpcState = {
     rangedCooldowns?: Record<string, number>;
     rangedGlobalCooldownUntil?: number;
     rangedSelectionCursor?: number;
+    rangedMana?: number;
+    rangedManaUpdatedAt?: number;
     pathfinding?: PathfindingComponent;
     pathfindingRetryTime?: number;
     /**
@@ -222,6 +228,19 @@ export type DeserializedNpcState = {
   };
   damageReaction?: {
     lastReactionTime?: number;
+    lastProcessedDamageTime?: number;
+    lastPoiseDamageTime?: number;
+    poise?: number;
+    poiseMax?: number;
+    poiseUpdatedAt?: number;
+    immunityUntil?: number;
+    sequence?: number;
+    stagger?: {
+      kind: "light" | "medium" | "heavy";
+      startTime: number;
+      expiryTime: number;
+      direction: [number, number, number];
+    };
   };
   returnHome?: {
     lastHomeTime: number;
@@ -269,7 +288,11 @@ export function deserializeNpcCustomState(
   encoded: Uint8Array | undefined,
   options?: { propagateParseError?: boolean }
 ): DeserializedNpcState {
-  if (encoded === undefined) {
+  // Generated `NpcState.create()` instances carry an empty byte array. Treat
+  // that default component value exactly like an omitted custom-state payload;
+  // MessagePack cannot decode zero bytes and logging it as corruption obscures
+  // real combat receipt failures in tests and production diagnostics.
+  if (encoded === undefined || encoded.length === 0) {
     return zDeserializedNpcState.parse(undefined) as DeserializedNpcState;
   }
 

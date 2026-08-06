@@ -19,8 +19,7 @@ const HARTHMERE_RESERVED_KEY_CODES = new Set([
   "KeyM", // Harthmere map
   "KeyJ", // Harthmere quest journal
   "Quote", // Draw / sheathe weapon
-  "Tab", // Combat target cycle
-  "KeyB", // Basic attack
+  "Tab", // Combat target lock / release
   "KeyH", // Heavy attack
   "KeyL", // Slotted spell
   "KeyP", // Farming journal
@@ -85,7 +84,6 @@ export const ShortcutsHUD: React.FunctionComponent<{
             }
 
             switch (lk) {
-              case "KeyE":
               case "KeyI":
                 toggleInventoryModal();
                 break;

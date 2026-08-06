@@ -243,7 +243,7 @@ describe("premium projectile native wiring", () => {
         ({ rangedAttacks }) =>
           rangedAttacks?.length === 1 &&
           rangedAttacks[0].abilityId === "fireball" &&
-          rangedAttacks[0].cooldownSecs === 20 &&
+          rangedAttacks[0].cooldownSecs === 10 &&
           rangedAttacks[0].castTimeSecs ===
             HARTHMERE_HEX_FIREBALL_CAST_TIME_SECS &&
           harthmereMagicChargeDurationSecs({

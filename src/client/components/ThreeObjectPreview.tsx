@@ -37,6 +37,36 @@ interface ThreeObjectPreviewProps {
   renderScale?: number;
 }
 
+export interface ThreeObjectPreviewVisibility {
+  documentVisible: boolean;
+  intersecting: boolean;
+  hasLayout: boolean;
+}
+
+export function shouldRenderThreeObjectPreview(
+  visibility: ThreeObjectPreviewVisibility
+) {
+  return (
+    visibility.documentVisible &&
+    visibility.intersecting &&
+    visibility.hasLayout
+  );
+}
+
+export function threeObjectPreviewDeltaSeconds(
+  previousFrameAtMs: number | undefined,
+  frameAtMs: number
+) {
+  if (
+    previousFrameAtMs === undefined ||
+    !Number.isFinite(previousFrameAtMs) ||
+    !Number.isFinite(frameAtMs)
+  ) {
+    return 0;
+  }
+  return Math.max(0, Math.min(0.1, (frameAtMs - previousFrameAtMs) / 1000));
+}
+
 export function defaultObjectCameraRadius(object: THREE.Object3D | THREE.Mesh) {
   let radius = 10;
   if (object && object instanceof THREE.Mesh) {
@@ -73,6 +103,11 @@ export class ThreeObjectPreview extends React.Component<
   public scenes?: Scenes;
   private controls!: OrbitControls;
   private animationFrameId?: number;
+  private inactiveFrameTimer?: ReturnType<typeof setTimeout>;
+  private intersectionObserver?: IntersectionObserver;
+  private intersecting = true;
+  private documentVisible = true;
+  private lastFrameAtMs?: number;
 
   private onMouseDown?: (e: MouseEvent) => any;
   private onMouseUp?: (e: MouseEvent) => any;
@@ -210,7 +245,10 @@ export class ThreeObjectPreview extends React.Component<
   }
 
   private shutdownRenderer() {
-    if (this.threeMountRef && this.threeMountRef.current && this.passRenderer) {
+    if (
+      this.threeMountRef.current &&
+      this.passRenderer?.canvas.parentElement === this.threeMountRef.current
+    ) {
       this.threeMountRef.current.removeChild(this.passRenderer.canvas);
     }
 
@@ -220,17 +258,105 @@ export class ThreeObjectPreview extends React.Component<
     );
     this.passRenderer?.canvas.removeEventListener("mouseup", this.onMouseUp!);
 
-    this.controls.dispose();
+    this.controls?.dispose();
     this.passRenderer?.shutdown();
     this.passRenderer = undefined;
+    this.scenes = undefined;
+    this.lastFrameAtMs = undefined;
   }
+
+  private hasVisibleLayout() {
+    const mount = this.threeMountRef.current;
+    if (!mount || mount.clientWidth <= 0 || mount.clientHeight <= 0) {
+      return false;
+    }
+    const rect = mount.getBoundingClientRect();
+    return (
+      rect.width > 0 &&
+      rect.height > 0 &&
+      rect.bottom > 0 &&
+      rect.right > 0 &&
+      rect.top < window.innerHeight &&
+      rect.left < window.innerWidth
+    );
+  }
+
+  private previewVisibility(): ThreeObjectPreviewVisibility {
+    return {
+      documentVisible: this.documentVisible,
+      intersecting: this.intersecting,
+      hasLayout: this.hasVisibleLayout(),
+    };
+  }
+
+  private scheduleRenderLoop(active: boolean) {
+    if (active) {
+      this.animationFrameId = requestAnimationFrame(this.renderFrame);
+      return;
+    }
+    this.inactiveFrameTimer = setTimeout(this.renderFrame, 250);
+  }
+
+  private renderFrame = (frameAtMs = performance.now()) => {
+    this.animationFrameId = undefined;
+    this.inactiveFrameTimer = undefined;
+    const active = shouldRenderThreeObjectPreview(this.previewVisibility());
+    if (!active) {
+      if (this.passRenderer) {
+        this.shutdownRenderer();
+      }
+      this.scheduleRenderLoop(false);
+      return;
+    }
+
+    if (!this.passRenderer) {
+      this.initializeRenderer();
+    }
+    const { controls, passRenderer } = this;
+    if (!passRenderer) {
+      this.scheduleRenderLoop(false);
+      return;
+    }
+    const dt = threeObjectPreviewDeltaSeconds(this.lastFrameAtMs, frameAtMs);
+    this.lastFrameAtMs = frameAtMs;
+    if (this.props.animationMixer) {
+      this.props.animationMixer.update(this.props.animate ? dt : 0);
+    }
+    controls.update();
+    this.applyNeutralSpatialLighting();
+    passRenderer.render();
+    this.scheduleRenderLoop(true);
+  };
+
+  private onDocumentVisibilityChange = () => {
+    this.documentVisible = document.visibilityState === "visible";
+  };
 
   componentDidMount() {
     if (!this.threeMountRef.current) {
       return;
     }
-
-    this.initializeRenderer();
+    this.documentVisible = document.visibilityState === "visible";
+    if (typeof IntersectionObserver !== "undefined") {
+      // Wait for the observer's first real visibility sample before allocating a
+      // WebGL context. Several tab panels stay mounted while hidden; assuming
+      // they intersect for this first frame was enough to create six competing
+      // renderers in the production combat trace.
+      this.intersecting = false;
+      this.intersectionObserver = new IntersectionObserver(
+        ([entry]) => {
+          this.intersecting = entry?.isIntersecting ?? false;
+        },
+        { rootMargin: "64px", threshold: 0.01 }
+      );
+      this.intersectionObserver.observe(this.threeMountRef.current);
+    } else {
+      this.intersecting = true;
+    }
+    document.addEventListener(
+      "visibilitychange",
+      this.onDocumentVisibilityChange
+    );
     this.startRenderLoop();
   }
 
@@ -259,39 +385,27 @@ export class ThreeObjectPreview extends React.Component<
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = undefined;
     }
+    if (this.inactiveFrameTimer !== undefined) {
+      clearTimeout(this.inactiveFrameTimer);
+      this.inactiveFrameTimer = undefined;
+    }
+    this.intersectionObserver?.disconnect();
+    this.intersectionObserver = undefined;
+    document.removeEventListener(
+      "visibilitychange",
+      this.onDocumentVisibilityChange
+    );
     this.shutdownRenderer();
   }
 
   startRenderLoop() {
-    const clock = new THREE.Clock();
-    const animate = () => {
-      this.animationFrameId = requestAnimationFrame(animate);
-      const hasVisibleCanvas = this.threeMountRef.current?.clientHeight;
-      if (!hasVisibleCanvas) {
-        if (this.passRenderer) {
-          this.shutdownRenderer();
-          ok(!this.passRenderer);
-        }
-        return;
-      }
-      if (!this.passRenderer) {
-        this.initializeRenderer();
-        if (!this.passRenderer) {
-          throw new Error(`Started render loop without required objects`);
-        }
-      }
-
-      const { controls, passRenderer } = this;
-      if (this.props.animationMixer) {
-        this.props.animationMixer.update(
-          this.props.animate ? clock.getDelta() : 0
-        );
-      }
-      controls.update();
-      this.applyNeutralSpatialLighting();
-      passRenderer?.render();
-    };
-    animate();
+    if (
+      this.animationFrameId !== undefined ||
+      this.inactiveFrameTimer !== undefined
+    ) {
+      return;
+    }
+    this.renderFrame();
   }
 
   private onCanvasResized = (width: number, height: number) => {

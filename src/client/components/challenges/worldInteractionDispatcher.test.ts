@@ -42,7 +42,7 @@ describe("world interaction dispatcher", () => {
     assert.equal(selectedWorldInteractionIdForKey(), "locked-quest-object");
   });
 
-  it("selects independently by key code", () => {
+  it("keeps E and Q reserved for dodge and evade even when a world action advertises them", () => {
     registerWorldInteractionCandidate({
       id: "f-only",
       priority: 10,
@@ -52,11 +52,12 @@ describe("world interaction dispatcher", () => {
     registerWorldInteractionCandidate({
       id: "e-only",
       priority: 20,
-      keyCodes: ["KeyE"],
+      keyCodes: ["KeyE", "KeyQ"],
       onInteract: () => undefined,
     });
     assert.equal(selectedWorldInteractionIdForKey("KeyF"), "f-only");
-    assert.equal(selectedWorldInteractionIdForKey("KeyE"), "e-only");
+    assert.equal(selectedWorldInteractionIdForKey("KeyE"), undefined);
+    assert.equal(selectedWorldInteractionIdForKey("KeyQ"), undefined);
   });
 
   it("lets an explicitly active tool own F over an inspected world entity", () => {
@@ -85,6 +86,23 @@ describe("world interaction dispatcher", () => {
       onInteract: () => undefined,
     });
     assert.equal(selectedWorldInteractionIdForKey("KeyF"), "jobs-board");
+  });
+
+  it("lets an inspected active business customer outrank the nearby board", () => {
+    registerWorldInteractionCandidate({
+      id: "jobs-board",
+      priority: WORLD_INTERACTION_PRIORITY.jobsBoard - 2,
+      onInteract: () => undefined,
+    });
+    registerWorldInteractionCandidate({
+      id: "active-business-customer",
+      priority: WORLD_INTERACTION_PRIORITY.activeBusinessCustomer,
+      onInteract: () => undefined,
+    });
+    assert.equal(
+      selectedWorldInteractionIdForKey("KeyF"),
+      "active-business-customer"
+    );
   });
 
   it("lets an active Chapter 1 conversation outrank its overlapping fracture gate", () => {

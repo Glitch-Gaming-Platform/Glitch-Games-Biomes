@@ -5,6 +5,10 @@ import {
   HARTHMERE_EXOTIC_MATTER_CAVES,
   type HarthmereExoticMatterBounds,
 } from "@/shared/harthmere/exotic_matter_caves";
+import {
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+  isHarthmereExtensionWorldPosition,
+} from "@/shared/harthmere/world_extension";
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 
 // Environmental audio deliberately uses conservative terrain tests. A single
@@ -14,18 +18,33 @@ export const CAVE_SKY_OCCLUSION_MIN = 8;
 export const CAVE_CEILING_SEARCH_BLOCKS = 24;
 export const CAVE_OVERBURDEN_SAMPLE_BLOCKS = 7;
 export const CAVE_OVERBURDEN_MIN_SOLID_BLOCKS = 4;
+// Harthmere's additive surface is fixed at feet Y=53, so Y<25 is safely deep
+// there. The broader world intentionally uses the more generous Y<20 product
+// rule even though the production scan includes some low open-sky terrain.
+export const HARTHMERE_CAVE_MUSIC_FALLBACK_BELOW_Y = 25;
+export const WORLD_CAVE_MUSIC_FALLBACK_BELOW_Y = 20;
 export const MOUNTAIN_WIND_MAX_SKY_OCCLUSION = 1;
 export const MOUNTAIN_WIND_SNOW_MIN_Y = 100;
 export const MOUNTAIN_WIND_HIGH_ALTITUDE_MIN_Y = 118;
+
+// The first six cave bounds were authored in town-local coordinates. The
+// remaining user-confirmed caves were recorded against the retired +512 town
+// layout, so their current additive-world authored X is 512 blocks lower.
+const HARTHMERE_LEGACY_CAVE_SCAN_OFFSET_X = 512;
+const HARTHMERE_TOWN_LOCAL_CAVE_IDS = new Set([
+  "old_well_descent_room",
+  "underways_north_south_tunnel",
+  "underways_east_west_tunnel",
+  "rat_crowns_den",
+  "smuggler_drain_vault",
+  "crypt_rest_room",
+]);
 
 type TerrainAudioDeps = {
   get(path: any, shard: any): any;
 };
 
-function inBounds(
-  position: ReadonlyVec3,
-  bounds: HarthmereExoticMatterBounds
-) {
+function inBounds(position: ReadonlyVec3, bounds: HarthmereExoticMatterBounds) {
   return (
     position[0] >= bounds.x0 &&
     position[0] <= bounds.x1 &&
@@ -37,9 +56,26 @@ function inBounds(
 }
 
 export function knownHarthmereCaveAt(position: ReadonlyVec3) {
-  return HARTHMERE_EXOTIC_MATTER_CAVES.find((cave) =>
+  const direct = HARTHMERE_EXOTIC_MATTER_CAVES.find((cave) =>
     inBounds(position, cave.bounds)
   );
+  if (direct || !isHarthmereExtensionWorldPosition(position)) {
+    return direct;
+  }
+
+  const authoredX = position[0] - HARTHMERE_ADDITIVE_TOWN_OFFSET_X;
+  return HARTHMERE_EXOTIC_MATTER_CAVES.find((cave) => {
+    const caveX = HARTHMERE_TOWN_LOCAL_CAVE_IDS.has(cave.caveId)
+      ? authoredX
+      : authoredX + HARTHMERE_LEGACY_CAVE_SCAN_OFFSET_X;
+    return inBounds([caveX, position[1], position[2]], cave.bounds);
+  });
+}
+
+export function caveMusicFallbackBelowY(position: ReadonlyVec3) {
+  return isHarthmereExtensionWorldPosition(position)
+    ? HARTHMERE_CAVE_MUSIC_FALLBACK_BELOW_Y
+    : WORLD_CAVE_MUSIC_FALLBACK_BELOW_Y;
 }
 
 function terrainSolidAt(
@@ -107,11 +143,7 @@ export function hasThickCaveOverburden(
       continue;
     }
     let solidBlocks = 0;
-    for (
-      let sample = 0;
-      sample < CAVE_OVERBURDEN_SAMPLE_BLOCKS;
-      sample += 1
-    ) {
+    for (let sample = 0; sample < CAVE_OVERBURDEN_SAMPLE_BLOCKS; sample += 1) {
       if (isSolid(x, headY + offset + sample, z)) {
         solidBlocks += 1;
       }
@@ -121,7 +153,10 @@ export function hasThickCaveOverburden(
   return false;
 }
 
-/** Exact authored cave bounds first, then a conservative terrain fallback. */
+/**
+ * Exact authored cave bounds first, then the regional deep-world cutoffs,
+ * then a conservative terrain fallback for higher unregistered caves.
+ */
 export function isCaveAudioEnvironment(
   deps: TerrainAudioDeps,
   position: ReadonlyVec3
@@ -129,14 +164,14 @@ export function isCaveAudioEnvironment(
   if (knownHarthmereCaveAt(position)) {
     return true;
   }
+  if (position[1] < caveMusicFallbackBelowY(position)) {
+    return true;
+  }
   const x = Math.floor(position[0]);
   const y = Math.floor(position[1] + 1.5);
   const z = Math.floor(position[2]);
   const skyOcclusion = skyOcclusionAt(deps, x, y, z);
-  if (
-    skyOcclusion === undefined ||
-    skyOcclusion < CAVE_SKY_OCCLUSION_MIN
-  ) {
+  if (skyOcclusion === undefined || skyOcclusion < CAVE_SKY_OCCLUSION_MIN) {
     return false;
   }
   return hasThickCaveOverburden(

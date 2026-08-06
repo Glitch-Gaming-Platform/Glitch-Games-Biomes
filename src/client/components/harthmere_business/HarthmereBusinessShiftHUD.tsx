@@ -12,13 +12,22 @@ import * as React from "react";
 import * as THREE from "three";
 import {
   clearHarthmereBusinessCustomerTalkTarget,
+  canDirectlyTalkToHarthmereBusinessCustomer,
+  harthmereBusinessCustomerEffectivePhase,
   publishHarthmereBusinessCustomerTalkTarget,
   publishHarthmereBusinessCustomerTalkTargets,
 } from "./harthmereBusinessCustomerTalkState";
+import { WORLD_INTERACTION_PRIORITY } from "@/client/components/challenges/worldInteractionDispatcher";
+import { ShortcutText } from "@/client/components/system/ShortcutText";
 import {
   HARTHMERE_BUSINESS_MINIGAME_MUSIC_OVERRIDE_OWNER,
   harthmereBusinessMinigameMusicTrack,
 } from "./businessMinigameMusic";
+import {
+  harthmereBusinessCustomerDisplayName,
+  harthmereBusinessPatienceDisplay,
+} from "./harthmereBusinessPatience";
+import { HarthmereBusinessPatienceBar } from "./HarthmereBusinessPatienceBar";
 
 export const HARTHMERE_BUSINESS_SHIFT_HUD_VERSION =
   "harthmere-business-spatial-shift-hud-v1" as const;
@@ -82,15 +91,49 @@ function SpatialCustomerCard({
   entityId: BiomesId;
   registryOwnerId: string;
 }) {
-  const { audioManager } = useClientContext();
+  const { audioManager, reactResources } = useClientContext();
   const panel = adapter.getCustomerMiniGame(businessId);
   const ticket = panel.activeSession?.queue.find(
     (candidate) => candidate.ticketId === ticketId
   );
   const { entity, customerState, screen } =
     useProjectedEntityPosition(entityId);
-  const ready = customerState?.phase === "serving";
-  const customerName = panel.currentNpc?.displayName ?? "Customer";
+  const currentTicket = panel.activeSession?.currentTicketId === ticketId;
+  // The economy snapshot reaches the client through HTTP after the server has
+  // validated this exact native entity at the counter. The streamed ECS copy
+  // can lag behind that reconciliation and still say "entering" while the
+  // authoritative patience clock is already running. Either synchronized
+  // serving signal is sufficient, but only for the session's current ticket.
+  const effectivePhase = harthmereBusinessCustomerEffectivePhase({
+    currentTicket,
+    nativePhase: customerState?.phase,
+    sessionSpatialPhase: ticket?.spatialPhase,
+  });
+  const ready = currentTicket && effectivePhase === "serving";
+  const customerName = currentTicket
+    ? (panel.currentNpc?.displayName ??
+      harthmereBusinessCustomerDisplayName(ticket?.npcId ?? "customer"))
+    : harthmereBusinessCustomerDisplayName(ticket?.npcId ?? "customer");
+  const patience = harthmereBusinessPatienceDisplay(
+    ticket?.patience ?? 1,
+    ticket?.patienceRemaining ?? 0
+  );
+  const directTalkReady = canDirectlyTalkToHarthmereBusinessCustomer({
+    currentTicket,
+    entityPresent: Boolean(entity),
+    nativePhase: customerState?.phase,
+    sessionSpatialPhase: ticket?.spatialPhase,
+    visible: screen.visible,
+  });
+  const openCustomerConversation = React.useCallback(() => {
+    reactResources.update("/scene/local_player", (localPlayer) => {
+      localPlayer.talkingToNpc = entityId;
+    });
+    reactResources.set("/game_modal", {
+      kind: "talk_to_npc",
+      talkingToNPCId: entityId,
+    });
+  }, [entityId, reactResources]);
 
   React.useEffect(() => {
     const reaction = customerState?.reaction;
@@ -115,7 +158,7 @@ function SpatialCustomerCard({
       askLine: ticket?.askLine ?? "What can you do for me?",
       patienceRemaining: ticket?.patienceRemaining ?? 0,
       requestedOfferId: ticket?.requestedOfferId,
-      phase: customerState?.phase,
+      phase: effectivePhase,
       ready,
       offers: panel.offers,
     });
@@ -128,7 +171,7 @@ function SpatialCustomerCard({
     adapter,
     businessId,
     customerName,
-    customerState?.phase,
+    effectivePhase,
     entity,
     entityId,
     panel.offers,
@@ -149,12 +192,15 @@ function SpatialCustomerCard({
       sessionId,
       ticketId,
       entityId,
-      phase: customerState?.phase,
+      phase: effectivePhase,
+      nativePhase: customerState?.phase,
+      sessionSpatialPhase: ticket?.spatialPhase,
       reaction: customerState?.reaction,
       ready,
       customerName,
       correctOfferId: ticket?.requestedOfferId,
       offers: panel.offers.map((offer) => offer.offerId),
+      patience,
       talkRequired: true,
     };
     (window as any).__harthmereBusinessShiftDebug = debug;
@@ -166,13 +212,20 @@ function SpatialCustomerCard({
   }, [
     businessId,
     customerName,
+    effectivePhase,
     customerState?.phase,
     customerState?.reaction,
     entityId,
     panel.offers,
+    patience.label,
+    patience.percent,
+    patience.remaining,
+    patience.total,
+    patience.urgency,
     ready,
     sessionId,
     ticket?.requestedOfferId,
+    ticket?.spatialPhase,
     ticketId,
   ]);
 
@@ -187,7 +240,14 @@ function SpatialCustomerCard({
   return (
     <aside
       data-harthmere-business-spatial-customer="true"
+      data-business-customer-ticket-id={ticketId}
+      data-business-customer-entity-id={entityId}
       data-native-customer-phase={customerState?.phase ?? "loading"}
+      data-session-customer-spatial-phase={ticket?.spatialPhase ?? "loading"}
+      data-business-customer-effective-phase={effectivePhase ?? "loading"}
+      data-business-customer-direct-talk-ready={
+        directTalkReady ? "true" : "false"
+      }
       style={{
         position: "fixed",
         ...position,
@@ -210,10 +270,10 @@ function SpatialCustomerCard({
         <strong>{customerName}</strong>
         <span style={{ color: ready ? "#9ee6a2" : "#e9c985" }}>
           {ready
-            ? `${ticket?.patienceRemaining ?? 0}s`
-            : customerState?.phase === "queued"
+            ? "Ready for service"
+            : effectivePhase === "queued"
               ? "Waiting in queue"
-              : customerState?.phase === "approaching_counter"
+              : effectivePhase === "approaching_counter"
                 ? "Walking to counter"
                 : "Entering"}
         </span>
@@ -221,11 +281,29 @@ function SpatialCustomerCard({
       <p style={{ margin: "7px 0 10px", fontSize: 13, lineHeight: 1.35 }}>
         {ticket?.askLine ?? "The next customer is approaching."}
       </p>
-      <p style={{ margin: 0, color: "#c9bda7", fontSize: 12 }}>
-        {ready
-          ? "Talk to this customer to choose the business service response."
-          : "Stay behind the counter. The customer is walking to you."}
-      </p>
+      <HarthmereBusinessPatienceBar
+        customerName={customerName}
+        patience={patience}
+      />
+      {directTalkReady ? (
+        <p style={{ margin: 0, color: "#fff4db", fontSize: 12 }}>
+          <ShortcutText
+            shortcut="F"
+            keyCode="KeyF"
+            onKeyDown={openCustomerConversation}
+            worldInteractionCandidateId={`harthmere:business-customer:${entityId}`}
+            worldInteractionPriority={
+              WORLD_INTERACTION_PRIORITY.activeBusinessCustomer
+            }
+          >
+            Talk to {customerName}
+          </ShortcutText>
+        </p>
+      ) : (
+        <p style={{ margin: 0, color: "#c9bda7", fontSize: 12 }}>
+          Stay behind the counter. The customer is walking to you.
+        </p>
+      )}
     </aside>
   );
 }
@@ -247,12 +325,16 @@ export function HarthmereBusinessShiftHUD({
   const leaveEndTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined
   );
+  const tickAdapter = React.useRef(adapter);
+  const tickInFlight = React.useRef(false);
   const [leaveError, setLeaveError] = React.useState<string>();
   const panel = businessId
     ? adapter.getCustomerMiniGame(businessId)
     : undefined;
   const session = panel?.activeSession;
-  const ticket = panel?.currentTicket;
+  React.useEffect(() => {
+    tickAdapter.current = adapter;
+  }, [adapter]);
   const endShift = React.useCallback(async () => {
     if (!businessId || !session || session.status !== "active") return;
     setLeaveError(undefined);
@@ -297,20 +379,30 @@ export function HarthmereBusinessShiftHUD({
     if (!businessId || !session || session.status !== "active") return;
     let cancelled = false;
     const tick = async () => {
-      if (cancelled) return;
+      if (cancelled || tickInFlight.current) return;
+      tickInFlight.current = true;
       try {
-        await adapter.tickCustomerSession(businessId, session.sessionId);
+        await tickAdapter.current.tickCustomerSession(
+          businessId,
+          session.sessionId
+        );
       } catch {
         // A tick is reconciliation, not a user-facing failure. The next poll or
         // exact-idempotency replay repairs a transient network miss.
+      } finally {
+        tickInFlight.current = false;
       }
     };
+    // Reconcile immediately. The live adapter is intentionally recreated when
+    // world context/state changes; waiting for the first interval allowed that
+    // normal render churn to reset the timer forever before it fired.
+    void tick();
     const timer = window.setInterval(() => void tick(), 2000);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [adapter, businessId, session?.sessionId, session?.status]);
+  }, [businessId, session?.sessionId, session?.status]);
 
   React.useEffect(() => {
     const wasInside = previousInsideBusiness.current;
@@ -376,7 +468,7 @@ export function HarthmereBusinessShiftHUD({
           sessionId: session.sessionId,
           ticketId: entry.ticketId,
           entityId: entry.entityId as BiomesId,
-          customerName: entry.npcId,
+          customerName: harthmereBusinessCustomerDisplayName(entry.npcId),
           askLine: entry.askLine,
           patienceRemaining: entry.patienceRemaining,
           requestedOfferId: entry.requestedOfferId,
@@ -430,16 +522,24 @@ export function HarthmereBusinessShiftHUD({
           </div>
         ) : null}
       </div>
-      {clientContext && ticket?.entityId ? (
-        <SpatialCustomerCard
-          adapter={adapter}
-          businessId={businessId}
-          sessionId={session.sessionId}
-          ticketId={ticket.ticketId}
-          entityId={ticket.entityId}
-          registryOwnerId={registryOwnerId}
-        />
-      ) : null}
+      {clientContext
+        ? session.queue
+            .filter(
+              (entry) =>
+                entry.status === "waiting" && entry.entityId !== undefined
+            )
+            .map((entry) => (
+              <SpatialCustomerCard
+                key={entry.ticketId}
+                adapter={adapter}
+                businessId={businessId}
+                sessionId={session.sessionId}
+                ticketId={entry.ticketId}
+                entityId={entry.entityId}
+                registryOwnerId={registryOwnerId}
+              />
+            ))
+        : null}
     </>
   );
 }

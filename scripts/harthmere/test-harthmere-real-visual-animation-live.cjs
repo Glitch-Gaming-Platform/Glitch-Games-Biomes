@@ -21,10 +21,10 @@ try {
   await page.keyboard.press("Quote");
   await page.waitForTimeout(350);
   const drawn = await page.evaluate(() => window.__harthmereRendererDebug.weaponHandTracking());
-  await page.keyboard.press("KeyB");
+  await page.mouse.click(720, 450);
   await page.waitForTimeout(180);
   const attackA = await page.evaluate(() => window.__harthmereRendererDebug.weaponHandTracking());
-  await page.keyboard.press("KeyB");
+  await page.mouse.click(720, 450);
   await page.waitForTimeout(180);
   const attackB = await page.evaluate(() => window.__harthmereRendererDebug.weaponHandTracking());
   const failures = [];

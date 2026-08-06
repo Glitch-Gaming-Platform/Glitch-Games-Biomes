@@ -9,6 +9,7 @@ import {
   mobileJoystickDoubleTapDirectionForTest,
   mobileJoystickHardTapForTest,
   mobileJoystickMovementActionForDirectionForTest,
+  mobileJoystickResponsivePositionForTest,
   mobileJoystickRunMotionValueForTest,
   mobileJoystickShouldRunForTest,
 } from "@/client/game/util/mobile_joystick";
@@ -70,6 +71,18 @@ describe("mobile joystick walk/run threshold", () => {
         `full deflection ${x},${y} runs`
       );
     }
+  });
+
+  it("boosts partial thumb travel without changing direction or full deflection", () => {
+    assert.deepEqual(mobileJoystickResponsivePositionForTest(0.01, 0), [0, 0]);
+    const partial = mobileJoystickResponsivePositionForTest(0.25, 0);
+    assert.ok(partial[0] > 0.25);
+    assert.equal(partial[1], 0);
+    assert.deepEqual(mobileJoystickResponsivePositionForTest(1, 0), [1, 0]);
+
+    const diagonal = mobileJoystickResponsivePositionForTest(0.25, 0.25);
+    assert.ok(Math.abs(diagonal[0] - diagonal[1]) < 1e-9);
+    assert.ok(Math.hypot(...diagonal) > Math.hypot(0.25, 0.25));
   });
 
   it("recognizes only a quick outer-ring release as a hard tap", () => {

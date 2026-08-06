@@ -17,7 +17,11 @@
 // substitute for running this.
 {
   "extends": "./tsconfig.json",
-  "compilerOptions": { "noEmit": true, "incremental": false },
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false,
+    "types": ["node", "mocha"]
+  },
   "include": [
     "src/shared/npc/creature_level.ts",
     "src/shared/npc/creature_group.ts",
@@ -39,6 +43,8 @@
     "src/shared/npc/behavior/test/escort_policy.test.ts",
     "src/shared/npc/behavior/test/chase_attack_logic.test.ts",
     "src/shared/npc/behavior/test/npc_locomotion_selection.test.ts",
+    "src/shared/npc/test/simulated_combat_state.test.ts",
+    "src/shared/npc/test/threat_targeting.test.ts",
     "src/shared/harthmere/test/road_to_harthmere_groups.test.ts",
     "src/shared/harthmere/test/anima_hill_combat_e2e.test.ts",
     "modules.d.ts"

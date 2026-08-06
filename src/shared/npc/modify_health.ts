@@ -74,8 +74,8 @@ function onNpcDeath(
     damageSource?.kind === "npc"
       ? `npc/${damageSource.type.kind}`
       : damageSource === undefined
-      ? "undefined"
-      : damageSource.kind;
+        ? "undefined"
+        : damageSource.kind;
   npcDeaths.inc({
     type: npcTypeName,
     reason: deathReasonText,
@@ -166,7 +166,10 @@ function recordThreatFromDamage(
   }
   try {
     const anyNpc = npc as any;
-    const decoded = deserializeNpcCustomState(anyNpc.npcState?.()?.data);
+    const encoded = anyNpc.npcState?.()?.data as Uint8Array | undefined;
+    const decoded = encoded?.length
+      ? deserializeNpcCustomState(encoded)
+      : deserializeNpcCustomState(undefined);
     decoded.threat ??= { table: {} };
     addThreat(
       decoded.threat.table,

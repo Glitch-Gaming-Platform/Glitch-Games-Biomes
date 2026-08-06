@@ -13,7 +13,8 @@ import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 export const HARTHMERE_BUSINESS_INTERIOR_RENDER_VERSION =
   "harthmere-business-interior-combined-lod-v1" as const;
 export const HARTHMERE_MOBILE_BUSINESS_INTERIOR_PREFETCH_METERS = 12;
-export const HARTHMERE_MOBILE_BUSINESS_INTERIOR_MAX_LOADED = 2;
+export const HARTHMERE_MOBILE_BUSINESS_INTERIOR_MAX_LOADED = 1;
+export const HARTHMERE_DESKTOP_BUSINESS_INTERIOR_MAX_LOADED = 2;
 
 export type HarthmereBusinessInteriorLod = "lod0" | "lod1" | "hidden";
 
@@ -51,7 +52,8 @@ function interiorCenter(record: HarthmereBusinessInteriorManifestRecord) {
 }
 
 export function harthmereMobileBusinessInteriorIds(
-  position: THREE.Vector3
+  position: THREE.Vector3,
+  maxLoaded = HARTHMERE_MOBILE_BUSINESS_INTERIOR_MAX_LOADED
 ): readonly string[] {
   return HARTHMERE_BUSINESS_INTERIORS.map((record) => ({
     record,
@@ -64,7 +66,7 @@ export function harthmereMobileBusinessInteriorIds(
           HARTHMERE_MOBILE_BUSINESS_INTERIOR_PREFETCH_METERS
     )
     .sort((a, b) => a.distance - b.distance)
-    .slice(0, HARTHMERE_MOBILE_BUSINESS_INTERIOR_MAX_LOADED)
+    .slice(0, maxLoaded)
     .map(({ record }) => record.outpostId);
 }
 
@@ -139,8 +141,8 @@ export class HarthmereBusinessInteriorsRenderer implements Renderer {
   private readonly root = new THREE.Group();
   private readonly loaded = new Map<string, LoadedInterior>();
   private readonly loading = new Map<string, Promise<void>>();
-  private desiredMobileOutpostIds = new Set<string>();
-  private mobileRefreshSeconds = 0;
+  private desiredOutpostIds = new Set<string>();
+  private streamRefreshSeconds = 0;
   private loadPromise: Promise<void>;
 
   constructor(
@@ -149,14 +151,12 @@ export class HarthmereBusinessInteriorsRenderer implements Renderer {
     private readonly mobileDevice = false
   ) {
     this.root.name = `harthmere business interiors ${HARTHMERE_BUSINESS_INTERIOR_RENDER_VERSION}`;
-    this.loadPromise = mobileDevice ? Promise.resolve() : this.loadAll();
+    // Loading all 19 interiors and both LODs in the constructor added 38 GLBs
+    // to the same first-frame request burst as projectile and town-furniture
+    // catalogues. The nearby selector already has the correct visibility and
+    // disposal behavior, so use it on every platform.
+    this.loadPromise = Promise.resolve();
     this.publishDebugBridge();
-  }
-
-  private async loadAll() {
-    await Promise.all(
-      HARTHMERE_BUSINESS_INTERIORS.map((record) => this.loadRecord(record))
-    );
   }
 
   private async loadRecord(record: HarthmereBusinessInteriorManifestRecord) {
@@ -175,10 +175,7 @@ export class HarthmereBusinessInteriorsRenderer implements Renderer {
         lod1.scene,
         "lod1"
       );
-      if (
-        this.mobileDevice &&
-        !this.desiredMobileOutpostIds.has(record.outpostId)
-      ) {
+      if (!this.desiredOutpostIds.has(record.outpostId)) {
         disposeInteriorRoot(lod0Root);
         disposeInteriorRoot(lod1Root);
         return;
@@ -212,16 +209,21 @@ export class HarthmereBusinessInteriorsRenderer implements Renderer {
     this.loaded.delete(outpostId);
   }
 
-  private syncMobileInteriors(cameraPosition: THREE.Vector3) {
-    this.desiredMobileOutpostIds = new Set(
-      harthmereMobileBusinessInteriorIds(cameraPosition)
+  private syncNearbyInteriors(cameraPosition: THREE.Vector3) {
+    this.desiredOutpostIds = new Set(
+      harthmereMobileBusinessInteriorIds(
+        cameraPosition,
+        this.mobileDevice
+          ? HARTHMERE_MOBILE_BUSINESS_INTERIOR_MAX_LOADED
+          : HARTHMERE_DESKTOP_BUSINESS_INTERIOR_MAX_LOADED
+      )
     );
     for (const outpostId of this.loaded.keys()) {
-      if (!this.desiredMobileOutpostIds.has(outpostId)) {
+      if (!this.desiredOutpostIds.has(outpostId)) {
         this.unloadRecord(outpostId);
       }
     }
-    for (const outpostId of this.desiredMobileOutpostIds) {
+    for (const outpostId of this.desiredOutpostIds) {
       if (this.loaded.has(outpostId) || this.loading.has(outpostId)) continue;
       const record = HARTHMERE_BUSINESS_INTERIORS.find(
         (candidate) => candidate.outpostId === outpostId
@@ -236,12 +238,10 @@ export class HarthmereBusinessInteriorsRenderer implements Renderer {
 
   draw(scenes: Scenes, dt: number): void {
     const camera = this.resources.get("/scene/camera").three;
-    if (this.mobileDevice) {
-      this.mobileRefreshSeconds -= Math.min(dt, 0.5);
-      if (this.mobileRefreshSeconds <= 0) {
-        this.mobileRefreshSeconds = 0.25;
-        this.syncMobileInteriors(camera.position);
-      }
+    this.streamRefreshSeconds -= Math.min(dt, 0.5);
+    if (this.streamRefreshSeconds <= 0) {
+      this.streamRefreshSeconds = 0.25;
+      this.syncNearbyInteriors(camera.position);
     }
     for (const interior of this.loaded.values()) {
       const lod = harthmereBusinessInteriorLodForDistance(

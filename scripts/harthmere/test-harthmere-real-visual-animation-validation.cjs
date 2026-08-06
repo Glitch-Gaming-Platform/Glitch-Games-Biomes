@@ -4,13 +4,23 @@ const fs = require("fs");
 const path = require("path");
 const root = process.argv[2] || process.cwd();
 let failures = 0;
-function read(rel) { return fs.readFileSync(path.join(root, rel), "utf8"); }
-function exists(rel) { return fs.existsSync(path.join(root, rel)); }
+function read(rel) {
+  return fs.readFileSync(path.join(root, rel), "utf8");
+}
+function exists(rel) {
+  return fs.existsSync(path.join(root, rel));
+}
 function check(label, cond, detail) {
   if (cond) console.log(`OK ${label}`);
-  else { failures += 1; console.log(`FAIL ${label}`); if (detail) console.log(`  - ${detail}`); }
+  else {
+    failures += 1;
+    console.log(`FAIL ${label}`);
+    if (detail) console.log(`  - ${detail}`);
+  }
 }
-function componentCount(type) { return { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[type] || 1; }
+function componentCount(type) {
+  return { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[type] || 1;
+}
 function readAccessorFloats(gltfPath, data, accessorIndex) {
   const accessor = data.accessors[accessorIndex];
   const view = data.bufferViews[accessor.bufferView];
@@ -19,7 +29,12 @@ function readAccessorFloats(gltfPath, data, accessorIndex) {
   if (buffer.uri && buffer.uri.startsWith("data:")) {
     bin = Buffer.from(buffer.uri.split(",", 2)[1], "base64");
   } else {
-    bin = fs.readFileSync(path.join(path.dirname(gltfPath), buffer.uri || `${path.basename(gltfPath, ".gltf")}.bin`));
+    bin = fs.readFileSync(
+      path.join(
+        path.dirname(gltfPath),
+        buffer.uri || `${path.basename(gltfPath, ".gltf")}.bin`
+      )
+    );
   }
   const start = (view.byteOffset || 0) + (accessor.byteOffset || 0);
   const comps = componentCount(accessor.type);
@@ -34,23 +49,59 @@ function hashFloats(vals) {
 console.log("== Harthmere real visual animation validation tests current ==");
 console.log(`Root: ${root}`);
 console.log();
-const renderer = exists("src/client/game/renderers/local_dev/harthmere_assets.ts") ? read("src/client/game/renderers/local_dev/harthmere_assets.ts") : "";
-const player = exists("src/client/game/util/player_animations.ts") ? read("src/client/game/util/player_animations.ts") : "";
-const suite = exists("scripts/harthmere/test-harthmere-town-placement-suite.cjs") ? read("scripts/harthmere/test-harthmere-town-placement-suite.cjs") : "";
-check("renderer computes visual left side from facing vector instead of trusting anchor names", /harthmereVisualMainHandVector/.test(renderer) && /dot\(harthmereVisualMainHandVector\)/.test(renderer));
-check("renderer chooses main-hand anchor by positive visual-left side score", /mainHandExpected:\s*"left"/.test(renderer) && /mainHandSideScore/.test(renderer));
-check("renderer rejects opposite-hand sword placement with distance budget", /mainHandDistanceMeters/.test(renderer) && /mainHandDistanceBudgetMeters:\s*0\.14/.test(renderer));
-check("renderer exposes actual right and left hand distances for live tests", /rightHandDistanceMeters/.test(renderer) && /leftHandDistanceMeters/.test(renderer));
-check("player animation runtime references real current variation selection", /harthmere-real-attack-variation-clips/.test(player) || /getHarthmereAttackVariationForAction/.test(player));
+const renderer = exists(
+  "src/client/game/renderers/local_dev/harthmere_assets.ts"
+)
+  ? read("src/client/game/renderers/local_dev/harthmere_assets.ts")
+  : "";
+const player = exists("src/client/game/util/player_animations.ts")
+  ? read("src/client/game/util/player_animations.ts")
+  : "";
+const suite = exists(
+  "scripts/harthmere/test-harthmere-town-placement-suite.cjs"
+)
+  ? read("scripts/harthmere/test-harthmere-town-placement-suite.cjs")
+  : "";
+check(
+  "renderer computes visual left side from facing vector instead of trusting anchor names",
+  /harthmereVisualMainHandVector/.test(renderer) &&
+    /dot\(harthmereVisualMainHandVector\)/.test(renderer)
+);
+check(
+  "renderer chooses main-hand anchor by positive visual-left side score",
+  /mainHandExpected:\s*"left"/.test(renderer) &&
+    /mainHandSideScore/.test(renderer)
+);
+check(
+  "renderer rejects opposite-hand sword placement with distance budget",
+  /mainHandDistanceMeters/.test(renderer) &&
+    /mainHandDistanceBudgetMeters:\s*0\.14/.test(renderer)
+);
+check(
+  "renderer exposes actual right and left hand distances for live tests",
+  /rightHandDistanceMeters/.test(renderer) &&
+    /leftHandDistanceMeters/.test(renderer)
+);
+check(
+  "player animation runtime references real current variation selection",
+  /harthmere-real-attack-variation-clips/.test(player) ||
+    /getHarthmereAttackVariationForAction/.test(player)
+);
 
-const variantDir = path.join(root, "public/assets/harthmere/gltf/characters/player_body_variants");
+const variantDir = path.join(
+  root,
+  "public/assets/harthmere/gltf/characters/player_body_variants"
+);
 check("body variant directory exists", fs.existsSync(variantDir));
 let checkedFiles = 0;
 let variationClipCount = 0;
 let uniquenessFailures = 0;
 let channelFailures = 0;
 if (fs.existsSync(variantDir)) {
-  const files = fs.readdirSync(variantDir).filter((f) => f.endsWith(".gltf")).slice(0, 8);
+  const files = fs
+    .readdirSync(variantDir)
+    .filter((f) => f.endsWith(".gltf"))
+    .slice(0, 8);
   for (const file of files) {
     const gltfPath = path.join(variantDir, file);
     const data = JSON.parse(fs.readFileSync(gltfPath, "utf8"));
@@ -69,19 +120,44 @@ if (fs.existsSync(variantDir)) {
     const hashes = [];
     for (const name of names) {
       const anim = anims.find((a) => a.name === name);
-      if (!anim) { channelFailures += 1; continue; }
+      if (!anim) {
+        channelFailures += 1;
+        continue;
+      }
       variationClipCount += 1;
-      if (!anim.extras || anim.extras.harthmereRealVariationVersion !== "harthmere-real-attack-variation-clips" || anim.channels.length < 5) {
+      if (
+        !anim.extras ||
+        !String(anim.extras.harthmereRealVariationVersion || "").startsWith(
+          "harthmere-real-attack-variation-clips"
+        ) ||
+        anim.channels.length < 5
+      ) {
         channelFailures += 1;
       }
-      const targetNodeNames = anim.channels.map((ch) => nodes[ch.target.node]?.name || "").join(" ").toLowerCase();
-      if (!/(right|r_|\.r|townsperson-right).*(arm|hand)|townsperson-right-arm/.test(targetNodeNames) || !/(spine|chest|torso|body|hip|pelvis|root)/.test(targetNodeNames)) {
+      const targetNodeNames = anim.channels
+        .map((ch) => nodes[ch.target.node]?.name || "")
+        .join(" ")
+        .toLowerCase();
+      if (
+        !/(right|r_|\.r|townsperson-right).*(arm|hand)|townsperson-right-arm/.test(
+          targetNodeNames
+        ) ||
+        !/(spine|chest|torso|body|hip|pelvis|root)/.test(targetNodeNames)
+      ) {
         channelFailures += 1;
       }
-      const rotChannel = anim.channels.find((ch) => ch.target.path === "rotation");
+      const rotChannel = anim.channels.find(
+        (ch) => ch.target.path === "rotation"
+      );
       if (rotChannel) {
-        const vals = readAccessorFloats(gltfPath, data, anim.samplers[rotChannel.sampler].output);
-        const hasMotion = vals.some((v, i) => (i % 4 !== 3) && Math.abs(v) > 0.03);
+        const vals = readAccessorFloats(
+          gltfPath,
+          data,
+          anim.samplers[rotChannel.sampler].output
+        );
+        const hasMotion = vals.some(
+          (v, i) => i % 4 !== 3 && Math.abs(v) > 0.03
+        );
         if (!hasMotion) channelFailures += 1;
         hashes.push(hashFloats(vals.slice(0, 64)));
       }
@@ -91,9 +167,20 @@ if (fs.existsSync(variantDir)) {
     checkedFiles += 1;
   }
 }
-check("generated GLTF clips have real channels, not metadata-only placeholders", variationClipCount > 0 && channelFailures === 0, `clips=${variationClipCount} channelFailures=${channelFailures}`);
-check("attack variation clips differ in real quaternion data", checkedFiles > 0 && uniquenessFailures === 0, `checkedFiles=${checkedFiles} uniquenessFailures=${uniquenessFailures}`);
-check("full suite includes current real visual validation test", /test-harthmere-real-visual-animation-validation\.cjs/.test(suite));
+check(
+  "generated GLTF clips have real channels, not metadata-only placeholders",
+  variationClipCount > 0 && channelFailures === 0,
+  `clips=${variationClipCount} channelFailures=${channelFailures}`
+);
+check(
+  "attack variation clips differ in real quaternion data",
+  checkedFiles > 0 && uniquenessFailures === 0,
+  `checkedFiles=${checkedFiles} uniquenessFailures=${uniquenessFailures}`
+);
+check(
+  "full suite includes current real visual validation test",
+  /test-harthmere-real-visual-animation-validation\.cjs/.test(suite)
+);
 console.log();
 console.log(failures ? `RESULT: FAIL (${failures})` : "RESULT: PASS");
 process.exit(failures ? 1 : 0);

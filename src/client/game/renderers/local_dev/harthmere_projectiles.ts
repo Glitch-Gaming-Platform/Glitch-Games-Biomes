@@ -2446,6 +2446,7 @@ export class HarthmereProjectileVisualRuntime {
       active: this.active.map((entry) => ({
         sequence: entry.sequence,
         projectileId: entry.definition.id,
+        origin: entry.start.toArray(),
         progress: Math.min(1, entry.elapsed / entry.duration),
         position: entry.mount.position.toArray(),
         usingFallback: entry.fallback.parent === entry.modelHost,

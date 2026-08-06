@@ -20,17 +20,13 @@ export const HARTHMERE_ESCORT_COMPANION_NPC_ECS_VERSION =
 export const JOBS_BOARD_ESCORT_ASSIGNMENT_PREFIX = "jobs-board-escort";
 
 /**
- * Jobs-board escorts are civilians being walked between two markers, so the
- * default policy stays `noncombatant` — the historical behaviour, now stated
- * explicitly instead of being implied by a hard-coded `isAttackable: false` in a
- * reconstructed combat snapshot.
- *
- * `defend_self` is the safe upgrade for a contract that should let a companion
- * fight back; `fight_muck` belongs to authored story escorts, not to a generic
- * board posting a player can spam.
+ * Jobs-board escorts do not start fights, but they are player escorts and must
+ * help when the player or the escort is attacked. `defend_leader` gives them
+ * exactly that bounded response without granting proactive proximity aggro.
+ * `fight_muck` remains reserved for authored story escorts.
  */
 export const JOBS_BOARD_ESCORT_DEFAULT_COMBAT_POLICY: EscortCombatPolicy =
-  "noncombatant";
+  "defend_leader";
 
 function activeEscortCompanion(companion: HarthmereEscortCompanion) {
   return companion.status === "following" || companion.status === "arrived";
@@ -102,8 +98,10 @@ export function buildHarthmereEscortCompanionNpcProposedChanges(input: {
       const existingState = input.existingNpcState?.get(companion.entityId);
       if (
         existingState &&
-        Buffer.compare(Buffer.from(existingState), Buffer.from(npcState.data)) ===
-          0
+        Buffer.compare(
+          Buffer.from(existingState),
+          Buffer.from(npcState.data)
+        ) === 0
       ) {
         continue;
       }

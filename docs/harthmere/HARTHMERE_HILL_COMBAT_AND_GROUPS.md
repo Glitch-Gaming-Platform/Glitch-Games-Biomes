@@ -1,7 +1,7 @@
 # Hill combat, creature levels, groups, and escorts
 
 Implementation of the July 27 2026 Anima audit. Four systems changed together
-because they share one failure: creatures could not reliably *engage* on the
+because they share one failure: creatures could not reliably _engage_ on the
 original map's hills, and the machinery around engagement (levels, packs,
 escorts) had no per-entity identity to hang behaviour on.
 
@@ -35,7 +35,7 @@ separation silently consumed the entire horizontal reach budget.
 
 **Fix.** `@/shared/npc/behavior/combat_geometry` decomposes the test:
 
-- horizontal distance decides *approach*;
+- horizontal distance decides _approach_;
 - vertical **body overlap** decides whether a strike plane exists;
 - the 0.55 m hitbox cushion now widens only the horizontal budget, which is what
   it was always for.
@@ -61,19 +61,19 @@ aggro flicker: crest, lose, reacquire, crest.
 
 **Fix, two parts.**
 
-*Multi-sample visibility.* `hasTerrainLineOfSightToBody` traces up to three
+_Multi-sample visibility._ `hasTerrainLineOfSightToBody` traces up to three
 samples — head, torso, feet — and stops at the first clear line, so the common
 fully-visible case still costs exactly one trace.
 
-*A retention window.* `evaluateChaseTargetRetention` replaces the instant drop:
+_A retention window._ `evaluateChaseTargetRetention` replaces the instant drop:
 
-| Condition | Result |
-| --- | --- |
-| Visible | Retain, refresh sighting |
-| Never seen, no line of sight | **Drop immediately** — cannot acquire through terrain |
-| Lost < 1.75 s ago | Retain (`grace`) |
-| Lost longer, last known position still reachable | Retain (`hunting_last_known`, ≤ 2.5 s more) |
-| Lost longer, unreachable | Drop |
+| Condition                                        | Result                                                |
+| ------------------------------------------------ | ----------------------------------------------------- |
+| Visible                                          | Retain, refresh sighting                              |
+| Never seen, no line of sight                     | **Drop immediately** — cannot acquire through terrain |
+| Lost < 1.75 s ago                                | Retain (`grace`)                                      |
+| Lost longer, last known position still reachable | Retain (`hunting_last_known`, ≤ 2.5 s more)           |
+| Lost longer, unreachable                         | Drop                                                  |
 
 Total worst case is 4.25 s, and only for a creature that genuinely saw the
 player. Level 5+ creatures add 1.25 s (see §2).
@@ -118,7 +118,7 @@ Node budget raised 2,000 → 3,200 to pay for diagonals plus vertical relief.
 The Watchtower Muck region resolves to 32 monsters and 11 livestock, while client
 telemetry showed only 14 NPCs rendered against a draw limit of 15 — the player
 can be attacked by creatures they cannot see. Making engagement reliable without
-also bounding how many creatures engage *at once* would have turned an
+also bounding how many creatures engage _at once_ would have turned an
 inconsistent fight into an unavoidable death. That bound is §3.
 
 ---
@@ -151,19 +151,19 @@ levelSource ∈ migration | region_tier | authored | earned
 
 **The migration is inert.** Every existing creature becomes level 1, and level 1
 multiplies every stat by exactly 1.0. Reinterpreting today's `combatLevel: 4`
-Hexes as *new* level 4 would buff the whole world a second time, because their
+Hexes as _new_ level 4 would buff the whole world a second time, because their
 production HP and damage already encode that tier.
 
 ### The curve, and why it is shaped this way
 
-| Stat | Per level | Cap | Rationale |
-| --- | --- | --- | --- |
-| Max HP | +14% | — | Fastest. More time to kill, not more lethality. |
-| Damage | +7% | — | The only lethality dial, deliberately slow. |
-| Speed | +1.5% | **+12%** | A creature must never outrun a sprinting player. |
-| Attack interval | −7% per 10 levels | ≥ 80% of base | Cadence is a milestone, not a curve. |
-| Kill XP | +18% | ×3 | Reward tracks risk, with diminishing returns. |
-| Drops | +1 per 5 levels | +3 | Curve reserved; not installed in the drop transaction yet. |
+| Stat            | Per level         | Cap           | Rationale                                                  |
+| --------------- | ----------------- | ------------- | ---------------------------------------------------------- |
+| Max HP          | +14%              | —             | Fastest. More time to kill, not more lethality.            |
+| Damage          | +7%               | —             | The only lethality dial, deliberately slow.                |
+| Speed           | +1.5%             | **+12%**      | A creature must never outrun a sprinting player.           |
+| Attack interval | −7% per 10 levels | ≥ 80% of base | Cadence is a milestone, not a curve.                       |
+| Kill XP         | +18%              | ×3            | Reward tracks risk, with diminishing returns.              |
+| Drops           | +1 per 5 levels   | +3            | Curve reserved; not installed in the drop transaction yet. |
 
 **Never scaled:** attack reach, attack FOV, aggro radius, disengage distance, and
 body size. Growing a creature's reach or aggro bubble with level makes encounters
@@ -172,22 +172,22 @@ seed data.
 
 Implemented and reserved AI milestones are:
 
-| Level | Ability |
-| --- | --- |
-| 5 | +1.25 s lost-sight target retention |
-| 10 | Reserved flag for level-gated authored group tactics |
-| 20 | 10% flat damage resistance |
-| 30 | Reserved flag for encounter-owned family special moves |
+| Level | Ability                                                |
+| ----- | ------------------------------------------------------ |
+| 5     | +1.25 s lost-sight target retention                    |
+| 10    | Reserved flag for level-gated authored group tactics   |
+| 20    | 10% flat damage resistance                             |
+| 30    | Reserved flag for encounter-owned family special moves |
 
 ### Where it is applied
 
-| Stat | Applied | Where |
-| --- | --- | --- |
-| Max HP | At seed time (entity-owned) | `live_entity_ecs_seed.ts` |
-| Damage, cadence | Per tick | `applyCreatureLevelToChaseAttackParams` |
-| Speed | Per tick, before every existing cap | `boundedHarthmereNpcChaseSpeed` |
-| Kill XP | On the authoritative death transaction | `logic/events/handlers/npc.ts` |
-| Resistance | On the authoritative incoming-damage transaction | `logic/events/handlers/npc.ts` |
+| Stat            | Applied                                          | Where                                   |
+| --------------- | ------------------------------------------------ | --------------------------------------- |
+| Max HP          | At seed time (entity-owned)                      | `live_entity_ecs_seed.ts`               |
+| Damage, cadence | Per tick                                         | `applyCreatureLevelToChaseAttackParams` |
+| Speed           | Per tick, before every existing cap              | `boundedHarthmereNpcChaseSpeed`         |
+| Kill XP         | On the authoritative death transaction           | `logic/events/handlers/npc.ts`          |
+| Resistance      | On the authoritative incoming-damage transaction | `logic/events/handlers/npc.ts`          |
 
 Ambient creatures use assigned levels (`migration`, `region_tier`, or
 `authored`). The `earned` level source and drop-bonus helper are serialized and
@@ -196,7 +196,7 @@ in this change; they must not be described as live progression yet.
 
 ### Balance ceiling
 
-Native damage is *already* severe: `monsterDamage()` multiplies the family base
+Native damage is _already_ severe: `monsterDamage()` multiplies the family base
 by five, so a `combatLevel: 3` Hex deals about 90 into a 140 HP player. Layering
 the progression multiplier on a `combatLevel: 5+` Hex produces a single hit above
 140 — an unavoidable one-shot.
@@ -258,6 +258,14 @@ Alert rules:
 - livestock never joins as a bystander; it flees and keeps only its own direct
   retaliation, which is a separate damage event.
 
+The alert identifies the encounter opener; it does not force every responder to
+focus that one player forever. Each active responder selects from the eligible
+players inside the bounded retaliation vicinity. The opener is first, responder
+rank offsets pack members across the ordered participant list, and the shared
+six-second rotation advances later exchanges. This preserves understandable
+direct retaliation while preventing a multiplayer encounter from collapsing
+onto one player.
+
 ### Responder control
 
 `groupResponderPlan` caps **all simultaneous responders** at **3**. Overflow
@@ -271,7 +279,7 @@ Three simultaneous connections is already lethal against 140 HP — six is not a
 fight, it is a cutscene.
 
 The plan is computed **locally by each member** with no shared alert bus.
-Determinism comes from ranking on a *quantized* distance (4 m buckets) plus the
+Determinism comes from ranking on a _quantized_ distance (4 m buckets) plus the
 authored `memberIndex`, so two members with slightly different views of the same
 fight still agree on the order.
 
@@ -301,7 +309,7 @@ so hills produced floating or buried companions, and its 5,000 m leash was the
 absence of a catch-up policy rather than one.
 
 **The Chapter 1 escort** wrote a player anchor into the companion's Anima
-*schedule*. The ownership model was right — normal NPC physics carried the follow
+_schedule_. The ownership model was right — normal NPC physics carried the follow
 — but a schedule entry cannot express a combat policy, follow distance, formation
 slot, leash, destination, or death handling, and it collided with the quest-giver
 "stay home" branch.
@@ -317,17 +325,21 @@ leaderId, combatPolicy, status, followDistance,
 formationSlot, leashDistance, destination, assignmentId
 ```
 
-| Policy | Fights |
-| --- | --- |
-| `noncombatant` | nothing (jobs-board default; the historical behaviour, now stated rather than implied) |
-| `defend_self` | whatever attacks the escort |
-| `defend_leader` | + whatever attacks the leader |
-| `fight_muck` | + hostile Muck within 12 m of the leader |
+| Policy          | Fights                                             |
+| --------------- | -------------------------------------------------- |
+| `noncombatant`  | nothing (an explicit authored protection)          |
+| `defend_self`   | whatever attacks the escort                        |
+| `defend_leader` | + whatever attacks the leader (jobs-board default) |
+| `fight_muck`    | + hostile Muck within 12 m of the leader           |
 
 **Restricting targets is as much a part of the design as enabling them.** An
 escort that picks its own fights turns a delivery into an unwinnable brawl, and
 one that can hit livestock or civilians is a griefing tool. Escorts never use
 proximity aggro; `evaluateEscortCombatTarget` is the only source of their target.
+Once an escort chooses a hostile, its public `npc_combat_state.attack_target`
+makes it an active encounter participant. The hostile can then target and damage
+the escort through the normal Anima/Logic receipt path; unrelated NPCs remain
+ineligible.
 
 Locomotion has three bands (hold inside the slot, walk small gaps, sprint out of
 formation) plus catch-up past the leash, and formation slots fan a party out so
@@ -355,12 +367,12 @@ unchanged.
 Four groups of **2 Hexes, 4 Mucklings, 1 cow, 2 sheep, 4 rabbits** — 13
 creatures each, 52 in total.
 
-| Group | Centreline anchor | Shoulder | Level |
-| --- | --- | --- | --- |
-| 1 (20%) | `[784, 65, -192]` | +10 m | 2 |
-| 2 (40%) | `[1020, 60, -200]` | −10 m | 3 |
-| 3 (60%) | `[1273, 56, -212]` | +10 m | 4 |
-| 4 (80%) | `[1538, 59, -211]` | −10 m | 5 |
+| Group   | Centreline anchor  | Shoulder | Level |
+| ------- | ------------------ | -------- | ----- |
+| 1 (20%) | `[784, 65, -192]`  | +10 m    | 2     |
+| 2 (40%) | `[1020, 60, -200]` | −10 m    | 3     |
+| 3 (60%) | `[1273, 56, -212]` | +10 m    | 4     |
+| 4 (80%) | `[1538, 59, -211]` | −10 m    | 5     |
 
 Anchors are measured centreline columns from the read-only production road
 planner run (1,362 traversable columns, Y41–Y71, zero route-planning failures,
@@ -401,23 +413,29 @@ Id bands: monsters `10801–10824`, animals `10841–10868`.
 ### Fast lane
 
 ```sh
-node_modules/.bin/mocha --config .mocharc.fast.json \
-  src/shared/npc/behavior/test/combat_geometry.test.ts \
-  src/shared/npc/behavior/test/pathfinding_geometry.test.ts \
-  src/shared/npc/behavior/test/escort_policy.test.ts \
-  src/shared/npc/test/creature_level.test.ts \
-  src/shared/npc/test/creature_group.test.ts \
-  src/shared/harthmere/test/road_to_harthmere_groups.test.ts \
-  src/shared/harthmere/test/anima_hill_combat_e2e.test.ts \
-  src/server/harthmere/test/escort_system.test.ts
+scripts/harthmere/t.sh combat
 ```
 
 `anima_hill_combat_e2e.test.ts` is a deterministic integration-style simulation
 of the decision helpers (acquire → climb → crest → strike → group alert →
-responder cap). It does not instantiate Anima, ECS, or terrain resources; the
-browser gate below is the real end-to-end proof. During development this
-simulation still caught two defects that narrower unit cases missed: compounding
-path repair and the one-shot damage break.
+responder cap → multiplayer target distribution). The same preset also covers
+the target rotation helper and `SimulatedNpc` player-versus-NPC event routing.
+It does not instantiate Anima, ECS, or terrain resources; the browser gate below
+is the real end-to-end proof. During development this simulation still caught
+defects that narrower unit cases missed: compounding path repair, the one-shot
+damage break, and responders all selecting the opener.
+
+The server-authority tests require the normal bootstrap:
+
+```sh
+NODE_OPTIONS=--no-experimental-strip-types \
+  node_modules/.bin/mocha --config .mocharc.json \
+  src/server/logic/test/harthmere_npc_hit.test.ts \
+  src/server/harthmere/test/escort_system.test.ts
+```
+
+They prove hostile melee and Hex ranged receipts can damage an NPC escort once,
+that replay is rejected, and that generic player escorts use `defend_leader`.
 
 ### Typecheck
 
@@ -437,12 +455,12 @@ and nothing else.
 
 ### Browser gate
 
-The fast suites prove the rules. The browser gate proves the same three behaviours
+The fast suites prove the rules. The browser gate proves the same behaviours
 against real voxels, real Anima, real ECS, and real sync — the only place the
 original defect was ever visible.
 
 ```sh
-HARTHMERE_E2E_HILL_COMBAT_ONLY=1 \
+HARTHMERE_E2E_RETALIATION_ONLY=1 \
 HARTHMERE_E2E_BASE_URL=http://127.0.0.1:3017 \
 HARTHMERE_E2E_SYNC_BASE_URL=http://127.0.0.1:4907 \
 HARTHMERE_E2E_URL=http://127.0.0.1:3017/at \
@@ -450,7 +468,20 @@ HARTHMERE_E2E_CONTROL_TOKEN="$HARTHMERE_E2E_CONTROL_TOKEN" \
   node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
 ```
 
-It asserts three things:
+That changed-slice command proves assertion 3 below with two real synchronized
+players and no unrelated traversal setup. It stages the complete first authored
+road pack, one different-group negative control, and the optional solitary
+identity, then restores all canonical ECS entities during cleanup; this avoids
+making the result depend on whether a freshly allocated NPC id's value shard has
+been reacquired after an Anima restart. Before the real
+`UpdateNpcHealthEvent`, the lane stages a `training_dagger` because Logic
+authoritatively validates the selected item, level, cadence, reach, and player
+health. It restores the player's complete inventory, selected item, trigger
+state, health, and position afterward. The complete hill gate uses the same
+command with `HARTHMERE_E2E_HILL_COMBAT_ONLY=1` instead and proves the terrain
+assertions plus the multiplayer pack assertion:
+
+It asserts four things:
 
 1. **Ledge** — a Mucker at the edge of a 2 m shelf can hit the player's
    vertically reachable lower body, while the separate geometry test proves a
@@ -458,13 +489,29 @@ It asserts three things:
 2. **Crest** — a wall that breaks line of sight does **not** clear
    `npc_combat_state.attack_target`, sampled continuously for six seconds. Any
    single cleared sample fails.
-3. **Group** — a damaged creature's authored pack-mate assists, while a creature
-   from a *different* road group standing just as close does not.
+3. **Group** — a damaged creature keeps the player who struck it, an authored
+   pack-mate selects a second real nearby player, and a creature from a
+   _different_ road group standing just as close does not join the shared alert.
+4. **Rotation diagnostic** — deterministic unit tests prove that a solitary
+   retaliation-only creature selects the opener and then rotates to the second
+   nearby player after one six-second exchange. The production-terrain browser
+   version is opt-in with `HARTHMERE_E2E_RETALIATION_SOLO_ROTATION=1`; it is not
+   a default release gate because retained-body terrain and LOS timing are not
+   deterministic.
+
+`HARTHMERE_E2E_HILL_COMBAT_SKIP_GIANT=1` is the broader ledge/crest/group inner
+loop: it skips only the independent full-size Helix traversal row. Prefer
+`HARTHMERE_E2E_RETALIATION_ONLY=1` when only targeting changed. Omit both flags
+for changes to oversized-boss locomotion or for the complete hill-combat release
+batch. Do not weaken a Helix or ledge predicate merely to unblock an unrelated
+targeting change.
 
 Stack requirements are unchanged from the chase gate in
 `NATIVE_ECS_END_TO_END_TESTING.md`: production-shaped image, Anima ready (HTTP 200
 on `/ready`), and `HARTHMERE_NATIVE_ECS_E2E=1` with a control token. Gaia is not
-required for this scenario. It runs single-client by construction.
+required for this scenario. It opens a second real synchronized client only for
+the bounded multiplayer row, restores that actor's movement tweak and position,
+and closes its context in fixture cleanup.
 
 ---
 
@@ -474,8 +521,8 @@ Not done here, and worth doing next:
 
 1. **Encounter-density controls for the Watchtower region.** 32 monsters plus 11
    livestock against a 15-NPC draw limit is still the wrong shape, and reliable
-   engagement makes it worse, not better. Responder caps bound how many *attack*;
-   they do not bound how many *exist*.
+   engagement makes it worse, not better. Responder caps bound how many _attack_;
+   they do not bound how many _exist_.
 2. **Live-mode mirror parity for levels.** `live_mode_backend.ts` builds its own
    combat snapshots from seed `killXp` / `attackDamage` and does not consult
    `creatureProgression`. Native ECS is authoritative for the fight, so this is

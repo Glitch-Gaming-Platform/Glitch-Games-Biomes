@@ -12,6 +12,10 @@ const renderer = fs.readFileSync(
   "src/client/game/renderers/local_dev/harthmere_assets.ts",
   "utf8"
 );
+const clientWorldExtension = fs.readFileSync(
+  "src/client/game/renderers/local_dev/harthmere_client_world_extension.ts",
+  "utf8"
+);
 const docker = fs.readFileSync("Dockerfile.biomes", "utf8");
 const prepare = fs.readFileSync(
   "scripts/glitch/prepare-glitch-image.sh",
@@ -139,6 +143,22 @@ ok(
 ok(
   renderer.includes("shiftHarthmereRuntimePlacementForExtraTown"),
   "client placements shift"
+);
+ok(
+  renderer.includes("shouldEnableHarthmereClientWorldExtension()") &&
+    !renderer.includes(
+      "shouldEnableHarthmereAdditiveWorldExtension(process.env)"
+    ),
+  "client offset gate does not pass the empty browser process.env polyfill"
+);
+ok(
+  clientWorldExtension.includes(
+    "process.env.NEXT_PUBLIC_BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET"
+  ) &&
+    clientWorldExtension.includes(
+      "process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_STANDALONE_TOWN"
+    ),
+  "client offset gate uses direct public env accesses that Next can inline"
 );
 ok(
   renderer.includes("extra-town-offset"),
@@ -269,5 +289,14 @@ ok(
 ok(
   deploy.includes("NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600"),
   "Azure build/runtime explicitly use the +1600 client offset"
+);
+ok(
+  deploy.includes(
+    'NEXT_PUBLIC_BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET="$disable_extra_town_offset"'
+  ) &&
+    deploy.includes(
+      'BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET="$disable_extra_town_offset"'
+    ),
+  "production build mirrors the selected offset topology into server and client compilation"
 );
 console.log("harthmere extra-town offset current check passed");

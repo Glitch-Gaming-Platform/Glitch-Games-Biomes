@@ -6,20 +6,26 @@ import os
 import sys
 
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
+
+
+def force_object_mode():
+    if bpy.context.object and bpy.context.object.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
 
 
 def script_args():
     args = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     if len(args) < 2:
         raise RuntimeError(
-            "Expected: -- ACTION_NAME OUTPUT_PNG [FRAME] [BOUNDS_ACTION]"
+            "Expected: -- ACTION_NAME OUTPUT_PNG [FRAME] [BOUNDS_ACTION] [VIEW_SIDE]"
         )
     return (
         args[0],
         os.path.abspath(args[1]),
         int(args[2]) if len(args) > 2 else 7,
         args[3] if len(args) > 3 else None,
+        float(args[4]) if len(args) > 4 else -1.0,
     )
 
 
@@ -60,7 +66,46 @@ def add_area_light(name, location, energy, size, color):
     return obj
 
 
-def configure_scene(action_name, output_path, frame, bounds_action_name=None):
+def add_weapon_proxy(rig, action_name):
+    """Add a temporary sword so combat arcs can be judged in render audits."""
+    if not (
+        action_name.startswith("HarthmereBodyWeapon")
+        or action_name.startswith("NpcStagger")
+    ):
+        return
+    if "Tool" not in rig.pose.bones:
+        return
+
+    material = bpy.data.materials.new("CombatAuditSwordMaterial")
+    material.diffuse_color = (0.18, 0.42, 0.72, 1.0)
+    material.metallic = 0.72
+    material.roughness = 0.24
+
+    tool_world = rig.matrix_world @ rig.pose.bones["Tool"].matrix
+
+    def cube(name, location, scale, color=None):
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0))
+        obj = bpy.context.object
+        obj.name = name
+        # This audit renders a single evaluated frame. Building directly from
+        # the Tool pose matrix avoids Blender bone-parent inverse ambiguity and
+        # guarantees the proxy sits on the exact runtime attachment transform.
+        obj.matrix_world = tool_world @ Matrix.Translation(location)
+        obj.scale = scale
+        obj.data.materials.append(material)
+        if color:
+            obj.color = color
+        return obj
+
+    cube("CombatAuditBlade", (0.0, 1.22, 0.0), (0.10, 1.18, 0.055))
+    cube("CombatAuditGuard", (0.0, 0.06, 0.0), (0.34, 0.08, 0.10))
+    cube("CombatAuditPommel", (0.0, -0.24, 0.0), (0.12, 0.30, 0.09))
+
+
+def configure_scene(
+    action_name, output_path, frame, bounds_action_name=None, view_side=-1.0
+):
+    force_object_mode()
     rig = next(obj for obj in bpy.data.objects if obj.type == "ARMATURE")
     rig.animation_data_create()
     if rig.animation_data.use_tweak_mode:
@@ -90,6 +135,7 @@ def configure_scene(action_name, output_path, frame, bounds_action_name=None):
     scene.frame_set(frame - 1 if frame > 0 else frame + 1)
     scene.frame_set(frame)
     bpy.context.view_layer.update()
+    add_weapon_proxy(rig, action_name)
 
     for obj in list(scene.objects):
         if obj.type in {"CAMERA", "LIGHT"}:
@@ -117,7 +163,9 @@ def configure_scene(action_name, output_path, frame, bounds_action_name=None):
     camera_data = bpy.data.cameras.new("MovementActionCamera")
     camera = bpy.data.objects.new("MovementActionCamera", camera_data)
     scene.collection.objects.link(camera)
-    camera.location = center + Vector((radius * 1.1, -radius * 1.7, radius * 0.8))
+    camera.location = center + Vector(
+        (radius * 1.1, radius * 1.7 * view_side, radius * 0.8)
+    )
     camera_data.lens = 58
     camera_data.sensor_width = 36
     look_at(camera, center + Vector((0, 0, size.z * 0.03)))

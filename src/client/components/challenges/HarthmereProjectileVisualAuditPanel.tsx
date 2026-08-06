@@ -51,9 +51,19 @@ type ProjectileRuntimeSnapshot = {
   magicExplosionCount?: number;
 };
 
+export function harthmereProjectileAuditControlsReady(
+  runtime: ProjectileRuntimeSnapshot | undefined,
+  expectedCount: number
+) {
+  return (
+    expectedCount > 0 &&
+    Number(runtime?.manifestCount ?? 0) === expectedCount &&
+    (runtime?.failedIds?.length ?? 0) === 0
+  );
+}
+
 function readProjectileRuntimeSnapshot():
-  | ProjectileRuntimeSnapshot
-  | undefined {
+  ProjectileRuntimeSnapshot | undefined {
   if (typeof window === "undefined") {
     return undefined;
   }
@@ -301,8 +311,10 @@ export const HarthmereProjectileVisualAuditPanel: React.FunctionComponent =
 
     const loadedCount = Number(runtime?.loadedCount ?? 0);
     const expectedCount = HARTHMERE_PROJECTILE_VISUALS.length;
-    const ready =
-      loadedCount === expectedCount && (runtime?.failedIds?.length ?? 0) === 0;
+    // Projectile GLBs are intentionally lazy. Requiring all 31 to be loaded
+    // before enabling the buttons made the controls incapable of initiating
+    // the very loads they audit.
+    const ready = harthmereProjectileAuditControlsReady(runtime, expectedCount);
     const activeIds = [
       ...new Set(
         (runtime?.active ?? [])

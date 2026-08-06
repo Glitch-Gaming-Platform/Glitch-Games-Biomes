@@ -265,6 +265,8 @@ const HARTHMERE_BUSINESS_JOB_MATERIAL_STOCK: Readonly<
   >
 > = {
   weapons_tools: [
+    { itemId: "hunter_bow", buyPrice: 95 },
+    { itemId: "hunting_arrow", buyPrice: 1 },
     // The Chapter 1 robot-repair quest explicitly routes players to this
     // counter for Scrap Metal. Keep the public listing on the real quest item
     // id; `metal_part` is private customer-service simulation stock and cannot
@@ -364,33 +366,24 @@ export function harthmereBusinessStorefrontListingsForType(
   const recipeBook = harthmereRecipeBookForBusinessType(type);
   const materialListings = harthmereBusinessJobMaterialListings(type);
   return [
-    ...goods.blocks.map(
-      (itemId): HarthmereBusinessStorefrontListing => ({
-        businessType: type,
-        itemId,
-        kind: "block",
-        buyPrice: storefrontBuyPrice(itemId),
-      })
-    ),
-    ...goods.interior.map(
-      (itemId): HarthmereBusinessStorefrontListing => ({
-        businessType: type,
-        itemId,
-        kind: "interior",
-        buyPrice: storefrontBuyPrice(itemId),
-      })
-    ),
-    ...materialListings.map(
-      (listing): HarthmereBusinessStorefrontListing => ({
-        businessType: type,
-        itemId: listing.itemId,
-        kind: "material",
-        buyPrice: Math.max(
-          listing.buyPrice,
-          storefrontBuyPrice(listing.itemId)
-        ),
-      })
-    ),
+    ...goods.blocks.map((itemId): HarthmereBusinessStorefrontListing => ({
+      businessType: type,
+      itemId,
+      kind: "block",
+      buyPrice: storefrontBuyPrice(itemId),
+    })),
+    ...goods.interior.map((itemId): HarthmereBusinessStorefrontListing => ({
+      businessType: type,
+      itemId,
+      kind: "interior",
+      buyPrice: storefrontBuyPrice(itemId),
+    })),
+    ...materialListings.map((listing): HarthmereBusinessStorefrontListing => ({
+      businessType: type,
+      itemId: listing.itemId,
+      kind: "material",
+      buyPrice: Math.max(listing.buyPrice, storefrontBuyPrice(listing.itemId)),
+    })),
     ...(type === HARTHMERE_ENERGY_WEAPON_VENDOR_ID
       ? HARTHMERE_ENERGY_WEAPONS.map(
           (weapon): HarthmereBusinessStorefrontListing => ({

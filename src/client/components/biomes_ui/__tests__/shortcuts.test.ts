@@ -45,10 +45,30 @@ describe("BiomesUI tab shortcuts", () => {
     );
     dispatchKey("i");
     dispatchKey("p");
+    dispatchKey("b");
     dispatchKey("m");
     dispatchKey(",");
     cleanup();
-    assert.deepEqual(seen, ["inventory", "farming", "map", "options"]);
+    assert.deepEqual(seen, [
+      "inventory",
+      "farming",
+      "banking",
+      "map",
+      "options",
+    ]);
+  });
+
+  it("leaves E and Q to Dodge and Evade", () => {
+    const seen: string[] = [];
+    const cleanup = installTabShortcuts(
+      DEFAULT_TAB_SHORTCUTS,
+      (tab) => seen.push(tab),
+      () => false
+    );
+    dispatchKey("e");
+    dispatchKey("q");
+    cleanup();
+    assert.deepEqual(seen, []);
   });
 
   it("ignores keys when isTypingInInput is true (chat protection)", () => {

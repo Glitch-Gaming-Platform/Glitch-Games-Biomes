@@ -15,6 +15,7 @@ import { AnimationSystem } from "@/client/game/util/animation_system";
 import type { MixedMesh } from "@/client/game/util/animations";
 import { getVelocityBasedWeights } from "@/client/game/util/animations";
 import { gltfToThree } from "@/client/game/util/gltf_helpers";
+import { findPlayerHeldItemAttachmentParent } from "@/client/game/util/player_attachment";
 import { TimelineMatcher } from "@/client/game/util/timeline_matcher";
 import type { CharacterAnimationTiming } from "@/server/shared/minigames/ruleset/tweaks";
 import { HARTHMERE_CINEMATIC_ANIMATION_DEFINITIONS } from "@/shared/cutscene/cinematic_expressions";
@@ -70,19 +71,18 @@ export const HARTHMERE_BODY_WEAPON_TIMING_PROFILES = {
 
 const HARTHMERE_BODY_ATTACK_TIME_SCALE = {
   attack1: 1.0,
+  // Both families already carry distinct frame-exact timing in Blender.
+  // Runtime scaling would desynchronize the body from contact, trail, and SFX.
   attack2: 1.0,
 } as const;
 
 const HARTHMERE_BODY_UPPER_BODY_RE =
-  /(.*(upperarm|forearm|arm|hand|tool|shoulder|clavicle|finger|weapon).*)/i;
+  /(.*(head|neck|chest|spine|upperarm|forearm|arm|hand|tool|shoulder|clavicle|finger|weapon).*)/i;
 const HARTHMERE_BODY_LOCOMOTION_DEADZONE_SPEED = 0.08;
 const HARTHMERE_BODY_MAX_BLEND_DT = 1 / 24;
 
 const HARTHMERE_ATTACK_VARIATION_SEQUENCE_VERSION =
   "harthmere-attack-variation-sequencing";
-let harthmereLastAttackVariationFamily: "attack1" | "attack2" | undefined;
-let harthmereLastAttackVariationIndex = 0;
-let harthmereCachedAttackVariationStartTime: number | undefined;
 type HarthmereAttackVariationEmoteType =
   | "attack1Var1"
   | "attack1Var2"
@@ -92,31 +92,12 @@ type HarthmereAttackVariationEmoteType =
   | "attack2Var2"
   | "attack2Var3"
   | "attack2Var4";
-let harthmereCachedAttackVariationEmote:
-  HarthmereAttackVariationEmoteType | undefined;
-
 function getHarthmereAttackVariationEmoteType(
   emoteType: "attack1" | "attack2",
-  emoteStartTime: number
+  variationIndex: number | undefined
 ): HarthmereAttackVariationEmoteType {
-  if (
-    harthmereCachedAttackVariationStartTime === emoteStartTime &&
-    harthmereCachedAttackVariationEmote
-  ) {
-    return harthmereCachedAttackVariationEmote;
-  }
-
-  if (harthmereLastAttackVariationFamily !== emoteType) {
-    harthmereLastAttackVariationFamily = emoteType;
-    harthmereLastAttackVariationIndex = 0;
-  }
-  harthmereLastAttackVariationIndex =
-    (harthmereLastAttackVariationIndex % 4) + 1;
-  const selected =
-    `${emoteType}Var${harthmereLastAttackVariationIndex}` as HarthmereAttackVariationEmoteType;
-  harthmereCachedAttackVariationStartTime = emoteStartTime;
-  harthmereCachedAttackVariationEmote = selected;
-  return selected;
+  const normalized = Math.min(4, Math.max(1, Math.trunc(variationIndex ?? 1)));
+  return `${emoteType}Var${normalized}` as HarthmereAttackVariationEmoteType;
 }
 
 // harthmere-body-weapon-visual-cohesion
@@ -576,27 +557,30 @@ export const playerSystem = new AnimationSystem(
 export type PlayerAnimationName = AnimationName<typeof playerSystem>;
 export type PlayerAnimationAction = AnimationAction<typeof playerSystem>;
 
+// MOBILE_LAZY_CHARACTER_ANIMATIONS:
+// A phone normally needs idle plus at most a handful of movement, combat, and
+// dialogue clips at one time. Eagerly cloning both masked layers for all 157
+// logical actions produced 314 Three.js actions per visible player. Keep the
+// desktop path unchanged, while mobile materializes and later reclaims every
+// non-idle action through AnimationSystem's deferred path.
+export const MOBILE_DEFERRED_PLAYER_ANIMATION_NAMES = new Set(
+  playerSystem.animationNames.filter((name) => name !== "idle")
+);
+
 export interface AnimatedPlayerMesh extends MixedMesh<typeof playerSystem> {
   threeWeaponAttachment: THREE.Object3D;
 }
 
 export function loadPlayerAnimatedMesh(
   gltf: GLTF,
-  characterAnimationTimingTweaks: CharacterAnimationTiming
+  characterAnimationTimingTweaks: CharacterAnimationTiming,
+  mobileDevice = false
 ): AnimatedPlayerMesh {
-  let weaponParentBone: THREE.Object3D | undefined;
   const meshScene = gltfToThree(gltf);
   let mesh: THREE.Mesh | undefined;
   meshScene.traverse((child) => {
     if (child instanceof THREE.Mesh) {
       mesh = child;
-    } else if (
-      child.name === "Equipped_Attach" ||
-      child.name === "R_Arm" ||
-      child.name === "RightArm" ||
-      child.name === "RightHand"
-    ) {
-      weaponParentBone = child;
     }
   });
 
@@ -604,6 +588,7 @@ export function loadPlayerAnimatedMesh(
     throw new Error("Could not find any meshes in GLTF");
   }
 
+  let weaponParentBone = findPlayerHeldItemAttachmentParent(meshScene);
   if (!weaponParentBone) {
     // HARTHMERE_PLAYER_MESH_MISSING_WEAPON_PARENT_NONFATAL:
     // Some static/local fallback Harthmere player GLTFs do not expose the
@@ -620,12 +605,21 @@ export function loadPlayerAnimatedMesh(
   }
 
   const weaponAttachment = new THREE.Group();
+  weaponAttachment.name = "held-item-attachment";
+  weaponAttachment.userData.harthmereAttachmentParent = weaponParentBone.name;
   weaponParentBone.add(weaponAttachment);
 
   const state = playerSystem.newState(
     gltfToThree(gltf),
     gltf.animations,
-    characterAnimationTimingTweaks
+    characterAnimationTimingTweaks,
+    mobileDevice
+      ? {
+          deferredAnimationNames: MOBILE_DEFERRED_PLAYER_ANIMATION_NAMES,
+          reclaimDeferredActions: true,
+          stabilizeClampedOnceAnimations: true,
+        }
+      : undefined
   );
 
   return {
@@ -658,10 +652,7 @@ function getJumpWeights(
         // actually jumps, so it needs to react ASAP.
         easeInTime: 0.01,
       },
-      layers: {
-        arms: "apply",
-        notArms: "apply",
-      },
+      layers: playerAirborneAnimationLayers(player.emoteInfo?.emoteType),
     };
   }
 }
@@ -677,10 +668,7 @@ function getFallWeights(player: Player): PlayerAnimationAction | undefined {
         repeat: { kind: "repeat" },
         startTime: 0,
       },
-      layers: {
-        arms: "apply",
-        notArms: "apply",
-      },
+      layers: playerAirborneAnimationLayers(player.emoteInfo?.emoteType),
     };
   }
 }
@@ -689,6 +677,17 @@ function isHarthmereWeaponSyncedBodyEmote(
   emoteType: string
 ): emoteType is "attack1" | "attack2" {
   return emoteType === "attack1" || emoteType === "attack2";
+}
+
+export function playerAirborneAnimationLayers(emoteType: string | undefined) {
+  return {
+    // Attack is accumulated before jump/fall. `ifIdle` keeps that responsive
+    // upper-body action while airborne locomotion continues to own the legs.
+    arms: isHarthmereWeaponSyncedBodyEmote(emoteType ?? "")
+      ? "ifIdle"
+      : "apply",
+    notArms: "apply",
+  } as const;
 }
 
 function getResolvedPlayerAnimationClipName(
@@ -753,7 +752,7 @@ function getHarthmereWeaponSyncedEmoteWeights(
 
   const harthmereVariationEmoteType = getHarthmereAttackVariationEmoteType(
     emoteType,
-    emoteStartTime
+    player.emoteInfo.attackVariationIndex
   );
 
   const hasHarthmereWeaponClip = hasResolvedHarthmereWeaponBodyClip(
@@ -791,9 +790,10 @@ function getHarthmereWeaponSyncedEmoteWeights(
     },
     layers: {
       arms: "apply",
-      // Visual-cohesion v7: do not let idle replace the torso/root with the
-      // attack clip. Only the shoulder/arm/hand chain plays the attack.
-      notArms: "noApply",
+      // The upper-body mask now includes chest/head and the authored clip has
+      // real footwork. While moving, locomotion owns the lower body; while
+      // stationary, `ifIdle` lets the full planted attack pose play.
+      notArms: "ifIdle",
     },
   };
 }
@@ -838,6 +838,7 @@ function getEmoteBasedWeights(
         repeat: EMOTE_PROPERTIES[emoteType].repeatType,
         startTime: toAnimationTime("emote", emoteStartTime),
         easeInTime: EMOTE_PROPERTIES[emoteType].easeInTime,
+        easeOutTime: EMOTE_PROPERTIES[emoteType].easeOutTime,
       },
       layers: {
         arms: "apply",

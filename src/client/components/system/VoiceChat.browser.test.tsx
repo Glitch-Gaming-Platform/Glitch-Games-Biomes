@@ -115,6 +115,9 @@ async function buildVoiceChatBundle(harnessSource: string) {
                   audioManager: {
                     getVolume: () => 0.4,
                   },
+                  clientConfig: {
+                    mobileDevice: false,
+                  },
                 });
               `,
             ],

@@ -144,6 +144,22 @@ function main() {
     if (isGitLfsPointer(absolutePath)) {
       fail(`Voice MP3 is still a Git LFS pointer: ${recording.path}`);
     }
+    if (!recording.mobilePath) {
+      fail(`Voice recording is missing its mobile AAC path: ${recording.path}`);
+    }
+    const mobileAbsolutePath = path.join(publicRoot, recording.mobilePath);
+    if (!fs.existsSync(mobileAbsolutePath)) {
+      fail(`Missing committed mobile voice AAC: ${recording.mobilePath}`);
+    }
+    const mobileSize = fs.statSync(mobileAbsolutePath).size;
+    if (mobileSize <= 0 || recording.mobileBytes !== mobileSize) {
+      fail(`Voice mobile AAC size mismatch: ${recording.mobilePath}`);
+    }
+    if (isGitLfsPointer(mobileAbsolutePath)) {
+      fail(
+        `Voice mobile AAC is still a Git LFS pointer: ${recording.mobilePath}`
+      );
+    }
     if (recording.path.includes("/native-robot-story/")) {
       nativeRobotStoryCount += 1;
     }
@@ -252,7 +268,7 @@ function main() {
   }
 
   console.log(
-    `PASS NPC voice recordings: ${manifest.recordings.length} MP3s, ` +
+    `PASS NPC voice recordings: ${manifest.recordings.length} MP3/AAC pairs, ` +
       `${chapterPaths.length} Chapter 1 cutscene lines, ` +
       `${objectivePaths.length} Chapter 1 objective lines, ` +
       `${nativeRobotStoryCount} native robot-story lines, ` +

@@ -18,6 +18,7 @@ import type {
 } from "@/shared/ecs/gen/entities";
 import {
   createHarthmereBusinessCustomerSpatialIntent,
+  harthmereBusinessCustomerSpawnPoint,
   harthmereBusinessInteriorForType,
   type HarthmereBusinessCustomerReaction,
   type HarthmereBusinessCustomerWorldPhase,
@@ -268,6 +269,7 @@ function stateForTicket(input: {
         ) < 0.1) ||
       phase === "serving" ||
       phase === "departing" ||
+      phase === "cancelled" ||
       phase === "despawn_ready");
   return {
     version: HARTHMERE_BUSINESS_CUSTOMER_BEHAVIOR_VERSION,
@@ -372,6 +374,23 @@ export function buildHarthmereBusinessCustomerSessionNpcChanges(input: {
         ? deserializeNpcCustomState(existing.npc_state.data)
         : undefined;
       const existingCustomer = decoded?.businessCustomer;
+      const cancelledAtExteriorSpawn =
+        existing &&
+        session.status !== "active" &&
+        existingCustomer?.phase === "cancelled" &&
+        existingCustomer.waypointIndex === 0 &&
+        existing.position?.v !== undefined &&
+        dist(
+          existing.position.v,
+          harthmereBusinessCustomerSpawnPoint(record, ticket.queueIndex)
+        ) < BUSINESS_CUSTOMER_SPAWN_CLEARANCE_METERS;
+      if (cancelledAtExteriorSpawn) {
+        // The customer never entered the shop, so there is no visible exit
+        // route to preserve. Leaving this exterior body alive permanently
+        // blocks every later shift at the shared spawn.
+        changes.push({ kind: "delete", id: ticket.entityId });
+        continue;
+      }
       if (
         existing &&
         session.status !== "active" &&

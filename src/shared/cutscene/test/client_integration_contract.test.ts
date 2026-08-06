@@ -47,6 +47,14 @@ describe("cutscene client integration contract", () => {
     assert.match(source, /setBackgroundMusicTrack\(selectedBackgroundMusic\)/);
   });
 
+  it("restores the player's neutral pose and regional music after every scene", () => {
+    const source = read("src/client/game/scripts/cutscene_director.ts");
+    assert.match(source, /eagerCancelEmote\(this\.events\)/);
+    assert.match(source, /selectBackgroundMusicTrack/);
+    assert.match(source, /localPlayer\.player\.position/);
+    assert.match(source, /setBackgroundMusicTrack/);
+  });
+
   it("live-creature bridge merges puppet overrides and fast-publishes during scenes", () => {
     const source = read(
       "src/client/game/scripts/harthmere_live_creature_bridge_script.ts"
@@ -78,9 +86,11 @@ describe("cutscene client integration contract", () => {
     assert.match(npcs, /cutsceneHeldItemAttachment/);
     assert.match(npcs, /cutsceneNpcAnimationAction/);
     assert.match(npcRenderer, /cutsceneNpcIds/);
+    assert.match(playerMesh, /playerHeldItemAttachmentParent\(root\)/);
+    const playerAttachment = read("src/client/game/util/player_attachment.ts");
     assert.match(
-      playerMesh,
-      /return equippedAttach \?\? exactArmAttach \?\? fuzzyHandAttach \?\? root/
+      playerAttachment,
+      /return equippedAttach \?\? tool \?\? exactHand \?\? fuzzyHand \?\? exactArm/
     );
     assert.match(playerMesh, /snapshot-cutscene-player-mesh-v1/);
     assert.match(playerMesh, /applySnapshotCutscenePlayerAnimation/);
@@ -201,6 +211,9 @@ describe("cutscene client integration contract", () => {
     assert.match(renderer, /matrixWorldInverse\.clone\(\)/);
     assert.match(promo, /captureAtParam === null/);
     assert.match(promo, /captureAtParam\.trim\(\) === ""/);
+    assert.match(promo, /waitForPromoCameraTerrainClearance/);
+    assert.match(promo, /bossCameraPlan === "recommended"/);
+    assert.match(promo, /promoSceneWithRecommendedBossCamera/);
   });
 
   it("waypoint camera override is still the first check in CameraScript.tick", () => {

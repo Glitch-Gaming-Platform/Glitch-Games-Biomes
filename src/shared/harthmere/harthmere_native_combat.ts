@@ -35,14 +35,24 @@ import {
   isHarthmereMagicAttack,
 } from "@/shared/harthmere/magic_charge";
 import {
+  HARTHMERE_COMBAT_COMBO_CONTEXT_SECS,
+  HARTHMERE_COMBAT_COMBO_COOLDOWN_SECS,
+  HARTHMERE_COMBAT_COMBO_MAX_HITS,
   HARTHMERE_ENEMY_MELEE_PACING,
+  HARTHMERE_HEAVY_ATTACK_DAMAGE_MULTIPLIER,
+  HARTHMERE_PLAYER_ATTACK_TIMINGS,
+  type HarthmerePlayerAttackTimingClass,
   harthmereCombatStaminaCostForKind,
 } from "@/shared/harthmere/deliberate_combat";
+import {
+  HARTHMERE_ARROW_DAMAGE,
+  HARTHMERE_BOW_COOLDOWN_MS,
+} from "@/shared/harthmere/harthmere_bow_contract";
 
 export const HARTHMERE_NATIVE_COMBAT_VERSION =
   "harthmere-native-combat-v1" as const;
 
-export const HARTHMERE_HEX_FIREBALL_COOLDOWN_SECS = 20;
+export const HARTHMERE_HEX_FIREBALL_COOLDOWN_SECS = 10;
 export const HARTHMERE_HEX_FIREBALL_RANGE = 12;
 export const HARTHMERE_HEX_FIREBALL_MINIMUM_RANGE = 4.25;
 export const HARTHMERE_HEX_FIREBALL_CAST_TIME_SECS = 1.3;
@@ -138,6 +148,42 @@ export interface HarthmereNativeNpcCombatProfile {
   isPlayerLikeAppearance?: true;
   projectileVisualId?: string;
   rangedAttacks?: readonly BehaviorRangedAttackParams[];
+  /** Finite Anima spell resource; physical attacks always cost zero mana. */
+  maxMana: number;
+  manaRegenPerSecond: number;
+}
+
+export function harthmereNativeNpcAttackManaCost(
+  attack: BehaviorRangedAttackParams
+) {
+  if (
+    !isHarthmereMagicAttack({
+      damageType: attack.damageType,
+      projectileVisualId: attack.projectileVisualId,
+      explicitMagic: attack.magic,
+    })
+  ) {
+    return 0;
+  }
+  const shapeCost =
+    attack.attackShape === "ground_aoe" || attack.attackShape === "self_aoe"
+      ? 12
+      : attack.attackShape === "beam" || attack.attackShape === "cone"
+        ? 8
+        : 4;
+  return Math.min(
+    100,
+    Math.max(8, Math.round(attack.attackDamage * 0.32 + shapeCost))
+  );
+}
+
+export function withHarthmereNativeNpcManaCosts(
+  attacks: readonly BehaviorRangedAttackParams[]
+) {
+  return attacks.map((attack) => ({
+    ...attack,
+    manaCost: harthmereNativeNpcAttackManaCost(attack),
+  }));
 }
 
 export function harthmereNativeNpcProjectilePresentation(input: {
@@ -396,11 +442,31 @@ export function harthmereNativeNpcCombatProfileForSeed(
   const authoredBossAttacks = boss
     ? harthmereBossAttacksForLabel(seed.displayName)
     : undefined;
-  const rangedAttacks = authoredBossAttacks
-    ? [...authoredBossAttacks]
-    : [poisonSpitAttack, fireballAttack, bossSecondaryAttack].filter(
-        (attack): attack is BehaviorRangedAttackParams => Boolean(attack)
-      );
+  const rangedAttacks = withHarthmereNativeNpcManaCosts(
+    authoredBossAttacks
+      ? [...authoredBossAttacks]
+      : [poisonSpitAttack, fireballAttack, bossSecondaryAttack].filter(
+          (attack): attack is BehaviorRangedAttackParams => Boolean(attack)
+        )
+  );
+  const maxMana = sentinel
+    ? 0
+    : boss
+      ? 450 + Math.max(5, level) * 30
+      : isPlayerLikeAppearance
+        ? 300 + level * 24
+        : hex
+          ? 80 + level * 12
+          : 60 + level * 8;
+  const manaRegenPerSecond = sentinel
+    ? 0
+    : boss
+      ? 1.5
+      : isPlayerLikeAppearance
+        ? 1.2
+        : hex
+          ? 0.6
+          : 0.4;
   return {
     key,
     id: harthmereNativeBiomesIdForNpcType(key)!,
@@ -609,6 +675,8 @@ export function harthmereNativeNpcCombatProfileForSeed(
       banditRole,
     }),
     rangedAttacks: rangedAttacks.length ? rangedAttacks : undefined,
+    maxMana,
+    manaRegenPerSecond,
   };
 }
 
@@ -638,6 +706,8 @@ export function harthmereNativeNpcChaseAttackParams(
     rangedAttacks: profile.rangedAttacks
       ? [...profile.rangedAttacks]
       : undefined,
+    maxMana: profile.maxMana,
+    manaRegenPerSecond: profile.manaRegenPerSecond,
   };
 }
 
@@ -729,6 +799,91 @@ export interface HarthmereNativeItemCombatProfile {
   slots: readonly HarthmereEquipmentSlot[];
 }
 
+export const HARTHMERE_UNARMED_ATTACK_REACH = 1.75;
+export const HARTHMERE_HELD_TOOL_ATTACK_REACH = 2.75;
+export const HARTHMERE_MELEE_HAND_AND_BODY_REACH = 2.25;
+export const HARTHMERE_UNARMED_HIT_RADIUS = 0.48;
+
+export interface HarthmereNativeMeleeGeometry {
+  /** Server-compatible distance from the player origin to the target body. */
+  reach: number;
+  /** Authored held graphic length; zero for a bare-hand strike. */
+  graphicLength: number;
+  /** Thickness of the swept hand/weapon path, not extra forward reach. */
+  hitRadius: number;
+}
+
+function harthmereHeldItemMeleeReach(
+  definition: HarthmereItemDefinition,
+  premiumWeapon: ReturnType<typeof getHarthmerePremiumWeapon>,
+  heavy: boolean
+) {
+  // Premium weapons publish their authored tip-to-pommel target length. Add
+  // the player's shoulder/arm extension to that exact graphic length so a
+  // great sword reaches farther than a one-handed sword, while neither can
+  // inherit the much longer terrain-edit radius. Legacy gathering tools do
+  // not publish premium bounds, so they use a deliberately shorter held-tool
+  // reach that is still longer than a bare hand.
+  if (premiumWeapon && premiumWeapon.profile === "melee") {
+    return Math.max(
+      2.8,
+      Math.min(
+        4.5,
+        HARTHMERE_MELEE_HAND_AND_BODY_REACH + premiumWeapon.targetLength
+      )
+    );
+  }
+  if (definition.category === "tool") {
+    return HARTHMERE_HELD_TOOL_ATTACK_REACH;
+  }
+  return heavy ? 3.75 : 3.25;
+}
+
+/**
+ * Geometry shared by rendered melee selection and the native reach contract.
+ *
+ * Premium weapons use their authored tip-to-pommel graphic length. Bare hands
+ * use a deliberately compact body-contact radius, while legacy gathering
+ * tools retain a short visual-length fallback because they do not publish
+ * premium mesh bounds. The hit radius thickens the swing path laterally; it
+ * never extends the authoritative forward distance beyond `reach`.
+ */
+export function harthmereNativeMeleeGeometry(
+  item: Pick<ReadonlyItem, "id"> | undefined
+): HarthmereNativeMeleeGeometry | undefined {
+  const profile = harthmereNativeItemCombatProfile(item);
+  if (
+    !profile ||
+    (profile.kind !== "unarmed" &&
+      profile.kind !== "melee" &&
+      profile.kind !== "heavy") ||
+    profile.damagePerHit <= 0
+  ) {
+    return undefined;
+  }
+  if (!item) {
+    return {
+      reach: profile.reach,
+      graphicLength: 0,
+      hitRadius: HARTHMERE_UNARMED_HIT_RADIUS,
+    };
+  }
+
+  const definition = harthmereNativeItemDefinitionForBiomesId(item.id);
+  const premiumWeapon = definition
+    ? getHarthmerePremiumWeapon(definition.itemId)
+    : undefined;
+  const graphicLength =
+    premiumWeapon?.profile === "melee"
+      ? premiumWeapon.targetLength
+      : Math.max(0.5, profile.reach - HARTHMERE_MELEE_HAND_AND_BODY_REACH);
+  return {
+    reach: profile.reach,
+    graphicLength,
+    hitRadius: Math.max(0.52, Math.min(0.82, 0.46 + graphicLength * 0.18)),
+  };
+}
+
 export function harthmereNativeItemDefinitionForBiomesId(id?: BiomesId) {
   if (!id) return undefined;
   return listHarthmereItemDefinitions().find(
@@ -739,13 +894,21 @@ export function harthmereNativeItemDefinitionForBiomesId(id?: BiomesId) {
 export function harthmereNativeItemCombatProfile(
   item: Pick<ReadonlyItem, "id"> | undefined
 ): HarthmereNativeItemCombatProfile | undefined {
+  const lightIntervalSecs =
+    (HARTHMERE_PLAYER_ATTACK_TIMINGS.basic.impactMs +
+      HARTHMERE_PLAYER_ATTACK_TIMINGS.basic.recoveryMs) /
+    1000;
+  const heavyIntervalSecs =
+    (HARTHMERE_PLAYER_ATTACK_TIMINGS.heavy.impactMs +
+      HARTHMERE_PLAYER_ATTACK_TIMINGS.heavy.recoveryMs) /
+    1000;
   if (!item) {
     return {
       kind: "unarmed",
       damagePerHit: 8,
-      dps: 8 / 1.02,
-      intervalSecs: 1.02,
-      reach: 3.5,
+      dps: 8 / lightIntervalSecs,
+      intervalSecs: lightIntervalSecs,
+      reach: HARTHMERE_UNARMED_ATTACK_REACH,
       levelRequirement: 1,
       durabilityCostMs: 0,
       armor: 0,
@@ -781,16 +944,19 @@ export function harthmereNativeItemCombatProfile(
   }
   const stats = definition.stats ?? {};
   const premiumWeapon = getHarthmerePremiumWeapon(definition.itemId);
-  const damagePerHit = Math.max(
-    0,
-    Number(
-      stats.attackPoints ??
-        stats.attack ??
-        stats.rangedAttack ??
-        stats.damage ??
-        (definition.category === "tool" ? 5 : 0)
-    ) || 0
-  );
+  const bow = premiumWeapon?.family === "bow";
+  const damagePerHit = bow
+    ? HARTHMERE_ARROW_DAMAGE
+    : Math.max(
+        0,
+        Number(
+          stats.attackPoints ??
+            stats.attack ??
+            stats.rangedAttack ??
+            stats.damage ??
+            (definition.category === "tool" ? 5 : 0)
+        ) || 0
+      );
   const text = `${definition.itemId} ${definition.displayName}`.toLowerCase();
   const ranged =
     premiumWeapon?.profile === "ranged" ||
@@ -809,24 +975,30 @@ export function harthmereNativeItemCombatProfile(
     premiumWeapon?.twoHanded === true ||
     /two.?hand|greatsword|maul/.test(text);
   const kind = ranged ? "ranged" : spell ? "spell" : heavy ? "heavy" : "melee";
-  const intervalSecs = ranged
-    ? 1.2
-    : spell
-      ? 1.56
-      : heavy
-        ? 1.64
-        : /dagger/.test(text)
-          ? 0.9
-          : /axe/.test(text)
-            ? 1.18
-            : 1.02;
+  const intervalSecs = bow
+    ? HARTHMERE_BOW_COOLDOWN_MS / 1000
+    : ranged
+      ? 1.2
+      : spell
+        ? 1.56
+        : heavy
+          ? heavyIntervalSecs
+          : /dagger/.test(text)
+            ? lightIntervalSecs * 0.85
+            : /axe/.test(text)
+              ? lightIntervalSecs * 1.15
+              : lightIntervalSecs;
   return {
     itemId: definition.itemId,
     kind,
     damagePerHit,
     dps: damagePerHit / intervalSecs,
     intervalSecs,
-    reach: ranged ? 24 : spell ? 18 : heavy ? 4 : 3.5,
+    reach: ranged
+      ? 24
+      : spell
+        ? 18
+        : harthmereHeldItemMeleeReach(definition, premiumWeapon, heavy),
     levelRequirement: Math.max(1, Math.trunc(definition.levelRequirement || 1)),
     durabilityCostMs: definition.durabilityMax
       ? Math.max(1, Math.round(intervalSecs * 1000))
@@ -866,6 +1038,9 @@ const XP_KEY = 8_740_000_000_000_003 as BiomesId;
 const LAST_ATTACK_MS_KEY = 8_740_000_000_000_004 as BiomesId;
 const BOSS_KILLS_KEY = 8_740_000_000_000_005 as BiomesId;
 const MIGRATION_VERSION_KEY = 8_740_000_000_000_006 as BiomesId;
+const COMBO_HITS_KEY = 8_740_000_000_000_007 as BiomesId;
+const COMBO_EXPIRES_AT_MS_KEY = 8_740_000_000_000_008 as BiomesId;
+const COMBO_COOLDOWN_UNTIL_MS_KEY = 8_740_000_000_000_009 as BiomesId;
 
 export interface HarthmereNativeCombatProgression {
   level: number;
@@ -873,6 +1048,9 @@ export interface HarthmereNativeCombatProgression {
   lastAttackMs: number;
   bossKills: number;
   migrationVersion: number;
+  comboHits: number;
+  comboExpiresAtMs: number;
+  comboCooldownUntilMs: number;
 }
 
 export function readHarthmereNativeCombatProgression(
@@ -893,6 +1071,21 @@ export function readHarthmereNativeCombatProgression(
     migrationVersion: Math.max(
       0,
       Math.trunc(Number(values?.get(MIGRATION_VERSION_KEY) ?? 0) || 0)
+    ),
+    comboHits: Math.max(
+      0,
+      Math.min(
+        HARTHMERE_COMBAT_COMBO_MAX_HITS,
+        Math.trunc(Number(values?.get(COMBO_HITS_KEY) ?? 0) || 0)
+      )
+    ),
+    comboExpiresAtMs: Math.max(
+      0,
+      Number(values?.get(COMBO_EXPIRES_AT_MS_KEY) ?? 0) || 0
+    ),
+    comboCooldownUntilMs: Math.max(
+      0,
+      Number(values?.get(COMBO_COOLDOWN_UNTIL_MS_KEY) ?? 0) || 0
     ),
   };
 }
@@ -915,7 +1108,98 @@ export function writeHarthmereNativeCombatProgression(
     MIGRATION_VERSION_KEY,
     Math.max(0, Math.trunc(next.migrationVersion))
   );
+  values.set(
+    COMBO_HITS_KEY,
+    Math.max(
+      0,
+      Math.min(HARTHMERE_COMBAT_COMBO_MAX_HITS, Math.trunc(next.comboHits))
+    )
+  );
+  values.set(
+    COMBO_EXPIRES_AT_MS_KEY,
+    Math.max(0, Math.trunc(next.comboExpiresAtMs))
+  );
+  values.set(
+    COMBO_COOLDOWN_UNTIL_MS_KEY,
+    Math.max(0, Math.trunc(next.comboCooldownUntilMs))
+  );
   return readHarthmereNativeCombatProgression(state);
+}
+
+export interface HarthmereNativeAttackCadenceDecision {
+  allowed: boolean;
+  timingClass: "basic" | "heavy" | undefined;
+  damageMultiplier: number;
+  progression?: Partial<HarthmereNativeCombatProgression>;
+}
+
+/**
+ * Server authority for the same four-hit light/heavy budget used by the client.
+ * Legacy callers without timing metadata retain their authored item interval.
+ */
+export function harthmereNativeAttackCadenceDecision(input: {
+  progression: HarthmereNativeCombatProgression;
+  nowMs: number;
+  itemIntervalMs: number;
+  itemKind: HarthmereNativeItemCombatProfile["kind"];
+  requestedTimingClass: string | undefined;
+}): HarthmereNativeAttackCadenceDecision {
+  const comboEligible =
+    (input.requestedTimingClass === "basic" ||
+      input.requestedTimingClass === "heavy") &&
+    (input.itemKind === "unarmed" ||
+      input.itemKind === "melee" ||
+      input.itemKind === "heavy");
+  if (!comboEligible) {
+    return {
+      allowed:
+        input.nowMs - input.progression.lastAttackMs >= input.itemIntervalMs,
+      timingClass: undefined,
+      damageMultiplier: 1,
+      progression: { lastAttackMs: input.nowMs },
+    };
+  }
+
+  const timingClass = input.requestedTimingClass as Extract<
+    HarthmerePlayerAttackTimingClass,
+    "basic" | "heavy"
+  >;
+  if (input.nowMs < input.progression.comboCooldownUntilMs) {
+    return { allowed: false, timingClass, damageMultiplier: 1 };
+  }
+  const withinContext =
+    input.progression.comboHits > 0 &&
+    input.progression.comboHits < HARTHMERE_COMBAT_COMBO_MAX_HITS &&
+    input.nowMs <= input.progression.comboExpiresAtMs;
+  const priorHits = withinContext ? input.progression.comboHits : 0;
+  const minimumIntervalMs =
+    priorHits > 0
+      ? HARTHMERE_PLAYER_ATTACK_TIMINGS[timingClass].impactMs
+      : input.itemIntervalMs;
+  // Network/event scheduling can arrive one render tick before the authored
+  // millisecond boundary. The grace cannot create an extra hit; the server's
+  // own hit count and post-four cooldown remain authoritative.
+  if (input.nowMs - input.progression.lastAttackMs + 80 < minimumIntervalMs) {
+    return { allowed: false, timingClass, damageMultiplier: 1 };
+  }
+
+  const hit = Math.min(HARTHMERE_COMBAT_COMBO_MAX_HITS, priorHits + 1);
+  const completed = hit === HARTHMERE_COMBAT_COMBO_MAX_HITS;
+  return {
+    allowed: true,
+    timingClass,
+    damageMultiplier:
+      timingClass === "heavy" ? HARTHMERE_HEAVY_ATTACK_DAMAGE_MULTIPLIER : 1,
+    progression: {
+      lastAttackMs: input.nowMs,
+      comboHits: hit,
+      comboExpiresAtMs:
+        input.nowMs + HARTHMERE_COMBAT_COMBO_CONTEXT_SECS * 1000,
+      comboCooldownUntilMs: completed
+        ? input.nowMs + HARTHMERE_COMBAT_COMBO_COOLDOWN_SECS * 1000
+        : 0,
+    },
+  };
 }
 
 export function harthmereNativeXpForNextLevel(level: number) {

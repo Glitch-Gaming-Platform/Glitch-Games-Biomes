@@ -332,7 +332,7 @@ describe("Lazy Entity Tests", () => {
     );
   });
 
-  it("sends sanitized ranged presentation to clients without private npc_state", () => {
+  it("sends sanitized ranged and stagger presentation without private npc_state", () => {
     const entity: Entity = {
       id: TEST_ID,
       npc_state: NpcState.create({ data: new Uint8Array([1, 2, 3]) }),
@@ -344,6 +344,13 @@ describe("Lazy Entity Tests", () => {
         ranged_attack_charge_time_secs: 3.5,
         ranged_attack_release_time: 103.5,
         ranged_attack_aim_point: [8, 1, 0],
+        stagger_kind: "medium",
+        stagger_start_time: 101,
+        stagger_expiry_time: 101.95,
+        stagger_direction: [1, 0, 0],
+        stagger_sequence: 4,
+        poise: 0,
+        poise_max: 90,
       }),
     };
     const serialized = lazyChangeToSerialized(
@@ -367,6 +374,13 @@ describe("Lazy Entity Tests", () => {
       ranged_attack_release_time: 103.5,
       ranged_attack_aim_point: [8, 1, 0],
       ranged_attack_result: undefined,
+      stagger_kind: "medium",
+      stagger_start_time: 101,
+      stagger_expiry_time: 101.95,
+      stagger_direction: [1, 0, 0],
+      stagger_sequence: 4,
+      poise: 0,
+      poise_max: 90,
     });
   });
 });

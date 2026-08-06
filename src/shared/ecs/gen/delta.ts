@@ -713,8 +713,7 @@ export abstract class ReadonlyDelta {
   abstract inventory(): c.ReadonlyInventory | undefined;
   abstract containerInventory(): c.ReadonlyContainerInventory | undefined;
   abstract pricedContainerInventory():
-    | c.ReadonlyPricedContainerInventory
-    | undefined;
+    c.ReadonlyPricedContainerInventory | undefined;
   abstract selectedItem(): c.ReadonlySelectedItem | undefined;
   abstract wearing(): c.ReadonlyWearing | undefined;
   abstract emote(): c.ReadonlyEmote | undefined;
@@ -736,8 +735,7 @@ export abstract class ReadonlyDelta {
   abstract groupPreviewComponent(): c.ReadonlyGroupPreviewComponent | undefined;
   abstract blueprintComponent(): c.ReadonlyBlueprintComponent | undefined;
   abstract craftingStationComponent():
-    | c.ReadonlyCraftingStationComponent
-    | undefined;
+    c.ReadonlyCraftingStationComponent | undefined;
   abstract health(): c.ReadonlyHealth | undefined;
   abstract buffsComponent(): c.ReadonlyBuffsComponent | undefined;
   abstract gremlin(): c.ReadonlyGremlin | undefined;
@@ -762,12 +760,10 @@ export abstract class ReadonlyDelta {
   abstract activeTray(): c.ReadonlyActiveTray | undefined;
   abstract stashed(): c.ReadonlyStashed | undefined;
   abstract minigameInstanceTickInfo():
-    | c.ReadonlyMinigameInstanceTickInfo
-    | undefined;
+    c.ReadonlyMinigameInstanceTickInfo | undefined;
   abstract warpingTo(): c.ReadonlyWarpingTo | undefined;
   abstract minigameInstanceExpire():
-    | c.ReadonlyMinigameInstanceExpire
-    | undefined;
+    c.ReadonlyMinigameInstanceExpire | undefined;
   abstract placerComponent(): c.ReadonlyPlacerComponent | undefined;
   abstract questGiver(): c.ReadonlyQuestGiver | undefined;
   abstract defaultDialog(): c.ReadonlyDefaultDialog | undefined;
@@ -785,8 +781,7 @@ export abstract class ReadonlyDelta {
   abstract collideable(): c.ReadonlyCollideable | undefined;
   abstract restoration(): c.ReadonlyRestoration | undefined;
   abstract terrainRestorationDiff():
-    | c.ReadonlyTerrainRestorationDiff
-    | undefined;
+    c.ReadonlyTerrainRestorationDiff | undefined;
   abstract team(): c.ReadonlyTeam | undefined;
   abstract playerCurrentTeam(): c.ReadonlyPlayerCurrentTeam | undefined;
   abstract userRoles(): c.ReadonlyUserRoles | undefined;
@@ -803,11 +798,9 @@ export abstract class ReadonlyDelta {
   abstract voice(): c.ReadonlyVoice | undefined;
   abstract giftGiver(): c.ReadonlyGiftGiver | undefined;
   abstract harthmereEcsTransactionLedger():
-    | c.ReadonlyHarthmereEcsTransactionLedger
-    | undefined;
+    c.ReadonlyHarthmereEcsTransactionLedger | undefined;
   abstract harthmereMaterialStorage():
-    | c.ReadonlyHarthmereMaterialStorage
-    | undefined;
+    c.ReadonlyHarthmereMaterialStorage | undefined;
   abstract npcCombatState(): c.ReadonlyNpcCombatState | undefined;
   abstract movementState(): c.ReadonlyMovementState | undefined;
 }
@@ -3771,8 +3764,7 @@ export class EntityBackedDelta extends Delta {
     return this.entity.gift_giver;
   }
   harthmereEcsTransactionLedger():
-    | c.ReadonlyHarthmereEcsTransactionLedger
-    | undefined {
+    c.ReadonlyHarthmereEcsTransactionLedger | undefined {
     if (this.delta?.harthmere_ecs_transaction_ledger !== undefined) {
       return this.delta.harthmere_ecs_transaction_ledger ?? undefined;
     }
@@ -4573,8 +4565,7 @@ export class PatchableEntity extends Delta {
     return this.entity.gift_giver;
   }
   harthmereEcsTransactionLedger():
-    | c.ReadonlyHarthmereEcsTransactionLedger
-    | undefined {
+    c.ReadonlyHarthmereEcsTransactionLedger | undefined {
     if (this.delta?.harthmere_ecs_transaction_ledger !== undefined) {
       return this.delta.harthmere_ecs_transaction_ledger ?? undefined;
     }
@@ -5296,8 +5287,7 @@ export class DeltaPatch extends Delta {
     return this.parent.giftGiver();
   }
   harthmereEcsTransactionLedger():
-    | c.ReadonlyHarthmereEcsTransactionLedger
-    | undefined {
+    c.ReadonlyHarthmereEcsTransactionLedger | undefined {
     if (this.delta?.harthmere_ecs_transaction_ledger !== undefined) {
       return this.delta.harthmere_ecs_transaction_ledger ?? undefined;
     }

@@ -2196,6 +2196,7 @@ describe("Harthmere in-world business interface current screens", () => {
               },
               () => ({
                 contents: [
+                  "export const HARTHMERE_BUSINESS_CUSTOMERS_PER_SHIFT = 10;",
                   "export const HARTHMERE_BUSINESS_OUTPOSTS = [];",
                   "export const HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES = [];",
                   "export function isPointInsideHarthmereBusinessSafeSite() { return false; }",

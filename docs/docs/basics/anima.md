@@ -62,12 +62,26 @@ State writes normally go through `WorldApi.apply()`. When the process is explici
 Behavior code under `src/shared/npc/behavior` includes:
 
 - chase/attack targeting and combat geometry;
+- bounded multiplayer retaliation, threat ordering, and authored group response;
 - pathfinding and locomotion selection;
 - meander, patrol, return-home, flee, swim, fly, and drowning behavior;
 - socialization, schedules, anchor following, and rotation;
 - escort formation, leash, recovery, warp, and combat policy.
 
 NPC definitions and authored behavior parameters come from Bikkie. Durable runtime state remains in ECS components, including `npc_metadata`, `npc_state`, position, orientation, velocity, health, and public combat state.
+
+Retaliation is encounter-scoped. A real recent damage event supplies the opener;
+Anima then selects from eligible nearby players and active NPC opponents rather
+than permanently focusing one player. Group responder rank distributes authored
+pack members across that participant list, while explicitly noncombatant NPCs
+and unrelated bystanders remain ineligible. Combat-capable player escorts enter
+the list only after they actively target the hostile.
+
+`SimulatedNpc.attack()` routes player targets to `UpdatePlayerHealthEvent` and
+NPC targets to `UpdateNpcHealthEvent`. The Logic service validates the attacking
+NPC's serialized melee/ranged receipt and keeps a short replay ledger in the
+target's `npc_state`; Anima chooses and presents the attack, but does not bypass
+server health authority.
 
 ## Failure and lifecycle semantics
 
@@ -82,6 +96,8 @@ Service-level tests live in `src/server/anima/test`. Shared behavior tests live 
 Before upgrading Anima, preserve these compatibility points:
 
 1. `npc_state` serialization must read state produced by the previous deployment.
+   Empty generated `NpcState` byte arrays are treated as default state, not as
+   corrupted MessagePack.
 2. Bikkie behavior data and TypeScript behavior schemas must be deployed compatibly.
 3. Shard assignment and pending-write cleanup must remain stable during rolling handoff.
 4. RC/HFC partitioning must be tested in both enabled and disabled modes.

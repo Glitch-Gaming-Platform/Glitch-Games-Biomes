@@ -63,8 +63,7 @@ function openBusiness(typeId: HarthmereEconomyBusinessTypeId) {
   state = result.economy;
   const businessId = Object.keys(state.businesses)[0];
   const minLicense =
-    typeId === "exotic_matter_refinery" ||
-    typeId === "portal_transit_company"
+    typeId === "exotic_matter_refinery" || typeId === "portal_transit_company"
       ? 3
       : typeId === "medical_doctor" ||
           typeId === "magic_goods" ||
@@ -127,10 +126,12 @@ describe("native ECS business customer E2E matrix", function () {
       assert.equal(materialized.changeCount, 1);
       let entity = await worldApi.get(ticket.entityId);
       assert.ok(entity);
-      let npcState = deserializeNpcCustomState(entity!.npcState()?.data)
-        .businessCustomer!;
+      let npcState = deserializeNpcCustomState(
+        entity!.npcState()?.data
+      ).businessCustomer!;
       assert.equal(npcState.phase, "entering");
-      assert.deepEqual(npcState.waypoints[0],
+      assert.deepEqual(
+        npcState.waypoints[0],
         harthmereBusinessInteriorInteractionPoints(record).entrance
       );
 
@@ -163,10 +164,35 @@ describe("native ECS business customer E2E matrix", function () {
         }),
         true
       );
+      assert.equal(
+        await readHarthmereBusinessCustomerNativeReadyForTest({
+          worldApi,
+          operation: "tick_business_customer_session",
+          customerEntityId: ticket.entityId,
+          sessionId: session.sessionId,
+          ticketId: ticket.ticketId,
+        }),
+        true
+      );
+
+      result = mutate(result.economy, "tick_business_customer_session", {
+        businessId: setup.businessId,
+        sessionId: session.sessionId,
+        ticketId: ticket.ticketId,
+        customerEntityId: ticket.entityId,
+        nativeCustomerReady: true,
+      });
+      assert.deepEqual(result.warnings, []);
+      session = sessions(result.economy)[0];
+      assert.equal(session.queue[0].spatialPhase, "serving");
+      assert.equal(session.queue[0].patienceStartedAtMs, NOW_MS);
+      assert.ok(session.queue[0].patience <= 30);
 
       const offer = HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS[
         record.businessType as HarthmereEconomyBusinessTypeId
-      ].offers.find((candidate) => candidate.offerId === ticket.requestedOfferId)!;
+      ].offers.find(
+        (candidate) => candidate.offerId === ticket.requestedOfferId
+      )!;
       for (const [itemId, count] of Object.entries(offer.requiredItems)) {
         result.economy.businesses[setup.businessId].inventory[itemId] = {
           itemId,
@@ -209,8 +235,9 @@ describe("native ECS business customer E2E matrix", function () {
         },
       });
       entity = await worldApi.get(ticket.entityId);
-      npcState = deserializeNpcCustomState(entity!.npcState()?.data)
-        .businessCustomer!;
+      npcState = deserializeNpcCustomState(
+        entity!.npcState()?.data
+      ).businessCustomer!;
       assert.equal(npcState.phase, "departing");
       assert.deepEqual(
         npcState.waypoints.at(-1),

@@ -9,6 +9,7 @@ import {
   isApiError,
   type ServerResponseMaybeBiomesError,
 } from "@/server/web/errors";
+import { createWebCompressionMiddleware } from "@/server/web/http_compression";
 import { log, withLogContext } from "@/shared/logging";
 import finalhandler from "finalhandler";
 import type {
@@ -182,8 +183,6 @@ export function logHttpRequest(
   }
 }
 
-
-
 const GLITCH_LOCAL_BUCKET_ASSET_PROXY = "GLITCH_LOCAL_BUCKET_ASSET_PROXY";
 const GLITCH_BUCKET_ASSET_REMOTE_FETCH_TIMEOUT_MS = 10_000;
 const GLITCH_BUCKET_ASSET_PROXY_ALLOWED_BUCKETS = new Set([
@@ -314,7 +313,10 @@ function setBucketAssetCorsHeaders(res: ServerResponse) {
     "Access-Control-Allow-Headers",
     "Accept, Content-Type, Origin, Range, X-Requested-With"
   );
-  res.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Type, X-Glitch-Bucket-Asset-Proxy, X-Glitch-Bucket-Asset-Path, X-Glitch-Bucket-Asset-Revision");
+  res.setHeader(
+    "Access-Control-Expose-Headers",
+    "Content-Length, Content-Type, X-Glitch-Bucket-Asset-Proxy, X-Glitch-Bucket-Asset-Path, X-Glitch-Bucket-Asset-Revision"
+  );
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
   res.setHeader("Timing-Allow-Origin", "*");
   res.setHeader("Vary", "Origin, Accept, Range");
@@ -341,15 +343,22 @@ function safeBucketObjectPath(rawPath: string) {
 
 function remoteBucketBaseUrl(bucket: string) {
   const envKey = `GLITCH_${bucket.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_FALLBACK_BASE_URL`;
-  const explicit = process.env[envKey] ?? process.env.GLITCH_BUCKET_FALLBACK_BASE_URL;
+  const explicit =
+    process.env[envKey] ?? process.env.GLITCH_BUCKET_FALLBACK_BASE_URL;
   if (explicit) {
     return explicit.replace(/\/+$/, "");
   }
   if (bucket === "biomes-static") {
-    return (process.env.GLITCH_STATIC_BUCKET_FALLBACK_BASE_URL ?? "https://storage.googleapis.com/biomes-static").replace(/\/+$/, "");
+    return (
+      process.env.GLITCH_STATIC_BUCKET_FALLBACK_BASE_URL ??
+      "https://storage.googleapis.com/biomes-static"
+    ).replace(/\/+$/, "");
   }
   if (bucket === "biomes-bikkie") {
-    return (process.env.GLITCH_BIKKIE_BUCKET_FALLBACK_BASE_URL ?? "https://storage.googleapis.com/biomes-bikkie").replace(/\/+$/, "");
+    return (
+      process.env.GLITCH_BIKKIE_BUCKET_FALLBACK_BASE_URL ??
+      "https://storage.googleapis.com/biomes-bikkie"
+    ).replace(/\/+$/, "");
   }
   return undefined;
 }
@@ -401,7 +410,12 @@ async function localBucketAssetCandidates(
     const parts = objectPath.split("/");
     const hashName = parts[parts.length - 1];
     const dirObjectPath = parts.slice(0, -1).join("/");
-    const bikkieDir = resolve(publicRoot, "buckets", "biomes-bikkie", dirObjectPath);
+    const bikkieDir = resolve(
+      publicRoot,
+      "buckets",
+      "biomes-bikkie",
+      dirObjectPath
+    );
     try {
       for (const entry of await readdir(bikkieDir)) {
         if (entry === hashName || entry.startsWith(`${hashName}.`)) {
@@ -485,9 +499,15 @@ async function tryServeGlitchLocalBucketAsset(
       );
       res.setHeader("Content-Length", String(fileStat.size));
       res.setHeader("Cache-Control", cacheControlForBucketAsset(objectPath));
-      res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY}; source=${candidate.source}`);
+      res.setHeader(
+        "X-Glitch-Bucket-Asset-Proxy",
+        `${GLITCH_LOCAL_BUCKET_ASSET_PROXY}; source=${candidate.source}`
+      );
       res.setHeader("X-Glitch-Bucket-Asset-Path", `${bucket}/${objectPath}`);
-      res.setHeader("X-Glitch-Bucket-Asset-Revision", process.env.K_REVISION || process.env.CONTAINER_APP_REVISION || "local");
+      res.setHeader(
+        "X-Glitch-Bucket-Asset-Revision",
+        process.env.K_REVISION || process.env.CONTAINER_APP_REVISION || "local"
+      );
       if (req.method === "HEAD") {
         res.end();
       } else {
@@ -500,11 +520,17 @@ async function tryServeGlitchLocalBucketAsset(
   }
 
   const remoteBase = remoteBucketBaseUrl(bucket);
-  if (!remoteBase || process.env.GLITCH_DISABLE_REMOTE_BUCKET_FALLBACK === "1") {
+  if (
+    !remoteBase ||
+    process.env.GLITCH_DISABLE_REMOTE_BUCKET_FALLBACK === "1"
+  ) {
     res.statusCode = 404;
     setBucketAssetCorsHeaders(res);
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY}; source=local-miss`);
+    res.setHeader(
+      "X-Glitch-Bucket-Asset-Proxy",
+      `${GLITCH_LOCAL_BUCKET_ASSET_PROXY}; source=local-miss`
+    );
     res.end(`Missing bucket asset: ${bucket}/${objectPath}`);
     return true;
   }
@@ -519,7 +545,10 @@ async function tryServeGlitchLocalBucketAsset(
       setBucketAssetCorsHeaders(res);
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.setHeader("Cache-Control", "no-store");
-      res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY}; source=remote-miss`);
+      res.setHeader(
+        "X-Glitch-Bucket-Asset-Proxy",
+        `${GLITCH_LOCAL_BUCKET_ASSET_PROXY}; source=remote-miss`
+      );
       res.end(`Missing bucket asset fallback: ${bucket}/${objectPath}`);
       log.warn("Glitch bucket asset fallback miss", {
         bucket,
@@ -530,16 +559,26 @@ async function tryServeGlitchLocalBucketAsset(
       return true;
     }
 
-    const contentType = upstream.headers.get("content-type") ?? contentTypeForBucketAsset(objectPath);
-    const cacheControl = upstream.headers.get("cache-control") ?? cacheControlForBucketAsset(objectPath);
+    const contentType =
+      upstream.headers.get("content-type") ??
+      contentTypeForBucketAsset(objectPath);
+    const cacheControl =
+      upstream.headers.get("cache-control") ??
+      cacheControlForBucketAsset(objectPath);
     const contentLength = upstream.headers.get("content-length");
     res.statusCode = 200;
     setBucketAssetCorsHeaders(res);
     res.setHeader("Content-Type", contentType);
     res.setHeader("Cache-Control", cacheControl);
-    res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY}; source=remote`);
+    res.setHeader(
+      "X-Glitch-Bucket-Asset-Proxy",
+      `${GLITCH_LOCAL_BUCKET_ASSET_PROXY}; source=remote`
+    );
     res.setHeader("X-Glitch-Bucket-Asset-Path", `${bucket}/${objectPath}`);
-    res.setHeader("X-Glitch-Bucket-Asset-Revision", process.env.K_REVISION || process.env.CONTAINER_APP_REVISION || "local");
+    res.setHeader(
+      "X-Glitch-Bucket-Asset-Revision",
+      process.env.K_REVISION || process.env.CONTAINER_APP_REVISION || "local"
+    );
     if (contentLength) {
       res.setHeader("Content-Length", contentLength);
     }
@@ -564,7 +603,10 @@ async function tryServeGlitchLocalBucketAsset(
     setBucketAssetCorsHeaders(res);
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Cache-Control", "no-store");
-    res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY}; source=remote-error`);
+    res.setHeader(
+      "X-Glitch-Bucket-Asset-Proxy",
+      `${GLITCH_LOCAL_BUCKET_ASSET_PROXY}; source=remote-error`
+    );
     res.end(`Bucket asset fallback failed: ${bucket}/${objectPath}`);
     return true;
   }
@@ -585,7 +627,13 @@ export class ApiApp {
   public readonly http: HTTPServer;
   private context?: any;
 
-  constructor(app: ReturnType<typeof next>, private staticSet: Set<string>) {
+  constructor(
+    app: ReturnType<typeof next>,
+    private staticSet: Set<string>
+  ) {
+    // HARTHMERE_ASSET_TRANSPORT_COMPRESSION: this is the real production HTTP
+    // origin. `next.config.js#compress` does not wrap custom servers.
+    const middlewareCompression = createWebCompressionMiddleware();
     const middlewareResponseTime = responseTime((req, res, time) => {
       const userAgent = (req.headers["user-agent"] || "").toLowerCase();
       if (
@@ -618,42 +666,45 @@ export class ApiApp {
         },
         () => {
           const done = finalhandler(req, res);
-          middlewareResponseTime(req, res, (err) => {
-            if (err) return done(err);
-            void (async () => {
-              if (
-                url.pathname &&
-                (await tryServeGlitchLocalBucketAsset(req, res, url.pathname))
-              ) {
-                return;
-              }
-
-              if (url.pathname) {
-                if (url.pathname?.startsWith("/_next/static")) {
-                  res.setHeader(
-                    "Cache-Control",
-                    "public, max-age=31536000, immutable"
-                  );
-                  maybeReportStatic(url.pathname);
-                } else if (this.staticSet.has(url.pathname)) {
-                  res.setHeader("Cache-Control", "public, max-age=3600");
-                  maybeReportStatic(url.pathname);
+          middlewareCompression(req, res, (compressionError) => {
+            if (compressionError) return done(compressionError);
+            middlewareResponseTime(req, res, (err) => {
+              if (err) return done(err);
+              void (async () => {
+                if (
+                  url.pathname &&
+                  (await tryServeGlitchLocalBucketAsset(req, res, url.pathname))
+                ) {
+                  return;
                 }
-              }
 
-              addOriginTrialHeaders(req, res);
-              await app.getRequestHandler()(req, res, url);
-              if (res.statusCode === 413) {
-                // This particular error code is tricky to catch because it's
-                // interpreted as an API error (and thus usually not flagged as
-                // a network error), but is generated by next.js, not Biomes.
-                // Flag it here as an error explicitly to improve observability.
-                // See GI-1082 for more info on what prompted this.
-                log.error(
-                  `Error 413 (${res.statusMessage}) produced (probably within NextJS) on request to "${url.pathname}". Check client and/or server logs for more details.`
-                );
-              }
-            })().catch(done);
+                if (url.pathname) {
+                  if (url.pathname?.startsWith("/_next/static")) {
+                    res.setHeader(
+                      "Cache-Control",
+                      "public, max-age=31536000, immutable"
+                    );
+                    maybeReportStatic(url.pathname);
+                  } else if (this.staticSet.has(url.pathname)) {
+                    res.setHeader("Cache-Control", "public, max-age=3600");
+                    maybeReportStatic(url.pathname);
+                  }
+                }
+
+                addOriginTrialHeaders(req, res);
+                await app.getRequestHandler()(req, res, url);
+                if (res.statusCode === 413) {
+                  // This particular error code is tricky to catch because it's
+                  // interpreted as an API error (and thus usually not flagged as
+                  // a network error), but is generated by next.js, not Biomes.
+                  // Flag it here as an error explicitly to improve observability.
+                  // See GI-1082 for more info on what prompted this.
+                  log.error(
+                    `Error 413 (${res.statusMessage}) produced (probably within NextJS) on request to "${url.pathname}". Check client and/or server logs for more details.`
+                  );
+                }
+              })().catch(done);
+            });
           });
         }
       );
@@ -665,7 +716,10 @@ export class ApiApp {
 
     const defaultPort = HostPort.forWeb().port;
     const requestedPort = Number.parseInt(
-      process.env.GLITCH_WEB_PORT ?? process.env.WEB_PORT ?? process.env.PORT ?? "",
+      process.env.GLITCH_WEB_PORT ??
+        process.env.WEB_PORT ??
+        process.env.PORT ??
+        "",
       10
     );
 

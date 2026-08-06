@@ -37,6 +37,13 @@ export enum WasmSimd {
   Simd = "simd",
 }
 
+// The desktop Harthmere runtime needs enough distance to keep nearby landmarks
+// legible, but 192m retained too much terrain and synchronized ECS state for a
+// CPU-bound combat scene to recover. The adaptive controller still owns values
+// above this floor; explicit Low/Safe settings remain fixed and mobile removes
+// the desktop floor entirely.
+export const HARTHMERE_DESKTOP_DYNAMIC_MIN_DRAW_DISTANCE = 128;
+
 export interface WasmBinary {
   simd: WasmSimd;
 }
@@ -69,7 +76,11 @@ const BASE_CLIENT_CONFIG = {
   startCoordinates: undefined as Vec3f | undefined,
   startOrientation: undefined as Vec2f | undefined,
   hideChrome: false,
-  syncBaseUrl: "api",
+  // Harthmere no longer uses the legacy Biomes cloud Sync fleet. The web
+  // origin owns/proxies Sync in production and local stacks, so the safe
+  // default is always same-origin. Explicit trusted local overrides are
+  // applied below for focused browser tests.
+  syncBaseUrl: "/",
   useProdSync: true,
   useWorker: false,
   sharedArrayBufferSupported: true,
@@ -135,6 +146,10 @@ function adjustConfigForLowMemory(clientConfig: ClientConfig) {
   // With less voxeloo memory, we must reduce our resource capacity
   // proportionally, since most resources require voxeloo memory.
   scaleResourceCapacity(clientConfig, memoryScale);
+  clientConfig.clientResourceCapacity = capLowMemoryResourceNodesForDevice(
+    clientConfig.clientResourceCapacity,
+    clientConfig.mobileDevice
+  );
 }
 
 const VOXELOO_MEMORY_SCALE = 0.5;
@@ -145,9 +160,30 @@ const VOXELOO_MEMORY_SCALE = 0.5;
 // native heap for nearby terrain while reserving another 128 MB of process
 // headroom for the rest of the game. Desktop low-memory mode stays unchanged.
 const MOBILE_VOXELOO_MEMORY_SCALE = 0.125;
+// Physical iPhone acceptance showed that the proportional 17,500-node limit
+// retained too much startup work. The first 4,000-node clamp exposed a second
+// failure after the avatar fan-out was fixed, and sustained real-device play
+// later measured a normal Grove movement working set around 6,400 nodes. A
+// 6,000 cap forced fifteen full resource rebuilds in roughly nine minutes and
+// grew WebContent by about 120 MB through allocation/compression churn. Keep
+// enough headroom for that measured set while remaining far below desktop's
+// 140,000-node budget. The independently scaled block-mesh label is unchanged.
+const MOBILE_RESOURCE_NODE_CAP = 8_000;
 
 export function lowMemoryScaleForDevice(mobileDevice: boolean) {
   return mobileDevice ? MOBILE_VOXELOO_MEMORY_SCALE : VOXELOO_MEMORY_SCALE;
+}
+
+export function capLowMemoryResourceNodesForDevice<
+  T extends BiomesResourceCapacities,
+>(capacity: T, mobileDevice: boolean): T {
+  if (!mobileDevice) {
+    return capacity;
+  }
+  return {
+    ...capacity,
+    count: Math.min(capacity.count, MOBILE_RESOURCE_NODE_CAP),
+  } as T;
 }
 
 function scaleResourceCapacity(clientConfig: ClientConfig, scale: number) {
@@ -161,6 +197,33 @@ function scaleResourceCapacity(clientConfig: ClientConfig, scale: number) {
   };
 }
 
+export function trustedRuntimeSyncBaseUrlOverride(
+  value: string,
+  href: string
+): string | undefined {
+  try {
+    const current = new URL(href);
+    const candidate = new URL(value, current);
+    if (candidate.protocol !== "http:" && candidate.protocol !== "https:") {
+      return undefined;
+    }
+    const isLoopback = (hostname: string) =>
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "0.0.0.0" ||
+      hostname === "::1";
+    if (
+      candidate.hostname !== current.hostname &&
+      !(isLoopback(candidate.hostname) && isLoopback(current.hostname))
+    ) {
+      return undefined;
+    }
+    return candidate.toString().replace(/\/$/, "");
+  } catch {
+    return undefined;
+  }
+}
+
 function doURLOverrides(clientConfig: ClientConfig) {
   const params = new URLSearchParams(window.location.search);
 
@@ -171,7 +234,15 @@ function doURLOverrides(clientConfig: ClientConfig) {
     }
   };
   applyParam("syncBaseUrl", (val) => {
-    clientConfig.syncBaseUrl = val;
+    const trusted = trustedRuntimeSyncBaseUrlOverride(
+      val,
+      window.location.href
+    );
+    if (trusted) {
+      clientConfig.syncBaseUrl = trusted;
+    } else {
+      log.error(`Rejected untrusted syncBaseUrl override: ${val}`);
+    }
   });
 
   applyParam("lowMemory", (val) => {
@@ -480,15 +551,11 @@ export function resolveGlitchLocalSyncBaseUrl(input: {
     input.protocol === "https:" &&
     !isLocalHost(input.hostname);
 
-  const fallbackPort =
-    input.port === "3017"
-      ? "3018"
-      : input.port === "3000"
-        ? "3002"
-        : input.port || "3000";
-  const fallback = publicHttpsInstallRuntime
-    ? sameOriginBase
-    : `${input.protocol}//${input.hostname}:${fallbackPort}`;
+  // Current Harthmere web ingress proxies /sync, /beta-sync, and /ro-sync in
+  // every supported environment. Falling back to a guessed legacy port (or to
+  // api*.biomes.gg) can silently join the wrong world. Fail closed to the page
+  // origin; focused tests may still provide a trusted same-host direct port.
+  const fallback = sameOriginBase;
 
   // HARTHMERE_PROD_SAME_ORIGIN_SYNC_PROXY
   // Azure Container Apps reliably exposes the web ingress over the normal
@@ -584,6 +651,26 @@ export function shouldResolveGlitchLocalSyncBaseUrl(input: {
   return input.isGlitchLocalRuntime || input.nativeEcsE2E;
 }
 
+export function isLocalGameHostname(hostname: string): boolean {
+  if (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "0.0.0.0" ||
+    hostname === "::1"
+  ) {
+    return true;
+  }
+  const parts = hostname.split(".").map(Number);
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part))) {
+    return false;
+  }
+  return (
+    parts[0] === 10 ||
+    (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+    (parts[0] === 192 && parts[1] === 168)
+  );
+}
+
 export async function initializeClientConfig(
   options?: InitConfigOptions
 ): Promise<ClientConfig> {
@@ -637,7 +724,9 @@ export async function initializeClientConfig(
   const isGlitchLocalRuntime =
     process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||
     process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
-    installIdInUrl;
+    installIdInUrl ||
+    (typeof window !== "undefined" &&
+      isLocalGameHostname(window.location.hostname));
 
   if (
     shouldResolveGlitchLocalSyncBaseUrl({
@@ -647,11 +736,11 @@ export async function initializeClientConfig(
     typeof window !== "undefined"
   ) {
     // Harthmere is an open, landmark-driven world. Let dynamic graphics reduce
-    // resolution/render scale under load, but keep auto terrain + sync distance
-    // from collapsing to the 64m "short headlight" view seen in production logs.
+    // CPU-heavy terrain + sync distance under load while retaining a useful
+    // landmark radius instead of collapsing to the 64m mobile emergency view.
     // Explicit low/safe user choices can still stay low; minDrawDistance remains
     // available as the hard URL/config override when that is wanted.
-    ret.dynamicMinDrawDistance = 192;
+    ret.dynamicMinDrawDistance = HARTHMERE_DESKTOP_DYNAMIC_MIN_DRAW_DISTANCE;
 
     const resolved = resolveGlitchLocalSyncBaseUrl({
       installIdInUrl,

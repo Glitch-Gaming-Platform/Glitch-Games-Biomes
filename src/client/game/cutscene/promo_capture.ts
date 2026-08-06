@@ -1,8 +1,16 @@
 import { requestCutsceneScreenshot } from "@/client/game/cutscene/capture_service";
+import {
+  waitForPromoCameraTerrainClearance,
+  waitForPromoTerrainProofs,
+  waitForPromoTerrainView,
+} from "@/client/game/cutscene/promo_terrain_readiness";
+import type { ClientContext } from "@/client/game/context";
 import { sleep } from "@/shared/util/async";
 import { useEffect, useRef } from "react";
 
 type PromoCaptureRecord = {
+  sceneId: string;
+  cameraPreset: string;
   dataUri: string;
   rawDataUri: string;
   filename: string;
@@ -157,8 +165,7 @@ function promoLivePlayerDebug(): PromoLivePlayerDebug | undefined {
 }
 
 function promoObserverStreamingDebug():
-  | PromoObserverStreamingDebug
-  | undefined {
+  PromoObserverStreamingDebug | undefined {
   return (
     window as typeof window & {
       __biomesObserverStreamingDebug?: PromoObserverStreamingDebug;
@@ -171,9 +178,7 @@ function promoStreamingSnapshot(): PromoStreamingSnapshot | undefined {
   if (player) {
     return { kind: "player", position: player };
   }
-  const observer = finiteVec3(
-    promoObserverStreamingDebug()?.getPosition?.()
-  );
+  const observer = finiteVec3(promoObserverStreamingDebug()?.getPosition?.());
   return observer ? { kind: "observer", position: observer } : undefined;
 }
 
@@ -256,11 +261,8 @@ async function stagePromoStreamingObserver(
       Math.abs(after[2] - position[2]) < 0.35;
   } else if (typeof observerDebug?.moveTo === "function") {
     const result = (await observerDebug.moveTo(position)) as
-      | { ok?: unknown; position?: unknown }
-      | undefined;
-    const after = finiteVec3(
-      result?.position ?? observerDebug.getPosition?.()
-    );
+      { ok?: unknown; position?: unknown } | undefined;
+    const after = finiteVec3(result?.position ?? observerDebug.getPosition?.());
     landed =
       result?.ok === true &&
       after !== undefined &&
@@ -291,7 +293,8 @@ async function restorePromoStreamingObserver(
         y: snapshot.position[1],
         z: snapshot.position[2],
         name: "cutscenePromoStreamingObserverRestore",
-        reason: "Restore the local player after non-authoritative promo capture",
+        reason:
+          "Restore the local player after non-authoritative promo capture",
       });
     } else {
       await promoObserverStreamingDebug()?.moveTo?.(snapshot.position);
@@ -448,10 +451,12 @@ async function exoticMatterCreationScene() {
  * The legacy `exotic-matter` id keeps its bespoke builder below for
  * compatibility with the reference URLs already in docs/cutscenes.md.
  */
-export function useCutscenePromoCapture(enabled: boolean): void {
+export function useCutscenePromoCapture(
+  clientContext: ClientContext | null
+): void {
   const started = useRef(false);
   useEffect(() => {
-    if (!enabled || started.current || typeof window === "undefined") {
+    if (!clientContext || started.current || typeof window === "undefined") {
       return;
     }
     const params = new URLSearchParams(window.location.search);
@@ -471,15 +476,40 @@ export function useCutscenePromoCapture(enabled: boolean): void {
         await sleep(1_500);
         initialStreamingObserver = promoStreamingSnapshot();
 
-        const { promoSceneById, promoCaptureAt, promoScenesInGroup } =
-          await import("@/shared/cutscene/promo_scenes");
-        const registered = promoId ? promoSceneById(promoId) : undefined;
+        const {
+          promoSceneById,
+          promoCaptureAt,
+          promoSceneWithBossCameraPreset,
+          promoSceneWithRecommendedBossCamera,
+          promoScenesInGroup,
+        } = await import("@/shared/cutscene/promo_scenes");
+        const registeredBase = promoId ? promoSceneById(promoId) : undefined;
+        const registered = registeredBase
+          ? promoSceneWithBossCameraPreset(
+              registeredBase,
+              params.get("cameraPreset")
+            )
+          : undefined;
 
         const captureRegistered = async (
           scene: NonNullable<ReturnType<typeof promoSceneById>>,
           captureAtOverride: string | null
         ): Promise<PromoCaptureRecord> => {
-          await stagePromoStreamingObserver(scene.observer.position);
+          await stagePromoStreamingObserver(
+            scene.streamingFocus ?? scene.observer.position
+          );
+          await waitForPromoTerrainProofs(
+            clientContext.resources,
+            scene.terrainProofs
+          );
+          await waitForPromoTerrainView(
+            clientContext.resources,
+            scene.terrainView
+          );
+          await waitForPromoCameraTerrainClearance(
+            clientContext.resources,
+            scene.cameraClearance
+          );
           const definition = await scene.build();
           const capture = await requestCutsceneScreenshot(definition, {
             shotId: scene.shotId,
@@ -492,6 +522,8 @@ export function useCutscenePromoCapture(enabled: boolean): void {
             timeoutMs: 150_000,
           });
           return {
+            sceneId: scene.id,
+            cameraPreset: scene.cameraPreset ?? "baseline",
             dataUri: await addBiomesBrand(capture.dataUri, scene.brand),
             rawDataUri: capture.dataUri,
             filename: capture.filename,
@@ -505,7 +537,20 @@ export function useCutscenePromoCapture(enabled: boolean): void {
         // release-proof path for all sectors and avoids paying a full Next +
         // WebGL + ECS bootstrap seventeen times.
         if (promoBatch) {
-          const scenes = promoScenesInGroup(promoBatch);
+          if (params.has("cameraPreset")) {
+            throw new Error(
+              "cameraPreset is a single-scene review control and cannot be used with cutscenePromoBatch"
+            );
+          }
+          const bossCameraPlan = params.get("bossCameraPlan");
+          if (bossCameraPlan && bossCameraPlan !== "recommended") {
+            throw new Error(`unknown bossCameraPlan "${bossCameraPlan}"`);
+          }
+          const baseScenes = promoScenesInGroup(promoBatch);
+          const scenes =
+            bossCameraPlan === "recommended"
+              ? baseScenes.map(promoSceneWithRecommendedBossCamera)
+              : baseScenes;
           if (scenes.length === 0) {
             throw new Error(
               `unknown or empty cutscenePromoBatch "${promoBatch}"`
@@ -583,6 +628,8 @@ export function useCutscenePromoCapture(enabled: boolean): void {
         });
         publishPromoCapture({
           status: "complete",
+          sceneId: "exotic-matter",
+          cameraPreset: "legacy",
           dataUri,
           rawDataUri: capture.dataUri,
           filename: capture.filename,
@@ -598,5 +645,5 @@ export function useCutscenePromoCapture(enabled: boolean): void {
         await restorePromoStreamingObserver(initialStreamingObserver);
       }
     })();
-  }, [enabled]);
+  }, [clientContext]);
 }

@@ -12,10 +12,19 @@ describe("voice API schemas", () => {
         voice: "azure-speech|voice=en-US-AvaNeural",
         language: "en-US",
         provider: "elevenlabs",
+        preferredFormat: "aac",
       }).success,
       true
     );
     assert.equal(zChatVoiceRequest.safeParse({ text: "Hello" }).success, false);
+    assert.equal(
+      zChatVoiceRequest.safeParse({
+        text: "Hello",
+        voice: "azure-speech|voice=en-US-AvaNeural",
+        preferredFormat: "opus",
+      }).success,
+      false
+    );
     assert.equal(
       zChatVoiceRequest.safeParse({
         voice: "azure-speech|voice=en-US-AvaNeural",

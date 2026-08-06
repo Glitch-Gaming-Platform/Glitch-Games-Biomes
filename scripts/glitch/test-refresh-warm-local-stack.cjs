@@ -56,6 +56,10 @@ const parsed = parseArgs([
   "all",
   "--build-id",
   "warm-contract",
+  "--inherit-env",
+  "HARTHMERE_NATIVE_ECS_E2E",
+  "--inherit-env",
+  "HARTHMERE_E2E_CONTROL_TOKEN",
   "--keep-previous",
 ]);
 ok(
@@ -65,12 +69,19 @@ ok(
     parsed.allowPostPushDeploy === true &&
     parsed.build === "all" &&
     parsed.buildId === "warm-contract" &&
+    parsed.inheritEnv.join(",") ===
+      "HARTHMERE_NATIVE_ECS_E2E,HARTHMERE_E2E_CONTROL_TOKEN" &&
     parsed.keepPrevious,
   "warm refresh accepts explicit app, Redis, build, and rollback-retention options"
 );
 
 assert.throws(() => parseArgs(["--build", "docker"]), /--build must be one of/);
 ok(true, "warm refresh rejects unsupported build modes");
+assert.throws(
+  () => parseArgs(["--inherit-env", "NOT-VALID=1"]),
+  /valid environment key/
+);
+ok(true, "warm refresh rejects unsafe inherited environment key syntax");
 
 const environment = replacementEnvironment(
   [
@@ -104,6 +115,28 @@ ok(
     environment.get("GLITCH_REQUIRE_SNAPSHOT_REDIS") === "1" &&
     environment.get("CUSTOM_VALUE") === "preserved",
   "replacement app preserves ordinary environment, adopts the mounted artifact build id, and forces external Redis no-flush/no-bootstrap mode"
+);
+
+const overriddenEnvironment = replacementEnvironment(
+  [
+    "HARTHMERE_NATIVE_ECS_E2E=0",
+    "HARTHMERE_E2E_CONTROL_TOKEN=",
+    "GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=0",
+  ],
+  "warm-redis",
+  "warm-contract",
+  [
+    "HARTHMERE_NATIVE_ECS_E2E=1",
+    "HARTHMERE_E2E_CONTROL_TOKEN=secret-not-printed",
+    "GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=1",
+  ]
+);
+ok(
+  overriddenEnvironment.get("HARTHMERE_NATIVE_ECS_E2E") === "1" &&
+    overriddenEnvironment.get("HARTHMERE_E2E_CONTROL_TOKEN") ===
+      "secret-not-printed" &&
+    overriddenEnvironment.get("GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH") === "0",
+  "explicit inherited browser controls override stale source values without weakening Redis safety"
 );
 
 assert.throws(

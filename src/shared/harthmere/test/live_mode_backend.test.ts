@@ -83,6 +83,7 @@ import {
   HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
   HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION,
   HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
+  HARTHMERE_ESCORT_DESTINATION_MIN_DISTANCE,
 } from "@/shared/harthmere/mmo_jobs_board_authority";
 import {
   harthmereJobsBoardQuestMarkerPositionForId,
@@ -5592,6 +5593,77 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
     assert.ok(summary.touchedModels.includes("material_storage"));
   });
 
+  it("buys material-storage goods when the backpack has no free slots", function () {
+    const s = freshState();
+    s.inventory.gold = 100;
+    s.inventory.items = { iron_sword: 40 };
+
+    const { state, summary } = applyOne(s, "request_vendor_transaction", {
+      vendorId: "blacksmith_vendor",
+      transactionKind: "buy",
+      itemId: "iron_ore",
+      count: 2,
+    });
+
+    assert.equal(state.inventory.gold, 80);
+    assert.equal(state.inventory.items.iron_sword, 40);
+    assert.equal(state.inventory.items.iron_ore ?? 0, 0);
+    assert.equal(state.banking.materialStorage.iron_ore, 2);
+    assert.ok(
+      !summary.warnings.includes("vendor_rejected:inventory_full"),
+      JSON.stringify(summary.warnings)
+    );
+    assert.ok(
+      summary.warnings.includes("vendor_sent_to_material_storage:iron_ore")
+    );
+  });
+
+  it("accepts the captured Rin Tree Resin bundle with a full backpack", function () {
+    const s = freshState();
+    s.inventory.gold = 439;
+    s.inventory.items = { iron_sword: 40 };
+    s.banking.materialStorage = {};
+    s.banking.materialStorageMaxSlots = 32;
+
+    const { state, summary } = applyOne(s, "request_vendor_transaction", {
+      vendorId: "grove_rin_forager",
+      transactionKind: "buy",
+      itemId: "tree_resin",
+      count: 8,
+    });
+
+    assert.equal(state.inventory.gold, 432);
+    assert.equal(state.inventory.items.tree_resin ?? 0, 0);
+    assert.equal(state.banking.materialStorage.tree_resin, 8);
+    assert.ok(
+      !summary.warnings.includes("vendor_rejected:inventory_full"),
+      JSON.stringify(summary.warnings)
+    );
+    assert.ok(
+      summary.warnings.includes("vendor_sent_to_material_storage:tree_resin")
+    );
+  });
+
+  it("does not charge when a material purchase needs a new full storage slot", function () {
+    const s = freshState();
+    s.inventory.gold = 100;
+    s.banking.materialStorage = { health_potion: 1 };
+    s.banking.materialStorageMaxSlots = 1;
+
+    const { state, summary } = applyOne(s, "request_vendor_transaction", {
+      vendorId: "blacksmith_vendor",
+      transactionKind: "buy",
+      itemId: "iron_ore",
+      count: 2,
+    });
+
+    assert.equal(state.inventory.gold, 100);
+    assert.equal(state.banking.materialStorage.iron_ore ?? 0, 0);
+    assert.ok(
+      summary.warnings.includes("vendor_rejected:material_storage_full")
+    );
+  });
+
   it("persists Road Ahead starter clothing as Cloud Save inventory and equipment", function () {
     let s = freshState();
     let result = applyOne(s, "request_loot_roll", {
@@ -8268,6 +8340,7 @@ describe("reduceHarthmereLiveModeBackendState — farming", function () {
     let s = freshState();
     s.inventory.items.loaf_bread = 2;
     s.inventory.items.fresh_carrot = 2;
+    s.classMagic.skills.cooking = { xp: 900, level: 10 };
 
     const missingStation = applyOne(s, "request_farming_action", {
       operation: "cook_food",
@@ -10102,6 +10175,114 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     assert.equal(Object.values(state.jobsBoard.todos)[0]?.actorId, ACTOR);
   });
 
+  it("gathers Road Rations berries through a native inventory exchange without completing at the source", function () {
+    let s = freshState();
+    s.jobsBoard.postings.job_road_rations_pickup = {
+      jobId: "job_road_rations_pickup",
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      title: "Stock the Road Rations Crate",
+      description: "Gather 6 wild berries and return them to the board.",
+      kind: "gather",
+      requirements: [
+        {
+          itemId: "wild_berries",
+          count: 6,
+          mapMarkerId: "grove_garden_edge_berries",
+        },
+      ],
+      rewardGold: 45,
+      escrowGold: 45,
+      reputationDelta: 1,
+      status: "open",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: NOW_MS,
+      deadlineAtMs: NOW_MS + 86_400_000,
+      failurePenaltyGold: 0,
+      requiresFieldWork: false,
+      mapMarkerId: "grove_garden_edge_berries",
+      abuseFlags: [],
+      logs: [],
+    } as any;
+    ({ state: s } = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "accept_job",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: "job_road_rations_pickup",
+      },
+      {
+        subsystem: "jobs",
+        targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        serverActorEntityId: NATIVE_ACTOR_ID,
+        serverActorPosition: {
+          x: 501.99486179104775,
+          y: 70,
+          z: -132.00350672753194,
+        },
+      }
+    ));
+    const todo = Object.values(s.jobsBoard.todos)[0];
+    const source = harthmereJobsBoardQuestMarkerRuntimePositionForId(
+      "grove_garden_edge_berries"
+    )!;
+    const gathered = applyOne(
+      s,
+      "request_care_loop_action",
+      {
+        operation: "world_object_interaction",
+        objectId: "grove_garden_edge_berries",
+        label: "Garden Edge Berries",
+        interactionKind: "gather",
+      },
+      {
+        subsystem: "care",
+        serverActorEntityId: NATIVE_ACTOR_ID,
+        serverActorPosition: {
+          x: source.position[0],
+          y: source.position[1],
+          z: source.position[2],
+        },
+      }
+    );
+
+    assert.ok(
+      !gathered.summary.warnings.some((warning) =>
+        warning.startsWith("world_object_rejected:")
+      ),
+      gathered.summary.warnings.join(",")
+    );
+    assert.equal(gathered.state.inventory.items.wild_berries, 6);
+    assert.equal(gathered.state.jobsBoard.todos[todo.todoId].status, "active");
+    const exchange = gathered.summary.nativeEcsMaterializationPlans?.find(
+      (plan) =>
+        plan.kind === "inventory_exchange" &&
+        plan.sourceKind === "harthmere_jobs_board_world_pickup"
+    ) as any;
+    assert.deepEqual(exchange?.rewardItemStacks, { wild_berries: 6 });
+    const projected = projectHarthmereNativeEcsPlansOntoClientStateForTest(
+      gathered.state,
+      makeEnvelope(
+        "request_care_loop_action",
+        { operation: "world_object_interaction" },
+        {
+          serverActorEntityId: NATIVE_ACTOR_ID,
+          serverActorItemCounts: {},
+          serverActorGold: 0,
+        }
+      ),
+      gathered.summary.nativeEcsMaterializationPlans ?? []
+    );
+    assert.equal(
+      createHarthmereInventoryLootClientSnapshotFromBackend(projected).actor
+        ?.items.wild_berries,
+      6
+    );
+  });
+
   it("accepting a delivery job creates the parcel through native ECS", function () {
     const s = freshState();
     s.jobsBoard.postings.job_delivery_accept = {
@@ -10727,9 +10908,23 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       }
     ));
     const companion = s.jobsBoard.postings.job_escort_newcomer.escortCompanion!;
-    const target = harthmereJobsBoardQuestMarkerPositionForId(
-      "old_grove_road_post"
-    )!;
+    assert.match(
+      companion.destinationMarkerId ?? "",
+      /^legacy_protection_field:/
+    );
+    assert.ok(
+      Math.hypot(
+        companion.destination.x - 501.99486179104775,
+        companion.destination.z - -132.00350672753194
+      ) >= HARTHMERE_ESCORT_DESTINATION_MIN_DISTANCE
+    );
+    const target = {
+      position: [
+        companion.destination.x,
+        companion.destination.y,
+        companion.destination.z,
+      ],
+    } as const;
     s.combat.entitySnapshots[String(companion.entityId)].position = {
       x: target.position[0] - 1,
       y: target.position[1],
@@ -10754,6 +10949,11 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     assert.equal(
       s.jobsBoard.postings.job_escort_newcomer.escortCompanion!.status,
       "arrived"
+    );
+    assert.match(
+      s.jobsBoard.postings.job_escort_newcomer.escortCompanion!
+        .arrivalDialogue ?? "",
+      /^Thank you for seeing me safely to /
     );
     assert.equal(Object.values(s.jobsBoard.todos)[0].status, "completed");
     assert.deepEqual(s.quests.active[`jobs_board:${todo.todoId}`], {

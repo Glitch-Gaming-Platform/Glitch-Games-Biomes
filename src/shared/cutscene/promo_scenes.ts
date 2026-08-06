@@ -21,6 +21,15 @@ import {
   type HarthmereBossVisualAsset,
   type HarthmereBossVisualId,
 } from "@/shared/harthmere/boss_visual_assets";
+import {
+  bossPromoCameraPlan,
+  isBossPromoCameraPresetId,
+  type BossPromoCameraPresetId,
+} from "@/shared/cutscene/boss_promo_camera";
+import type {
+  PromoCameraClearanceSpec,
+  PromoTerrainViewSpec,
+} from "@/shared/cutscene/promo_terrain_view";
 import { ch1DungeonAuthoredToWorld } from "@/shared/harthmere/ch1_dungeon_terrain";
 
 export const PROMO_SCENES_VERSION =
@@ -44,12 +53,22 @@ export interface PromoSceneDef {
   filename: string;
   brand: PromoBrand;
   observer: { position: CutsceneVec3; orientation: [number, number] };
+  /** Terrain/ECS interest-set center when the camera itself is near a cliff. */
+  streamingFocus?: CutsceneVec3;
+  /** Native terrain points that must have rendered meshes before capture. */
+  terrainProofs?: readonly CutsceneVec3[];
+  /** Camera-facing terrain wedge that must have built meshes before capture. */
+  terrainView?: PromoTerrainViewSpec;
+  /** Streamed terrain must not intersect the camera dolly or subject sightline. */
+  cameraClearance?: PromoCameraClearanceSpec;
   build: () => Promise<CutsceneDef> | CutsceneDef;
   /** Warm-page capture groups, e.g. chapter1-sectors or chapter1-all. */
   groups?: readonly string[];
+  /** Named no-browser bracket applied to a boss promo scene. */
+  cameraPreset?: BossPromoCameraPresetId;
 }
 
-type DungeonId = "ch1_dungeon_desert" | "ch1_dungeon_winter";
+export type DungeonId = "ch1_dungeon_desert" | "ch1_dungeon_winter";
 type AuthoredPoint = readonly [number, number, number];
 
 function world(dungeonId: DungeonId, point: AuthoredPoint): CutsceneVec3 {
@@ -660,15 +679,22 @@ const SECTOR_PROMO_SCENES: readonly PromoSceneDef[] =
 export interface HarthmereBossPromoSpec {
   id: HarthmereBossVisualId;
   area: string;
+  /** Canonical authored terrain available for offline camera collision checks. */
+  dungeonId?: DungeonId;
   stage: CutsceneVec3;
   cameraFar: CutsceneVec3;
   cameraNear: CutsceneVec3;
   timeOfDay: number;
   fov: number;
   framingBias?: number;
-  /** Canonical authored yaw when the boss asset should not auto-face camera. */
-  yaw?: number;
+  /** Explicit authored yaw selected from the material turntable. */
+  yaw: number;
+  /** Keep combat poses out of the still unless a boss-specific pose is proven. */
+  emoteAt?: number;
   animation?: "attack1" | "attack2";
+  terrainProofs?: readonly CutsceneVec3[];
+  /** Ordered live-review candidates; geometry preflight is not visual approval. */
+  cameraPresetPriority: readonly BossPromoCameraPresetId[];
 }
 
 export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
@@ -676,30 +702,59 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
     {
       id: "muck_scarred_helix",
       area: "West Muck Breach",
-      stage: [232, 33, -506],
+      stage: [238, 32.05, -500],
+      // Keep the camera on the proven encounter-level lane. The rejected high
+      // angle exposed only one nearby terrain slab and uncullable runtime props
+      // instead of reading as a continuous West Muck Breach landscape.
       cameraFar: [222, 36, -496],
       cameraNear: [225, 35, -499],
       timeOfDay: 0.78,
-      fov: 30,
+      fov: 44,
       framingBias: 1.2,
+      yaw: 0,
+      emoteAt: 2.65,
       animation: "attack2",
+      cameraPresetPriority: [
+        "reverse-inward",
+        "three-quarter-left",
+        "environment-wide",
+      ],
+      terrainProofs: [
+        [200, 32, -538],
+        [200, 32, -474],
+        [232, 32, -506],
+        [232, 32, -474],
+        [264, 32, -538],
+      ],
     },
     {
       id: "gilded_bull",
       area: "Sun Court",
-      stage: [2968, 44, -312],
+      dungeonId: "ch1_dungeon_desert",
+      // The encounter record is at the court floor (Y=44), while its authored
+      // three-block bull dais occupies Y=43..45. Put the puppet's grounded
+      // lower bound on the visible gold cap instead of inside the plinth.
+      stage: [2968, 46.08, -312],
       // Accepted Sun Court sector-proof lane. The rejected diagonal framed
       // only the court's wrong-coloured sky beyond the north aperture.
-      cameraFar: [2946, 50, -304],
-      cameraNear: [2951, 48, -307],
+      cameraFar: [2950, 51, -305],
+      cameraNear: [2957, 49, -309],
       timeOfDay: 0.38,
-      fov: 36,
+      fov: 32,
       framingBias: 1.15,
+      yaw: -Math.PI / 8,
+      emoteAt: 2.65,
       animation: "attack2",
+      cameraPresetPriority: [
+        "three-quarter-left",
+        "three-quarter-right",
+        "environment-wide",
+      ],
     },
     {
       id: "ninth_winter",
       area: "Ash Hall",
+      dungeonId: "ch1_dungeon_winter",
       stage: [3524, 65, -344],
       // Stay on the accepted Ash Hall interior axis (local z=-88).
       cameraFar: [3498, 70, -344],
@@ -707,74 +762,112 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
       timeOfDay: 0.86,
       fov: 42,
       framingBias: 2.5,
+      yaw: -Math.PI / 4,
+      emoteAt: 2.65,
       animation: "attack2",
+      cameraPresetPriority: [
+        "three-quarter-left",
+        "three-quarter-right",
+        "baseline",
+      ],
     },
     {
       id: "failed_apprentice",
       area: "Bellward Halls — Bell Ring",
       // Authored runtime placement beside the broken handbell. The retained
       // screenshot stack disables the optional +1600 additive-town offset.
-      stage: [354, 53, -313.4],
+      stage: [354, 53.05, -313.4],
       cameraFar: [366, 58, -301],
       cameraNear: [363, 56.5, -304],
       timeOfDay: 0.73,
       fov: 35,
       framingBias: 1.3,
-      yaw: Math.PI,
+      yaw: Math.PI / 4,
+      emoteAt: 2.65,
       animation: "attack2",
+      cameraPresetPriority: [
+        "environment-wide",
+        "three-quarter-left",
+        "three-quarter-right",
+      ],
     },
     {
       id: "first_choir",
       area: "Bellward Halls — Central Choir",
       // Runtime triad floor sigil and three harmony candles.
-      stage: [356, 53, -309],
+      stage: [356, 53.05, -309],
       cameraFar: [370, 58, -295],
       cameraNear: [367, 56.5, -298],
       timeOfDay: 0.78,
       fov: 35,
       framingBias: 1.15,
-      yaw: Math.PI,
+      yaw: Math.PI / 4,
+      emoteAt: 2.65,
       animation: "attack2",
+      cameraPresetPriority: [
+        "environment-wide",
+        "three-quarter-left",
+        "three-quarter-right",
+      ],
     },
     {
       id: "echo_singer",
       area: "Veins of the Wyrm — Echo Hall",
       // Runtime phase-safe essence pool in Old Well / Underways.
-      stage: [632, 53, -318],
+      stage: [632, 53.05, -318],
       cameraFar: [616, 59, -302],
       cameraNear: [620, 56.5, -306],
       timeOfDay: 0.71,
       fov: 36,
       framingBias: 1.6,
-      yaw: Math.PI,
+      yaw: -Math.PI / 4,
+      emoteAt: 2.65,
       animation: "attack2",
+      cameraPresetPriority: [
+        "three-quarter-left",
+        "three-quarter-right",
+        "environment-wide",
+      ],
     },
     {
       id: "vyrahel_vein_keeper",
       area: "Veins of the Wyrm — Spine Hall",
       // Shoot from north of the runtime rib wall so it remains backdrop.
-      stage: [642, 53, -334],
+      stage: [642, 53.05, -334],
       cameraFar: [656, 59, -350],
       cameraNear: [653, 56.5, -346],
       timeOfDay: 0.66,
       fov: 35,
       framingBias: 1.35,
       yaw: Math.PI,
+      emoteAt: 2.65,
       animation: "attack1",
+      cameraPresetPriority: [
+        "baseline",
+        "three-quarter-right",
+        "environment-wide",
+      ],
     },
     {
       id: "thaedryn_bellbound",
       area: "Wyrm's Bed",
-      stage: [640, 53, -268],
-      // Shoot from the True-Bell side, close enough to read the dragon and
-      // binding silhouettes rather than losing them in atmospheric void.
-      cameraFar: [618, 64, -240],
-      cameraNear: [623, 60, -247],
+      stage: [640, 53.05, -268],
+      // The dragon is nearly sixty metres long. The old 35m camera sat inside
+      // its own world bounds once the combat pose began. Stay on the same
+      // True-Bell axis, but outside the full body and wing envelope.
+      cameraFar: [596, 70, -212],
+      cameraNear: [602, 66, -220],
       timeOfDay: 0.75,
-      fov: 39,
-      framingBias: 3.2,
-      yaw: Math.PI,
+      fov: 44,
+      framingBias: 4.2,
+      yaw: 0,
+      emoteAt: 2.65,
       animation: "attack2",
+      cameraPresetPriority: [
+        "environment-wide",
+        "baseline",
+        "three-quarter-left",
+      ],
     },
     {
       id: "hex_wraith",
@@ -788,7 +881,21 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
       timeOfDay: 0.74,
       fov: 30,
       framingBias: 0.9,
+      yaw: -Math.PI / 4,
+      emoteAt: 2.65,
       animation: "attack2",
+      cameraPresetPriority: [
+        "reverse-inward",
+        "three-quarter-left",
+        "environment-wide",
+      ],
+      terrainProofs: [
+        [608, 47, 122],
+        [608, 47, 170],
+        [632.924, 47, 146.321],
+        [656, 47, 122],
+        [656, 47, 170],
+      ],
     },
     {
       id: "alpha_mucker",
@@ -796,12 +903,26 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
       // Exact grounded legacy bounty marker. Pull the lens outside the
       // fourteen-metre canopy; the rejected camera sat inside the boss crown.
       stage: [648.693, 57, -455],
-      cameraFar: [678, 66, -428],
-      cameraNear: [670, 63, -436],
+      cameraFar: [696, 68, -410],
+      cameraNear: [690, 66, -416],
       timeOfDay: 0.72,
-      fov: 36,
-      framingBias: 2.5,
+      fov: 40,
+      framingBias: 3.2,
+      yaw: 0,
+      emoteAt: 2.65,
       animation: "attack2",
+      cameraPresetPriority: [
+        "baseline",
+        "environment-wide",
+        "three-quarter-left",
+      ],
+      terrainProofs: [
+        [616, 57, -479],
+        [616, 57, -431],
+        [648.693, 57, -455],
+        [672, 57, -479],
+        [672, 57, -431],
+      ],
     },
     {
       id: "root_crowned_dead",
@@ -815,7 +936,21 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
       timeOfDay: 0.8,
       fov: 32,
       framingBias: 1.35,
+      yaw: -Math.PI / 2,
+      emoteAt: 2.65,
       animation: "attack2",
+      cameraPresetPriority: [
+        "environment-wide",
+        "three-quarter-left",
+        "three-quarter-right",
+      ],
+      terrainProofs: [
+        [596, 53, -529],
+        [596, 53, -481],
+        [620, 53, -505],
+        [644, 53, -529],
+        [644, 53, -481],
+      ],
     },
   ]);
 
@@ -839,7 +974,7 @@ export function isHarthmereBossPromoGhostAsset(asset: string): boolean {
   );
 }
 
-function bossFrameFocus(
+export function bossFrameFocus(
   spec: HarthmereBossPromoSpec,
   visual: HarthmereBossVisualAsset
 ): CutsceneVec3 {
@@ -889,15 +1024,6 @@ function bossPromoScene(spec: HarthmereBossPromoSpec): CutsceneDef {
             label: `${visual.displayName} hero framing target`,
           },
         },
-        {
-          role: "cameraFacing",
-          binding: {
-            kind: "anchor",
-            position: spec.cameraNear,
-            height: 0,
-            label: `${visual.displayName} camera eyeline`,
-          },
-        },
       ],
       shots: [
         {
@@ -919,21 +1045,11 @@ function bossPromoScene(spec: HarthmereBossPromoSpec): CutsceneDef {
               at: 0,
               role: bossRole,
               to: spec.stage,
-              ...(spec.yaw === undefined ? {} : { faceYaw: spec.yaw }),
+              faceYaw: spec.yaw,
             },
-            ...(spec.yaw === undefined
-              ? [
-                  {
-                    kind: "face" as const,
-                    at: 0.05,
-                    role: bossRole,
-                    towards: { role: "cameraFacing" },
-                  },
-                ]
-              : []),
             {
               kind: "emote",
-              at: 1.35,
+              at: spec.emoteAt ?? 2.65,
               role: bossRole,
               emote: spec.animation ?? "attack2",
             },
@@ -949,6 +1065,7 @@ function bossPromoScene(spec: HarthmereBossPromoSpec): CutsceneDef {
 const HARTHMERE_BOSS_PROMO_SCENES: readonly PromoSceneDef[] =
   HARTHMERE_BOSS_PROMO_SPECS.map((spec) => {
     const visual = bossVisual(spec.id);
+    const frameFocus = bossFrameFocus(spec, visual);
     return {
       id: `boss-${spec.id.replaceAll("_", "-")}`,
       shotId: "boss-hero",
@@ -962,6 +1079,21 @@ const HARTHMERE_BOSS_PROMO_SCENES: readonly PromoSceneDef[] =
       observer: {
         position: spec.cameraFar,
         orientation: [-0.1, 0],
+      },
+      terrainProofs: spec.terrainProofs,
+      terrainView: {
+        // The observer interest set is centered on cameraFar. Build the view
+        // corridor from the same point so all 112m lateral samples remain
+        // inside the existing 128m Sync/draw-distance contract.
+        camera: spec.cameraFar,
+        target: frameFocus,
+        verticalFov: spec.fov,
+      },
+      cameraClearance: {
+        cameraFar: spec.cameraFar,
+        cameraNear: spec.cameraNear,
+        target: frameFocus,
+        bossBodyRadius: Math.hypot(...visual.worldSize) / 2,
       },
       build: () => bossPromoScene(spec),
       groups: ["boss-marketing"],
@@ -1033,6 +1165,101 @@ export const PROMO_SCENES: readonly PromoSceneDef[] = Object.freeze([
 
 export function promoSceneById(id: string): PromoSceneDef | undefined {
   return PROMO_SCENES.find((scene) => scene.id === id);
+}
+
+/**
+ * Apply a named, deterministic boss-camera bracket to a registered still.
+ *
+ * Both the Node capture CLI and the browser call this function. That keeps the
+ * observer deep link, director definition, FOV, and saved metadata on the same
+ * plan instead of hand-editing a browser camera after the scene is built.
+ */
+export function promoSceneWithBossCameraPreset(
+  scene: PromoSceneDef,
+  requested: string | null | undefined
+): PromoSceneDef {
+  if (requested === null || requested === undefined || requested === "") {
+    return scene;
+  }
+  if (!isBossPromoCameraPresetId(requested)) {
+    throw new Error(`unknown boss promo camera preset "${requested}"`);
+  }
+  const bossId = scene.id.startsWith("boss-")
+    ? (scene.id
+        .slice("boss-".length)
+        .replaceAll("-", "_") as HarthmereBossVisualId)
+    : undefined;
+  const spec = bossId
+    ? HARTHMERE_BOSS_PROMO_SPECS.find((candidate) => candidate.id === bossId)
+    : undefined;
+  const visual = bossId
+    ? HARTHMERE_BOSS_VISUAL_ASSETS.find((candidate) => candidate.id === bossId)
+    : undefined;
+  if (!spec || !visual || !scene.groups?.includes("boss-marketing")) {
+    throw new Error(
+      `${scene.id}: camera presets are only available for boss marketing stills`
+    );
+  }
+  const plan = bossPromoCameraPlan(
+    {
+      stage: spec.stage,
+      cameraFar: spec.cameraFar,
+      cameraNear: spec.cameraNear,
+      fov: spec.fov,
+      worldSize: visual.worldSize,
+    },
+    requested
+  );
+  const adjusted: HarthmereBossPromoSpec = {
+    ...spec,
+    cameraFar: plan.cameraFar,
+    cameraNear: plan.cameraNear,
+    fov: plan.fov,
+  };
+  const frameFocus = bossFrameFocus(adjusted, visual);
+  return {
+    ...scene,
+    observer: { ...scene.observer, position: plan.cameraFar },
+    terrainView: {
+      camera: plan.cameraFar,
+      target: frameFocus,
+      verticalFov: plan.fov,
+    },
+    cameraClearance: {
+      cameraFar: plan.cameraFar,
+      cameraNear: plan.cameraNear,
+      target: frameFocus,
+      bossBodyRadius: Math.hypot(...visual.worldSize) / 2,
+    },
+    build: () => bossPromoScene(adjusted),
+    cameraPreset: requested,
+  };
+}
+
+export function recommendedBossCameraPresetForScene(
+  scene: PromoSceneDef
+): BossPromoCameraPresetId | undefined {
+  if (
+    !scene.groups?.includes("boss-marketing") ||
+    !scene.id.startsWith("boss-")
+  ) {
+    return undefined;
+  }
+  const bossId = scene.id
+    .slice("boss-".length)
+    .replaceAll("-", "_") as HarthmereBossVisualId;
+  return HARTHMERE_BOSS_PROMO_SPECS.find((candidate) => candidate.id === bossId)
+    ?.cameraPresetPriority[0];
+}
+
+export function promoSceneWithRecommendedBossCamera(
+  scene: PromoSceneDef
+): PromoSceneDef {
+  const recommended = recommendedBossCameraPresetForScene(scene);
+  if (!recommended) {
+    throw new Error(`${scene.id}: no recommended boss camera is registered`);
+  }
+  return promoSceneWithBossCameraPreset(scene, recommended);
 }
 
 export function promoScenesInGroup(group: string): readonly PromoSceneDef[] {

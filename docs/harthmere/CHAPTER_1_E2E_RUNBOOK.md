@@ -4,6 +4,58 @@ Companion to `NATIVE_ECS_BROWSER_E2E_RUNBOOK.md`. Same memory-safe topology,
 same readiness rules, same "one Chromium context at a time" discipline. This
 file covers only what Chapter 1 adds.
 
+## Live status — August 5, 2026
+
+The focused Core Cell, Jackie, cutscene-exit, and item-attachment defects are
+repaired. See `CHAPTER_1_HOTFIX_AUDIT_2026-08-05.md` for exact HAR findings,
+source routes, build ownership, and report paths.
+
+Do not describe Chapter 1 as fully passed yet. The remaining current-source
+acceptance is:
+
+- the complete 31-quest/80-objective progression on the final combined
+  artifact;
+- front-facing third-person visual approval of all fifteen held plot items.
+
+The Core Cell player path must be asserted as one handoff, not as unrelated
+inventory and marker checks:
+
+1. `gather_parts` grants `item_augur9_core_cell` into native inventory;
+2. the HUD says **Install the Core Cell**;
+3. the active Chapter 1 pin replaces a stale unrelated pin and targets
+   AUGUR-9 near `[524, 69, -154]`;
+4. the real `F` interaction completes `seat_the_core`.
+
+For staged NPC objectives, assert that the progress API's target, visible
+client puppet, map marker, distance check, and Talk recipient all use the same
+authored position. Seed an unrelated accepted quest when checking Jackie so a
+generic quest action cannot masquerade as Chapter 1 dialogue.
+
+Run final Chapter 1 groups in one non-fail-fast browser context:
+
+```sh
+HARTHMERE_E2E_CHAPTER_1_ONLY=1 \
+HARTHMERE_E2E_CHAPTER_1_FEATURES=items,quests,cutscenes,gates,terrain,cast \
+HARTHMERE_E2E_CHAPTER_1_SKIP_VIDEO=1 \
+  node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+```
+
+`HARTHMERE_E2E_CHAPTER_1_ITEM_IDS` is a diagnostic subset only. Release
+acceptance must omit it and exercise all fifteen items. The item batch must
+require the exact hotbar selection, a non-empty rendered attachment, and a
+front-facing screenshot where scale, orientation, grip, and silhouette can be
+judged. Mesh-count success with the item hidden behind the avatar is not visual
+approval.
+
+Classify report failures at the boundary where they occur:
+
+- auth/bootstrap/app-replacement failure before a scenario begins: zero
+  product coverage;
+- all product assertions pass, followed by an expected cutscene music-request
+  cancellation: focused product pass, but not a clean release report;
+- one group fails: continue the remaining selected groups and repair/rerun the
+  failed set as a batch.
+
 ## Live status — July 25, 2026
 
 The Chapter 1 **native quest-completion** release gate is closed. The dungeon
@@ -48,6 +100,26 @@ July 25 after the existing deliverables were saved. That stopped visual work
 is not a reason to replay the completed quest gate.
 
 ## Native quest completion gate (closed)
+
+### August 6 hotfix revalidation
+
+The post-HAR interaction/item/map hotfix was revalidated without replaying
+already-green objectives. The current retained chain is listed in
+`docs/harthmere/CHAPTER_1_HOTFIX_AUDIT_2026-08-05.md`. Its final report is
+`artifacts/harthmere-native-ecs-e2e/1785994381920-72256-report.json`:
+
+- final status `pass` with zero browser failures;
+- `questCount: 31`, `stepCount: 13`, `retainedPassedStepCount: 67`;
+- both dungeons completed with native survival/resource state;
+- desert Iris and winter Sorrel escorts completed under real Anima movement;
+- final recovered state contains 17 fragments, four latent skills, all twelve
+  testimonies, Hallr's choice, and the authored ending.
+
+The final client artifact is `warm-20260806044501`. It was produced by a
+Next-only compile and app-only remount; the existing image, Redis world, server
+artifact, and standalone Anima process were retained. Future work should resume
+from the last exact `questId/stepId` in a report and must not replay the 80-step
+chain unless quest authority or progression logic changes.
 
 Run the whole remaining quest family in one browser context:
 
@@ -424,6 +496,46 @@ Complete Muck vs. Machine. Confirm:
 - the artifacted playback is the **player's own voice bank**, not a generic NPC
 - the `Recovered` journal tab appears, empty, reading "Nothing yet."
 - AUGUR-9 becomes a persistent follower-capable NPC, not a quest prop
+
+### 1a. Delegated UI and Jobs Board ownership
+
+Run these in the same non-fail-fast Chapter 1 campaign:
+
+- Finish Doc's examination. The final handoff must say **Press J to open
+  BiomesUI, then select MEM — Recovered** and must not contain `Next task:`.
+- Inspect the progress response for `open_the_tab`: `targetPosition` is absent,
+  `showNavigationAid` is false, and `withinRange` is true. No Chapter 1 world
+  prompt or map marker is allowed.
+- Confirm the HUD `J` control is visibly highlighted. Press real `J`, confirm
+  the `MEM — Recovered` tab is visibly highlighted, click it, and require the
+  signed native step to complete.
+- At `take_jobs`, open the physical Grove Jobs Board through its real world
+  prompt. Require `data-chapter1-jobs-board="take_jobs"`, exactly two tabs
+  (`Chapter 1 Jobs`, `Accepted`), and only the three authored Grove titles.
+- Complete and turn in the three normal job objectives. Repeated copies,
+  generic jobs, jobs completed before the quest, and another actor's jobs must
+  not satisfy the `3/3` requirement.
+- Repeat with six accepted generic jobs already active. All three authored
+  Chapter 1 jobs must remain visible/acceptable; a seventh generic job must
+  remain blocked by the regular seeker limit.
+- After the objective advances, reopen the board and confirm its ordinary tabs
+  and generic catalogue return.
+- Trigger the AUGUR-9 recharge-without-item error and require **The Bull's
+  Core**, never `item_bulls_core`. Search all rendered Chapter 1 text for raw
+  `item_`, `frag_`, and `ch1_` tokens.
+- For every `talk_npc` and `dialogue_choice` phase, require a safe integer
+  `targetEntityId` matching the visible authored NPC. Open the production
+  `talk_to_npc` modal directly and require the Chapter 1 dialogue, choice, or
+  signed completion. No normal flavor text, helper quest, business action, or
+  unrelated accepted quest may appear. Repeat this for every dynamic testimony
+  and Three Answers route stop.
+- For all fifteen plot items, require both evidence forms: (1) a normal
+  reverse-camera screenshot showing the live grip context, and (2) generated
+  front/left/right detail frames with non-item player meshes temporarily hidden
+  but the exact live `itemMeshInstance.three` retained. Visually reject repeated
+  sleeve/body silhouettes even when mesh counts and bounds pass. Expected live
+  silhouettes after the Chapter 1-only presentation multiplier are roughly
+  12–21 cm; use Blender MCP to inspect source dimensions before editing assets.
 
 ### 2. Portal visual
 

@@ -25,6 +25,47 @@ export interface HarthmereBusinessCustomerTalkTarget {
   offers: readonly HarthmereBusinessServiceOffer[];
 }
 
+export function harthmereBusinessCustomerEffectivePhase({
+  currentTicket,
+  nativePhase,
+  sessionSpatialPhase,
+}: {
+  currentTicket: boolean;
+  nativePhase?: string;
+  sessionSpatialPhase?: string;
+}) {
+  if (
+    currentTicket &&
+    (nativePhase === "serving" || sessionSpatialPhase === "serving")
+  ) {
+    return "serving";
+  }
+  return nativePhase ?? sessionSpatialPhase;
+}
+
+export function canDirectlyTalkToHarthmereBusinessCustomer({
+  currentTicket,
+  entityPresent,
+  nativePhase,
+  sessionSpatialPhase,
+  visible,
+}: {
+  currentTicket: boolean;
+  entityPresent: boolean;
+  nativePhase?: string;
+  sessionSpatialPhase?: string;
+  visible: boolean;
+}) {
+  const effectivePhase = harthmereBusinessCustomerEffectivePhase({
+    currentTicket,
+    nativePhase,
+    sessionSpatialPhase,
+  });
+  return (
+    currentTicket && entityPresent && visible && effectivePhase === "serving"
+  );
+}
+
 /**
  * HARTHMERE_BUSINESS_TALK_TARGET_REGISTRY
  *
@@ -81,10 +122,7 @@ export function publishHarthmereBusinessCustomerTalkTargets(
   nextTargets: readonly HarthmereBusinessCustomerTalkTarget[]
 ) {
   const previousTargets = targetsByOwner.get(ownerId);
-  const ownedTargets = new Map<
-    BiomesId,
-    HarthmereBusinessCustomerTalkTarget
-  >();
+  const ownedTargets = new Map<BiomesId, HarthmereBusinessCustomerTalkTarget>();
   for (const target of nextTargets) {
     const previous = previousTargets?.get(target.entityId);
     const preserveNativeServingState =

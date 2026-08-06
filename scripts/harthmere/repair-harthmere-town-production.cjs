@@ -61,6 +61,8 @@ const {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
   HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
   HARTHMERE_EXTENSION_GROUND_Y,
+  HARTHMERE_EXTENSION_TERRAIN_ENTITY_ID_BASE,
+  HARTHMERE_EXTENSION_TERRAIN_ID_GRID,
   harthmereExtensionTerrainEntityIdForShard,
 } = require(path.join(process.cwd(), "src/shared/harthmere/world_extension"));
 
@@ -171,6 +173,30 @@ function loadCanonicalTerrainBuilder() {
 
 function buffersEqual(a, b) {
   return Buffer.from(a ?? []).equals(Buffer.from(b ?? []));
+}
+
+function canonicalSpecForTerrainId(id) {
+  const xCount =
+    HARTHMERE_EXTENSION_TERRAIN_ID_GRID.maxShardX -
+    HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardX +
+    1;
+  const zCount =
+    HARTHMERE_EXTENSION_TERRAIN_ID_GRID.maxShardZ -
+    HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardZ +
+    1;
+  const offset = id - HARTHMERE_EXTENSION_TERRAIN_ENTITY_ID_BASE;
+  if (!Number.isSafeInteger(offset) || offset < 0) return undefined;
+  const xIndex = offset % xCount;
+  const yzIndex = Math.floor(offset / xCount);
+  const zIndex = yzIndex % zCount;
+  const yIndex = Math.floor(yzIndex / zCount);
+  const shardX = HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardX + xIndex;
+  const shardY = HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardY + yIndex;
+  const shardZ = HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardZ + zIndex;
+  return harthmereExtensionTerrainEntityIdForShard(shardX, shardY, shardZ) ===
+    id
+    ? { id, shardX, shardY, shardZ }
+    : undefined;
 }
 
 function storyHeight(building) {
@@ -391,6 +417,7 @@ async function applyTerrain(
     authoredOverrideEdits: 0,
     changedShards: 0,
     repairedSeedShards: 0,
+    createdShards: 0,
     surfaceEdits: 0,
     roofEdits: 0,
     clearedOldRoofBlocks: 0,
@@ -402,17 +429,37 @@ async function applyTerrain(
     let dirtyBatch = false;
     for (let index = 0; index < batch.length; index += 1) {
       const [id, edits] = batch[index];
-      const entity = entities[index];
-      if (!entity?.shardSeed?.()) {
-        throw new Error(`Missing terrain shard_seed for ${id}`);
+      let entity = entities[index];
+      // Upper building/roof shards are persisted only when authored geometry
+      // reaches them, so they are not guaranteed to be present in the
+      // foundation-oriented seed-spec enumeration. Recover their canonical
+      // shard coordinates from the persisted box, while still requiring the
+      // stable extension id to match those coordinates exactly.
+      let spec = specsById.get(id) ?? canonicalSpecForTerrainId(id);
+      if (!spec && entity) {
+        const box = entity.box?.();
+        const v0 = box?.v0;
+        if (Array.isArray(v0) && v0.length === 3) {
+          const shardX = Math.floor(v0[0] / 32);
+          const shardY = Math.floor(v0[1] / 32);
+          const shardZ = Math.floor(v0[2] / 32);
+          if (
+            harthmereExtensionTerrainEntityIdForShard(
+              shardX,
+              shardY,
+              shardZ
+            ) === id
+          ) {
+            spec = { id, shardX, shardY, shardZ };
+          }
+        }
       }
-      const spec = specsById.get(id);
       if (!spec) {
         throw new Error(`No canonical Harthmere terrain spec for ${id}`);
       }
       const canonicalChange = canonicalTerrain.makeLocalDevTerrainShard(
         voxeloo,
-        "update",
+        entity ? "update" : "create",
         id,
         spec.shardX,
         spec.shardY,
@@ -424,6 +471,18 @@ async function applyTerrain(
       const canonicalBox = canonicalChange.entity.box;
       if (!canonicalSeed || !canonicalBox) {
         throw new Error(`Canonical terrain builder omitted seed/box for ${id}`);
+      }
+      if (!entity) {
+        if (!APPLY) {
+          stats.createdShards += 1;
+          continue;
+        }
+        entity = editor.create(canonicalChange.entity);
+        stats.createdShards += 1;
+        dirtyBatch = true;
+      }
+      if (!entity.shardSeed?.()) {
+        throw new Error(`Missing terrain shard_seed for ${id}`);
       }
       const seed = new voxeloo.VolumeBlock_U32();
       try {

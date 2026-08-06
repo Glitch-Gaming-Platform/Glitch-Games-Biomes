@@ -26,6 +26,7 @@ import {
   getHarthmerePostedJobsPanel,
   harthmereJobsBoardStateFromUpdatedEventDetail,
   isHarthmereJobsBoardAvailable,
+  jobsBoardSnapshotWithLiveInventoryForTest,
   nearestHarthmereJobsBoardPhysicalPrompt,
   nearestPhysicalHarthmereJobsBoardId,
   normalizeHarthmereJobsBoardSnapshot,
@@ -247,6 +248,16 @@ function sampleSnapshot(): HarthmereJobsBoardSnapshot {
 }
 
 describe("Harthmere universal jobs board live adapter", () => {
+  it("uses the latest live inventory for accepted-job marker progression", () => {
+    const snapshot = sampleSnapshot();
+    snapshot.inventoryItems = { wild_berries: 1 };
+    const merged = jobsBoardSnapshotWithLiveInventoryForTest(snapshot, {
+      actor: { items: { wild_berries: 6 } },
+    });
+    assert.deepEqual(merged?.inventoryItems, { wild_berries: 6 });
+    assert.deepEqual(snapshot.inventoryItems, { wild_berries: 1 });
+  });
+
   it("fetches the jobs board snapshot from the dedicated backend endpoint", async () => {
     const calls: any[] = [];
     const fetchImpl = (async (url: string, init: any) => {
@@ -542,6 +553,26 @@ describe("Harthmere universal jobs board live adapter", () => {
     assert.deepEqual(
       getHarthmereAvailableJobsPanel(snapshot, snapshot.defaultBoardId, NOW),
       []
+    );
+
+    snapshot.openJobs.push({
+      ...snapshot.openJobs[0],
+      jobId: "chapter1_rations",
+      templateId: "town_gather_road_rations",
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      townId: "harthmere_grove",
+      autoPosted: true,
+    });
+    assert.deepEqual(
+      getHarthmereAvailableJobsPanel(
+        snapshot,
+        snapshot.defaultBoardId,
+        NOW,
+        { chapter1Mode: true }
+      ).map((job) => job.jobId),
+      ["chapter1_rations"],
+      "unrelated accepted work must not hide the active Chapter 1 job set"
     );
   });
 

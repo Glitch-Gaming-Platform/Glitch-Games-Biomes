@@ -33,10 +33,7 @@ export function tryExitPointerLock() {
 }
 
 type PointerLockResult =
-  | "locked"
-  | "gesture-required"
-  | "terminal-error"
-  | "error";
+  "locked" | "cooldown" | "gesture-required" | "terminal-error" | "error";
 
 // Desktop Safari and all iOS browsers run WebKit, which only grants pointer
 // lock from an active user gesture. Chrome/Edge (Blink) and Firefox (Gecko)
@@ -74,11 +71,23 @@ function isGestureRequiredError(error: unknown): boolean {
   return name === "NotAllowedError" && isWebKitEngine();
 }
 
+export function isPointerLockCooldownErrorForTest(error: unknown): boolean {
+  const message = String((error as { message?: string } | null)?.message ?? "");
+  // Chromium post-exit-cooldown errors require a new deliberate user action.
+  // Retrying every 125 ms only extends the noisy request-rate failure seen as
+  // "Too many pointer lock requests" in the captured inventory session.
+  return (
+    /pointer lock cannot be acquired immediately after.*exited/i.test(
+      message
+    ) ||
+    /exited the lock before this request (?:was )?completed/i.test(message) ||
+    /Too many pointer lock requests/i.test(message)
+  );
+}
+
 export function isTerminalPointerLockErrorForTest(error: unknown): boolean {
   const name = String((error as { name?: string } | null)?.name ?? "");
-  const message = String(
-    (error as { message?: string } | null)?.message ?? ""
-  );
+  const message = String((error as { message?: string } | null)?.message ?? "");
   // Chromium returns this UnknownError when the current embedding/platform
   // exposes Pointer Lock but cannot complete it. Retrying the same request at
   // 100 Hz cannot recover and produced the audit's console/main-thread flood.
@@ -86,8 +95,12 @@ export function isTerminalPointerLockErrorForTest(error: unknown): boolean {
   // transient post-Esc cooldown or a user-gesture requirement handled above.
   return (
     name === "UnknownError" ||
+    name === "WrongDocumentError" ||
     /if you see this error we have a bug/i.test(message) ||
-    /pointer lock.*(?:not supported|unavailable|cannot be used)/i.test(message)
+    /pointer lock.*(?:not supported|unavailable|cannot be used)/i.test(
+      message
+    ) ||
+    /root document of this element is not valid for pointer lock/i.test(message)
   );
 }
 
@@ -115,6 +128,9 @@ async function requestPointerLockWithUnadjustedMovement(
     });
     return "locked";
   } catch (error: any) {
+    if (isPointerLockCooldownErrorForTest(error)) {
+      return "cooldown";
+    }
     if (isGestureRequiredError(error)) {
       return "gesture-required";
     }
@@ -126,6 +142,9 @@ async function requestPointerLockWithUnadjustedMovement(
       await (element.requestPointerLock() as unknown as Promise<unknown>);
       return "locked";
     } catch (error: any) {
+      if (isPointerLockCooldownErrorForTest(error)) {
+        return "cooldown";
+      }
       if (isGestureRequiredError(error)) {
         return "gesture-required";
       }
@@ -266,7 +285,11 @@ export class PointerLockManager {
   private tryLock(element: HTMLCanvasElement) {
     fireAndForget(
       requestPointerLockWithUnadjustedMovement(element).then((result) => {
-        if (result === "gesture-required" || result === "terminal-error") {
+        if (
+          result === "cooldown" ||
+          result === "gesture-required" ||
+          result === "terminal-error"
+        ) {
           // The browser (Safari/WebKit) only grants pointer lock from an
           // active user gesture. Timer-driven retries can never succeed and
           // only flood the console, so abandon the retry loop immediately.
@@ -274,8 +297,8 @@ export class PointerLockManager {
           // falls back to focused pointerless input.
           if (result === "terminal-error") {
             this.setPointerLockDisabled(true);
-            element.focus();
           }
+          element.focus();
           this.stopLockRetry();
         }
       })
@@ -313,11 +336,7 @@ export class PointerLockManager {
       const start = performance.now();
       this.lockInterval = setInterval(() => {
         const timedOut = performance.now() - start > 5000;
-        if (
-          this.isLocked() ||
-          timedOut ||
-          !this.lockElementRef?.current
-        ) {
+        if (this.isLocked() || timedOut || !this.lockElementRef?.current) {
           if (timedOut && !this.isLocked() && this.lockElementRef?.current) {
             // Some embedded/restricted browsers expose Pointer Lock but reject
             // every request. Do not leave gameplay permanently detached after
@@ -403,9 +422,7 @@ export const usePointerLockManager = () =>
 
 export function usePointerLockDisabledStatus() {
   const manager = usePointerLockManager();
-  const [disabled, setDisabled] = useState(
-    manager.isPointerLockDisabled()
-  );
+  const [disabled, setDisabled] = useState(manager.isPointerLockDisabled());
   useEffect(
     () =>
       cleanEmitterCallback(manager.emitter, {

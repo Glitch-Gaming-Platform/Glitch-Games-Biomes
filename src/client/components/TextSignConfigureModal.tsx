@@ -5,6 +5,7 @@ import {
   DialogBoxTitle,
 } from "@/client/components/system/DialogBox";
 import { DialogButton } from "@/client/components/system/DialogButton";
+import { containMobileControlEvent } from "@/client/components/mobileControlEvents";
 import { ChangeTextSignContentsEvent } from "@/shared/ecs/gen/events";
 import type { BiomesId } from "@/shared/ids";
 import { relevantBiscuitForEntityId } from "@/shared/npc/bikkie";
@@ -15,7 +16,8 @@ export const TextSignConfigureModal: React.FunctionComponent<{
   placeableId: BiomesId;
   readOnly?: boolean;
 }> = ({ onClose, placeableId, readOnly }) => {
-  const { reactResources, events, resources, userId } = useClientContext();
+  const { reactResources, events, resources, userId, clientConfig } =
+    useClientContext();
   const item = relevantBiscuitForEntityId(resources, placeableId);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -57,6 +59,18 @@ export const TextSignConfigureModal: React.FunctionComponent<{
           </div>
           <DialogButton
             type="primary"
+            onPointerDown={(event) => {
+              if (
+                !clientConfig.mobileDevice ||
+                event.pointerType !== "touch"
+              ) {
+                return;
+              }
+              // MOBILE_TEXT_SIGN_CLOSE_TOUCH: iOS may omit click after the
+              // trusted touch. A read-only close is discrete, so act now.
+              containMobileControlEvent(event);
+              onClose?.();
+            }}
             onClick={() => {
               onClose?.();
             }}

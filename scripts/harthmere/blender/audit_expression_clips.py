@@ -78,6 +78,8 @@ IDENTITY = {"location": 0.0, "rotation_quaternion": 0.0, "rotation_euler": 0.0, 
 
 def main():
     bpy.ops.wm.open_mainfile(filepath=SRC, load_ui=False)
+    if bpy.context.object and bpy.context.object.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
     fps = bpy.context.scene.render.fps / max(1, bpy.context.scene.render.fps_base)
 
     idle = bpy.data.actions.get("Idle")

@@ -88,6 +88,19 @@ const READ_BATCH_SIZE = 128;
 const APPLY_SHARD_BATCH_SIZE = 16;
 const APPLY = process.env.APPLY === "1";
 
+let activeRedis;
+let activeWorld;
+
+async function closeResources() {
+  try {
+    await activeWorld?.stop?.();
+  } finally {
+    activeWorld = undefined;
+    activeRedis?.disconnect?.();
+    activeRedis = undefined;
+  }
+}
+
 function expectedBox(spec) {
   return {
     v0: [
@@ -131,6 +144,8 @@ async function main() {
   const voxeloo = await loadVoxeloo();
   const redis = await connectToRedisWithLua("ecs");
   const world = new RedisWorld(redis);
+  activeRedis = redis;
+  activeWorld = world;
   const palette = materialPalette();
 
   // Only the surface shards that carry authored water. Everything else in the
@@ -293,7 +308,6 @@ async function main() {
     console.log(
       JSON.stringify({ ok: true, applied: false, ...stats }, null, 2)
     );
-    await redis.quit();
     return;
   }
 
@@ -384,10 +398,16 @@ async function main() {
       2
     )
   );
-  await redis.quit();
 }
 
-main().catch((error) => {
-  console.error("MATERIALIZE_HARTHMERE_AUTHORED_WATER failed", error);
-  process.exit(1);
-});
+main()
+  .then(closeResources)
+  .catch(async (error) => {
+    console.error("MATERIALIZE_HARTHMERE_AUTHORED_WATER failed", error);
+    try {
+      await closeResources();
+    } catch (closeError) {
+      console.error("Failed to close authored-water resources", closeError);
+    }
+    process.exitCode = 1;
+  });

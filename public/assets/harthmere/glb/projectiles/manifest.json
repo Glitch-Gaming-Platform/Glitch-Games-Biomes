@@ -8,24 +8,24 @@
       "label": "Hunter Bow Shot",
       "family": "physical",
       "builder": "hunter_arrow",
-      "targetSize": 1.55,
+      "targetSize": 1.0,
       "flightClip": "FlightLoop_24",
       "assetUrl": "/assets/harthmere/glb/projectiles/hunter_bow_shot.glb",
       "previewUrl": "/assets/harthmere/projectile_previews/hunter_bow_shot.png",
-      "triangleCount": 2320,
+      "triangleCount": 2212,
       "bounds": {
         "min": [
-          -0.17310592532157898,
+          -0.17310591042041779,
           -0.058385275304317474,
-          -0.7429705262184143
+          -0.5029705762863159
         ],
         "max": [
-          0.17310592532157898,
+          0.17310591042041779,
           0.05838526785373688,
-          0.8933073282241821
+          0.6333073377609253
         ]
       },
-      "bytes": 27780
+      "bytes": 26056
     },
     {
       "id": "quick_shot",

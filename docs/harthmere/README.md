@@ -22,6 +22,10 @@ Keep source folders for runtime code and tests; put gameplay/reference documents
   materialization authority repairs, migration rules, and deployment checks.
 - `HARTHMERE_NATIVE_ECS_COMBAT.md` - one-authority native combat, exact NPC and
   item identity, server validation, migration, and verification matrix.
+- `HARTHMERE_MULTIPLAYER_COMBAT_AUDIT_2026-08-06.md` - two-player retaliation,
+  player/NPC escort participation, HAR and Azure latency measurements, live
+  browser evidence, hotfix/cleanup record, and prioritized multiplayer
+  performance work.
 - `HARTHMERE_BOSS_COMBAT_AND_ANIMATION.md` - the eleven-boss roster, five-attack
   contract, entity-aware combat routing, GLB animation binding, giant positional
   footsteps, and focused/live verification.

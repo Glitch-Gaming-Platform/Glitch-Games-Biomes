@@ -133,6 +133,13 @@ const harthmereTownRepairAudit = fs.readFileSync(
   path.join(root, "scripts/harthmere/audit-harthmere-town-repair.cjs"),
   "utf8"
 );
+const harthmereExactTerrainOverlapRepair = fs.readFileSync(
+  path.join(
+    root,
+    "scripts/harthmere/repair-harthmere-exact-terrain-overlaps.cjs"
+  ),
+  "utf8"
+);
 const runBuildChecks = script.slice(script.indexOf("run_build_checks()"));
 const pushAndDeploy = script.slice(
   script.indexOf("push_and_deploy()"),
@@ -563,9 +570,7 @@ ok(
 );
 ok(
   script.includes('NEXT_PUBLIC_GLITCH_TITLE_ID="$GLITCH_TITLE_ID"') &&
-    script.includes(
-      'HARTHMERE_DEPLOY_TAG="$TAG-$(date -u +%Y%m%d%H%M%S)"'
-    ),
+    script.includes('HARTHMERE_DEPLOY_TAG="$TAG-$(date -u +%Y%m%d%H%M%S)"'),
   "Next build and Azure runtime include identity and force a fresh deploy revision"
 );
 ok(
@@ -580,6 +585,13 @@ ok(
     script.includes("rm -f public/sw.js.map") &&
     !dockerfile.includes("public/sw.js.map"),
   "production browser source maps are removed before image packaging"
+);
+ok(
+  nextConfig.includes('require("./config/http_compression.cjs")') &&
+    dockerfile.includes(
+      "COPY --chown=nextjs:nodejs config/http_compression.cjs config/http_compression.cjs"
+    ),
+  "production image packages the runtime HTTP compression config required by Next"
 );
 ok(
   dockerfile.includes("npm ci --omit=dev --ignore-scripts") &&
@@ -1161,6 +1173,12 @@ ok(
   "authored-water reconciliation has a bounded exit and resumable skip"
 );
 ok(
+  script.includes(
+    'HARTHMERE_SKIP_TOWN_REPAIR_AUDIT="${HARTHMERE_SKIP_TOWN_REPAIR_AUDIT:-0}"'
+  ),
+  "production deploy forwards the explicit non-blocking town-repair audit override into the VNet reconciliation job"
+);
+ok(
   script.includes("HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION"),
   "deploy can explicitly skip broad world sync reconciliation only by request"
 );
@@ -1192,6 +1210,7 @@ ok(
       "repair_extension_surface",
       "clear_building_interior_vegetation",
       "repair_harthmere_town",
+      "repair_exact_terrain_overlaps",
       "materialize_business_outposts",
       'run_node "Harthmere ECS and shared-state reconciliation" \\',
       "  scripts/harthmere/reconcile-production-world-sync.cjs",
@@ -1208,10 +1227,32 @@ ok(
     harthmereProductionReconciliation.includes(
       "reconcile-production-live-creature-grounding.cjs"
     ) &&
+    harthmereProductionReconciliation.includes(
+      "verify_exact_terrain_overlaps"
+    ) &&
+    harthmereExactTerrainOverlapRepair.includes(
+      "HARTHMERE_EXACT_OVERLAP_REQUIRE_CLEAN"
+    ) &&
+    harthmereExactTerrainOverlapRepair.includes(
+      "Refusing to retire canonical terrain"
+    ) &&
+    harthmereExactTerrainOverlapRepair.includes("shard_seed: null") &&
     harthmereProductionReconciliation.includes("verify_harthmere_town") &&
     harthmereProductionReconciliation.indexOf("repair_harthmere_town\n") <
       harthmereProductionReconciliation.indexOf(
+        "repair_exact_terrain_overlaps\n"
+      ) &&
+    harthmereProductionReconciliation.indexOf(
+      "repair_exact_terrain_overlaps\n"
+    ) <
+      harthmereProductionReconciliation.indexOf(
         "materialize_business_outposts\n"
+      ) &&
+    harthmereProductionReconciliation.lastIndexOf(
+      "verify_exact_terrain_overlaps\n"
+    ) >
+      harthmereProductionReconciliation.indexOf(
+        "materialize_connector_route\n"
       ) &&
     harthmereProductionReconciliation.lastIndexOf("verify_harthmere_town\n") >
       harthmereProductionReconciliation.indexOf(

@@ -1,5 +1,8 @@
 import assert from "assert";
-import { cloudSaveContentFingerprint } from "@/client/game/glitch/harthmere_glitch_bridge";
+import {
+  cloudSaveContentFingerprint,
+  shouldStartHarthmereGlitchCloudTimers,
+} from "@/client/game/glitch/harthmere_glitch_bridge";
 
 describe("Harthmere Glitch cloud save content deduplication", () => {
   it("is stable across storage iteration order", () => {
@@ -48,5 +51,35 @@ describe("Harthmere Glitch cloud save content deduplication", () => {
     });
 
     assert.notEqual(before, after);
+  });
+
+  it("never starts a second timer stack after an async controller was stopped", () => {
+    assert.equal(
+      shouldStartHarthmereGlitchCloudTimers({
+        stopped: false,
+        disconnected: false,
+        valid: true,
+        guest: false,
+      }),
+      true
+    );
+    assert.equal(
+      shouldStartHarthmereGlitchCloudTimers({
+        stopped: true,
+        disconnected: false,
+        valid: true,
+        guest: false,
+      }),
+      false
+    );
+    assert.equal(
+      shouldStartHarthmereGlitchCloudTimers({
+        stopped: false,
+        disconnected: true,
+        valid: true,
+        guest: false,
+      }),
+      false
+    );
   });
 });

@@ -11,6 +11,7 @@ import {
 import { registerCh1LiveItemDefinitions } from "@/shared/harthmere/ch1_live_items";
 import {
   ch1ApplyLiveObjectiveEffects,
+  ch1RechargeLiveAugur9,
   ch1RuntimePlayerState,
 } from "@/shared/harthmere/ch1_live_story";
 import { ch1Quest } from "@/shared/harthmere/ch1_quests";
@@ -79,6 +80,16 @@ describe("Chapter 1 live story authority", () => {
         "frag_a2_play_the_ninth_signature"
       )
     );
+  });
+
+  it("never exposes an internal recharge item id in player-facing errors", () => {
+    const result = ch1RechargeLiveAugur9(
+      defaultCh1LiveGateRuntimeState(),
+      "item_unknown_debug_cell"
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, "That item cannot recharge AUGUR-9.");
+    assert.doesNotMatch(result.reason ?? "", /item_[a-z0-9_]+/i);
   });
 
   it("unlocks linking without pre-awarding the link-derived fragment", () => {

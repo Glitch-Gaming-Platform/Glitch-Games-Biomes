@@ -255,4 +255,93 @@ describe("Harthmere native ECS authority boundaries", () => {
       ) > 1
     );
   });
+
+  it("materializes a vendor material bundle into storage with a full native backpack", () => {
+    const fillerItemId = "native_vendor_full_backpack_filler";
+    const materialItemId = "native_vendor_material_bundle";
+    const vendorId = "native_vendor_material_bundle_vendor";
+    registerHarthmereItemDefinition({
+      itemId: fillerItemId,
+      displayName: "Native Vendor Full Backpack Filler",
+      maxStackSize: 1,
+      baseValue: 1,
+      binding: "none",
+      isQuestItem: false,
+      isCurrency: false,
+      isConsumable: false,
+      isCraftingMaterial: false,
+      isSpellTome: false,
+      levelRequirement: 1,
+      classRestriction: [],
+      stats: {},
+      tradeable: true,
+    });
+    registerHarthmereItemDefinition({
+      itemId: materialItemId,
+      displayName: "Native Vendor Material Bundle",
+      maxStackSize: 99,
+      baseValue: 2,
+      binding: "none",
+      isQuestItem: false,
+      isCurrency: false,
+      isConsumable: false,
+      isCraftingMaterial: true,
+      isSpellTome: false,
+      levelRequirement: 1,
+      classRestriction: [],
+      stats: {},
+      tradeable: true,
+      category: "materials",
+    });
+    registerHarthmereVendorEntry({
+      vendorId,
+      itemId: materialItemId,
+      buyPrice: 1,
+      sellPrice: 1,
+      stock: 8,
+      bundleQuantity: 8,
+      bundlePrice: 7,
+    });
+
+    const result = reduceHarthmereLiveModeBackendState(
+      defaultHarthmereLiveModeBackendState(ACTOR, NOW),
+      envelope(
+        "request_vendor_transaction",
+        "vendor",
+        {
+          vendorId,
+          transactionKind: "buy",
+          itemId: materialItemId,
+          count: 8,
+        },
+        {
+          requestId: `native-boundary:vendor-material-buy:${NOW}`,
+          idempotencyKey: `native-boundary:vendor-material-buy:${NOW}`,
+          serverActorGold: 100,
+          serverActorItemCounts: { [fillerItemId]: 40 },
+          serverActorMaterialStorageItemCounts: {},
+          serverActorMaterialStorageMaxSlots: 32,
+        }
+      ),
+      NOW
+    );
+
+    assert.ok(
+      !result.summary.warnings.includes("vendor_rejected:inventory_full"),
+      JSON.stringify(result.summary.warnings)
+    );
+    assert.equal(result.state.inventory.gold, 93);
+    assert.equal(result.state.inventory.items[materialItemId] ?? 0, 0);
+    assert.equal(result.state.banking.materialStorage[materialItemId], 8);
+    const exchange = result.summary.nativeEcsMaterializationPlans?.find(
+      (plan) => plan.kind === "inventory_exchange"
+    );
+    assert.equal(exchange?.kind, "inventory_exchange");
+    if (exchange?.kind !== "inventory_exchange") return;
+    assert.deepEqual(exchange.rewardItemStacks, {});
+    assert.deepEqual(exchange.rewardMaterialStorageItemStacks, {
+      [materialItemId]: 8,
+    });
+    assert.equal(exchange.goldDelta, -7);
+  });
 });

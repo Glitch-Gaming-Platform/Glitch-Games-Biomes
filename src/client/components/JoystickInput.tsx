@@ -4,7 +4,6 @@ import { describeHotbarPrimaryAction } from "@/client/components/biomes_ui/hotba
 import {
   cycleHarthmereCombatTarget,
   performHarthmereKeyedAttack,
-  toggleHarthmereWeaponDrawn,
   useHarthmereMultiplayerCombatState,
 } from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
 import { readHarthmereCombatState } from "@/client/components/challenges/LocalDevHarthmereCombat";
@@ -41,6 +40,7 @@ import {
   mobileJoystickMagnitude,
   mobileJoystickMovementActionForDirectionForTest,
   mobileJoystickRunMotionValueForTest,
+  mobileJoystickResponsivePositionForTest,
   type MobileJoystickHardTap,
 } from "@/client/game/util/mobile_joystick";
 import type { Vec2 } from "@/shared/math/types";
@@ -59,14 +59,22 @@ const MOBILE_MOVEMENT_HISTORY_GUARD_KEY = "__biomesMobileMovementHistoryGuard";
 
 export const MaybeJoystickInput: React.FunctionComponent<{}> = React.memo(
   ({}) => {
-    const { clientConfig } = useClientContext();
+    const { clientConfig, reactResources } = useClientContext();
     const nonGameplayScreenVisible = useBiomesUINonGameplayScreenVisible();
+    const gameModal = reactResources.use("/game_modal");
 
     if (!clientConfig.showVirtualJoystick) {
       return <></>;
     }
 
     if (clientConfig.mobileDevice && nonGameplayScreenVisible) {
+      return <></>;
+    }
+
+    // MOBILE_CONTROLS_HIDE_FOR_GAME_MODAL: centered F and the lower action row
+    // otherwise sit above compact phone dialogs (for example a read-only sign)
+    // and can intercept the dialog's real touch. Desktop has no joystick here.
+    if (clientConfig.mobileDevice && gameModal.kind !== "empty") {
       return <></>;
     }
 
@@ -100,6 +108,7 @@ export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
   const movementActionPulseNonceRef = useRef(0);
   const crouchPointerIdRef = useRef<number>(undefined);
   const jumpPointerIdRef = useRef<number>(undefined);
+  const interactPointerIdRef = useRef<number>(undefined);
   const movementControlsRef = useRef<HTMLDivElement>(null);
 
   const nowMs = () =>
@@ -363,10 +372,13 @@ export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
                 resetLeftJoystick();
               }}
               move={(evt) => {
-                const x = evt.x ?? 0;
-                const y = evt.y ?? 0;
+                const rawX = evt.x ?? 0;
+                const rawY = evt.y ?? 0;
+                const [x, y] = clientConfig.mobileDevice
+                  ? mobileJoystickResponsivePositionForTest(rawX, rawY)
+                  : [rawX, rawY];
                 leftPosRef.current = [x, y];
-                updateLeftJoystickGesture(x, y);
+                updateLeftJoystickGesture(rawX, rawY);
                 leftRunMotionRef.current = mobileJoystickRunMotionValueForTest(
                   x,
                   y,
@@ -535,7 +547,36 @@ export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
           data-biomes-mobile-interact="true"
           onPointerDown={(event) => {
             containMobileControlEvent(event);
+            if (interactPointerIdRef.current !== undefined) {
+              return;
+            }
+            interactPointerIdRef.current = event.pointerId;
+            event.currentTarget.setPointerCapture?.(event.pointerId);
+            // An interaction candidate can disappear between touch-down and
+            // touch-up (for example, when the player is moving at the edge of
+            // an NPC's range). React then unmounts this button and Safari never
+            // delivers the pointer-up to it. F is a discrete action, not a
+            // hold, so invoke while the selected candidate is still present.
             invokeSelectedWorldInteractionForKey("KeyF");
+          }}
+          onPointerUp={(event) => {
+            containMobileControlEvent(event);
+            if (interactPointerIdRef.current !== event.pointerId) {
+              return;
+            }
+            interactPointerIdRef.current = undefined;
+          }}
+          onPointerCancel={(event) => {
+            containMobileControlEvent(event);
+            if (interactPointerIdRef.current === event.pointerId) {
+              interactPointerIdRef.current = undefined;
+            }
+          }}
+          onLostPointerCapture={(event) => {
+            containMobileControlEvent(event);
+            if (interactPointerIdRef.current === event.pointerId) {
+              interactPointerIdRef.current = undefined;
+            }
           }}
           onClick={(event) => {
             containMobileControlEvent(event);
@@ -651,7 +692,7 @@ const MobileActionButtons: React.FunctionComponent<{}> = () => {
     }
   };
 
-  // A stuck `primary_hold` would mine or swing forever, so release on every
+  // A stuck `primary_hold` would mine or use forever, so release on every
   // interruption -- the same set the crouch/jump controls already guard.
   useEffect(() => {
     const releaseForInterruption = () => releaseAllHoldActions();
@@ -676,10 +717,6 @@ const MobileActionButtons: React.FunctionComponent<{}> = () => {
    * range/item validation, and the same Anima retaliation.
    */
   const invokeCombatAction = (kind: MobileActionKind) => {
-    if (kind === "draw") {
-      toggleHarthmereWeaponDrawn();
-      return;
-    }
     if (kind === "target") {
       cycleHarthmereCombatTarget();
       return;
@@ -715,9 +752,9 @@ const MobileActionButtons: React.FunctionComponent<{}> = () => {
     () =>
       mobileActionButtons(
         availability,
-        // The primary caption follows the selected item, so the button reads
-        // "Mine", "Attack", "Place" or "Use" instead of a generic verb. An
-        // empty hand still mines, which is why `undefined` is allowed through.
+        // One context-sensitive primary owns mining, use, light attack, and
+        // held heavy attack. The selected native item script remains the sole
+        // authority for deciding which action applies.
         selectedItem
           ? (describeHotbarPrimaryAction(selectedItem)
               .kind as MobilePrimaryLabelKind)

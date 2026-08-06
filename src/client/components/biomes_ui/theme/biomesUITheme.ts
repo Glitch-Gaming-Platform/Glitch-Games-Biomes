@@ -1597,27 +1597,30 @@ button.biomes-ui-card:disabled {
 }
 
 .biomes-ui-mobile-menu--phone .biomes-ui-mobile-menu__button {
-  min-height: 44px;
+  min-height: 38px;
 }
 
 .biomes-ui-mobile-menu--phone {
+  left: calc(max(8px, env(safe-area-inset-left)) + min(46vw, 190px) + 2px);
+  right: auto;
+  top: max(8px, env(safe-area-inset-top));
   width: auto;
-  flex-direction: row;
+  flex-direction: column;
   align-items: stretch;
   gap: 4px;
 }
 
 .biomes-ui-mobile-menu--phone .biomes-ui-mobile-menu__button {
-  width: 44px;
-  min-width: 44px;
+  width: 38px;
+  min-width: 38px;
   padding: 0;
   gap: 0;
 }
 
 .biomes-ui-mobile-menu--phone .biomes-ui-mobile-menu__key {
-  width: 28px;
-  height: 28px;
-  font-size: 14px;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
 }
 
 .biomes-ui-mobile-menu--phone .biomes-ui-mobile-menu__label {
@@ -1676,6 +1679,25 @@ button.biomes-ui-card:disabled {
   font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
+}
+
+.biomes-ui-current-objective-hud__toggle {
+  width: 100%;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #ffe28a;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .biomes-ui-current-objective-hud__text {
@@ -2978,7 +3000,12 @@ button.biomes-ui-card:disabled {
     font-size: 10px;
   }
   .biomes-ui-mobile-menu--phone .biomes-ui-mobile-menu__button {
-    min-height: 44px;
+    min-height: 38px;
+  }
+  .biomes-ui-mobile-menu--phone {
+    left: calc(max(8px, env(safe-area-inset-left)) + min(46vw, 190px) + 2px);
+    right: auto;
+    top: max(6px, env(safe-area-inset-top));
   }
   .biomes-ui-current-objective-hud--mobile {
     right: calc(max(8px, env(safe-area-inset-right)) + 108px);
@@ -3036,12 +3063,19 @@ button.biomes-ui-card:disabled {
 
 .biomes-ui-current-objective-hud--phone {
   right: max(8px, env(safe-area-inset-right));
-  bottom: max(112px, calc(env(safe-area-inset-bottom) + 100px));
-  width: min(49vw, 320px);
+  top: calc(max(8px, env(safe-area-inset-top)) + 126px);
+  bottom: auto;
+  width: min(140px, calc(100vw - 16px));
   max-height: min(28dvh, 220px);
   overflow: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  pointer-events: auto;
+}
+
+.biomes-ui-current-objective-hud--phone[data-biomes-mobile-objective-collapsed="true"] {
+  padding-top: 6px;
+  padding-bottom: 6px;
 }
 
 .biomes-ui-overlay--mobile [role="tablist"] {
@@ -3057,11 +3091,110 @@ button.biomes-ui-card:disabled {
 }
 
 @media (max-height: 500px) and (orientation: landscape) {
+  /* MOBILE_PHONE_LANDSCAPE_HUD: the landscape viewport is wider than the
+   * generic 768px phone breakpoint, so repeat the compact phone treatment
+   * explicitly instead of falling back to the 320px tablet panel. */
+  .biomes-ui-vitals-panel--phone {
+    left: max(8px, env(safe-area-inset-left));
+    top: max(6px, env(safe-area-inset-top));
+    width: 186px;
+    padding: 6px 7px 7px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-panel__header {
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-panel__game {
+    max-width: 110px;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-panel__title {
+    display: none;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-panel__state {
+    max-width: 56px;
+    padding: 1px 3px;
+    font-size: 6px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-panel__bars {
+    gap: 3px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-bar {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: center;
+    gap: 3px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-bar__meta {
+    justify-content: flex-start;
+    gap: 2px;
+    margin: 0;
+    font-size: 8px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-bar__icon {
+    width: 12px;
+    height: 12px;
+    font-size: 10px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-bar__track {
+    height: 6px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-panel__stats {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
+    margin-top: 4px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-panel__standing,
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-panel__footer {
+    display: contents;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-chip {
+    gap: 0;
+    padding: 1px;
+    border-radius: 5px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-chip__icon {
+    width: 12px;
+    height: 12px;
+    font-size: 10px;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-chip__value {
+    font-size: 8px;
+    line-height: 1;
+  }
+  .biomes-ui-vitals-panel--phone .biomes-ui-vitals-chip__track {
+    display: none;
+  }
+  .biomes-ui-mobile-menu--phone {
+    left: calc(max(8px, env(safe-area-inset-left)) + 190px);
+    top: max(6px, env(safe-area-inset-top));
+    gap: 3px;
+  }
+  .biomes-ui-mobile-menu--phone .biomes-ui-mobile-menu__button {
+    width: 34px;
+    min-width: 34px;
+    min-height: 34px;
+  }
+  .biomes-ui-mobile-menu--phone .biomes-ui-mobile-menu__key {
+    width: 22px;
+    height: 22px;
+    font-size: 11px;
+  }
   .biomes-ui-current-objective-hud--phone {
-    right: calc(max(8px, env(safe-area-inset-right)) + 112px);
-    bottom: max(108px, calc(env(safe-area-inset-bottom) + 96px));
-    width: min(34vw, 300px);
-    max-height: min(36dvh, 150px);
+    left: calc(max(8px, env(safe-area-inset-left)) + 232px);
+    right: auto;
+    top: max(6px, env(safe-area-inset-top));
+    bottom: auto;
+    width: min(160px, 25vw);
+    max-height: 104px;
+  }
+  .biomes-ui-hotbar-hud--mobile[data-biomes-mobile-hotbar="true"] {
+    left: auto;
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(18px, calc(env(safe-area-inset-bottom) + 4px));
+    width: min(34vw, 280px);
   }
 }
 

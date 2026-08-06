@@ -5,6 +5,7 @@ import {
   EVADE_MOVEMENT_ACTION_STAMINA_COST,
   MOVEMENT_ACTION_STAMINA_COST,
   PLAYER_EVADE_ATTACK_TRANSITION,
+  PLAYER_MOVEMENT_ACTION_ATTACK_CANCEL_SECONDS,
   PLAYER_MOVEMENT_ACTION_TIMING,
   PLAYER_ROLL_DODGE_EVENTS,
   PLAYER_ROLL_DODGE_PHASES,
@@ -35,8 +36,8 @@ import {
 import assert from "assert";
 
 describe("movement actions", () => {
-  it("reserves Z/X/C and gives committed movement actions distinct costs", () => {
-    assert.deepEqual(RESERVED_MOVEMENT_KEY_CODES, ["KeyZ", "KeyX", "KeyC"]);
+  it("reserves Z/E/Q and gives committed movement actions distinct costs", () => {
+    assert.deepEqual(RESERVED_MOVEMENT_KEY_CODES, ["KeyZ", "KeyE", "KeyQ"]);
     assert.equal(MOVEMENT_ACTION_STAMINA_COST, 3);
     assert.equal(EVADE_MOVEMENT_ACTION_STAMINA_COST, 2);
     assert.equal(DOUBLE_JUMP_STAMINA_COST, 4);
@@ -204,7 +205,7 @@ describe("movement actions", () => {
     assert.equal(playerMovementActionVisualPose("idle", 0.5), undefined);
   });
 
-  it("buffers attacks only near evade recovery and then opens the cancel", () => {
+  it("opens attacks immediately throughout evade without ending movement", () => {
     const input = {
       action: "evade" as const,
       startTimeSeconds: 10,
@@ -213,14 +214,14 @@ describe("movement actions", () => {
     };
     assert.equal(
       movementActionAttackTransition({ ...input, nowSeconds: 10.2 }),
-      "blocked"
+      "open"
     );
     assert.equal(
       movementActionAttackTransition({
         ...input,
         nowSeconds: 10 + PLAYER_EVADE_ATTACK_TRANSITION.queueStartSeconds,
       }),
-      "queue"
+      "open"
     );
     assert.equal(
       movementActionAttackTransition({
@@ -238,13 +239,47 @@ describe("movement actions", () => {
     );
     assert.equal(
       movementActionAttackTransition({
-        ...input,
         action: "dodge",
-        nowSeconds: 10.7,
+        startTimeSeconds: 10,
+        expiryTimeSeconds:
+          10 + PLAYER_MOVEMENT_ACTION_TIMING.dodge.durationSeconds,
+        nowSeconds: 10 + PLAYER_MOVEMENT_ACTION_ATTACK_CANCEL_SECONDS.dodge,
       }),
-      "none",
-      "the new cancel window must not rewrite the established dodge flow"
+      "open",
+      "dodge recovery must flow directly into attack"
     );
+  });
+
+  it("opens attack intent immediately during every committed player movement", () => {
+    for (const action of ["dodge", "evade", "doubleJump"] as const) {
+      const timing = PLAYER_MOVEMENT_ACTION_TIMING[action];
+      const input = {
+        action,
+        startTimeSeconds: 20,
+        expiryTimeSeconds: 20 + timing.durationSeconds,
+      };
+      assert.equal(
+        movementActionAttackTransition({
+          ...input,
+          nowSeconds: 20 + timing.durationSeconds * 0.25,
+        }),
+        "open",
+        `${action} must start the attack upper body during committed motion`
+      );
+      assert.equal(
+        movementActionAttackTransition({
+          ...input,
+          nowSeconds: 20 + PLAYER_MOVEMENT_ACTION_ATTACK_CANCEL_SECONDS[action],
+        }),
+        "open",
+        `${action} must flow directly into attack at recovery`
+      );
+    }
+  });
+
+  it("uses a half-second cooldown between consecutive dodge and evade actions", () => {
+    assert.equal(PLAYER_MOVEMENT_ACTION_TIMING.dodge.cooldownSeconds, 0.5);
+    assert.equal(PLAYER_MOVEMENT_ACTION_TIMING.evade.cooldownSeconds, 0.5);
   });
 
   it("keeps double jump vertical-only and without invulnerability", () => {

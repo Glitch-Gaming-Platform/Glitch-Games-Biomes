@@ -1,7 +1,7 @@
 import type { Vec3 } from "@/shared/math/types";
 
 export const HARTHMERE_BOSS_VISUAL_ASSETS_VERSION =
-  "harthmere-boss-visual-assets-v4-vyrahel-alpha-echo-apprentice-rebuild" as const;
+  "harthmere-boss-visual-assets-v5-future-stagger-clips" as const;
 
 export const HARTHMERE_BOSS_REQUIRED_ANIMATION_CLIPS = [
   "Idle",
@@ -16,6 +16,9 @@ export const HARTHMERE_BOSS_REQUIRED_ANIMATION_CLIPS = [
   "AreaAttack",
   "HitReact",
   "Stunned",
+  "BossStaggerLight",
+  "BossStaggerMedium",
+  "BossStaggerHeavy",
   "Roar",
   "PhaseTransition",
   "Summon",

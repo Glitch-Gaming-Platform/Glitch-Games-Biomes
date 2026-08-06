@@ -339,6 +339,13 @@ describe("Harthmere live-mode cooking backend", () => {
       {
         ...freshState(),
         inventory: { items: { wild_berries: 2, loaf_bread: 1, fresh_milk: 1 } },
+        classMagic: {
+          ...freshState().classMagic,
+          skills: {
+            ...freshState().classMagic.skills,
+            cooking: { xp: 0, level: 100 },
+          },
+        },
       } as any,
       {
         operation: "cook_enqueue",

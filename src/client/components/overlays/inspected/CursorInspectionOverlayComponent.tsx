@@ -1,12 +1,14 @@
 import { useCanTalkToNpc } from "@/client/components/challenges/TalkToNPCDefaultDialog";
 import { shouldUseHarthmereCursorObjectSemantics } from "@/client/components/challenges/dialogueObjectSemantics";
 import { openHarthmereObjectContainer } from "@/client/components/challenges/harthmereObjectContainers";
+import { WORLD_INTERACTION_PRIORITY } from "@/client/components/challenges/worldInteractionDispatcher";
 import {
   completeHarthmereJobsBoardFieldObjectiveForObjectSoon,
   harthmereWorldObjectInteractionErrorMessage,
   performHarthmereObjectInteraction,
 } from "@/client/components/challenges/harthmereObjectInteractions";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { useHarthmereBusinessCustomerTalkTarget } from "@/client/components/harthmere_business/harthmereBusinessCustomerTalkState";
 import { CURSOR_INSPECTION_SHORTCUT_KEYS_FOR_TEST } from "@/client/components/overlays/inspected/inspectionShortcutKeys";
 import { MaybeError } from "@/client/components/system/MaybeError";
 import { mergeInspectShortcutLayers } from "@/client/components/overlays/inspected/inspectShortcutOrdering";
@@ -73,6 +75,9 @@ export const CursorInspectionComponent: React.FunctionComponent<
 
   const canTalk = useCanTalkToNpc(
     context,
+    overlay?.entityId ?? INVALID_BIOMES_ID
+  );
+  const businessCustomerTalk = useHarthmereBusinessCustomerTalkTarget(
     overlay?.entityId ?? INVALID_BIOMES_ID
   );
   const canTalkToProjectedNpc =
@@ -325,25 +330,38 @@ export const CursorInspectionComponent: React.FunctionComponent<
               {subtitle && <span className="subtitle">{subtitle}</span>}
             </div>
           )}
-          {trueShortcuts.map((shortcut, i) => (
-            <ShortcutText
-              disabled={shortcut.disabled}
-              shortcut={CURSOR_INSPECTION_SHORTCUT_KEYS_FOR_TEST[i].key}
-              key={i}
-              keyCode={
-                CURSOR_INSPECTION_SHORTCUT_KEYS_FOR_TEST[i]
-                  .keyCode as GlobalKeyCode
-              }
-              onKeyDown={shortcut.onKeyDown}
-              worldInteractionCandidateId={
-                overlay
-                  ? `native:${overlay.kind}:${maybeEntityId}:${i}`
-                  : undefined
-              }
-            >
-              {shortcut.title}
-            </ShortcutText>
-          ))}
+          {trueShortcuts.map((shortcut, i) => {
+            const isBusinessCustomerTalkShortcut = Boolean(
+              businessCustomerTalk &&
+              typeof shortcut.title === "string" &&
+              shortcut.title.trim().toLowerCase() ===
+                inspectText.trim().toLowerCase()
+            );
+            return (
+              <ShortcutText
+                disabled={shortcut.disabled}
+                shortcut={CURSOR_INSPECTION_SHORTCUT_KEYS_FOR_TEST[i].key}
+                key={i}
+                keyCode={
+                  CURSOR_INSPECTION_SHORTCUT_KEYS_FOR_TEST[i]
+                    .keyCode as GlobalKeyCode
+                }
+                onKeyDown={shortcut.onKeyDown}
+                worldInteractionCandidateId={
+                  overlay
+                    ? `native:${overlay.kind}:${maybeEntityId}:${i}`
+                    : undefined
+                }
+                worldInteractionPriority={
+                  isBusinessCustomerTalkShortcut
+                    ? WORLD_INTERACTION_PRIORITY.activeBusinessCustomer
+                    : undefined
+                }
+              >
+                {shortcut.title}
+              </ShortcutText>
+            );
+          })}
           {children}
         </>
       </div>

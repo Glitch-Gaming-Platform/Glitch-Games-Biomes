@@ -191,6 +191,7 @@ export const GeneralCraftingStationScreen: React.FunctionComponent<{
     gardenHose,
     userId,
     authManager,
+    clientConfig,
   } = useClientContext();
   const [recipeBook, inventory] = reactResources.useAll(
     ["/ecs/c/recipe_book", userId],
@@ -412,6 +413,7 @@ export const GeneralCraftingStationScreen: React.FunctionComponent<{
   return (
     <InventoryOverrideContextProvider>
       <BiomesUIShopChrome
+        mobile={clientConfig.mobileDevice}
         title={title}
         eyebrow={stationItem ? "Crafting Station" : "Handcrafting"}
         variant="container"

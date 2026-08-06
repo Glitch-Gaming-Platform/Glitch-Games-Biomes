@@ -1,6 +1,10 @@
 import type { ClientContext, ClientContextSubset } from "@/client/game/context";
 import type { Item, OwnedItemReference } from "@/shared/ecs/gen/types";
 import type { BlockTerrainSample } from "@/shared/game/spatial";
+import type {
+  HarthmereCombatComboState,
+  HarthmerePlayerAttackTimingClass,
+} from "@/shared/harthmere/deliberate_combat";
 import type { BiomesId } from "@/shared/ids";
 import type { ReadonlyVec3 } from "@/shared/math/types";
 import type { TimeWindow } from "@/shared/util/throttling";
@@ -82,8 +86,13 @@ export interface DestroyInfo {
 
 export interface AttackInfo {
   start: number;
+  /** Exact release timestamp joining a paid projectile to its later hit. */
+  attackTime?: number;
   duration: number;
   movementScale?: number;
+  timingClass?: HarthmerePlayerAttackTimingClass;
+  damageMultiplier?: number;
+  combatCombo?: HarthmereCombatComboState;
 }
 
 export type WithActionThottler<T> = T & {

@@ -202,10 +202,15 @@ describe("Biomes UI progression tabs", () => {
 
   it("reserves P for the dedicated physical farming tab", () => {
     assert.equal(TAB_DESCRIPTORS.farming.shortcut, "P");
-    assert.equal(TAB_DESCRIPTORS.banking.shortcut, "Q");
+    assert.equal(TAB_DESCRIPTORS.abilities.shortcut, undefined);
+    assert.equal(TAB_DESCRIPTORS.banking.shortcut, "B");
     assert.equal(
       DEFAULT_TAB_SHORTCUTS.find((shortcut) => shortcut.key === "p")?.tab,
       "farming"
+    );
+    assert.equal(
+      DEFAULT_TAB_SHORTCUTS.find((shortcut) => shortcut.key === "b")?.tab,
+      "banking"
     );
   });
 

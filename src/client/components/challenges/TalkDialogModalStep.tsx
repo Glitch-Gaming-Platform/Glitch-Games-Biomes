@@ -18,6 +18,7 @@ import { selectHarthmereCombatTarget } from "@/client/components/challenges/Loca
 import {
   talkDialogAdvanceDecisionForTest,
   talkDialogHasChoiceActionsForTest,
+  talkDialogShouldShowActionsForTest,
   talkDialogShouldShowVoiceInputForTest,
 } from "@/client/components/challenges/talkDialogModalFlow";
 import { HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT } from "@/client/components/challenges/harthmereEvents";
@@ -112,6 +113,7 @@ export const TalkDialogModalStep: React.FunctionComponent<
     onClose?: () => void;
     buttonLayout?: ButtonLayout;
     voiceInput?: TalkDialogVoiceInput;
+    revealActionsImmediately?: boolean;
   }>
 > = ({
   id,
@@ -120,6 +122,7 @@ export const TalkDialogModalStep: React.FunctionComponent<
   buttonLayout = "horizontal-rectangle",
   onClose,
   voiceInput,
+  revealActionsImmediately = false,
   children,
 }) => {
   const { reactResources, resources } = useClientContext();
@@ -147,6 +150,7 @@ export const TalkDialogModalStep: React.FunctionComponent<
       id={id}
       onClose={onClose}
       voiceInput={voiceInput}
+      revealActionsImmediately={revealActionsImmediately}
     >
       {children}
     </GenericTalkDialogModalStep>
@@ -163,6 +167,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
     id: string | BiomesId | number;
     voiceInput?: TalkDialogVoiceInput;
     voiceOverride?: Voice;
+    revealActionsImmediately?: boolean;
   }>
 > = ({
   entityId,
@@ -173,6 +178,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
   id,
   voiceInput,
   voiceOverride,
+  revealActionsImmediately = false,
   children,
 }) => {
   const { reactResources } = useClientContext();
@@ -385,8 +391,11 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
     actionCount: actions.length,
   });
 
-  const showNpcAcceptContainer =
-    typingComplete && (currentDialog.children || actions.length > 0);
+  const showNpcAcceptContainer = talkDialogShouldShowActionsForTest({
+    typingComplete,
+    revealActionsImmediately,
+    hasContent: Boolean(currentDialog.children || actions.length > 0),
+  });
   return (
     <>
       {!!translatedSpokenText?.length && chatVoices && (

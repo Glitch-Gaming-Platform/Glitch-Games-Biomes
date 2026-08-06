@@ -72,6 +72,12 @@ describe("Harthmere additive world extension", () => {
     );
     assert.equal(
       shouldEnableHarthmereAdditiveWorldExtension({
+        NEXT_PUBLIC_BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET: "1",
+      }),
+      false
+    );
+    assert.equal(
+      shouldEnableHarthmereAdditiveWorldExtension({
         BIOMES_HARTHMERE_STANDALONE_TOWN: "1",
       }),
       false

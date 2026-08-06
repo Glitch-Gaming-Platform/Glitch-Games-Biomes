@@ -1062,11 +1062,9 @@ export class OverlayScript implements Script {
         becomeTheNPC.kind === "active" && becomeTheNPC.entityId === entity.id
           ? becomeTheNPC
           : undefined;
-      const npc = this.resources.cached("/scene/npc/render_state", entity.id);
       const rawNpcPos =
         presentation.position ??
         motionOverrides?.position ??
-        npc?.smoothedPosition() ??
         entity.position?.v;
       const npcPos = rawNpcPos
         ? snapshotGroundLiveNpcPosition(rawNpcPos, entity.label?.text)
@@ -1189,11 +1187,6 @@ export class OverlayScript implements Script {
         continue;
       }
 
-      const npc = this.resources.cached("/scene/npc/render_state", entity.id);
-      if (!npc) {
-        continue;
-      }
-
       const becomeTheNPC = this.resources.get("/scene/npc/become_npc");
       const motionOverrides =
         becomeTheNPC.kind === "active" && becomeTheNPC.entityId === entity.id
@@ -1202,7 +1195,10 @@ export class OverlayScript implements Script {
       const npcPos =
         presentation.position ??
         motionOverrides?.position ??
-        npc.smoothedPosition();
+        entity.position?.v;
+      if (!npcPos) {
+        continue;
+      }
       const npcSize = entity.size?.v ?? getOverlayEntitySizeCompat(entity);
       const npcName =
         presentation.label ?? entity.label?.text ?? npcType.displayName;
@@ -2223,11 +2219,9 @@ export class OverlayScript implements Script {
         becomeTheNPC.kind === "active" && becomeTheNPC.entityId === entity.id
           ? becomeTheNPC
           : undefined;
-      const npc = this.resources.cached("/scene/npc/render_state", entity.id);
       const npcPosition =
         presentation.position ??
         motionOverrides?.position ??
-        npc?.smoothedPosition() ??
         entity.position?.v;
       if (!npcPosition) {
         continue;

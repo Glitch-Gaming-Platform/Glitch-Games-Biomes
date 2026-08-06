@@ -12,7 +12,7 @@ const files = {
 };
 const physicalValidationIndex = files.multi.indexOf("physical emits only after validation");
 const physicalAnimationIndex = files.multi.indexOf(
-  "emitAttackAnimation(attack);",
+  "emitAttackAnimation(attack, {",
   physicalValidationIndex,
 );
 const physicalArcIndex = files.multi.indexOf(
@@ -21,16 +21,16 @@ const physicalArcIndex = files.multi.indexOf(
 );
 
 const checks = [
-  ["B binding is KeyB", /basic:\s*"KeyB"/.test(files.multi)],
+  ["basic binding is primary click", /basic:\s*"Mouse0"/.test(files.multi)],
   ["H binding is KeyH", /heavy:\s*"KeyH"/.test(files.multi)],
   ["L binding is KeyL", /spark:\s*"KeyL"/.test(files.multi)],
-  ["B/H use forward arc", /performHarthmereForwardArcAttack\(attack\)/.test(files.multi)],
+  ["physical attacks use forward arc", /performHarthmereForwardArcAttack\(attack\)/.test(files.multi)],
   ["Spark remains selected-target", /performHarthmereCombatAttack\(Number\(targetOffset\), attack\)/.test(files.multi)],
   ["No unconditional keyed animation before validation", !/export function performHarthmereKeyedAttack\([^)]*\) \{\s*emitAttackAnimation\(attack\);/.test(files.multi)],
   ["Physical animation emitted after validation", physicalValidationIndex >= 0 && physicalAnimationIndex > physicalValidationIndex && physicalArcIndex > physicalAnimationIndex],
   ["HUD bridges keyed attack to native local-player emote", /function useHarthmereLocalPlayerAttackGestureBridge\(\)/.test(files.hud) && /eagerEmote\(events, resources, emoteType\)/.test(files.hud)],
   ["Basic uses attack1 and heavy uses attack2", /attack === "heavy" \? "attack2" : "attack1"/.test(files.hud)],
-  ["HUD bridge plays swing sound", /setSound\(resources, audioManager, "attack", "swing"/.test(files.hud)],
+  ["HUD bridge plays swing sound", /localPlayer\.player\.setSound\([\s\S]{0,120}resources,[\s\S]{0,80}audioManager,[\s\S]{0,80}"attack",[\s\S]{0,80}"swing"/.test(files.hud)],
   ["HUD calls local-player attack gesture bridge", /useHarthmereLocalPlayerAttackGestureBridge\(\);/.test(files.hud)],
   ["Forward vector uses Biomes viewDir yaw sign", /-Math\.sin\(yaw\), -Math\.cos\(yaw\)/.test(files.combat)],
   ["Forward arc emits explicit physical action fields", /attack:\s*ability[\s\S]{0,80}attackType:\s*ability[\s\S]{0,100}basic_melee_swing/.test(files.combat)],

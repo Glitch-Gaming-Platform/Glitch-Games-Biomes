@@ -1,8 +1,7 @@
 import type { BiomesId } from "@/shared/ids";
 import { z } from "zod";
 
-export const HARTHMERE_NPC_THREAT_TABLE_VERSION =
-  "harthmere-npc-threat-table";
+export const HARTHMERE_NPC_THREAT_TABLE_VERSION = "harthmere-npc-threat-table";
 
 export const zThreatTableComponent = z.object({
   threat: z
@@ -25,7 +24,15 @@ export const THREAT_PER_SOFT_CC = 50;
 export const THREAT_PER_DEBUFF = 100;
 export const THREAT_PER_BUFF_ALLY = 30;
 
-export function addThreat(table: ThreatTable, playerId: BiomesId, amount: number) {
+// A taunt is authored as an explicit target override. Retaliation target
+// rotation must never pull an NPC away from a player who owns that override.
+export const THREAT_FORCED_TARGET_THRESHOLD = THREAT_PER_TAUNT;
+
+export function addThreat(
+  table: ThreatTable,
+  playerId: BiomesId,
+  amount: number
+) {
   const key = String(playerId);
   table[key] = (table[key] ?? 0) + amount;
   if (table[key] <= 0) {
@@ -49,6 +56,52 @@ export interface ThreatTargetCandidate {
   id: BiomesId;
   distanceSq: number;
   threat: number;
+}
+
+export interface RetaliationParticipantCandidate extends ThreatTargetCandidate {
+  /** The player or combat NPC whose real attack opened this encounter. */
+  openedEncounter: boolean;
+}
+
+/**
+ * Selects one target from every eligible participant in a retaliation encounter.
+ *
+ * The opener remains first, preserving intuitive direct retaliation. Additional
+ * responders (or a solo creature after the rotation interval) advance through
+ * the same deterministic order so multiplayer fights do not collapse onto one
+ * player forever. An authored taunt still wins absolutely.
+ */
+export function pickRetaliationParticipantTarget(
+  candidates: ReadonlyArray<RetaliationParticipantCandidate>,
+  rotationIndex: number
+): BiomesId | undefined {
+  if (candidates.length === 0) {
+    return undefined;
+  }
+
+  const forced = candidates
+    .filter((candidate) => candidate.threat >= THREAT_FORCED_TARGET_THRESHOLD)
+    .sort(
+      (a, b) =>
+        b.threat - a.threat ||
+        a.distanceSq - b.distanceSq ||
+        Number(a.id) - Number(b.id)
+    );
+  if (forced.length > 0) {
+    return forced[0].id;
+  }
+
+  const ordered = [...candidates].sort(
+    (a, b) =>
+      Number(b.openedEncounter) - Number(a.openedEncounter) ||
+      b.threat - a.threat ||
+      a.distanceSq - b.distanceSq ||
+      Number(a.id) - Number(b.id)
+  );
+  const normalizedIndex =
+    ((Math.floor(rotationIndex) % ordered.length) + ordered.length) %
+    ordered.length;
+  return ordered[normalizedIndex]?.id;
 }
 
 // Given the set of currently-valid aggro candidates (already filtered for

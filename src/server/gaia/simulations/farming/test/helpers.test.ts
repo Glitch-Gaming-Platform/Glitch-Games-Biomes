@@ -393,6 +393,38 @@ describe("Gaia farming action and progress helpers", () => {
     assert.equal(plant.water_at, undefined);
   });
 
+  it("applies the server-authored Farming growth multiplier inside Gaia", () => {
+    const normal = FarmingPlantComponent.create({
+      water_level: 1,
+      stage_progress: 0,
+      wilt: 0,
+      buffs: [],
+    });
+    const skilled = FarmingPlantComponent.create({
+      water_level: 1,
+      stage_progress: 0,
+      wilt: 0,
+      buffs: [],
+      skill_growth_time_multiplier: 0.8,
+    });
+
+    wiltAndProgress(normal, 10_000, 500, undefined, 1000);
+    wiltAndProgress(
+      skilled,
+      10_000,
+      500,
+      undefined,
+      1000,
+      undefined,
+      undefined,
+      0.8
+    );
+
+    assert.equal(normal.stage_progress, 0.5);
+    assert.equal(skilled.stage_progress, 0.625);
+    assert.ok(skilled.fully_grown_at! < normal.fully_grown_at!);
+  });
+
   it("converts consistently among world, local, and tensor coordinates", () => {
     assert.deepEqual(farmWorldToTensor([12, 15, 20], [10, 10, 10]), [2, 5, 10]);
     assert.deepEqual(farmTensorToWorld([2, 5, 10], [10, 10, 10]), [12, 15, 20]);

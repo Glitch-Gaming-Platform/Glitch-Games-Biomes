@@ -1,7 +1,10 @@
 /// <reference types="mocha" />
 
 import assert from "assert";
+import fs from "fs";
+import path from "path";
 import {
+  isPointerLockCooldownErrorForTest,
   isTerminalPointerLockErrorForTest,
   PointerLockManager,
   shouldUsePointerLock,
@@ -78,6 +81,33 @@ function withWindowAndNavigator<T>(
 }
 
 describe("PointerLockManager HUD input recovery", () => {
+  it("stops timer retries during Chromium's post-exit and request-rate cooldowns", () => {
+    const source = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/client/components/contexts/PointerLockContext.ts"
+      ),
+      "utf8"
+    );
+    assert.match(source, /post-exit-cooldown/);
+    assert.match(source, /Too many pointer lock requests/i);
+    assert.match(source, /result === "cooldown"/);
+    assert.equal(
+      isPointerLockCooldownErrorForTest({
+        name: "SecurityError",
+        message:
+          "Pointer lock cannot be acquired immediately after the user has exited the lock.",
+      }),
+      true
+    );
+    assert.equal(
+      isPointerLockCooldownErrorForTest({
+        name: "NotAllowedError",
+        message: "Too many pointer lock requests in a short window of time.",
+      }),
+      true
+    );
+  });
   it("classifies Chromium's unrecoverable UnknownError without swallowing transient cooldowns", () => {
     assert.equal(
       isTerminalPointerLockErrorForTest({
@@ -99,6 +129,14 @@ describe("PointerLockManager HUD input recovery", () => {
         message: "A user gesture is required.",
       }),
       false
+    );
+    assert.equal(
+      isTerminalPointerLockErrorForTest({
+        name: "WrongDocumentError",
+        message:
+          "The root document of this element is not valid for pointer lock.",
+      }),
+      true
     );
   });
 

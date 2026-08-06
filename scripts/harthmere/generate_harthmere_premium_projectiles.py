@@ -36,7 +36,7 @@ class ProjectileSpec:
 
 
 PROJECTILES: Tuple[ProjectileSpec, ...] = (
-    ProjectileSpec("hunter_bow_shot", "Hunter Bow Shot", "physical", "hunter_arrow", 1.55),
+    ProjectileSpec("hunter_bow_shot", "Hunter Bow Shot", "physical", "hunter_arrow", 1.0),
     ProjectileSpec("quick_shot", "Quick Shot", "physical", "quick_arrow", 1.42),
     ProjectileSpec("aimed_shot", "Aimed Shot", "physical", "aimed_arrow", 1.78),
     ProjectileSpec("multi_shot", "Multi-Shot", "physical", "multi_arrow", 1.65),
@@ -324,8 +324,7 @@ def arrow_base(collection, root, *, shaft, head, trim, fletching, length=1.5, he
 
 
 def build_hunter_arrow(spec, collection, root):
-    arrow_base(collection, root, shaft=MATERIALS["wood_light"], head=MATERIALS["steel"], trim=MATERIALS["brass"], fletching=MATERIALS["linen"], length=1.55)
-    prism_xz(collection, root, "HunterRune", [(-0.04, -0.08), (0, 0), (0.04, -0.08), (0, -0.16)], 0.052, MATERIALS["green_bright"], 0.01)
+    arrow_base(collection, root, shaft=MATERIALS["wood_light"], head=MATERIALS["steel"], trim=MATERIALS["brass"], fletching=MATERIALS["linen"], length=1.05)
 
 
 def build_quick_arrow(spec, collection, root):
@@ -796,11 +795,17 @@ def setup_preview(size):
         look_at(light)
 
 
-def render_preview(root, spec, path):
+def render_preview(root, spec, path, *, transparent=False, size=None):
     for collection in bpy.data.collections:
         if collection.name.startswith("Projectile_"):
             collection.hide_render = collection != root.users_collection[0]
     scene = bpy.context.scene
+    previous_resolution = (scene.render.resolution_x, scene.render.resolution_y)
+    previous_transparency = scene.render.film_transparent
+    if size is not None:
+        scene.render.resolution_x = size
+        scene.render.resolution_y = size
+    scene.render.film_transparent = transparent
     action = root.animation_data.action if root.animation_data else None
     if root.animation_data:
         root.animation_data.action = None
@@ -823,6 +828,8 @@ def render_preview(root, spec, path):
     root.scale = (1, 1, 1)
     if root.animation_data:
         root.animation_data.action = action
+    scene.render.resolution_x, scene.render.resolution_y = previous_resolution
+    scene.render.film_transparent = previous_transparency
     for collection in bpy.data.collections:
         collection.hide_render = False
 
@@ -842,9 +849,11 @@ def main():
     repo = Path(args.repo_root).resolve()
     output = repo / "public/assets/harthmere/glb/projectiles"
     previews = repo / "public/assets/harthmere/projectile_previews"
+    weapon_icons = repo / "public/assets/harthmere/weapon_icons"
     blend_path = repo / "src/galois/data/projectiles/harthmere_premium_projectiles.blend"
     output.mkdir(parents=True, exist_ok=True)
     previews.mkdir(parents=True, exist_ok=True)
+    weapon_icons.mkdir(parents=True, exist_ok=True)
     blend_path.parent.mkdir(parents=True, exist_ok=True)
     selected = [entry for entry in PROJECTILES if not args.only or entry.id in args.only]
     unknown = sorted(set(args.only) - {entry.id for entry in PROJECTILES})
@@ -863,6 +872,14 @@ def main():
         export_glb(root, glb_path)
         if not args.skip_previews:
             render_preview(root, spec, previews / f"{spec.id}.png")
+            if spec.id == "hunter_bow_shot":
+                render_preview(
+                    root,
+                    spec,
+                    weapon_icons / "hunting_arrow.png",
+                    transparent=True,
+                    size=256,
+                )
         generated.append(
             {
                 "id": spec.id,

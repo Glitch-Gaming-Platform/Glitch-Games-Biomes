@@ -2364,6 +2364,7 @@ export class PlayerScript implements Script {
         )
       );
       this.performDeathActions();
+      localPlayer.resetCombatAttackState();
       localPlayer.playerStatus = "dead";
       return true;
     }
@@ -2436,7 +2437,6 @@ export class PlayerScript implements Script {
     if (
       (health?.hp ?? 0) <= 0 ||
       localPlayer.isAttacking(now) ||
-      player.isMovementActionActive(now) ||
       now < this.localMovementActionCooldownUntil ||
       movementActionIsOnCooldown(replicatedMovementState, now) ||
       !canStartStandingMovementAction({
@@ -2479,6 +2479,12 @@ export class PlayerScript implements Script {
     const timing = PLAYER_MOVEMENT_ACTION_TIMING[action];
     const nonce = Math.random();
 
+    // A fresh dodge/evade after the exact 0.5 s cooldown replaces the tail of
+    // the prior recovery instead of being rejected by its longer visual
+    // lifetime. Only the replacement action remains active.
+    if (player.isMovementActionActive(now)) {
+      player.cancelMovementAction();
+    }
     this.localMovementActionCooldownUntil = now + timing.cooldownSeconds;
     player.beginMovementAction(
       action,
@@ -3414,6 +3420,7 @@ export class PlayerScript implements Script {
     if (pos && this.ackWarpThrottle.testAndSet()) {
       const localPlayer = this.resources.get("/scene/local_player");
       localPlayer.playerStatus = "alive";
+      localPlayer.resetCombatAttackState();
       this.crouchToggle = false;
       this.crouchToggleDebouncing = false;
       player.crouching = false;

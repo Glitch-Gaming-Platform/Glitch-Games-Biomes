@@ -23,6 +23,12 @@ import {
   resolveHarthmereGatheringAuthorityAttempt,
 } from "./gathering_node_authority";
 import {
+  harthmereDeterministicYieldCount,
+  harthmereLoanTermsForPersuasion,
+  harthmereSublevelYieldMultiplier,
+  resolveHarthmereLockpickAttempt,
+} from "./harthmere_sublevel_benefits";
+import {
   reduceHarthmereInventoryMutation,
   applyHarthmereInventoryMutationResult,
   getHarthmereItemDefinition,
@@ -77,6 +83,7 @@ import {
   type HarthmereCombatTargetSnapshot,
   type HarthmereZoneSnapshot,
   type HarthmereCombatActionRequest,
+  type HarthmereResolvedStatusEffect,
   type HarthmereResourceKind,
 } from "./mmo_combat_authority";
 import {
@@ -127,6 +134,7 @@ import {
   defaultHarthmereJobsBoardState,
   harthmereJobsBoardAutoSeedBoardIds,
   normalizeHarthmereJobsBoardState,
+  repairHarthmereEscortJobDestination,
   reduceHarthmereJobsBoardMutation,
   type HarthmereEscortCompanion,
   type HarthmereJobsBoardPosting,
@@ -1457,6 +1465,7 @@ export interface HarthmereLiveModeBackendState {
     respawnProtectionUntilMs?: number;
     threat: Record<string, number>;
     lootClaims: Record<string, number>;
+    activeStatusEffects: Record<string, HarthmereResolvedStatusEffect>;
     entitySnapshots: Record<
       string,
       {
@@ -1522,6 +1531,9 @@ export interface HarthmereLiveModeBackendState {
         escortDestinationTargetId?: string;
         escortDestinationMarkerId?: string;
         escortStatus?: HarthmereEscortCompanion["status"];
+        escortArrivalDialogue?: string;
+        escortArrivedAtMs?: number;
+        activeStatusEffects?: Record<string, HarthmereResolvedStatusEffect>;
       }
     >;
     npcAiTicks: Record<
@@ -2917,6 +2929,58 @@ function ensureHarthmereLiveModeCombatCatalogue() {
         `${ability.id} ${ability.name}`
       ) && ability.kind !== "business";
     const isOffensive = ability.kind === "combat" && !isSupport;
+    const abilityText = `${ability.id} ${ability.name}`.toLowerCase();
+    const statusEffects = /rejuven|regrowth/.test(abilityText)
+      ? [
+          {
+            effectId: "regeneration",
+            kind: "heal_over_time" as const,
+            basePotency: 4,
+            durationMs: 5_000,
+            target: "actor" as const,
+          },
+        ]
+      : /root|entangl/.test(abilityText)
+        ? [
+            {
+              effectId: "rooted",
+              kind: "control" as const,
+              basePotency: 1,
+              durationMs: 3_000,
+              target: "resolved_target" as const,
+            },
+          ]
+        : /curse|weak|mocking|verse/.test(abilityText)
+          ? [
+              {
+                effectId: "weakened",
+                kind: "debuff" as const,
+                basePotency: 0.1,
+                durationMs: 6_000,
+                target: "resolved_target" as const,
+              },
+            ]
+          : /fire|flame|spark|burn/.test(abilityText)
+            ? [
+                {
+                  effectId: "burning",
+                  kind: "damage_over_time" as const,
+                  basePotency: 4,
+                  durationMs: 5_000,
+                  target: "resolved_target" as const,
+                },
+              ]
+            : /bless|shield|guard|courage|song/.test(abilityText)
+              ? [
+                  {
+                    effectId: "inspired",
+                    kind: "buff" as const,
+                    basePotency: 0.1,
+                    durationMs: 8_000,
+                    target: "actor" as const,
+                  },
+                ]
+              : undefined;
     registerHarthmereAbility({
       abilityId: ability.id,
       displayName: ability.name,
@@ -2956,6 +3020,7 @@ function ensureHarthmereLiveModeCombatCatalogue() {
       castTimeMs: 0,
       interruptible: ability.kind === "combat",
       unlocksMilestones: [],
+      statusEffects,
     });
   }
 }
@@ -5809,6 +5874,60 @@ function activeSnapshotGroveWorldPickup(input: {
   return undefined;
 }
 
+function activeJobsBoardWorldPickup(input: {
+  state: HarthmereLiveModeBackendState;
+  objectId: string;
+}) {
+  let best:
+    | {
+        jobId: string;
+        todoId: string;
+        item: { itemId: string; quantity: number };
+      }
+    | undefined;
+  for (const todo of Object.values(input.state.jobsBoard.todos)) {
+    if (todo.actorId !== input.state.actorId || todo.status !== "active") {
+      continue;
+    }
+    const job = input.state.jobsBoard.postings[todo.jobId];
+    if (
+      !job ||
+      job.status !== "active" ||
+      job.acceptedByActorId !== input.state.actorId ||
+      job.kind !== "gather" ||
+      job.requiresFieldWork
+    ) {
+      continue;
+    }
+    for (const requirement of job.requirements) {
+      if (
+        !requirement.itemId ||
+        requirement.mapMarkerId !== input.objectId ||
+        requirement.pickupMarkerId ||
+        isHarthmereJobsBoardFieldTargetId(requirement.targetId) ||
+        isHarthmereJobsBoardFieldTargetId(requirement.mapMarkerId)
+      ) {
+        continue;
+      }
+      const required = Math.max(1, Math.trunc(requirement.count ?? 1));
+      const have = Math.max(
+        0,
+        Math.trunc(input.state.inventory.items[requirement.itemId] ?? 0)
+      );
+      const missing = Math.max(0, required - have);
+      if (missing <= 0) continue;
+      if (!best || missing > best.item.quantity) {
+        best = {
+          jobId: job.jobId,
+          todoId: todo.todoId,
+          item: { itemId: requirement.itemId, quantity: missing },
+        };
+      }
+    }
+  }
+  return best;
+}
+
 function normalizeWorldObjectText(value: unknown) {
   return String(value ?? "")
     .trim()
@@ -6308,9 +6427,8 @@ function economyBusinessInteractionPositions(
       harthmereBusinessOutpostBusinessId(record.outpostId) === businessId
   );
   if (businessInterior) {
-    const staff = harthmereBusinessInteriorInteractionPoints(
-      businessInterior
-    ).staff;
+    const staff =
+      harthmereBusinessInteriorInteractionPoints(businessInterior).staff;
     positions.push({ x: staff[0], y: staff[1], z: staff[2] });
   }
   const requestedMarkerId = payloadString(
@@ -6384,8 +6502,7 @@ function rejectEconomyMutationOutsideBusiness(input: {
   if (!businessId) return false;
   const business = input.state.economy.production.businesses[businessId];
   if (!business) return false;
-  const businessOperation =
-    payloadString(input.envelope, "operation") ?? "";
+  const businessOperation = payloadString(input.envelope, "operation") ?? "";
   // Ending an actor-owned customer shift is always safe. In particular, the
   // client must be able to close the shift after detecting that the player
   // crossed the shop boundary; requiring counter proximity here would make
@@ -7160,6 +7277,17 @@ function upsertSkill(
   return { ok: true };
 }
 
+function syncCareLoopSkillsFromUnifiedProgression(
+  state: HarthmereLiveModeBackendState
+) {
+  state.careLoops.skills = Object.fromEntries(
+    Object.entries(state.classMagic.skills).map(([skillId, skill]) => [
+      skillId,
+      { xp: skill.xp, level: skill.level },
+    ])
+  );
+}
+
 export function harthmereLiveModePlayerStateKey(actorId: string) {
   return `harthmere:live_mode:current:player_state:${actorId}`;
 }
@@ -7402,6 +7530,7 @@ export function defaultHarthmereLiveModeBackendState(
       respawnProtectionUntilMs: undefined,
       threat: {},
       lootClaims: {},
+      activeStatusEffects: {},
       entitySnapshots: createHarthmereServerMuckCombatEntitySnapshots(nowMs),
       npcAiTicks: {},
       liveEntityNavigation: {},
@@ -7703,6 +7832,13 @@ export function parseHarthmereLiveModeBackendState(
           ...(((parsed.combat as any)?.lootClaims ?? {}) as Record<
             string,
             number
+          >),
+        },
+        activeStatusEffects: {
+          ...defaults.combat.activeStatusEffects,
+          ...(((parsed.combat as any)?.activeStatusEffects ?? {}) as Record<
+            string,
+            HarthmereResolvedStatusEffect
           >),
         },
         entitySnapshots: {
@@ -8553,11 +8689,34 @@ export function createHarthmereLiveEntityCombatClientSnapshot(
           escortDisplayName: entity.escortDisplayName,
           escortDestination: entity.escortDestination,
           escortStatus: entity.escortStatus,
+          escortArrivalDialogue: entity.escortArrivalDialogue,
+          escortArrivedAtMs: entity.escortArrivedAtMs,
         },
       ])
     ),
     npcAiTicks: { ...state.combat.npcAiTicks },
   };
+}
+
+export function snapshotGroveClientEvidenceMatchesAuthoredTriggerForTest(input: {
+  authoredTrigger: string | undefined;
+  evidenceTrigger?: string;
+  reason?: string;
+}) {
+  if (!input.authoredTrigger) return false;
+  if (
+    input.evidenceTrigger &&
+    input.evidenceTrigger !== input.authoredTrigger
+  ) {
+    return false;
+  }
+  if (input.reason === "arrived_at_marker") {
+    return input.authoredTrigger === "near_location";
+  }
+  if (input.reason === "completion_turn_in") {
+    return input.authoredTrigger === "talk_npc";
+  }
+  return true;
 }
 
 export function createHarthmereCraftingStationClientSnapshotFromBackend(
@@ -8624,6 +8783,7 @@ export function createHarthmereLiveModeFarmingFoodClientSnapshot(
     foodDefinitions: HARTHMERE_FOOD_DEFINITIONS,
     seedDefinitions: HARTHMERE_SEED_DEFINITIONS,
     cookingRecipes: HARTHMERE_COOKING_RECIPES,
+    cookingSkillLevel: state.classMagic.skills.cooking?.level ?? 1,
     availableCookingStations: Array.from(availableCookingStations),
     plots: Object.entries(state.farming.plots).map(([plotId, plot]) => ({
       plotId,
@@ -9631,6 +9791,13 @@ export function reduceHarthmereLiveModeBackendState(
       pvpFlagged: target.pvpFlagged ?? false,
       isPlayer: target.isPlayer ?? false,
       zonePvPRule: target.zonePvPRule ?? zone.pvpRule,
+      entityKind: target.entityKind,
+      species: target.species,
+      tags: [
+        target.entityKind,
+        target.species,
+        target.combatTerritoryLabel,
+      ].filter((value): value is string => Boolean(value)),
     };
   }
 
@@ -10629,6 +10796,8 @@ export function reduceHarthmereLiveModeBackendState(
       escortDestinationTargetId: companion.destinationTargetId,
       escortDestinationMarkerId: companion.destinationMarkerId,
       escortStatus: companion.status,
+      escortArrivalDialogue: companion.arrivalDialogue,
+      escortArrivedAtMs: companion.arrivedAtMs,
     };
     touchedModels.add("escort_companion");
     touchedModels.add("live_entity_combat");
@@ -10637,6 +10806,25 @@ export function reduceHarthmereLiveModeBackendState(
   function syncAllEscortCompanionsToCombat() {
     for (const job of Object.values(next.jobsBoard.postings)) {
       if (!job.escortCompanion) continue;
+      const board = next.jobsBoard.boards[job.boardId];
+      if (
+        board &&
+        job.escortCompanion.status === "following" &&
+        repairHarthmereEscortJobDestination(job, board.location)
+      ) {
+        for (const todo of Object.values(next.jobsBoard.todos)) {
+          if (todo.jobId !== job.jobId || todo.status !== "active") continue;
+          todo.title = job.title;
+          todo.todoText = `Escort the newcomer to ${
+            job.requirements[0]?.targetName ?? "the marked destination"
+          }.`;
+          todo.mapMarkerId = job.mapMarkerId;
+          todo.targetId = job.targetId;
+        }
+        touchedModels.add("jobs_board_posting");
+        touchedModels.add("jobs_board_quest_todo");
+        touchedModels.add("escort_companion");
+      }
       syncEscortCompanionCombatSnapshot(job.escortCompanion);
     }
   }
@@ -10664,6 +10852,8 @@ export function reduceHarthmereLiveModeBackendState(
       if (status === "failed") companion.failedAtMs = nowMs;
     }
     snapshot.escortStatus = companion.status;
+    snapshot.escortArrivalDialogue = companion.arrivalDialogue;
+    snapshot.escortArrivedAtMs = companion.arrivedAtMs;
     touchedModels.add("escort_companion");
     touchedModels.add("jobs_board_quest_todo");
     touchedModels.add("live_entity_combat");
@@ -10700,7 +10890,8 @@ export function reduceHarthmereLiveModeBackendState(
           companion.destinationTargetId ??
           companion.destinationMarkerId ??
           job.targetId,
-        completionNote: "escort companion arrived",
+        completionNote:
+          companion.arrivalDialogue ?? "Thank you. We made it safely.",
       } as any,
       {
         actorGold: next.inventory.gold,
@@ -11585,6 +11776,12 @@ export function reduceHarthmereLiveModeBackendState(
             1 -
             (next.talents?.pointsSpent ?? 0)
         ),
+        skillLevels: Object.fromEntries(
+          Object.entries(next.classMagic.skills).map(([skillId, progress]) => [
+            skillId,
+            progress.level,
+          ])
+        ),
       });
 
       if (!combatResult.ok) {
@@ -11697,6 +11894,35 @@ export function reduceHarthmereLiveModeBackendState(
         }
       }
 
+      for (const [effectId, effect] of Object.entries(
+        next.combat.activeStatusEffects
+      )) {
+        if (effect.expiresAtMs <= nowMs) {
+          delete next.combat.activeStatusEffects[effectId];
+        }
+      }
+      if (resolvedTarget?.activeStatusEffects) {
+        for (const [effectId, effect] of Object.entries(
+          resolvedTarget.activeStatusEffects
+        )) {
+          if (effect.expiresAtMs <= nowMs) {
+            delete resolvedTarget.activeStatusEffects[effectId];
+          }
+        }
+      }
+      for (const effect of combatResult.statusEffects) {
+        const key = `${effect.effectId}:${effect.sourceActorId}`;
+        if (effect.targetId === next.actorId) {
+          next.combat.activeStatusEffects[key] = effect;
+        } else {
+          const statusTarget = next.combat.entitySnapshots[effect.targetId];
+          if (statusTarget) {
+            statusTarget.activeStatusEffects ??= {};
+            statusTarget.activeStatusEffects[key] = effect;
+          }
+        }
+      }
+
       // Threat. Keyed by the entity that was actually hit (the resolved target,
       // which may differ from the requested target on a stray hit), so the live
       // combat reducer can track per-entity threat / aggro accumulation.
@@ -11754,6 +11980,9 @@ export function reduceHarthmereLiveModeBackendState(
       touchedModels.add("combat_resources");
       touchedModels.add("threat");
       touchedModels.add("cooldown");
+      if (combatResult.statusEffects.length > 0) {
+        touchedModels.add("combat_status_effects");
+      }
       break;
     }
 
@@ -12839,12 +13068,7 @@ export function reduceHarthmereLiveModeBackendState(
       }
       const buyRoutesToMaterialStorage =
         transactionKind !== "sell" &&
-        liveModeItemShouldRouteToMaterialStorage(vendorItemId) &&
-        bankRecordHasCapacity(
-          next.banking.materialStorage,
-          vendorItemId,
-          next.banking.materialStorageMaxSlots
-        );
+        liveModeItemShouldRouteToMaterialStorage(vendorItemId);
       // Carry weight is a soft encumbrance threshold for purchases. The item
       // is still granted; the shared stamina system applies the heavier drain.
       const invReq: HarthmereInventoryMutationRequest = {
@@ -12862,6 +13086,12 @@ export function reduceHarthmereLiveModeBackendState(
         playerSkills: next.classMagic.skills,
         playerClassId: next.classMagic.classId ?? "warrior",
         reputation: next.law.reputation,
+        vendorPurchaseDestination: buyRoutesToMaterialStorage
+          ? {
+              kind: "material_storage",
+              maxSlots: next.banking.materialStorageMaxSlots,
+            }
+          : undefined,
       });
       if (invResult.ok) {
         const updated = applyHarthmereInventoryMutationResult(
@@ -12870,19 +13100,15 @@ export function reduceHarthmereLiveModeBackendState(
         );
         next.inventory.items = updated.items;
         next.inventory.gold = updated.gold;
+        next.banking.materialStorage = updated.materialStorage ?? {};
         if (buyRoutesToMaterialStorage) {
-          const carried = Math.max(
+          const deposit = Math.max(
             0,
-            Math.trunc(Number(next.inventory.items[vendorItemId] ?? 0) || 0)
+            Math.trunc(
+              Number(invResult.materialStorageDeltas?.[vendorItemId] ?? 0) || 0
+            )
           );
-          const deposit = Math.min(vendorCount, carried);
           if (deposit > 0) {
-            applyBankRecordDelta(next.inventory.items, vendorItemId, -deposit);
-            applyBankRecordDelta(
-              next.banking.materialStorage,
-              vendorItemId,
-              deposit
-            );
             appendBankingLog(next, {
               kind: "vendor_material_storage_deposit",
               vault: "materials",
@@ -13505,16 +13731,25 @@ export function reduceHarthmereLiveModeBackendState(
       }
 
       if (operation === "take_loan") {
+        const loanTerms = harthmereLoanTermsForPersuasion({
+          persuasionLevel: next.classMagic.skills.persuasion?.level ?? 1,
+          basePrincipal: HARTHMERE_LOAN_MAX_PRINCIPAL,
+          baseDailyInterestRate: HARTHMERE_LOAN_DAILY_INTEREST_RATE,
+          baseDays: 30,
+        });
         const amount = Math.max(
           1,
           Math.min(
-            HARTHMERE_LOAN_MAX_PRINCIPAL,
+            loanTerms.maxPrincipal,
             Math.trunc(payloadNumber(envelope, "amount") ?? 0)
           )
         );
         const days = Math.max(
           1,
-          Math.min(30, Math.trunc(payloadNumber(envelope, "days") ?? 7))
+          Math.min(
+            loanTerms.maxDays,
+            Math.trunc(payloadNumber(envelope, "days") ?? 7)
+          )
         );
         const unpaidLoan = Object.values(next.banking.loans).find(
           (loan) =>
@@ -13544,7 +13779,7 @@ export function reduceHarthmereLiveModeBackendState(
           principalOriginal: amount,
           principalRemaining: amount,
           interestPaid: 0,
-          dailyInterestRate: HARTHMERE_LOAN_DAILY_INTEREST_RATE,
+          dailyInterestRate: loanTerms.dailyInterestRate,
           openedAtMs: nowMs,
           dueAtMs: nowMs + days * HARTHMERE_LOAN_DAY_MS,
           status: "active",
@@ -14238,6 +14473,12 @@ export function reduceHarthmereLiveModeBackendState(
             next.law.reputation[`town:${townId}:clerk`] >= 1 ||
             next.law.flags[`town_admin:${townId}`] === true,
           allowNpcAdministration: next.law.flags.economy_npc_admin === true,
+          actorSkillLevels: Object.fromEntries(
+            Object.entries(next.classMagic.skills).map(([skillId, skill]) => [
+              skillId,
+              skill.level,
+            ])
+          ),
         }
       );
       next.economy.production = result.economy;
@@ -15315,6 +15556,14 @@ export function reduceHarthmereLiveModeBackendState(
               const objectiveIndex = payloadNumber(envelope, "objectiveIndex");
               const completionRepair =
                 payloadString(envelope, "reason") === "completion_repair";
+              const completionEvidenceMatches = authoredQuest
+                ? snapshotGroveClientEvidenceMatchesAuthoredTriggerForTest({
+                    authoredTrigger:
+                      authoredQuest.triggers[finalObjectiveIndex],
+                    evidenceTrigger: payloadString(envelope, "evidenceTrigger"),
+                    reason: payloadString(envelope, "reason"),
+                  })
+                : false;
               const active = next.quests.active[questId];
               if (!authoredQuest) {
                 warnings.push("snapshot_grove_quest_rejected:unknown_quest");
@@ -15329,6 +15578,10 @@ export function reduceHarthmereLiveModeBackendState(
               ) {
                 warnings.push(
                   "snapshot_grove_quest_rejected:prior_objective_incomplete"
+                );
+              } else if (!completionRepair && !completionEvidenceMatches) {
+                warnings.push(
+                  "snapshot_grove_quest_rejected:trigger_evidence_mismatch"
                 );
               } else if (
                 !completionRepair &&
@@ -15538,6 +15791,16 @@ export function reduceHarthmereLiveModeBackendState(
               objectiveIndex !== undefined &&
               Number.isInteger(objectiveIndex) &&
               objectiveIndex === expectedObjectiveIndex;
+            const objectiveEvidenceMatches =
+              !objectiveAdvancesCurrentStep ||
+              snapshotGroveClientEvidenceMatchesAuthoredTriggerForTest({
+                authoredTrigger:
+                  objectiveIndex === undefined
+                    ? undefined
+                    : authoredQuest.triggers[objectiveIndex],
+                evidenceTrigger: payloadString(envelope, "evidenceTrigger"),
+                reason: payloadString(envelope, "reason"),
+              });
             if (
               objectiveIndex !== undefined &&
               Number.isInteger(objectiveIndex) &&
@@ -15545,6 +15808,13 @@ export function reduceHarthmereLiveModeBackendState(
             ) {
               warnings.push(
                 "snapshot_grove_quest_rejected:prior_objective_incomplete"
+              );
+              touchedModels.add("quest_state_rejection");
+              break;
+            }
+            if (!objectiveEvidenceMatches) {
+              warnings.push(
+                "snapshot_grove_quest_rejected:trigger_evidence_mismatch"
               );
               touchedModels.add("quest_state_rejection");
               break;
@@ -18766,6 +19036,7 @@ export function reduceHarthmereLiveModeBackendState(
                 next.classMagic.skills[gatheringSkillId ?? "gathering"]
                   ?.level) ??
               1,
+            gatheringLevel: next.classMagic.skills.gathering?.level ?? 1,
             nowMs,
             randomSeed: envelope.requestId,
           });
@@ -18892,7 +19163,13 @@ export function reduceHarthmereLiveModeBackendState(
             touchedModels.add("farming_rejection");
             break;
           }
-          const yieldCount = Math.max(1, Math.trunc(seed.yieldCount || 1));
+          const yieldCount = harthmereDeterministicYieldCount({
+            baseCount: Math.max(1, Math.trunc(seed.yieldCount || 1)),
+            multiplier: harthmereSublevelYieldMultiplier(
+              next.classMagic.skills.farming?.level ?? 1
+            ),
+            seed: `${plantId}:${seed.yieldItemId}`,
+          });
           ensureLiveModeItemDefinition(
             seed.yieldItemId,
             buildInventorySnapshot()
@@ -19061,6 +19338,7 @@ export function reduceHarthmereLiveModeBackendState(
             seedItemId: payloadString(envelope, "seedItemId") ?? "",
             nowMs,
             plotHasSun: payloadBoolean(envelope, "plotHasSun"),
+            farmingSkillLevel: next.classMagic.skills.farming?.level ?? 1,
           });
         } else if (operation === "water") {
           authorityResult = waterHarthmereCrop(authority, {
@@ -19071,6 +19349,7 @@ export function reduceHarthmereLiveModeBackendState(
           authorityResult = harvestHarthmereCrop(authority, {
             plotId: payloadString(envelope, "plotId") ?? "",
             nowMs,
+            farmingSkillLevel: next.classMagic.skills.farming?.level ?? 1,
           });
         } else if (operation === "forage_food") {
           const spawnId =
@@ -19145,6 +19424,7 @@ export function reduceHarthmereLiveModeBackendState(
           authorityResult = huntHarthmereAnimalForFood(authority, {
             animalId,
             nowMs,
+            trackingSkillLevel: next.classMagic.skills.tracking?.level ?? 1,
           });
           if (authorityResult.warnings.length === 0) {
             next.combat.lootClaims[wildSpawnClaimKey(animalId)] = nowMs;
@@ -19161,6 +19441,7 @@ export function reduceHarthmereLiveModeBackendState(
             stationKind: payloadString(envelope, "stationKind") as any,
             count: payloadNumber(envelope, "count"),
             nowMs,
+            cookingSkillLevel: next.classMagic.skills.cooking?.level ?? 1,
           });
         } else if (operation === "eat_food") {
           authorityResult = eatHarthmereFood(authority, {
@@ -19186,6 +19467,7 @@ export function reduceHarthmereLiveModeBackendState(
             recipeId: payloadString(envelope, "recipeId") ?? "",
             count: payloadNumber(envelope, "count"),
             nowMs,
+            cookingSkillLevel: next.classMagic.skills.cooking?.level ?? 1,
           });
         } else if (operation === "cook_collect") {
           authorityResult = collectHarthmereCook(authority, {
@@ -19296,16 +19578,14 @@ export function reduceHarthmereLiveModeBackendState(
           upsertSkill(next.classMagic.skills, "tracking", 16);
           touchedModels.add("skill_xp");
         }
-        if (operation === "cook_food" || operation === "eat_food") {
+        if (operation === "cook_food") {
           const recipe =
-            operation === "cook_food"
-              ? HARTHMERE_COOKING_RECIPES[
-                  payloadString(envelope, "recipeId") ??
-                    (payloadString(envelope, "rawItemId") === "raw_meat"
-                      ? "grilled_meat"
-                      : "")
-                ]
-              : undefined;
+            HARTHMERE_COOKING_RECIPES[
+              payloadString(envelope, "recipeId") ??
+                (payloadString(envelope, "rawItemId") === "raw_meat"
+                  ? "grilled_meat"
+                  : "")
+            ];
           const cookCount = Math.max(
             1,
             Math.trunc(payloadNumber(envelope, "count") ?? 1)
@@ -19314,16 +19594,6 @@ export function reduceHarthmereLiveModeBackendState(
             next.classMagic.skills,
             "cooking",
             (recipe?.xp ?? 10) * cookCount
-          );
-          touchedModels.add("skill_xp");
-        }
-        if (operation === "cook_collect" && cookingJobBeforeOperation) {
-          const recipe =
-            HARTHMERE_COOKING_RECIPES[cookingJobBeforeOperation.recipeId];
-          upsertSkill(
-            next.classMagic.skills,
-            "cooking",
-            (recipe?.xp ?? 10) * Math.max(1, cookingJobBeforeOperation.count)
           );
           touchedModels.add("skill_xp");
         }
@@ -19373,6 +19643,7 @@ export function reduceHarthmereLiveModeBackendState(
         authorityResult = useHarthmereMedicalItem(authority, {
           itemId: payloadString(envelope, "itemId") ?? "",
           nowMs,
+          medicineSkillLevel: next.classMagic.skills.medicine?.level ?? 1,
         });
       } else if (
         operation === "doctor_treatment" ||
@@ -19467,6 +19738,31 @@ export function reduceHarthmereLiveModeBackendState(
           touchedModels.add("world_object_interaction_rejection");
           break;
         }
+        const interactionText =
+          `${validation.interaction.kind} ${validation.landmark.label}`.toLowerCase();
+        const isLockedInteraction =
+          (validation.interaction.kind === "open_door" ||
+            validation.interaction.kind === "open_gate") &&
+          /lock|locked|lockpick|secured/.test(interactionText);
+        const lockpickOutcome = isLockedInteraction
+          ? resolveHarthmereLockpickAttempt({
+              lockpickingLevel: next.classMagic.skills.lockpicking?.level ?? 1,
+              difficultyLevel: /master|vault/.test(interactionText)
+                ? 75
+                : /secure|strong|reinforced/.test(interactionText)
+                  ? 35
+                  : 10,
+              baseDurationMs: 4_000,
+              baseDurabilityCost: 10,
+              seed: `${envelope.actorId}:${objectId}:${Math.floor(nowMs / 86_400_000)}`,
+            })
+          : undefined;
+        if (lockpickOutcome && !lockpickOutcome.success) {
+          warnings.push("world_object_rejected:lockpick_failed");
+          touchedModels.add("world_object_interaction_rejection");
+          touchedModels.add("lockpicking_attempt");
+          break;
+        }
         const pickup = activeSnapshotGroveWorldPickup({
           state: next,
           objectId,
@@ -19517,6 +19813,54 @@ export function reduceHarthmereLiveModeBackendState(
             }
           }
         }
+        const jobsBoardPickup = activeJobsBoardWorldPickup({
+          state: next,
+          objectId,
+        });
+        if (jobsBoardPickup) {
+          const definition = ensureLiveModeItemDefinition(
+            jobsBoardPickup.item.itemId,
+            buildInventorySnapshot()
+          );
+          if (!definition) {
+            warnings.push(
+              `world_object_rejected:unknown_pickup_item:${jobsBoardPickup.item.itemId}`
+            );
+            touchedModels.add("world_object_interaction_rejection");
+            break;
+          }
+          const pickupReceiptKey = `jobs_board_source_pickup:${jobsBoardPickup.todoId}:${objectId}:${envelope.requestId}`;
+          recordDelta(
+            next.inventory.items,
+            jobsBoardPickup.item.itemId,
+            jobsBoardPickup.item.quantity
+          );
+          next.careLoops.worldInteractions[pickupReceiptKey] = {
+            objectId,
+            kind: "gather",
+            label: validation.landmark.label,
+            count: jobsBoardPickup.item.quantity,
+            lastAtMs: nowMs,
+            lastRequestId: envelope.requestId,
+          };
+          touchedModels.add("inventory_items");
+          touchedModels.add("jobs_board_world_pickup");
+          if (nativeBiomesEcsAuthorityEnabled()) {
+            nativeEcsMaterializationPlans.push({
+              kind: "inventory_exchange",
+              materializationKey: pickupReceiptKey,
+              actorId: envelope.actorId,
+              position: envelope.serverActorPosition!,
+              consumeItemStacks: {},
+              rewardItemStacks: {
+                [jobsBoardPickup.item.itemId]: jobsBoardPickup.item.quantity,
+              },
+              expiresAtMs: nowMs + 30 * 24 * 60 * 60 * 1000,
+              sourceKind: "harthmere_jobs_board_world_pickup",
+            });
+            touchedModels.add("native_ecs_inventory_exchange");
+          }
+        }
         const previous = next.careLoops.worldInteractions[objectId];
         // This receipt is deliberately actor-owned server state. It gives
         // authored fallback props a durable mutation while native ECS objects
@@ -19528,6 +19872,9 @@ export function reduceHarthmereLiveModeBackendState(
           count: Math.max(0, previous?.count ?? 0) + 1,
           lastAtMs: nowMs,
           lastRequestId: envelope.requestId,
+          actionDurationMs: lockpickOutcome?.durationMs,
+          toolDurabilityCost: lockpickOutcome?.durabilityCost,
+          successChance: lockpickOutcome?.chance,
         };
         touchedModels.add("world_object_interactions");
         touchedModels.add(
@@ -19541,6 +19888,7 @@ export function reduceHarthmereLiveModeBackendState(
         );
         break;
       }
+      syncCareLoopSkillsFromUnifiedProgression(next);
       const careResult = reduceHarthmereCareLoop(next.careLoops, {
         requestId: envelope.requestId,
         actorId: envelope.actorId,
@@ -19552,6 +19900,7 @@ export function reduceHarthmereLiveModeBackendState(
         season: payloadString(envelope, "season") as any,
         inventory: next.inventory.items,
         actorLevel: next.classMagic.skills.character_level?.level ?? 1,
+        careLevel: next.classMagic.skills.care?.level ?? 1,
       });
       next.careLoops = careResult.care;
       warnings.push(...careResult.warnings);
@@ -19571,6 +19920,7 @@ export function reduceHarthmereLiveModeBackendState(
           },
         ]);
       }
+      syncCareLoopSkillsFromUnifiedProgression(next);
       touchedModels.add("care_loops");
       careResult.touchedModels.forEach((model) => touchedModels.add(model));
       if (careResult.unlocked.length > 0) {
@@ -19735,6 +20085,44 @@ export function reduceHarthmereLiveModeBackendState(
         (a, b) => b[1] - a[1]
       )[0];
       const npcSnapshot = next.combat.entitySnapshots[npcId];
+      if (
+        npcSnapshot?.escortJobId &&
+        npcSnapshot.escortStatus === "following"
+      ) {
+        const escortJob = next.jobsBoard.postings[npcSnapshot.escortJobId];
+        const escortBoard = escortJob
+          ? next.jobsBoard.boards[escortJob.boardId]
+          : undefined;
+        if (
+          escortJob &&
+          escortBoard &&
+          repairHarthmereEscortJobDestination(escortJob, escortBoard.location)
+        ) {
+          for (const todo of Object.values(next.jobsBoard.todos)) {
+            if (todo.jobId !== escortJob.jobId || todo.status !== "active") {
+              continue;
+            }
+            todo.title = escortJob.title;
+            todo.todoText = `Escort the newcomer to ${
+              escortJob.requirements[0]?.targetName ?? "the marked destination"
+            }.`;
+            todo.mapMarkerId = escortJob.mapMarkerId;
+            todo.targetId = escortJob.targetId;
+          }
+          const companion = escortJob.escortCompanion;
+          if (companion) {
+            npcSnapshot.escortDestination = { ...companion.destination };
+            npcSnapshot.escortDestinationTargetId =
+              companion.destinationTargetId;
+            npcSnapshot.escortDestinationMarkerId =
+              companion.destinationMarkerId;
+            npcSnapshot.escortArrivalDialogue = companion.arrivalDialogue;
+          }
+          touchedModels.add("jobs_board_posting");
+          touchedModels.add("jobs_board_quest_todo");
+          touchedModels.add("escort_companion");
+        }
+      }
       const recentAttackerId =
         npcSnapshot?.retaliatesWhenAttacked === false
           ? undefined
@@ -20054,8 +20442,8 @@ export function reduceHarthmereLiveModeBackendState(
       const operation = payloadString(envelope, "operation");
       const targetId = payloadString(envelope, "targetId");
       if (
-        operation === "npc_talk" ||
-        (operation === "daily_task_completed" && targetId === "talk_neighbor")
+        operation === "daily_task_completed" &&
+        targetId === "talk_neighbor"
       ) {
         applyUnifiedSkillAwards([
           {

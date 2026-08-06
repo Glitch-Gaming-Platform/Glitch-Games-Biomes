@@ -35,12 +35,13 @@ import {
   harthmereWildsGroundCoverAt,
   HARTHMERE_FOREST_MAX_CANOPY_RADIUS,
 } from "@/shared/harthmere/harthmere_wilds_forest";
+import { harthmereRiverExcludesVegetation } from "@/shared/harthmere/harthmere_river";
 import { HARTHMERE_TOWN_BACK_BOUNDARY_X } from "@/shared/harthmere/harthmere_town_horizon";
 import { isAuthoredPointInSnapshotMuckZone } from "@/shared/harthmere/snapshot_runtime_rules";
 import { HARTHMERE_EXTENSION_FEET_Y } from "@/shared/harthmere/world_extension";
 
 export const HARTHMERE_FOREST_WILDLIFE_VERSION =
-  "harthmere-forest-wildlife-v1" as const;
+  "harthmere-forest-wildlife-v2-supported-west-margin" as const;
 
 export type HarthmereForestWildlifeSpecies = "rabbit" | "sheep" | "cow";
 
@@ -69,7 +70,11 @@ export const HARTHMERE_FOREST_WILDLIFE_COUNTS: Readonly<
  * animal there would be permanently unreachable.
  */
 export const HARTHMERE_FOREST_WILDLIFE_BOUNDS = {
-  minX: 200,
+  // Keep wildlife east of the connector/seam transition. Production terrain
+  // readback showed that the previous 200 boundary produced five placements
+  // in columns with no standable five-point body footprint after the authored
+  // connector and west-seam terrain were composed.
+  minX: 280,
   maxX: HARTHMERE_TOWN_BACK_BOUNDARY_X - 8,
   minZ: -566,
   maxZ: 184,
@@ -85,15 +90,14 @@ const TOWN_CLEARANCE = 26;
  * the shim's road list; being a few voxels out only makes the margin larger,
  * never smaller, so a drift here cannot put an animal in the roadway.
  */
-const ROAD_SEGMENTS: ReadonlyArray<
-  readonly [number, number, number, number]
-> = [
-  [192, -209, 392, -209], // connector road in from the main world
-  [486, -286, 486, -560], // north road
-  [486, -112, 486, 180], // south road
-  [392, -209, 200, -209], // west trade road
-  [590, -205, 770, -205], // east river road
-];
+const ROAD_SEGMENTS: ReadonlyArray<readonly [number, number, number, number]> =
+  [
+    [192, -209, 392, -209], // connector road in from the main world
+    [486, -286, 486, -560], // north road
+    [486, -112, 486, 180], // south road
+    [392, -209, 200, -209], // west trade road
+    [590, -205, 770, -205], // east river road
+  ];
 const ROAD_CLEARANCE = 12;
 
 export const HARTHMERE_FOREST_WILDLIFE_MIN_SPACING = 14;
@@ -168,6 +172,12 @@ export function harthmereForestWildlifeRegionIsOpen(
       8
     )
   ) {
+    return false;
+  }
+  // The Brell is authored independently from the forest scatter. Apply the
+  // river's own bank margin here so a deterministic wildlife reroll can never
+  // place an animal on water or the immediate sloped bank.
+  if (harthmereRiverExcludesVegetation(authoredX, authoredZ)) {
     return false;
   }
   return true;
@@ -333,7 +343,9 @@ export function harthmereValidateForestWildlife(): string[] {
       problems.push(`${species}: placed ${got} of ${wanted}`);
     }
   }
-  if (HARTHMERE_FOREST_WILDLIFE_MIN_SPACING <= HARTHMERE_FOREST_MAX_CANOPY_RADIUS) {
+  if (
+    HARTHMERE_FOREST_WILDLIFE_MIN_SPACING <= HARTHMERE_FOREST_MAX_CANOPY_RADIUS
+  ) {
     problems.push(
       "minimum spacing is smaller than a canopy; animals could share a tree"
     );

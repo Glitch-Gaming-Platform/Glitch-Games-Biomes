@@ -11,6 +11,8 @@ export const MOBILE_JOYSTICK_DOUBLE_TAP_WINDOW_MS = 320;
 export const MOBILE_JOYSTICK_DOUBLE_TAP_MIN_DIRECTION_DOT = 0.6;
 export const MOBILE_JOYSTICK_ACTION_PULSE_MS = 120;
 export const MOBILE_JOYSTICK_DIRECTION_AXIS_THRESHOLD = 0.35;
+export const MOBILE_JOYSTICK_RESPONSE_DEAD_ZONE = 0.035;
+export const MOBILE_JOYSTICK_RESPONSE_EXPONENT = 0.72;
 
 export interface MobileJoystickHardTap {
   releasedAtMs: number;
@@ -19,6 +21,34 @@ export interface MobileJoystickHardTap {
 
 export function mobileJoystickMagnitude(x: number, y: number) {
   return Math.min(1, Math.hypot(Number(x) || 0, Number(y) || 0));
+}
+
+/**
+ * Preserve the joystick direction and full-deflection value while making the
+ * first half of thumb travel more responsive. The library reports normalized
+ * axes, so a radial curve avoids making diagonals faster than cardinals. A
+ * small dead zone still filters the tiny pointer jitter iOS emits when a
+ * finger first settles on the control.
+ */
+export function mobileJoystickResponsivePositionForTest(
+  x: number,
+  y: number
+): readonly [number, number] {
+  const safeX = Number.isFinite(x) ? x : 0;
+  const safeY = Number.isFinite(y) ? y : 0;
+  const magnitude = Math.min(1, Math.hypot(safeX, safeY));
+  if (magnitude <= MOBILE_JOYSTICK_RESPONSE_DEAD_ZONE) {
+    return [0, 0];
+  }
+  const normalizedMagnitude =
+    (magnitude - MOBILE_JOYSTICK_RESPONSE_DEAD_ZONE) /
+    (1 - MOBILE_JOYSTICK_RESPONSE_DEAD_ZONE);
+  const responsiveMagnitude = Math.pow(
+    normalizedMagnitude,
+    MOBILE_JOYSTICK_RESPONSE_EXPONENT
+  );
+  const scale = responsiveMagnitude / Math.hypot(safeX, safeY);
+  return [safeX * scale, safeY * scale];
 }
 
 function normalizedMobileJoystickDirection(

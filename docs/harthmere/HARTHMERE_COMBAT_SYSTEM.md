@@ -40,7 +40,7 @@ the same values.
 
 | Attack class | Windup | Contact frame | Recovery | Extra stamina cost | Movement scale |
 | ------------ | -----: | ------------: | -------: | -----------------: | -------------: |
-| Basic/light  | 260 ms |        400 ms |   620 ms |                  0 |           0.38 |
+| Basic/light  | 135 ms |        160 ms |   458 ms |                  0 |           0.38 |
 | Heavy        | 480 ms |        720 ms |   920 ms |                  0 |           0.18 |
 | Ranged       | 340 ms |        520 ms |   680 ms |                  0 |           0.30 |
 | Magic        | 460 ms |        700 ms |   860 ms |                  0 |           0.24 |
@@ -60,8 +60,15 @@ name/category fallbacks second:
 
 - unarmed attacks use the basic timeline and add no stamina cost;
 - ordinary one-handed weapons and combat-capable tools use the basic timeline;
+- bare-hand body contact reaches 1.75 units and uses a compact 0.48-unit swept
+  hand radius;
+- legacy held gathering tools reach 2.75 units;
+- premium melee reach is the authored visible `targetLength` plus 2.25 units of
+  arm/body extension, clamped to 2.8–4.5 units, so a great sword reaches farther
+  than a one-handed sword;
 - two-handed weapons, greatswords, mauls, and equivalent heavy tools use the
-  heavy timeline, 4 m reach, and the largest movement/recovery commitment;
+  heavy timeline, a wider swing arc, and the largest movement/recovery
+  commitment;
 - daggers have a shorter server cadence, while axes are slower than ordinary
   one-handed weapons;
 - bows, crossbows, darts, thrown weapons, and energy weapons use the ranged
@@ -76,10 +83,25 @@ weapon animation does not grant contact by itself.
 
 ## Contact and damage authority
 
-Melee contact is evaluated at the animation's impact frame. The client
-re-samples the candidate entity, range, facing arc, body height, and obstruction
-state. If the target moved out, rolled through the active frame, changed
-height on a hill, died, or left line of sight, the swing whiffs.
+Melee acquisition is body-aware rather than cursor-only. A valid combat lock or
+direct cursor body remains first priority. If both miss, the client tests the
+nearby native NPC ECS bodies against the horizontal hand/weapon sweep, using
+each target's AABB at its smoothed rendered position when available. The
+renderer registry contributes fresh visibility and position data, but is not
+required for authority; a small native ECS spatial scan runs only on attack
+input so a newly streamed body cannot become unhittable while its presentation
+bridge catches up. A weapon passing through a Mucker's shoulder can therefore
+connect even when the reticle is above or beside the body. The nearest
+unobstructed body wins; bodies wholly behind the player, behind terrain,
+outside the selected item's reach, dead, or protected are rejected. This is a
+single-target melee fallback, not an area-of-effect damage multiplier, and it
+adds no per-frame NPC scan.
+
+Melee contact is evaluated at the animation's impact frame. The selected entity
+identity is refreshed from ECS and its health, protection, and selected-item
+reach are revalidated. If the target moved outside the hard body-distance
+boundary, died, or became protected, the swing whiffs. Camera motion after the
+press does not erase a contact already authored against that body.
 
 Enemy directional melee also locks its facing arc when the windup begins. The
 attacker may turn or move during later simulation frames, but that does not
@@ -283,6 +305,39 @@ same position through Sync, and show Walk or Run in the rendered client. A test
 that teleports the companion to the destination proves quest bookkeeping, not
 escorting.
 
+### Multiplayer retaliation and player escorts
+
+A real negative `Health` damage event opens a bounded retaliation encounter.
+The creature keeps the opener first, then distributes later exchanges across
+eligible players within 18 metres (capped by the creature's disengage leash).
+Authored group responders use their responder rank to spread across the same
+participant list immediately; a solitary creature advances every six seconds.
+An authored taunt remains an absolute target override.
+
+Eligibility is intentionally narrow:
+
+- players must be alive and outside peace mode. Once a real hit opens the
+  bounded encounter, nearby players remain participants even on protected or
+  clean terrain; safe zones still suppress proactive aggro before a hit;
+- an NPC joins only when it opened the encounter or is actively attacking that
+  creature, which includes combat-capable player escorts;
+- unrelated escorts, civilians, quest givers, livestock, and monsters are not
+  collateral targets;
+- only the bounded 18-metre encounter is recruited; players outside it and
+  unrelated NPCs remain uninvolved.
+
+`SimulatedNpc.attack()` publishes `UpdatePlayerHealthEvent` for players and
+`UpdateNpcHealthEvent` for NPC opponents. Logic accepts NPC-to-NPC damage only
+when the attacking NPC owns the matching unresolved Anima melee or ranged
+receipt; accepted receipt identities are kept in a short target-side replay
+ledger. This lets Hex projectiles and ordinary melee damage escorts without
+turning an NPC-authored damage number into client authority.
+
+Jobs-board player escorts default to `defend_leader`: they do not initiate
+proximity fights, but they defend themselves and their player. Explicit
+`noncombatant` assignments remain noncombatant, and Chapter 1's authored
+unkillable escorts still reject harmful health mutations even when they assist.
+
 ## Feedback and readability
 
 The contact frame is shared by body animation, held-weapon animation, damage,
@@ -299,7 +354,7 @@ time is floored at `HARTHMERE_PROJECTILE_MIN_FLIGHT_SECS` (0.4 s) regardless of
 which timing source is used.
 
 This matters because the authoritative path supplies the impact time
-*remaining*, measured against the client's clock when it observes the release.
+_remaining_, measured against the client's clock when it observes the release.
 Anima tick latency, `npc_state` serialization, and Sync replication have already
 consumed part of the authored flight by then, so under load the remainder trends
 toward zero. That branch previously clamped only to a frame epsilon, which meant
@@ -329,9 +384,10 @@ selected attack defines them.
 
 ## Verification contract
 
-Fast source tests prove timing, survival stamina, movement, receipt validation, boss
-catalogs, and Indisworm/Hex profiles. Rendered acceptance must use an
-exact-current client and server bundle against the same native ECS world.
+Fast source tests prove timing, survival stamina, movement, receipt validation,
+multiplayer retaliation, NPC-to-NPC escort damage, boss catalogs, and
+Indisworm/Hex profiles. Rendered acceptance must use an exact-current client and
+server bundle against the same native ECS world.
 
 The browser batch is:
 

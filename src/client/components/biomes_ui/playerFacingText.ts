@@ -1,4 +1,4 @@
-import { harthmerePlayerCapacityMessage } from "@/client/components/harthmere_capacity_messages";
+import { harthmerePlayerCapacityMessage } from "../harthmere_capacity_messages";
 
 const EXACT_PLAYER_TEXT: Record<string, string> = {
   fetch_unavailable: "The connection is not ready yet",

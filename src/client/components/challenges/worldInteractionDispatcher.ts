@@ -15,6 +15,11 @@ export const WORLD_INTERACTION_PRIORITY = {
   // before any object behind the reticle. The player selected that mode and
   // its HUD is the visible contract for F.
   activeTool: 20_000,
+  // An inspected customer in the actor's active business shift is an explicit
+  // conversation target. It must beat the nearby physical business board or F
+  // reopens management instead of serving the customer. Keep this below an
+  // explicitly selected tool and the authored Chapter 1 interactions.
+  activeBusinessCustomer: 16_000,
   // A physical jobs board is an explicit station interaction and must outrank
   // an NPC standing beside or behind it. Otherwise the native cursor shortcut
   // steals F and the board can never be opened or used in crowded settlements.
@@ -37,8 +42,7 @@ export interface WorldInteractionCandidate {
   onInteract: (event: KeyboardEvent) => unknown;
 }
 
-interface RegisteredWorldInteractionCandidate
-  extends WorldInteractionCandidate {
+interface RegisteredWorldInteractionCandidate extends WorldInteractionCandidate {
   token: symbol;
   order: number;
 }
@@ -46,6 +50,11 @@ interface RegisteredWorldInteractionCandidate
 const candidates = new Map<symbol, RegisteredWorldInteractionCandidate>();
 const subscribers = new Set<() => void>();
 const DEFAULT_KEY_CODES = ["KeyF"] as const;
+// E and Q are gameplay movement actions (Dodge and Evade). Older world-object
+// registrations may still advertise E as a convenience alias, but the global
+// dispatcher must never consume either key before the input manager sees it.
+// F remains the one authoritative keyboard interaction key.
+const GAMEPLAY_RESERVED_WORLD_INTERACTION_KEYS = new Set(["KeyE", "KeyQ"]);
 let nextOrder = 1;
 let removeKeyboardListener: (() => void) | undefined;
 let nextSubscriberNotificationId = 1;
@@ -66,6 +75,9 @@ function candidateAcceptsKey(
   candidate: RegisteredWorldInteractionCandidate,
   keyCode: string
 ) {
+  if (GAMEPLAY_RESERVED_WORLD_INTERACTION_KEYS.has(keyCode)) {
+    return false;
+  }
   return (candidate.keyCodes ?? DEFAULT_KEY_CODES).includes(keyCode);
 }
 
@@ -296,8 +308,8 @@ export function useWorldInteractionCandidate(
 
   return Boolean(
     candidate &&
-      registrationToken.current &&
-      registrationToken.current === selectedToken
+    registrationToken.current &&
+    registrationToken.current === selectedToken
   );
 }
 

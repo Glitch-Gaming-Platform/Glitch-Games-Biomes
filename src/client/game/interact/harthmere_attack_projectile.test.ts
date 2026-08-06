@@ -18,25 +18,34 @@ class TestCustomEvent<T> extends Event {
 }
 
 function withTestWindow(run: (target: EventTarget) => void) {
-  const previousWindow = (globalThis as { window?: unknown }).window;
-  const previousCustomEvent = (globalThis as { CustomEvent?: unknown })
-    .CustomEvent;
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const previousCustomEvent = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "CustomEvent"
+  );
   const target = new EventTarget();
-  (globalThis as { window?: unknown }).window = target;
-  (globalThis as { CustomEvent?: unknown }).CustomEvent = TestCustomEvent;
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    writable: true,
+    value: target,
+  });
+  Object.defineProperty(globalThis, "CustomEvent", {
+    configurable: true,
+    writable: true,
+    value: TestCustomEvent,
+  });
   try {
     run(target);
   } finally {
-    if (previousWindow === undefined) {
+    if (previousWindow) {
+      Object.defineProperty(globalThis, "window", previousWindow);
+    } else {
       delete (globalThis as { window?: unknown }).window;
-    } else {
-      (globalThis as { window?: unknown }).window = previousWindow;
     }
-    if (previousCustomEvent === undefined) {
-      delete (globalThis as { CustomEvent?: unknown }).CustomEvent;
+    if (previousCustomEvent) {
+      Object.defineProperty(globalThis, "CustomEvent", previousCustomEvent);
     } else {
-      (globalThis as { CustomEvent?: unknown }).CustomEvent =
-        previousCustomEvent;
+      delete (globalThis as { CustomEvent?: unknown }).CustomEvent;
     }
   }
 }

@@ -12,7 +12,9 @@ import { harthmereNativeHealingAmount } from "@/shared/harthmere/harthmere_nativ
 import {
   awardHarthmereNativeSkillXp,
   harthmereNativeMedicalSkillAwards,
+  readHarthmereNativeSkillLevel,
 } from "@/shared/harthmere/harthmere_skill_progression";
+import { harthmereSublevelPotencyMultiplier } from "@/shared/harthmere/harthmere_sublevel_benefits";
 import {
   applyHarthmereNativeConsumableToVitals,
   harthmereNativeConsumableProfile,
@@ -78,9 +80,17 @@ export const consumptionEventHandler = makeEventHandler("consumptionEvent", {
       const progression = readHarthmereNativeCombatProgression(
         player.triggerState()
       );
-      const scaledHealthRestore = harthmereNativeHealingAmount(
-        progression.level,
-        healthRestore
+      const scaledHealthRestore = Math.max(
+        0,
+        Math.round(
+          harthmereNativeHealingAmount(progression.level, healthRestore) *
+            harthmereSublevelPotencyMultiplier(
+              readHarthmereNativeSkillLevel(
+                player.triggerState(),
+                "medicine"
+              )
+            )
+        )
       );
       const health = player.health();
       const healthRestored = health

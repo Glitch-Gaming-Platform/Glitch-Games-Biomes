@@ -18,6 +18,9 @@
     "src/client/game/util/mobile_action_controls.test.ts",
     "src/client/game/util/mobile_atlas_decode.ts",
     "src/client/game/util/mobile_atlas_decode.test.ts",
+    "src/client/game/util/mobile_audio_variants.ts",
+    "src/client/game/util/mobile_audio_variants.test.ts",
+    "src/client/game/util/mobile_audio_asset_contract.test.ts",
     "modules.d.ts"
   ]
 }

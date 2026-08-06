@@ -13,6 +13,7 @@ import {
   navigationAidShowsPrecisionOverlay,
   type NavigationAid,
 } from "@/client/game/helpers/navigation_aids";
+import { ch1NativeQuestId } from "@/shared/harthmere/ch1_native_quests";
 
 // HARTHMERE active-pin directional indicator
 // Locks the P0 fix: a user-set destination pin must show its directional
@@ -46,7 +47,76 @@ describe("active map pin navigation aid", () => {
         quest: mossyQuest,
         markers: [mossyMarker],
       }),
-      mossyMarker
+      {
+        ...mossyMarker,
+        ownerQuestId: mossyQuest.questId,
+        ownerStepId: undefined,
+      }
+    );
+  });
+
+  it("refreshes a reused quest anchor when the active objective changes", () => {
+    const questId = String(ch1NativeQuestId("ch1_a3_d1_the_sand_that_remembers"));
+    const marker = {
+      id: `native_quest:${questId}:${questId}`,
+      label: "The Salt-Cured Muckers block the bazaar route forward.",
+      kind: "objective",
+      worldPosition: [2692.5, 81, -307.5] as [number, number, number],
+    };
+    assert.deepEqual(
+      automaticQuestDestinationMarkerForTest({
+        existingPin: {
+          markerId: marker.id,
+          label: "Cross the Dunes",
+          ownerQuestId: questId,
+          ownerStepId: "8762100000001201",
+        },
+        quest: {
+          questId,
+          status: "active",
+          currentStepId: "8762100000001202",
+          firstMarkerId: marker.id,
+        },
+        markers: [marker],
+      }),
+      {
+        ...marker,
+        ownerQuestId: questId,
+        ownerStepId: "8762100000001202",
+      }
+    );
+  });
+
+  it("refreshes a reused quest anchor when its async destination resolves", () => {
+    const questId = String(ch1NativeQuestId("ch1_a3_d1_the_sand_that_remembers"));
+    const marker = {
+      id: `native_quest:${questId}:${questId}`,
+      label: "The Long Walk",
+      kind: "objective",
+      worldPosition: [2672, 83, -320] as [number, number, number],
+    };
+    assert.deepEqual(
+      automaticQuestDestinationMarkerForTest({
+        existingPin: {
+          markerId: marker.id,
+          label: marker.label,
+          worldPosition: [474, -130.5, -136.3],
+          ownerQuestId: questId,
+          ownerStepId: "8762100000001208",
+        },
+        quest: {
+          questId,
+          status: "active",
+          currentStepId: "8762100000001208",
+          firstMarkerId: marker.id,
+        },
+        markers: [marker],
+      }),
+      {
+        ...marker,
+        ownerQuestId: questId,
+        ownerStepId: "8762100000001208",
+      }
     );
   });
 
@@ -59,7 +129,11 @@ describe("active map pin navigation aid", () => {
         quest: mossyQuest,
         markers: [mossyMarker],
       }),
-      mossyMarker
+      {
+        ...mossyMarker,
+        ownerQuestId: mossyQuest.questId,
+        ownerStepId: undefined,
+      }
     );
     assert.equal(
       automaticQuestDestinationMarkerForTest({
@@ -98,7 +172,40 @@ describe("active map pin navigation aid", () => {
         },
         markers: [chapter1Marker],
       }),
-      chapter1Marker
+      {
+        ...chapter1Marker,
+        ownerQuestId: "8762000000000000",
+        ownerStepId: undefined,
+      }
+    );
+  });
+
+  it("replaces an unrelated destination at a Chapter 1 objective handoff", () => {
+    const chapter1QuestId = String(
+      ch1NativeQuestId("ch1_a1_q03_stand_him_up")
+    );
+    const chapter1Marker = {
+      id: `native_quest:${chapter1QuestId}:seat_the_core`,
+      label: "Return to AUGUR-9 and install the Core Cell",
+      kind: "objective",
+      worldPosition: [524, 69, -154] as [number, number, number],
+    };
+    assert.deepEqual(
+      automaticQuestDestinationMarkerForTest({
+        existingPin: { markerId: "player-chosen-market" },
+        quest: {
+          questId: chapter1QuestId,
+          status: "active",
+          currentStepId: "seat_the_core",
+          firstMarkerId: chapter1Marker.id,
+        },
+        markers: [chapter1Marker],
+      }),
+      {
+        ...chapter1Marker,
+        ownerQuestId: chapter1QuestId,
+        ownerStepId: "seat_the_core",
+      }
     );
   });
 
@@ -118,7 +225,11 @@ describe("active map pin navigation aid", () => {
         },
         markers: [mossyMarker],
       }),
-      mossyMarker
+      {
+        ...mossyMarker,
+        ownerQuestId: "8762000000000003",
+        ownerStepId: "8762100000000301",
+      }
     );
     assert.equal(
       shouldClearOwnedQuestMapPinForTest({

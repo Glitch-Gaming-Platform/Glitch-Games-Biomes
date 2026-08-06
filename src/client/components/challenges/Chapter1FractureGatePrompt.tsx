@@ -25,6 +25,10 @@ import React, {
   useState,
 } from "react";
 
+// Fast enough for a nearby F prompt, but no longer a 750 ms state POST during
+// every combat frame budget. Mutations still refresh immediately.
+export const CHAPTER1_GATE_RECONCILE_INTERVAL_MS = 2_000;
+
 interface Chapter1GateState {
   ok: boolean;
   reason?: string;
@@ -155,7 +159,7 @@ export const Chapter1FractureGatePrompt: React.FunctionComponent = () => {
       if (document.visibilityState === "visible" && !busyRef.current) {
         void refresh();
       }
-    }, 750);
+    }, CHAPTER1_GATE_RECONCILE_INTERVAL_MS);
     return () => {
       window.clearInterval(timer);
       setCh1ActiveGateIds(undefined);

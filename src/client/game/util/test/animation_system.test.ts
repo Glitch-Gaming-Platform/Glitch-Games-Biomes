@@ -190,6 +190,21 @@ describe("Player Animations", () => {
     assert.equal(accum.animations.dance?.easeInTime, 0.5);
   });
 
+  it("accumulates a dynamic playback rate without changing blend weights", () => {
+    const accum = system.newAccumulatedActions(0.2, durationFn);
+    system.accumulateAction(
+      {
+        weights: system.singleAnimationWeight("walk", 1),
+        state: { repeat: { kind: "repeat" }, startTime: 0 },
+        playbackRates: { walk: 1.35 },
+        layers: { arms: "apply", notArms: "apply" },
+      },
+      accum
+    );
+    assert.equal(accum.animations.walk?.playbackRate, 1.35);
+    assert.equal(accum.layers.arms.desiredWeights?.walk, 1);
+  });
+
   it("idle weights are tracked despire previous setting", () => {
     const accum = system.newAccumulatedActions(0.2, durationFn);
 
@@ -326,5 +341,199 @@ describe("Player Animations", () => {
       walkAction.getClip().tracks.map((track) => track.name),
       ["Branch.L.quaternion", "RootLeg.L.position"]
     );
+  });
+
+  it("creates additive actions for upper-body expression definitions", () => {
+    const expressionSystem = new AnimationSystem(
+      {
+        idle: { fileAnimationName: "Idle" },
+        expression: {
+          fileAnimationName: "Expression",
+          additive: true,
+        },
+      },
+      { upperBody: { re: /Chest/ } }
+    );
+    const scene = new THREE.Group();
+    const chest = new THREE.Bone();
+    chest.name = "Chest";
+    scene.add(chest);
+    const idle = new THREE.AnimationClip("Idle", 1, [
+      new THREE.QuaternionKeyframeTrack(
+        "Chest.quaternion",
+        [0, 1],
+        [0, 0, 0, 1, 0, 0, 0, 1]
+      ),
+    ]);
+    const expression = new THREE.AnimationClip("Expression", 1, [
+      new THREE.QuaternionKeyframeTrack(
+        "Chest.quaternion",
+        [0, 1],
+        [0, 0, 0, 1, 0, 0.2, 0, 0.98]
+      ),
+    ]);
+    const state = expressionSystem.newState(scene, [idle, expression]);
+    assert.equal(
+      state.actions.upperBody.expression?.getClip().blendMode,
+      THREE.AdditiveAnimationBlendMode
+    );
+  });
+
+  it("defers and reclaims mobile animation actions without losing duration", () => {
+    const mobileSystem = new AnimationSystem(
+      {
+        idle: { fileAnimationName: "Idle" },
+        expression: { fileAnimationName: "Expression" },
+      },
+      { all: { re: /.*/ } }
+    );
+    const scene = new THREE.Group();
+    const root = new THREE.Bone();
+    root.name = "Root";
+    scene.add(root);
+    const idle = new THREE.AnimationClip("Idle", 1, [
+      new THREE.VectorKeyframeTrack(
+        "Root.position",
+        [0, 1],
+        [0, 0, 0, 0, 0, 0]
+      ),
+    ]);
+    const expression = new THREE.AnimationClip("Expression", 1.5, [
+      new THREE.VectorKeyframeTrack(
+        "Root.position",
+        [0, 1.5],
+        [0, 0, 0, 0, 0.1, 0]
+      ),
+    ]);
+    const state = mobileSystem.newState(scene, [idle, expression], undefined, {
+      deferredAnimationNames: new Set(["expression"] as const),
+      reclaimDeferredActions: true,
+      stabilizeClampedOnceAnimations: true,
+    });
+
+    assert.ok(state.actions.all.idle, "desktop-compatible idle stays eager");
+    assert.equal(state.actions.all.expression, undefined);
+    assert.equal(mobileSystem.durationFromState(state)("expression"), 1.5);
+
+    const active = mobileSystem.newAccumulatedActions(
+      0.1,
+      mobileSystem.durationFromState(state)
+    );
+    mobileSystem.accumulateAction(
+      {
+        weights: mobileSystem.singleAnimationWeight("expression", 1),
+        state: {
+          repeat: { kind: "once", clampWhenFinished: true },
+          startTime: 0,
+        },
+        layers: { all: "apply" },
+      },
+      active
+    );
+    mobileSystem.applyAccumulatedActionsToState(active, state);
+    assert.ok(state.actions.all.expression, "first use materializes the clip");
+
+    const idleOnly = mobileSystem.newAccumulatedActions(
+      0.2,
+      mobileSystem.durationFromState(state)
+    );
+    mobileSystem.accumulateAction(
+      {
+        weights: mobileSystem.singleAnimationWeight("idle", 1),
+        state: { repeat: { kind: "repeat" }, startTime: 0 },
+        layers: { all: "apply" },
+      },
+      idleOnly
+    );
+    mobileSystem.applyAccumulatedActionsToState(idleOnly, state);
+    assert.equal(
+      state.actions.all.expression,
+      undefined,
+      "zero-weight deferred actions are released"
+    );
+  });
+
+  it("stops a completed clamped action when WebKit leaves paused false", () => {
+    const mobileSystem = new AnimationSystem(
+      {
+        idle: { fileAnimationName: "Idle" },
+        expression: { fileAnimationName: "Expression" },
+      },
+      { all: { re: /.*/ } }
+    );
+    const scene = new THREE.Group();
+    const root = new THREE.Bone();
+    root.name = "Root";
+    scene.add(root);
+    const clips = [
+      new THREE.AnimationClip("Idle", 1, [
+        new THREE.VectorKeyframeTrack(
+          "Root.position",
+          [0, 1],
+          [0, 0, 0, 0, 0, 0]
+        ),
+      ]),
+      new THREE.AnimationClip("Expression", 1, [
+        new THREE.VectorKeyframeTrack(
+          "Root.position",
+          [0, 1],
+          [0, 0, 0, 0, 0.1, 0]
+        ),
+      ]),
+    ];
+    const state = mobileSystem.newState(scene, clips, undefined, {
+      deferredAnimationNames: new Set(["expression"] as const),
+      stabilizeClampedOnceAnimations: true,
+    });
+    const first = mobileSystem.newAccumulatedActions(
+      0,
+      mobileSystem.durationFromState(state)
+    );
+    mobileSystem.accumulateAction(
+      {
+        weights: mobileSystem.singleAnimationWeight("expression", 1),
+        state: {
+          repeat: { kind: "once", clampWhenFinished: true },
+          startTime: 0,
+        },
+        layers: { all: "apply" },
+      },
+      first
+    );
+    mobileSystem.applyAccumulatedActionsToState(first, state);
+    const action = state.actions.all.expression;
+    assert.ok(action);
+
+    state.mixer.time = 2;
+    action.paused = false;
+    action.enabled = false;
+    let resets = 0;
+    const originalReset = action.reset.bind(action);
+    action.reset = () => {
+      resets += 1;
+      return originalReset();
+    };
+
+    const afterEnd = mobileSystem.newAccumulatedActions(
+      2,
+      mobileSystem.durationFromState(state)
+    );
+    mobileSystem.accumulateAction(
+      {
+        weights: mobileSystem.singleAnimationWeight("expression", 1),
+        state: {
+          repeat: { kind: "once", clampWhenFinished: true },
+          startTime: 0,
+        },
+        layers: { all: "apply" },
+      },
+      afterEnd
+    );
+    mobileSystem.applyAccumulatedActionsToState(afterEnd, state);
+
+    assert.equal(resets, 0, "completed mobile once action must not restart");
+    assert.equal(action.paused, true);
+    assert.equal(action.enabled, true);
+    assert.equal(action.time, action.getClip().duration);
   });
 });

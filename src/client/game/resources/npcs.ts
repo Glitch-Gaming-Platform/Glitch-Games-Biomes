@@ -19,6 +19,7 @@ import {
   clearHarthmereCinematicExpressionPose,
 } from "@/client/game/cutscene/expression_pose";
 import { BasePassMaterial } from "@/client/game/renderers/base_pass_material";
+import { HarthmereNpcStaggerEffect } from "@/client/game/renderers/npc_stagger_effect";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
 import type { SpatialLighting } from "@/client/game/renderers/util";
@@ -73,8 +74,13 @@ import {
   gltfDispose,
   gltfToThree,
   loadGltf,
-  loadGltfWithRetry,
 } from "@/client/game/util/gltf_helpers";
+// HARTHMERE_GLTF_PROTOTYPE_CACHE: the entity-keyed NPC mesh branches below load
+// through the shared, clone-only prototype cache instead of GLTFLoader directly.
+import {
+  loadSharedGltf,
+  loadSharedGltfWithRetry,
+} from "@/client/game/util/gltf_prototype_cache";
 import {
   npcOnDeathParticleMaterials,
   npcOnHitParticleMaterials,
@@ -92,6 +98,7 @@ import { makeDisposable } from "@/shared/disposable";
 import type {
   ReadonlyEmote,
   ReadonlyMovementState,
+  ReadonlyNpcCombatState,
 } from "@/shared/ecs/gen/components";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import type { ReadonlyOptionalDamageSource } from "@/shared/ecs/gen/types";
@@ -116,6 +123,11 @@ import {
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
 import type { BiomesId } from "@/shared/ids";
+import {
+  HARTHMERE_NON_BOSS_STAGGER_VERSION,
+  activeHarthmereNpcStaggerPresentation,
+  type HarthmereNpcStaggerWindow,
+} from "@/shared/npc/stagger";
 import { deserializeNpcCustomState } from "@/shared/npc/serde";
 import {
   harthmereGroundedFeetYWithMemory,
@@ -585,6 +597,16 @@ export const npcSystem = new AnimationSystem(
   }
 );
 
+// MOBILE_LAZY_CHARACTER_ANIMATIONS:
+// Snapshot humans currently expose 119 logical NPC actions, including all 71
+// cinematic expressions. Mobile only needs idle plus the small set active in
+// the current frame, so keep every non-idle action deferred and reclaim its
+// cloned tracks after the blend reaches zero. Desktop retains the established
+// eager action graph.
+export const MOBILE_DEFERRED_NPC_ANIMATION_NAMES = new Set(
+  npcSystem.animationNames.filter((name) => name !== "idle")
+);
+
 const onHitScaleCurve = bezierMultipleDerivatives(bezierFunctionsScalar, [
   { point: 1, derivative: 0, t: 0 },
   { point: 0.7, derivative: 0, t: 0.5 },
@@ -774,7 +796,8 @@ function getOneShotNpcAnimationAction(
   eventKey: string,
   eventTime: number | undefined,
   timelineMatcher: TimelineMatcher,
-  secondsSinceEpoch: number
+  secondsSinceEpoch: number,
+  clampWhenFinished = false
 ): NpcAnimationAction | undefined {
   if (eventTime === undefined) {
     return undefined;
@@ -782,7 +805,9 @@ function getOneShotNpcAnimationAction(
   return {
     weights: npcSystem.singleAnimationWeight(animation, 1),
     state: {
-      repeat: { kind: "once" },
+      repeat: clampWhenFinished
+        ? { kind: "once", clampWhenFinished: true }
+        : { kind: "once" },
       startTime: timelineMatcher.match(eventKey, eventTime, secondsSinceEpoch),
     },
     layers: { all: "apply" },
@@ -1954,6 +1979,8 @@ export class NpcRenderState {
   private readonly harthmereNavigationState: HarthmereNpcNavigationState =
     createHarthmereNpcNavigationState();
   private onHitParticleEffect: ParticleSystem | undefined;
+  private harthmereStaggerEffect: HarthmereNpcStaggerEffect | undefined;
+  private lastHarthmereStaggerSequence: number | undefined;
   private soundChannels: {
     [K in NpcChannels]?: THREE.PositionalAudio;
   } = {};
@@ -2496,10 +2523,17 @@ export class NpcRenderState {
       "/ecs/c/movement_state",
       this.entity.id
     );
-    const activeEvade = movementActionIsActive(
-      movementState,
+    const publicCombatState = resources.get(
+      "/ecs/c/npc_combat_state",
+      this.entity.id
+    );
+    const activeStagger = activeHarthmereNpcStaggerPresentation(
+      publicCombatState,
       secondsSinceEpoch
     );
+    const activeEvade =
+      !activeStagger &&
+      movementActionIsActive(movementState, secondsSinceEpoch);
     const cutsceneExpression = isHarthmereCinematicExpression(
       cutsceneOverride?.animation
     )
@@ -2555,10 +2589,6 @@ export class NpcRenderState {
     // are missing optional combat components still render. Anima's full
     // npc_state is server-only, so real clients receive only the sanitized
     // ranged-cast projection on the public npc_combat_state component.
-    const publicCombatState = resources.get(
-      "/ecs/c/npc_combat_state",
-      this.entity.id
-    );
     const publicRangedAttack:
       | {
           abilityId: string;
@@ -2630,12 +2660,14 @@ export class NpcRenderState {
     });
     const magicChargeTimeSecs = projectilePresentation?.chargeTimeSecs ?? 0;
     const chargingMagic = Boolean(
+      !activeStagger &&
       projectilePresentation?.magic &&
       magicChargeTimeSecs > 0 &&
       projectilePresentation.releaseTime !== undefined &&
       secondsSinceEpoch < projectilePresentation.releaseTime
     );
-    const attackTime = chargingMagic ? undefined : presentationAttackTime;
+    const attackTime =
+      activeStagger || chargingMagic ? undefined : presentationAttackTime;
     const projectileVisualId = projectilePresentation?.projectileVisualId;
     const targetId =
       publicCombatState?.attack_target ??
@@ -2864,9 +2896,23 @@ export class NpcRenderState {
           ),
       animAccum
     );
+    this.mixedMesh.animationSystem.accumulateAction(
+      activeStagger
+        ? getOneShotNpcAnimationAction(
+            "creatureHit",
+            `stagger:${publicCombatState?.stagger_sequence ?? activeStagger.startTime}`,
+            activeStagger.startTime,
+            this.mixedMesh.timelineMatcher,
+            secondsSinceEpoch,
+            true
+          )
+        : undefined,
+      animAccum
+    );
     const lastDamageEventTime = this.entity.health.lastDamageTime;
     const shouldPlayHitReact =
       !harthmereIsDead &&
+      !activeStagger &&
       !activeEvade &&
       attackTime === undefined &&
       lastDamageEventTime !== undefined &&
@@ -2889,7 +2935,9 @@ export class NpcRenderState {
       harthmereIsDead
         ? undefined
         : getVelocityBasedWeights({
-            velocity: harthmereDeathAwareNpcAnimationVelocity,
+            velocity: activeStagger
+              ? getHarthmereStoppedNpcAnimationVelocity()
+              : harthmereDeathAwareNpcAnimationVelocity,
             orientation: orientation,
             runSpeed: getRunSpeedByNpcType(npcType),
             movementType: getMovementTypeByNpcType(npcType),
@@ -3016,7 +3064,9 @@ export class NpcRenderState {
           harthmereDeathAwareNpcAnimationVelocity[0] ?? 0,
           harthmereDeathAwareNpcAnimationVelocity[2] ?? 0
         ),
-      }
+      },
+      activeStagger,
+      publicCombatState
     );
 
     // Update threejs animations.
@@ -3051,7 +3101,9 @@ export class NpcRenderState {
     creatureState: {
       combatTargetActive: boolean;
       horizontalSpeed: number;
-    }
+    },
+    stagger: HarthmereNpcStaggerWindow | undefined,
+    publicCombatState: ReadonlyNpcCombatState | undefined
   ) {
     this.tickOnHitEffects(
       secondsSinceEpoch,
@@ -3061,6 +3113,13 @@ export class NpcRenderState {
     );
     this.tickOnAttackEffects(attackTime, secondsSinceEpoch, centerPosition);
     this.tickHarthmereBossFootsteps(secondsSinceEpoch, aabb, centerPosition);
+    this.tickHarthmereStaggerEffect(
+      stagger,
+      publicCombatState,
+      secondsSinceEpoch,
+      centerPosition,
+      aabb[1][1] - aabb[0][1]
+    );
 
     const idleAnimationWeight =
       this.mixedMesh.animationSystemState.layerWeights.all.idle;
@@ -3123,6 +3182,61 @@ export class NpcRenderState {
           this.soundChannels[key] = undefined;
         }
       }
+    }
+  }
+
+  private tickHarthmereStaggerEffect(
+    stagger: HarthmereNpcStaggerWindow | undefined,
+    publicCombatState: ReadonlyNpcCombatState | undefined,
+    nowSeconds: number,
+    centerPosition: Vec3,
+    bodyHeight: number
+  ) {
+    const sequence = publicCombatState?.stagger_sequence;
+    if (
+      stagger &&
+      (sequence !== this.lastHarthmereStaggerSequence ||
+        !this.harthmereStaggerEffect)
+    ) {
+      this.harthmereStaggerEffect?.dispose();
+      this.harthmereStaggerEffect = new HarthmereNpcStaggerEffect(
+        stagger.kind,
+        stagger.startTime,
+        stagger.expiryTime,
+        stagger.direction,
+        Math.max(0.7, bodyHeight * 0.55)
+      );
+      this.lastHarthmereStaggerSequence = sequence;
+    }
+    if (this.harthmereStaggerEffect) {
+      this.harthmereStaggerEffect.three.position.set(
+        centerPosition[0],
+        centerPosition[1] + bodyHeight * 0.08,
+        centerPosition[2]
+      );
+      if (!this.harthmereStaggerEffect.tick(nowSeconds)) {
+        this.harthmereStaggerEffect.dispose();
+        this.harthmereStaggerEffect = undefined;
+      }
+    }
+    if (typeof window !== "undefined" && this.entity) {
+      const bridgeWindow = window as typeof window & {
+        __harthmereNpcStaggerDebug?: Record<string, unknown>;
+      };
+      bridgeWindow.__harthmereNpcStaggerDebug ??= {};
+      bridgeWindow.__harthmereNpcStaggerDebug[String(this.entity.id)] = {
+        version: HARTHMERE_NON_BOSS_STAGGER_VERSION,
+        active: Boolean(stagger),
+        kind: stagger?.kind,
+        startTime: stagger?.startTime,
+        expiryTime: stagger?.expiryTime,
+        direction: stagger?.direction,
+        sequence,
+        poise: publicCombatState?.poise,
+        poiseMax: publicCombatState?.poise_max,
+        graphicsVisible: this.harthmereStaggerEffect?.three.visible ?? false,
+        attackSuppressed: Boolean(stagger),
+      };
     }
   }
 
@@ -3394,6 +3508,9 @@ export class NpcRenderState {
     if (this.onHitParticleEffect) {
       addToScenes(scenes, this.onHitParticleEffect.three);
     }
+    if (this.harthmereStaggerEffect) {
+      addToScenes(scenes, this.harthmereStaggerEffect.three);
+    }
     for (const k in this.soundChannels) {
       const value = this.soundChannels[k as NpcChannels];
       if (value) {
@@ -3490,11 +3607,18 @@ export class NpcRenderState {
   }
 
   dispose() {
+    if (typeof window !== "undefined" && this.entity) {
+      const bridgeWindow = window as typeof window & {
+        __harthmereNpcStaggerDebug?: Record<string, unknown>;
+      };
+      delete bridgeWindow.__harthmereNpcStaggerDebug?.[String(this.entity.id)];
+    }
     this.activeHarthmereBossSpecialAttack?.action.stop();
     this.cutsceneHeldItemAttachment.dispose();
     this.cutsceneHeldItemNode.removeFromParent();
     this.mixedMesh.dispose();
     this.onHitParticleEffect?.materials.dispose();
+    this.harthmereStaggerEffect?.dispose();
   }
 }
 
@@ -3505,7 +3629,11 @@ interface MixedNpcMeshImpl extends MixedMesh<typeof npcSystem> {
 }
 export type MixedNpcMesh = Disposable<MixedNpcMeshImpl>;
 
-export function makeMixedNpcMesh(gltf: GLTF, npcType: NpcType): MixedNpcMesh {
+export function makeMixedNpcMesh(
+  gltf: GLTF,
+  npcType: NpcType,
+  mobileDevice = false
+): MixedNpcMesh {
   const three = SkeletonUtils.clone(gltfToThree(gltf));
   const [materials, _oldMaterials] = cloneMaterials(three);
   const basePassMaterials = new Set<BasePassMaterial>();
@@ -3523,9 +3651,21 @@ export function makeMixedNpcMesh(gltf: GLTF, npcType: NpcType): MixedNpcMesh {
   });
   recordHarthmereNpcAnimationLoadCheck(three, gltf.animations ?? []);
 
-  const state = npcSystem.newState(three, gltf.animations, {
-    attack: getNpcBehavior(npcType).chaseAttack?.attackAnimationMultiplier ?? 1,
-  });
+  const state = npcSystem.newState(
+    three,
+    gltf.animations,
+    {
+      attack:
+        getNpcBehavior(npcType).chaseAttack?.attackAnimationMultiplier ?? 1,
+    },
+    mobileDevice
+      ? {
+          deferredAnimationNames: MOBILE_DEFERRED_NPC_ANIMATION_NAMES,
+          reclaimDeferredActions: true,
+          stabilizeClampedOnceAnimations: true,
+        }
+      : undefined
+  );
 
   return makeDisposable(
     {
@@ -3547,7 +3687,7 @@ export function makeMixedNpcMesh(gltf: GLTF, npcType: NpcType): MixedNpcMesh {
 }
 
 async function makeNpcRenderState(
-  { audioManager }: ClientContext,
+  { audioManager, clientConfig }: ClientContext,
   deps: ClientResourceDeps,
   id: BiomesId
 ): Promise<NpcRenderState | undefined> {
@@ -3571,7 +3711,7 @@ async function makeNpcRenderState(
   if (!gltf) {
     return;
   }
-  const mixedMesh = makeMixedNpcMesh(gltf, npcType);
+  const mixedMesh = makeMixedNpcMesh(gltf, npcType, clientConfig.mobileDevice);
   const commonResources = await deps.get("/scene/npc_common_effects");
 
   const effectResources = npcType.effectsProfile
@@ -6550,12 +6690,25 @@ async function makeSnapshotGroveNpcAssetMesh(
     // Static snapshot GLBs are packaged locally and should be reliable, but an
     // overloaded service worker/iframe bridge can transiently reject the first
     // fetch. Retry once before replacing an authored NPC with a fallback body.
-    const gltf = await loadGltfWithRetry(url, { attempts: 2, delayMs: 300 });
-    replaceWithPlayerMaterial(gltf);
-    setFrustumCulling(gltf, false);
-    gltf.scene.userData.snapshotGroveNpcAssetVersion =
-      SNAPSHOT_GROVE_NPC_ASSET_KEY_VERSION;
-    gltf.scene.userData.snapshotGroveNpcAssetKey = assetKey;
+    //
+    // HARTHMERE_GLTF_PROTOTYPE_CACHE: this resource is keyed by entity id, so
+    // every Grove NPC sharing an asset used to re-fetch and re-parse it. The
+    // result is only ever used as a clone source (makeMixedNpcMesh), so one
+    // shared prototype per URL is equivalent and much cheaper. The material and
+    // frustum-culling setup is a property of the asset, so it runs once, in
+    // `prepare`.
+    const gltf = await loadSharedGltfWithRetry(url, {
+      variant: "snapshot-grove-npc",
+      attempts: 2,
+      delayMs: 300,
+      prepare: (loaded) => {
+        replaceWithPlayerMaterial(loaded);
+        setFrustumCulling(loaded, false);
+        loaded.scene.userData.snapshotGroveNpcAssetVersion =
+          SNAPSHOT_GROVE_NPC_ASSET_KEY_VERSION;
+        loaded.scene.userData.snapshotGroveNpcAssetKey = assetKey;
+      },
+    });
     return gltf;
   } catch (error) {
     log.warn(
@@ -6593,11 +6746,18 @@ async function makeHarthmereMuckCreatureNpcAssetMesh(
     return undefined;
   }
   try {
-    const gltf = await loadGltf(url);
-    setFrustumCulling(gltf, false);
-    gltf.scene.userData.harthmereMuckCreatureNpcAssetVersion =
-      HARTHMERE_MUCK_CREATURE_NPC_ASSET_VERSION;
-    gltf.scene.userData.harthmereMuckCreatureNpcAssetKey = assetKey;
+    // HARTHMERE_GLTF_PROTOTYPE_CACHE: one prototype per creature asset, cloned
+    // per entity by makeMixedNpcMesh. A muck pack is many entities of a handful
+    // of species, so this is where the duplicate-parse cost was concentrated.
+    const gltf = await loadSharedGltf(url, {
+      variant: "harthmere-muck-creature",
+      prepare: (loaded) => {
+        setFrustumCulling(loaded, false);
+        loaded.scene.userData.harthmereMuckCreatureNpcAssetVersion =
+          HARTHMERE_MUCK_CREATURE_NPC_ASSET_VERSION;
+        loaded.scene.userData.harthmereMuckCreatureNpcAssetKey = assetKey;
+      },
+    });
     return gltf;
   } catch (error) {
     log.warn(
@@ -6622,24 +6782,19 @@ async function makeHarthmereBossNpcAssetMesh(
     return undefined;
   }
   try {
-    const gltf = await loadGltfWithRetry(visual.assetUrl, {
+    // HARTHMERE_GLTF_PROTOTYPE_CACHE: boss GLBs are the largest assets the
+    // client loads (alpha_mucker 11.1 MB, thaedryn_bellbound 12.3 MB). An arena
+    // with several instances of one boss archetype -- or a boss re-acquired
+    // after a Sync radius bounce -- used to re-parse the whole file each time.
+    const gltf = await loadSharedGltfWithRetry(visual.assetUrl, {
+      variant: `harthmere-boss-visual:${visual.id}`,
       attempts: 2,
       delayMs: 250,
+      prepare: (loaded) => {
+        setFrustumCulling(loaded, false);
+        prepareHarthmereBossVisualUserData(loaded, visual);
+      },
     });
-    setFrustumCulling(gltf, false);
-    gltf.scene.userData.harthmereBossVisualAssetsVersion =
-      HARTHMERE_BOSS_VISUAL_ASSETS_VERSION;
-    gltf.scene.userData.harthmereBossVisualId = visual.id;
-    gltf.scene.userData.harthmereBossWorldSize = [...visual.worldSize];
-    gltf.scene.userData.harthmereBossUsesUniformScale =
-      visual.id === "gilded_bull" ||
-      visual.id === "muck_scarred_helix" ||
-      visual.id === "ninth_winter" ||
-      visual.id === "failed_apprentice" ||
-      visual.id === "echo_singer" ||
-      visual.id === "vyrahel_vein_keeper" ||
-      visual.id === "alpha_mucker" ||
-      visual.id === "thaedryn_bellbound";
     return gltf;
   } catch (error) {
     log.warn(
@@ -6655,6 +6810,30 @@ async function makeHarthmereBossNpcAssetMesh(
     );
     return undefined;
   }
+}
+
+/**
+ * Asset-level userData for a boss prototype. Extracted so it runs exactly once
+ * per cached prototype (see gltf_prototype_cache.ts rule 2) and so the values
+ * stay readable next to the visual definition they come from.
+ */
+function prepareHarthmereBossVisualUserData(
+  gltf: GLTF,
+  visual: { id: string; worldSize: readonly number[] }
+) {
+  gltf.scene.userData.harthmereBossVisualAssetsVersion =
+    HARTHMERE_BOSS_VISUAL_ASSETS_VERSION;
+  gltf.scene.userData.harthmereBossVisualId = visual.id;
+  gltf.scene.userData.harthmereBossWorldSize = [...visual.worldSize];
+  gltf.scene.userData.harthmereBossUsesUniformScale =
+    visual.id === "gilded_bull" ||
+    visual.id === "muck_scarred_helix" ||
+    visual.id === "ninth_winter" ||
+    visual.id === "failed_apprentice" ||
+    visual.id === "echo_singer" ||
+    visual.id === "vyrahel_vein_keeper" ||
+    visual.id === "alpha_mucker" ||
+    visual.id === "thaedryn_bellbound";
 }
 
 async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {

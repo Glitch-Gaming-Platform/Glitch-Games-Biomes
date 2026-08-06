@@ -602,4 +602,97 @@ describe("Harthmere Hex ranged attacks", () => {
       [nearbyId]
     );
   });
+
+  it("debits finite NPC mana once, blocks unaffordable magic, and regenerates", () => {
+    const spell = {
+      ...fireball,
+      manaCost: 25,
+      cooldownSecs: 0.1,
+      sharedCooldownSecs: 0.1,
+      castTimeSecs: 0.1,
+    };
+    const mana = { maxMana: 40, manaRegenPerSecond: 5 };
+    const test = fixture();
+
+    assert.equal(
+      rangedAttackTargetTick(
+        test.env,
+        test.npc,
+        test.getTarget(),
+        [spell],
+        100,
+        mana
+      ).phase,
+      "fired"
+    );
+    assert.equal(test.state.chaseAttack.rangedMana, 15);
+    const firstImpact = test.state.chaseAttack.rangedAttack.impactTime;
+    assert.equal(
+      rangedAttackTargetTick(
+        test.env,
+        test.npc,
+        test.getTarget(),
+        [spell],
+        firstImpact,
+        mana
+      ).phase,
+      "hit"
+    );
+    assert.ok(test.state.chaseAttack.rangedMana > 15);
+
+    test.state.chaseAttack.rangedMana = 0;
+    test.state.chaseAttack.rangedManaUpdatedAt = 102;
+    assert.equal(
+      rangedAttackTargetTick(
+        test.env,
+        test.npc,
+        test.getTarget(),
+        [spell],
+        102,
+        mana
+      ).phase,
+      "resource"
+    );
+    assert.equal(test.state.chaseAttack.rangedAttack.abilityId, "fireball");
+
+    assert.equal(
+      rangedAttackTargetTick(
+        test.env,
+        test.npc,
+        test.getTarget(),
+        [spell],
+        107,
+        mana
+      ).phase,
+      "fired"
+    );
+    assert.equal(test.state.chaseAttack.rangedMana, 0);
+    const roundTrip = deserializeNpcCustomState(
+      serializeNpcCustomState(test.state)
+    );
+    assert.equal(roundTrip.chaseAttack?.rangedMana, 0);
+    assert.equal(roundTrip.chaseAttack?.rangedManaUpdatedAt, 107);
+  });
+
+  it("does not charge mana for explicitly physical creature projectiles", () => {
+    const spit = {
+      ...fireball,
+      abilityId: "physical_spit",
+      magic: false,
+      manaCost: 0,
+    };
+    const test = fixture();
+    assert.equal(
+      rangedAttackTargetTick(
+        test.env,
+        test.npc,
+        test.getTarget(),
+        [spit],
+        200,
+        { maxMana: 0, manaRegenPerSecond: 0 }
+      ).phase,
+      "fired"
+    );
+    assert.equal(test.state.chaseAttack.rangedMana, 0);
+  });
 });

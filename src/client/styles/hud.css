@@ -40,7 +40,8 @@
   user-select: none;
   width: 1.5vmin;
   height: 1.5vmin;
-  box-shadow: inset 0 0 0 0.2vmin rgb(0 0 0 / 80%),
+  box-shadow:
+    inset 0 0 0 0.2vmin rgb(0 0 0 / 80%),
     inset 0 0 0 0.4vmin rgb(255 255 255 / 15%);
   border-radius: 50%;
 }
@@ -310,7 +311,8 @@
 }
 
 .nux-inner .key {
-  background: linear-gradient(
+  background:
+    linear-gradient(
       180deg,
       rgb(255 255 255 / 19%) 0%,
       rgb(255 255 255 / 0%) 100%
@@ -700,8 +702,10 @@ button:disabled {
 .button.down:not(.disabled),
 .button:active:not(.disabled) {
   filter: brightness(85%);
-  box-shadow: inset 0 -0.2vmin rgb(255 255 255 / 5%),
-    inset 0 0.2vmin rgb(0 0 0 / 15%), 0 0 0 0.2vmin var(--cell-border-color);
+  box-shadow:
+    inset 0 -0.2vmin rgb(255 255 255 / 5%),
+    inset 0 0.2vmin rgb(0 0 0 / 15%),
+    0 0 0 0.2vmin var(--cell-border-color);
 }
 
 .button.destructive {
@@ -710,7 +714,8 @@ button:disabled {
 
   --cell-border-color: #903237;
 
-  box-shadow: inset 0 0 0 0.2vmin rgb(255 255 255 / 5%),
+  box-shadow:
+    inset 0 0 0 0.2vmin rgb(255 255 255 / 5%),
     0 0 0 0.2vmin var(--cell-border-color);
 }
 
@@ -723,7 +728,8 @@ button:disabled {
 
   --cell-border-color: #453290;
 
-  box-shadow: inset 0 0 0 0.2vmin rgb(255 255 255 / 5%),
+  box-shadow:
+    inset 0 0 0 0.2vmin rgb(255 255 255 / 5%),
     0 0 0 0.2vmin var(--cell-border-color);
 }
 
@@ -954,6 +960,23 @@ button:disabled {
   top: 0;
   left: 0;
   background-color: rgb(255 255 255 / 30%);
+}
+
+/* MOBILE_DIALOG_TOUCH_TARGETS: vmin follows the narrow portrait width, so the
+ * desktop 3/7vmin dialog buttons collapse to 11/26 CSS px on an iPhone. Keep
+ * every phone dialog action reachable without changing desktop sizing. */
+@media (hover: none) and (pointer: coarse) {
+  .button.dialog-button,
+  .button.dialog-button.xsmall,
+  .button.dialog-button.small,
+  .button.dialog-button.marge,
+  .button.dialog-button.large,
+  .button.dialog-button.xl {
+    min-height: 44px;
+    height: auto;
+    padding-block: 10px;
+    font-size: max(16px, var(--font-size-large));
+  }
 }
 
 .circle-badge {
@@ -1309,7 +1332,8 @@ select.minimal {
 
 .segmented-progress-bar .segmented-progress-bar-fill {
   background-color: var(--purple);
-  box-shadow: inset 0 0 0 0.2vmin rgb(255 255 255 / 20%),
+  box-shadow:
+    inset 0 0 0 0.2vmin rgb(255 255 255 / 20%),
     0 0 0 0.1vmin rgb(0 0 0 / 50%);
   position: absolute;
   inset: 0;
@@ -1893,12 +1917,16 @@ select.minimal {
   position: static;
   top: 0;
   left: 0;
-  transition: opacity 250ms ease-in, visibility 0ms ease-in 250ms;
+  transition:
+    opacity 250ms ease-in,
+    visibility 0ms ease-in 250ms;
 }
 
 .conf-active .conf-before {
   opacity: 0;
-  transition: opacity 500ms ease-out, visibility 0ms ease-out 500ms;
+  transition:
+    opacity 500ms ease-out,
+    visibility 0ms ease-out 500ms;
 }
 
 .conf-after {
@@ -1910,7 +1938,9 @@ select.minimal {
 
 .conf-active .conf-after {
   opacity: 1;
-  transition: opacity 500ms ease-in, visibility 0ms ease-in 500ms;
+  transition:
+    opacity 500ms ease-in,
+    visibility 0ms ease-in 500ms;
 }
 
 /*
@@ -1923,14 +1953,18 @@ select.minimal {
   text-shadow: var(--text-bordered);
   visibility: hidden;
   opacity: 0;
-  transition: opacity 250ms ease-in, visibility 0ms ease-in 250ms;
+  transition:
+    opacity 250ms ease-in,
+    visibility 0ms ease-in 250ms;
   height: 0;
 }
 
 .block-destruction-overlay.show {
   visibility: visible;
   opacity: 1;
-  transition: opacity 250ms ease-in, visibility 0ms ease-in 0ms;
+  transition:
+    opacity 250ms ease-in,
+    visibility 0ms ease-in 0ms;
   height: auto;
   animation: shake-block-destruction 0.2s ease-in-out;
 }
@@ -2136,7 +2170,8 @@ select.minimal {
   border-radius: 50%;
   font-weight: 500;
   text-shadow: var(--text-bordered);
-  box-shadow: 0 0 0 0.2vmin rgb(0 0 0 / 100%),
+  box-shadow:
+    0 0 0 0.2vmin rgb(0 0 0 / 100%),
     0 0 0 0.4vmin rgb(255 255 255 / 100%);
 }
 
@@ -2468,7 +2503,9 @@ select.minimal {
 
 .loot-overlay .loot-event {
   text-align: right;
-  animation: loot-slide 0.2s forwards, loot-fade-out 0.5s forwards;
+  animation:
+    loot-slide 0.2s forwards,
+    loot-fade-out 0.5s forwards;
   animation-delay: 0s, 4.5s;
   left: 3vmin;
   opacity: 0;
@@ -2960,10 +2997,15 @@ ul.bullet-points {
   border: 2px solid rgb(255 225 138 / 75%);
   border-radius: 16px;
   background: linear-gradient(180deg, rgb(7 13 27 / 97%), rgb(3 7 18 / 98%));
-  box-shadow: 0 18px 55px rgb(0 0 0 / 75%), inset 0 1px 0 rgb(255 255 255 / 12%);
+  box-shadow:
+    0 18px 55px rgb(0 0 0 / 75%),
+    inset 0 1px 0 rgb(255 255 255 / 12%);
   color: white;
-  text-shadow: 0 2px 0 rgb(0 0 0 / 100%), 2px 0 0 rgb(0 0 0 / 100%),
-    -2px 0 0 rgb(0 0 0 / 100%), 0 -2px 0 rgb(0 0 0 / 100%),
+  text-shadow:
+    0 2px 0 rgb(0 0 0 / 100%),
+    2px 0 0 rgb(0 0 0 / 100%),
+    -2px 0 0 rgb(0 0 0 / 100%),
+    0 -2px 0 rgb(0 0 0 / 100%),
     0 4px 10px rgb(0 0 0 / 95%);
 }
 
@@ -2990,7 +3032,9 @@ ul.bullet-points {
     rgb(8 15 31 / 98%),
     rgb(2 7 18 / 99%)
   ) !important;
-  box-shadow: 0 24px 80px rgb(0 0 0 / 85%), inset 0 1px 0 rgb(255 255 255 / 12%) !important;
+  box-shadow:
+    0 24px 80px rgb(0 0 0 / 85%),
+    inset 0 1px 0 rgb(255 255 255 / 12%) !important;
   color: white !important;
   font-size: clamp(16px, 1.4vw, 21px);
   line-height: 1.45;
@@ -3072,12 +3116,18 @@ ul.bullet-points {
 
 .joysticks--mobile {
   position: fixed;
-  bottom: max(76px, calc(env(safe-area-inset-bottom) + 64px));
+  left: 0;
+  transform: none;
+  bottom: max(40px, calc(env(safe-area-inset-bottom) + 28px));
   padding-left: max(24px, env(safe-area-inset-left));
   padding-right: max(12px, env(safe-area-inset-right));
 }
 
 .joysticks--mobile .mobile-movement-buttons {
+  position: absolute;
+  right: calc(max(18px, env(safe-area-inset-right)) + 112px);
+  bottom: 76px;
+  z-index: 1096;
   display: flex;
   align-items: stretch;
   justify-content: center;
@@ -3110,7 +3160,8 @@ ul.bullet-points {
   border: 2px solid rgba(146, 174, 255, 0.9);
   border-radius: 10px;
   background: rgba(0, 0, 51, 0.9);
-  box-shadow: 0 3px 0 rgba(0, 0, 20, 0.75),
+  box-shadow:
+    0 3px 0 rgba(0, 0, 20, 0.75),
     inset 0 0 10px rgba(61, 89, 171, 0.34);
   color: white;
   font: inherit;
@@ -3129,10 +3180,16 @@ ul.bullet-points {
 }
 
 .joysticks--mobile .mobile-interact-button {
-  position: absolute;
-  right: max(18px, env(safe-area-inset-right));
-  bottom: 56px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  right: auto;
+  bottom: auto;
   z-index: 1096;
+  width: 56px;
+  min-width: 56px;
+  min-height: 56px;
+  transform: translate(-50%, -50%);
 }
 
 .joysticks .mobile-crouch-button--held,
@@ -3145,8 +3202,13 @@ ul.bullet-points {
   transform: translateY(2px);
   border-color: rgb(192, 208, 255);
   background: rgba(61, 89, 171, 0.96);
-  box-shadow: 0 1px 0 rgba(0, 0, 20, 0.8),
+  box-shadow:
+    0 1px 0 rgba(0, 0, 20, 0.8),
     inset 0 0 12px rgba(219, 228, 255, 0.35);
+}
+
+.joysticks--mobile .mobile-interact-button:active {
+  transform: translate(-50%, calc(-50% + 2px));
 }
 
 .joysticks .mobile-crouch-button__key,
@@ -3172,27 +3234,29 @@ ul.bullet-points {
 /*
  * HARTHMERE_MOBILE_ACTION_CONTROLS (2026-08-04 mobile audit, items 1 and 14).
  *
- * The right-thumb action cluster: mine/attack/use, place, and the Harthmere
- * combat verbs that used to be keyboard-only. Every selector below is scoped
+ * The right-thumb action cluster: one context-sensitive mine/use/light/heavy
+ * primary, Place, and the remaining Harthmere combat utilities. Every selector below is scoped
  * under `.joysticks--mobile`, which is only applied when
  * `clientConfig.mobileDevice` is true -- so a touch-capable desktop, which
  * still mounts `.joysticks`, picks up none of this.
  *
  * Geometry notes:
- *  - Anchored bottom-right, mirroring the movement cluster bottom-left, so the
- *    two thumbs never contend for the same region.
+ *  - Primary and Place share the freed objective row with crouch and jump.
+ *    Target/Spark wrap upward from those two right-most slots when available.
  *  - Right inset honours `env(safe-area-inset-right)`, which now actually
  *    resolves thanks to the `viewport-fit=cover` fix (mobile audit item 2).
- *  - `bottom` clears the interact (F) button, which sits at 56px.
+ *  - The contextual F button is centered in the view, outside either thumb
+ *    cluster, and invokes on touch-down before a transient interaction target
+ *    can disappear and unmount the control.
  *  - 48px minimum targets, matching the existing crouch/jump controls and the
  *    44px floor the 2026-08-03 pass established.
- *  - Wraps upward when the weapon is drawn and six controls are present, so a
+ *  - Wraps upward when additional combat controls are present, so a
  *    short landscape viewport never pushes a control off-screen.
  */
 .joysticks--mobile .mobile-action-buttons {
   position: absolute;
   right: max(18px, env(safe-area-inset-right));
-  bottom: 112px;
+  bottom: 76px;
   z-index: 1096;
   display: flex;
   width: 112px;
@@ -3219,7 +3283,8 @@ ul.bullet-points {
   transform: translateY(2px);
   border-color: rgb(192, 208, 255);
   background: rgba(61, 89, 171, 0.96);
-  box-shadow: 0 1px 0 rgba(0, 0, 20, 0.8),
+  box-shadow:
+    0 1px 0 rgba(0, 0, 20, 0.8),
     inset 0 0 12px rgba(219, 228, 255, 0.35);
 }
 
@@ -3231,4 +3296,13 @@ ul.bullet-points {
 .joysticks--mobile .mobile-action-button:disabled {
   opacity: 0.4;
   pointer-events: none;
+}
+
+/* MOBILE_PHONE_LANDSCAPE_CONTROLS: lower the thumb controls into the safe
+ * bottom band on short iPhone viewports. The action rows remain above the
+ * hotbar because both are positioned from this mobile-only container. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .joysticks--mobile {
+    bottom: max(22px, calc(env(safe-area-inset-bottom) + 10px));
+  }
 }

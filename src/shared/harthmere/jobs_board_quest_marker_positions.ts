@@ -33,6 +33,8 @@ import {
   type SnapshotGroveLandmark,
 } from "@/shared/harthmere/snapshot_grove_content";
 import type { Vec3 } from "@/shared/math/types";
+import { humanReadableHarthmereIdentifier } from "@/shared/harthmere/harthmere_readable_names";
+import { HARTHMERE_LEGACY_PROTECTION_ESCORT_DESTINATIONS } from "@/shared/harthmere/legacy_protection_escort_destinations";
 
 export const HARTHMERE_JOBS_BOARD_QUEST_MARKER_POSITIONS_VERSION =
   "harthmere-jobs-board-quest-marker-positions" as const;
@@ -48,6 +50,7 @@ export type HarthmereJobsBoardQuestMarkerSource =
   | "business_outpost_work_station"
   | "exotic_matter_deposit"
   | "muck_bounty_target"
+  | "legacy_protection_field"
   | "fallback";
 
 export interface HarthmereJobsBoardQuestMarkerPosition {
@@ -186,6 +189,17 @@ function markerFromMuckBountyTarget(
   };
 }
 
+function markerFromLegacyProtectionDestination(
+  destination: (typeof HARTHMERE_LEGACY_PROTECTION_ESCORT_DESTINATIONS)[number]
+): HarthmereJobsBoardQuestMarkerPosition {
+  return {
+    markerId: destination.markerId,
+    label: destination.name,
+    position: [...destination.position] as Vec3,
+    source: "legacy_protection_field",
+  };
+}
+
 // HARTHMERE_MARKER_TABLE_MEMOIZATION (2026-07-29):
 // This table is derived entirely from static module data, but it used to be
 // rebuilt from scratch on EVERY lookup — including inside the jobs-board
@@ -195,11 +209,9 @@ function markerFromMuckBountyTarget(
 // the dominant cost in both the authority tests and the browser E2E run.
 // Build once, then serve from an id index.
 let cachedMarkerPositions:
-  | readonly HarthmereJobsBoardQuestMarkerPosition[]
-  | undefined;
+  readonly HarthmereJobsBoardQuestMarkerPosition[] | undefined;
 let cachedMarkerIndex:
-  | ReadonlyMap<string, HarthmereJobsBoardQuestMarkerPosition>
-  | undefined;
+  ReadonlyMap<string, HarthmereJobsBoardQuestMarkerPosition> | undefined;
 const cachedRuntimeMarkerById = new Map<
   string,
   HarthmereJobsBoardQuestMarkerPosition
@@ -227,6 +239,9 @@ function buildHarthmereJobsBoardQuestMarkerPositions(): readonly HarthmereJobsBo
       markerFromExoticMatterDeposit
     ),
     ...HARTHMERE_JOBS_BOARD_MUCK_BOUNTY_TARGETS.map(markerFromMuckBountyTarget),
+    ...HARTHMERE_LEGACY_PROTECTION_ESCORT_DESTINATIONS.map(
+      markerFromLegacyProtectionDestination
+    ),
   ];
 }
 
@@ -269,7 +284,8 @@ export function harthmereJobsBoardQuestMarkerRuntimePosition(
   // target 20+ metres away from the object the player actually interacts with.
   if (
     marker.source === "business_template_target" ||
-    marker.source === "business_outpost_work_station"
+    marker.source === "business_outpost_work_station" ||
+    marker.source === "legacy_protection_field"
   ) {
     return {
       ...marker,
@@ -313,7 +329,10 @@ export function harthmereJobsBoardQuestMarkerPositionForTodo(input: {
     harthmereJobsBoardQuestMarkerPositionForId(input.mapMarkerId) ??
     harthmereJobsBoardQuestMarkerPositionForId(input.targetId) ?? {
       markerId: input.mapMarkerId ?? input.targetId ?? "unknown_job_target",
-      label: input.mapMarkerId ?? input.targetId ?? "Job Target",
+      label: humanReadableHarthmereIdentifier(
+        input.mapMarkerId ?? input.targetId,
+        "Job Target"
+      ),
       position: [...input.fallbackPosition] as Vec3,
       source: "fallback",
     }

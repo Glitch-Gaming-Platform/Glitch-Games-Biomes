@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { containMobileControlEvent } from "@/client/components/mobileControlEvents";
 import {
   BIOMES_UI_ACTIVE_MAP_PIN_EVENT,
   readActiveBiomesUIMapPin,
@@ -177,6 +178,7 @@ export const CurrentQuestObjectiveHUD: React.FunctionComponent<{
   isOpen?: boolean;
 }> = ({ adapter, isOpen = false }) => {
   const { clientConfig } = useClientContext();
+  const [mobileCollapsed, setMobileCollapsed] = React.useState(false);
   const [activeMapPin, setActiveMapPin] = React.useState<
     BiomesUIActiveMapPin | undefined
   >(() => adapter?.getActiveMapPin?.() ?? readActiveBiomesUIMapPin());
@@ -262,10 +264,40 @@ export const CurrentQuestObjectiveHUD: React.FunctionComponent<{
       }`.trim()}
       aria-label="Current objective"
       aria-live="polite"
+      data-biomes-mobile-objective={
+        clientConfig.mobileDevice ? "true" : undefined
+      }
+      data-biomes-mobile-objective-collapsed={
+        clientConfig.mobileDevice ? String(mobileCollapsed) : undefined
+      }
     >
-      <div className="biomes-ui-current-objective-hud__label">Objective</div>
-      <div className="biomes-ui-current-objective-hud__text">{objective}</div>
-      {showRecipeHint && (
+      {clientConfig.mobileDevice ? (
+        <button
+          type="button"
+          className="biomes-ui-current-objective-hud__toggle"
+          aria-label={mobileCollapsed ? "Show objective" : "Hide objective"}
+          aria-expanded={!mobileCollapsed}
+          onPointerDown={(event) => {
+            containMobileControlEvent(event);
+            setMobileCollapsed((collapsed) => !collapsed);
+          }}
+          onClick={(event) => {
+            containMobileControlEvent(event);
+            if (event.detail === 0) {
+              setMobileCollapsed((collapsed) => !collapsed);
+            }
+          }}
+        >
+          <span>Objective</span>
+          <span aria-hidden>{mobileCollapsed ? "▸" : "▾"}</span>
+        </button>
+      ) : (
+        <div className="biomes-ui-current-objective-hud__label">Objective</div>
+      )}
+      {(!clientConfig.mobileDevice || !mobileCollapsed) && (
+        <div className="biomes-ui-current-objective-hud__text">{objective}</div>
+      )}
+      {showRecipeHint && (!clientConfig.mobileDevice || !mobileCollapsed) && (
         <div
           className="biomes-ui-current-objective-hud__recipe-hint"
           data-biomes-recipe-objective-hint="visible"

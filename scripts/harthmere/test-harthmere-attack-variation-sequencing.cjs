@@ -19,9 +19,17 @@ console.log(`Root: ${root}`);
 console.log();
 const manifest = read("src/shared/harthmere/attack_variation_manifest.ts");
 const player = read("src/client/game/util/player_animations.ts");
+const playerState = read("src/client/game/resources/players.ts");
 const suite = read("scripts/harthmere/test-harthmere-town-placement-suite.cjs");
-const variantDir = path.join(root, "public/assets/harthmere/gltf/characters/player_body_variants");
-check("attack variation sequence marker exists", player.includes("HARTHMERE_ATTACK_VARIATION_SEQUENCE_VERSION") || manifest.includes("HARTHMERE_ATTACK_VARIATION_SEQUENCE_VERSION"));
+const variantDir = path.join(
+  root,
+  "public/assets/harthmere/gltf/characters/player_body_variants"
+);
+check(
+  "attack variation sequence marker exists",
+  player.includes("HARTHMERE_ATTACK_VARIATION_SEQUENCE_VERSION") ||
+    manifest.includes("HARTHMERE_ATTACK_VARIATION_SEQUENCE_VERSION")
+);
 for (const family of [
   ["basic", "HarthmereBodyWeaponBasic"],
   ["heavy", "HarthmereBodyWeaponHeavy"],
@@ -31,20 +39,57 @@ for (const family of [
   ["toolUse", "HarthmereBodyToolUse"],
 ]) {
   const [familyName, clipPrefix] = family;
-  const ids = [1,2,3,4].map((i) => `${clipPrefix}_Variation${i}_24`);
-  check(`${familyName} has four concrete variation clip names`, ids.every((id) => manifest.includes(id)), ids.join(", "));
+  const ids = [1, 2, 3, 4].map((i) => `${clipPrefix}_Variation${i}_24`);
+  check(
+    `${familyName} has four concrete variation clip names`,
+    ids.every((id) => manifest.includes(id)),
+    ids.join(", ")
+  );
 }
-check("player animation system registers attack1 variation keys", [1,2,3,4].every((i) => player.includes(`attack1Var${i}:`) && player.includes(`HarthmereBodyWeaponBasic_Variation${i}_24`)));
-check("player animation system registers attack2 variation keys", [1,2,3,4].every((i) => player.includes(`attack2Var${i}:`) && player.includes(`HarthmereBodyWeaponHeavy_Variation${i}_24`)));
-check("same held attack frame reuses the same variation instead of changing every render frame", /harthmereCachedAttackVariationStartTime === emoteStartTime/.test(player));
-check("new attack advances to the next variation", /harthmereLastAttackVariationIndex\s*=\s*\(harthmereLastAttackVariationIndex % 4\) \+ 1/.test(player));
-check("body animation plays selected variation key", /singleAnimationWeight\(harthmereVariationEmoteType, 1\)/.test(player));
-check("legacy aligned clips remain as fallback for compatibility", player.includes('"HarthmereBodyWeaponBasic_Aligned_30"') && player.includes('"HarthmereBodyWeaponHeavy_Aligned_30"'));
+check(
+  "player animation system registers attack1 variation keys",
+  [1, 2, 3, 4].every(
+    (i) =>
+      player.includes(`attack1Var${i}:`) &&
+      player.includes(`HarthmereBodyWeaponBasic_Variation${i}_24`)
+  )
+);
+check(
+  "player animation system registers attack2 variation keys",
+  [1, 2, 3, 4].every(
+    (i) =>
+      player.includes(`attack2Var${i}:`) &&
+      player.includes(`HarthmereBodyWeaponHeavy_Variation${i}_24`)
+  )
+);
+check(
+  "same held attack frame reuses the variation stored on Player emote state",
+  /player\.emoteInfo\.attackVariationIndex/.test(player) &&
+    /attackVariationIndex\?: 1 \| 2 \| 3 \| 4/.test(playerState)
+);
+check(
+  "new attack advances the per-Player variation counter",
+  /this\.harthmereAttackVariationIndex\s*=\s*\(this\.harthmereAttackVariationIndex % 4\) \+ 1/.test(
+    playerState
+  )
+);
+check(
+  "body animation plays selected variation key",
+  /singleAnimationWeight\(harthmereVariationEmoteType, 1\)/.test(player)
+);
+check(
+  "legacy aligned clips remain as fallback for compatibility",
+  player.includes('"HarthmereBodyWeaponBasic_Aligned_30"') &&
+    player.includes('"HarthmereBodyWeaponHeavy_Aligned_30"')
+);
 let inspected = 0;
 let lfsPointers = 0;
 let missing = [];
 if (fs.existsSync(variantDir)) {
-  for (const file of fs.readdirSync(variantDir).filter((f) => f.endsWith(".gltf")).slice(0, 6)) {
+  for (const file of fs
+    .readdirSync(variantDir)
+    .filter((f) => f.endsWith(".gltf"))
+    .slice(0, 6)) {
     const txt = fs.readFileSync(path.join(variantDir, file), "utf8");
     if (/^version https:\/\/git-lfs\.github\.com\/spec\/v1/m.test(txt)) {
       lfsPointers += 1;
@@ -57,14 +102,25 @@ if (fs.existsSync(variantDir)) {
       "HarthmereBodyWeaponHeavy_Variation1_24",
       "HarthmereBodyWeaponHeavy_Variation4_24",
     ]) {
-      if (!txt.includes(`"name": "${name}"`) && !txt.includes(`"name":"${name}"`)) {
+      if (
+        !txt.includes(`"name": "${name}"`) &&
+        !txt.includes(`"name":"${name}"`)
+      ) {
         missing.push(`${file}:${name}`);
       }
     }
   }
 }
-check("generated GLTF body variants expose concrete attack variation clip names", (inspected > 0 && missing.length === 0) || (inspected === 0 && lfsPointers > 0 && missing.length === 0), missing.slice(0, 8).join("\n"));
-check("full suite includes current sequencing test", suite.includes("test-harthmere-attack-variation-sequencing.cjs"));
+check(
+  "generated GLTF body variants expose concrete attack variation clip names",
+  (inspected > 0 && missing.length === 0) ||
+    (inspected === 0 && lfsPointers > 0 && missing.length === 0),
+  missing.slice(0, 8).join("\n")
+);
+check(
+  "full suite includes current sequencing test",
+  suite.includes("test-harthmere-attack-variation-sequencing.cjs")
+);
 console.log();
 console.log(failures ? `RESULT: FAIL (${failures})` : "RESULT: PASS");
 process.exit(failures ? 1 : 0);

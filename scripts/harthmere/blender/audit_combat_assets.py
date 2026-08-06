@@ -80,6 +80,11 @@ def inspect(rel_path):
     if not os.path.exists(path):
         return {"file": rel_path, "error": "missing"}
     bpy.ops.wm.open_mainfile(filepath=path, load_ui=False)
+    # The canonical character source is intentionally saved in Edit Mode.
+    # Evaluated meshes, actions and render bounds are incomplete until Blender
+    # is returned to Object Mode, so every headless audit must normalize it.
+    if bpy.context.object and bpy.context.object.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
 
     meshes = []
     tris = 0

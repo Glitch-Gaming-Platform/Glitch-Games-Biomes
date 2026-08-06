@@ -34,10 +34,10 @@ const playerMesh = readRequired(playerMeshPath);
 const npcs = readRequired(npcPath);
 const renderer = readRequired(rendererPath);
 
-report.check("B/N/L hard key router exists", /HARTHMERE_HARD_COMBAT_KEY_ROUTER_VERSION/.test(multiplayer) && /installHarthmereHardCombatKeyRouter\(\)/.test(multiplayer), "Expected module-load hard key router");
-report.check("KeyB maps only to basic physical attack", /code\s*===\s*["']KeyB["'][\s\S]{0,90}return\s+["']basic["']/.test(multiplayer), "Expected KeyB -> basic");
+report.check("H/L hard key router exists", /HARTHMERE_HARD_COMBAT_KEY_ROUTER_VERSION/.test(multiplayer) && /installHarthmereHardCombatKeyRouter\(\)/.test(multiplayer), "Expected module-load hard key router");
+report.check("primary click owns basic and B is free for Bank", /basic:\s*["']Mouse0["']/.test(multiplayer) && !/code\s*===\s*["']KeyB["'][\s\S]{0,90}return\s+["']basic["']/.test(multiplayer), "Expected Mouse0 basic with no KeyB combat route");
 report.check("KeyH maps to heavy and KeyL maps to spark", /code\s*===\s*["']KeyH["'][\s\S]{0,90}return\s+["']heavy["']/.test(multiplayer) && /code\s*===\s*["']KeyL["'][\s\S]{0,90}return\s+["']spark["']/.test(multiplayer), "Expected KeyH -> heavy and KeyL -> spark");
-report.check("hard router blocks older handlers from stealing B/N/L", /preventDefault\(\)[\s\S]{0,160}stopPropagation\(\)[\s\S]{0,160}stopImmediatePropagation\(\)/.test(multiplayer), "Expected preventDefault + stopPropagation + stopImmediatePropagation before routing");
+report.check("hard router blocks older handlers from stealing H/L", /preventDefault\(\)[\s\S]{0,160}stopPropagation\(\)[\s\S]{0,160}stopImmediatePropagation\(\)/.test(multiplayer), "Expected preventDefault + stopPropagation + stopImmediatePropagation before routing");
 report.check("hard router calls performHarthmereKeyedAttack", /performHarthmereKeyedAttack\(action\)/.test(multiplayer), "Expected hard router route(action) -> performHarthmereKeyedAttack(action)");
 
 const keyedStart = multiplayer.indexOf("export function performHarthmereKeyedAttack");
@@ -48,8 +48,8 @@ const physicalEnd = indexOfOrEnd(keyedBody, "const cooldownSeconds", Math.max(0,
 const physicalBranch = physicalStart >= 0 ? keyedBody.slice(physicalStart, physicalEnd) : "";
 
 report.check("performHarthmereKeyedAttack emits attack-animation event after validation", /emitAttackAnimation\(attack\s*,/.test(keyedBody), "Expected attack animation event in keyed attack path");
-report.check("physical B/N attacks run the forward-arc attack path", /performHarthmereForwardArcAttack\(attack\)/.test(physicalBranch), "Expected B/N physical attacks to call performHarthmereForwardArcAttack(attack)");
-report.check("physical B/N attacks dispatch the visible sword attack animation event outside debug-only logging", /emitHarthmereWeaponVisualState\(\s*["']attack["']\s*,\s*true\s*,\s*attack\s*,/.test(physicalBranch), "Expected physical branch to emit biomes:harthmere-player-sword-visual action=attack before/with forward arc; do not rely on combatDebug logging");
+report.check("physical primary/heavy attacks run the forward-arc attack path", /performHarthmereForwardArcAttack\(attack\)/.test(physicalBranch), "Expected physical attacks to call performHarthmereForwardArcAttack(attack)");
+report.check("physical primary/heavy attacks dispatch the visible weapon animation event outside debug-only logging", /emitHarthmereWeaponVisualState\(\s*["']attack["']\s*,\s*true\s*,\s*attack\s*,/.test(physicalBranch), "Expected physical branch to emit biomes:harthmere-player-sword-visual action=attack before/with forward arc; do not rely on combatDebug logging");
 
 report.check("attack-animation event is a named exported event", /export\s+const\s+HARTHMERE_ATTACK_ANIMATION_EVENT\s*=\s*["']biomes:harthmere-attack-animation["']/.test(multiplayer), "Expected exported attack animation event");
 report.check("emitAttackAnimation dispatches a CustomEvent carrying attack detail", /new\s+CustomEvent\(\s*HARTHMERE_ATTACK_ANIMATION_EVENT[\s\S]{0,220}detail\s*:\s*\{\s*attack/.test(multiplayer), "Expected event detail.attack");
@@ -64,14 +64,18 @@ report.check("player mesh normalizes Walk/Run aliases to Walking/Running", /clip
 report.check("player mesh keeps HeavyAttack distinct from Attack2 fallback", /HeavyAttack/.test(playerMesh) && /Attack2/.test(playerMesh) && /Do not create Attack2 from Attack/.test(playerMesh), "Expected HeavyAttack and Attack2 alias logic");
 
 report.check("NPC animation resource consumes attack emotes", /emote\?\.emote_type\s*===\s*["']attack1["']/.test(npcs), "Expected NPC attack emote animation path");
-report.check("NPC animation resource combines attack action with velocity movement", /getAttackAnimationAction[\s\S]{0,260}getVelocityBasedWeights/.test(npcs), "Expected attack animation plus walk/run movement weights");
+const npcAttackAccumulation = npcs.indexOf("getAttackAnimationAction(");
+const npcVelocityAccumulation = npcs.indexOf("getVelocityBasedWeights({", npcAttackAccumulation);
+report.check("NPC animation resource combines attack action with velocity movement", npcAttackAccumulation >= 0 && npcVelocityAccumulation > npcAttackAccumulation, "Expected attack animation plus walk/run movement weights");
 
 report.check("forward-arc runtime writes bodyForward from local player body yaw", /bodyForward\s*=\s*harthmereBodyForwardFromYaw\(yaw\)/.test(combat) && /source\s*:\s*["']local_player_body_facing["']/.test(combat), "Expected body-facing runtime source");
 report.check("forward-arc attack prioritizes bodyForward over camera/view/movement", /normalizeHarthmereForward2\(runtime\?\.bodyForward\)[\s\S]{0,180}normalizeHarthmereForward2\(runtime\?\.forward\)[\s\S]{0,180}normalizeHarthmereForward2\(runtime\?\.movementForward\)/.test(combat), "Expected bodyForward first in melee basis");
 report.check("forward-arc swing event carries swingOrigin and swingForward", /visualKind\s*:\s*["']player_swing["'][\s\S]{0,900}swingOrigin[\s\S]{0,220}swingForward/.test(combat), "Expected melee event to expose swing direction for renderer/tests");
 
 report.check("renderer routes player_swing as physical, not spark/magic", /isPlayerSwingEvent[\s\S]{0,2200}visualKind\s*=\s*isPlayerSwingEvent\s*\?\s*["']player_swing["']\s*:\s*["']physical["']/.test(renderer), "Expected player_swing classified physical");
-report.check("renderer faces NPC attackers/targets before playing combat pulses", /faceCombatActorToward\(attacker[\s\S]{0,900}startCombatPulse\(attacker\s*,\s*["']attack["']/.test(renderer), "Expected actor facing correction before attack pulse");
+const rendererFacing = renderer.indexOf("this.faceCombatActorToward(\n        attacker,");
+const rendererAttackPulse = renderer.indexOf("this.startCombatPulse(\n        attacker,\n        \"attack\"", rendererFacing);
+report.check("renderer faces NPC attackers/targets before playing combat pulses", rendererFacing >= 0 && rendererAttackPulse > rendererFacing, "Expected actor facing correction before attack pulse");
 report.check("renderer can face a combat actor along swingForward", /faceCombatActorAlong\([\s\S]{0,900}harthmereYawForWorldForward/.test(renderer) && /swingForward/.test(renderer), "Expected swingForward direction to control attack-facing yaw");
 report.check("renderer combat pulse can select attack/block/hit/death clips", /function\s+bestCombatClip/.test(renderer) && /startCombatPulse/.test(renderer) && ["Attack", "HeavyAttack", "ShieldBlock", "HitReact", "Death"].every((name) => renderer.includes(name)), "Expected combat clip fallback coverage");
 

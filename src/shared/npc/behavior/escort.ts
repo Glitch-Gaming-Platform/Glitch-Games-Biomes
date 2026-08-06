@@ -62,8 +62,14 @@ export type EscortStatus =
 
 /** Default trailing distance behind the leader, in metres. */
 export const ESCORT_DEFAULT_FOLLOW_DISTANCE = 2.6;
-/** Beyond this the escort is out of formation and starts closing at full pace. */
+/** Beyond this the escort is out of formation and starts closing at extra pace. */
 export const ESCORT_FOLLOW_SLACK_METERS = 1.4;
+/** Escorts visibly run even while correcting a small formation gap. */
+export const ESCORT_FOLLOW_RUN_SPEED_MULTIPLIER = 1;
+/** Extra pace used as soon as the escort falls out of formation. */
+export const ESCORT_CLOSE_FAST_RUN_SPEED_MULTIPLIER = 1.5;
+/** Near-player-sprint pace reserved for recovering a badly separated escort. */
+export const ESCORT_CATCH_UP_RUN_SPEED_MULTIPLIER = 1.8;
 /** Beyond this the escort has lost the leader and must catch up. */
 export const ESCORT_DEFAULT_LEASH_DISTANCE = 48;
 /** Radius around the leader in which `fight_muck` will pick up a hostile. */
@@ -197,14 +203,14 @@ export interface EscortLocomotionInput {
 
 export interface EscortLocomotionDecision {
   action: EscortLocomotionAction;
-  /** Fraction of the NPC's run speed to apply this tick. */
-  speedFraction: number;
+  /** Multiplier applied to the NPC's authored run speed this tick. */
+  runSpeedMultiplier: number;
 }
 
 /**
- * Speed pacing for a following escort. Three bands so a companion neither jogs on
- * the leader's heels nor drifts away: hold inside the slot, walk to close small
- * gaps, sprint once out of formation, and catch up past the leash.
+ * Speed pacing for a following escort. Moving escorts always use a running pace:
+ * hold inside the slot, run to close small gaps, accelerate once out of
+ * formation, and use near-player-sprint pace past the leash.
  */
 export function escortLocomotionDecision(
   input: EscortLocomotionInput
@@ -214,20 +220,29 @@ export function escortLocomotionDecision(
     input.destinationDistance <=
       (input.destinationArriveRadius ?? ESCORT_DESTINATION_ARRIVE_RADIUS)
   ) {
-    return { action: "arrived", speedFraction: 0 };
+    return { action: "arrived", runSpeedMultiplier: 0 };
   }
   if (input.distanceToLeader > input.leashDistance) {
-    return { action: "catch_up", speedFraction: 1 };
+    return {
+      action: "catch_up",
+      runSpeedMultiplier: ESCORT_CATCH_UP_RUN_SPEED_MULTIPLIER,
+    };
   }
   const arrive = input.arriveRadius ?? ESCORT_ARRIVE_RADIUS;
   if (input.distanceToFormationAnchor <= arrive) {
-    return { action: "hold", speedFraction: 0 };
+    return { action: "hold", runSpeedMultiplier: 0 };
   }
   const slack = input.followSlack ?? ESCORT_FOLLOW_SLACK_METERS;
   if (input.distanceToFormationAnchor <= arrive + slack) {
-    return { action: "follow", speedFraction: 0.55 };
+    return {
+      action: "follow",
+      runSpeedMultiplier: ESCORT_FOLLOW_RUN_SPEED_MULTIPLIER,
+    };
   }
-  return { action: "close_fast", speedFraction: 1 };
+  return {
+    action: "close_fast",
+    runSpeedMultiplier: ESCORT_CLOSE_FAST_RUN_SPEED_MULTIPLIER,
+  };
 }
 
 export interface EscortHostileCandidate {
@@ -384,8 +399,8 @@ export function escortPathProgress(
  *
  * Both conditions must hold: the escort is beyond its leash AND navigation has
  * been failing continuously for `warpAfterSeconds`. A companion that is merely
- * slow walks; only a companion that is genuinely stuck warps. Never during
- * combat, because a warp would abandon the fight it was assigned to.
+ * slow keeps running; only a companion that is genuinely stuck warps. Never
+ * during combat, because a warp would abandon the fight it was assigned to.
  */
 export function escortShouldWarp(input: EscortWarpInput): boolean {
   if (input.inCombat) return false;

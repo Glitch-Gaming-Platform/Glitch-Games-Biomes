@@ -7,6 +7,7 @@ import { Chapter1FractureGatePrompt } from "@/client/components/challenges/Chapt
 import { Chapter1AmbientMemoryProbe } from "@/client/components/challenges/Chapter1AmbientMemoryProbe";
 import { Chapter1WorldProjectionController } from "@/client/components/challenges/Chapter1WorldProjectionController";
 import { Chapter1LatentSkillController } from "@/client/components/challenges/Chapter1LatentSkillController";
+import { HarthmereCombatLockOnController } from "@/client/components/challenges/HarthmereCombatLockOnController";
 import { HarthmereDialogueSafetyPanel } from "@/client/components/challenges/LocalDevHarthmereDialogueSafetySystem";
 import { HarthmereInventoryGuidancePanel } from "@/client/components/challenges/LocalDevHarthmereInventoryGuidance";
 import { HarthmereMountPetCollectionPanel } from "@/client/components/challenges/LocalDevHarthmereMountPetCollections";
@@ -115,8 +116,8 @@ import {
 import {
   HARTHMERE_ATTACK_ANIMATION_EVENT,
   HarthmereMultiplayerCombatMenuPanel,
-  cycleHarthmereCombatTarget,
   performHarthmereKeyedAttack,
+  toggleHarthmereCombatTargetLock,
   toggleHarthmereWeaponDrawn,
   useHarthmereCombatHotkeys,
   useHarthmereMultiplayerCombatState,
@@ -716,10 +717,8 @@ function useHarthmereLocalPlayerAttackGestureBridge() {
       }
       try {
         const localPlayer = reactResources.get("/scene/local_player");
-        const clock = resources.get("/clock");
         if (detail.phase === "start") {
           const duration = Math.max(0.1, Number(detail.chargeTimeSecs ?? 0));
-          localPlayer.attackInfo = { start: clock.time, duration };
           localPlayer.player.eagerEmote(events, resources, "magicChannel");
           recordHarthmereBodyAnimationSyncDebug({
             attack: "magic",
@@ -733,7 +732,6 @@ function useHarthmereLocalPlayerAttackGestureBridge() {
             source: detail.source,
           });
         } else if (detail.phase === "release") {
-          localPlayer.attackInfo = { start: clock.time, duration: 0.9 };
           localPlayer.player.eagerEmote(events, resources, "magicCast");
           recordHarthmereBodyAnimationSyncDebug({
             attack: "magic",
@@ -1593,7 +1591,7 @@ function FightSideControls() {
             icon={ICONS.target}
             label="Target"
             hint="Tab"
-            onClick={() => cycleHarthmereCombatTarget()}
+            onClick={() => toggleHarthmereCombatTargetLock()}
           />
           <TouchButton
             icon={ICONS.sword}
@@ -3297,43 +3295,14 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   }, [pointerLockManager]);
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const keyHandler = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const tagName = target?.tagName?.toLowerCase();
-      if (
-        event.defaultPrevented ||
-        event.repeat ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey ||
-        tagName === "input" ||
-        tagName === "textarea" ||
-        tagName === "select" ||
-        target?.isContentEditable
-      ) {
-        return;
-      }
-      // B opens the Jobs Board (and toggles closed). Escape closes from
-      // anywhere even when the panel is the focused modal.
-      if (event.code === "KeyB") {
-        event.preventDefault();
-        if (jobsBoardOpen) {
-          closeJobsBoard();
-        } else {
-          openJobsBoard();
-        }
-      }
-    };
     window.addEventListener(HARTHMERE_JOBS_BOARD_OPEN_EVENT, openJobsBoard);
-    window.addEventListener("keydown", keyHandler);
     return () => {
       window.removeEventListener(
         HARTHMERE_JOBS_BOARD_OPEN_EVENT,
         openJobsBoard
       );
-      window.removeEventListener("keydown", keyHandler);
     };
-  }, [closeJobsBoard, jobsBoardOpen, openJobsBoard]);
+  }, [openJobsBoard]);
 
   const openHudAction = (action: HarthmereHudAction) => {
     dispatchHarthmereHudActionEvent(action);
@@ -3390,6 +3359,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       <Chapter1AmbientMemoryProbe />
       <Chapter1WorldProjectionController />
       <Chapter1LatentSkillController />
+      <HarthmereCombatLockOnController />
       {/* HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14): hidden
           world-trigger quest acceptance + the Thaedryn encounter panel. */}
       <HarthmereBibleQuestRuntimeController />

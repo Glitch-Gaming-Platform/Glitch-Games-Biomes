@@ -3,6 +3,7 @@ import {
   HARTHMERE_PROJECTILE_VISUAL_AUDIT_BATCHES,
   shouldShowHarthmereProjectileVisualAudit,
 } from "@/client/components/challenges/harthmereProjectileVisualAudit";
+import { harthmereProjectileAuditControlsReady } from "@/client/components/challenges/HarthmereProjectileVisualAuditPanel";
 import { HARTHMERE_PROJECTILE_VISUALS } from "@/shared/harthmere/projectile_visual_manifest";
 
 describe("HarthmereProjectileVisualAuditPanel", () => {
@@ -45,6 +46,32 @@ describe("HarthmereProjectileVisualAuditPanel", () => {
         hostname: "localhost",
         search: "?harthmere_projectile_visual_audit=1",
       }),
+      false
+    );
+  });
+
+  it("enables lazy-load audit controls before every GLB has loaded", () => {
+    const expectedCount = HARTHMERE_PROJECTILE_VISUALS.length;
+    assert.equal(
+      harthmereProjectileAuditControlsReady(
+        {
+          manifestCount: expectedCount,
+          loadedCount: 2,
+          failedIds: [],
+        },
+        expectedCount
+      ),
+      true
+    );
+    assert.equal(
+      harthmereProjectileAuditControlsReady(
+        {
+          manifestCount: expectedCount,
+          loadedCount: expectedCount,
+          failedIds: ["spark"],
+        },
+        expectedCount
+      ),
       false
     );
   });

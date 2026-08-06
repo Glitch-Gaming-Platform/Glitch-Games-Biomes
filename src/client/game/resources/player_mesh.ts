@@ -2,6 +2,7 @@ import type { PreviewSlot } from "@/client/components/character/CharacterPreview
 import type { ClientContext } from "@/client/game/context";
 import { BasePassMaterial } from "@/client/game/renderers/base_pass_material";
 import {
+  harthmereChapter1ItemCanonicalBaseColor,
   ItemMeshKey,
   type ItemMeshInstance,
 } from "@/client/game/resources/item_mesh";
@@ -17,6 +18,8 @@ import {
   loadGltf,
   loadGltfWithCoalescedNetworkFetch,
 } from "@/client/game/util/gltf_helpers";
+// HARTHMERE_GLTF_PROTOTYPE_CACHE: clone-only prototypes, shared per asset URL.
+import { loadSharedGltf } from "@/client/game/util/gltf_prototype_cache";
 import {
   blockPlaceParticleTexture,
   playerBuffParticleMaterials,
@@ -31,6 +34,8 @@ import {
   loadPlayerAnimatedMesh,
   playerSystem,
 } from "@/client/game/util/player_animations";
+import { resolveAvailableHeldItemAnimation } from "@/client/game/util/held_item_animation";
+import { playerHeldItemAttachmentParent } from "@/client/game/util/player_attachment";
 import { clonePlayerSkinnedMaterial } from "@/client/game/util/skinning";
 import { resolveAssetUrl } from "@/galois/interface/asset_paths";
 import {
@@ -199,6 +204,7 @@ function playerMeshUrlForId(
 }
 
 async function makePlayerPreviewMesh(
+  { clientConfig }: ClientContext,
   deps: ClientResourceDeps,
   slot: PreviewSlot
 ) {
@@ -207,7 +213,14 @@ async function makePlayerPreviewMesh(
   const appearance = preview.appearance;
   const wearing = preview.wearing;
 
-  const mesh = await makeAnimatedMesh(deps, true, wearing, appearance, id);
+  const mesh = await makeAnimatedMesh(
+    deps,
+    true,
+    wearing,
+    appearance,
+    id,
+    clientConfig.mobileDevice
+  );
 
   if (preview.animationKey !== null) {
     // Apply the specified single animation to the player mesh's animation
@@ -231,7 +244,7 @@ async function makePlayerPreviewMesh(
 }
 
 async function makePlayerMesh(
-  { userId }: { userId: BiomesId },
+  { userId, clientConfig }: ClientContext,
   deps: ClientResourceDeps,
   id: BiomesId
 ) {
@@ -246,7 +259,8 @@ async function makePlayerMesh(
     userId !== id,
     wearing?.items,
     appearance?.appearance,
-    id
+    id,
+    clientConfig.mobileDevice
   );
   return mesh;
 }
@@ -260,7 +274,7 @@ export interface PlayerPreview {
 }
 
 async function updatePlayerMesh(
-  { userId }: { userId: BiomesId },
+  { userId, clientConfig }: ClientContext,
   deps: ClientResourceDeps,
   resource: Promise<Optional<LoadedPlayerMesh>>
 ) {
@@ -290,7 +304,8 @@ async function updatePlayerMesh(
       !isLocalPlayer,
       wearing?.items,
       appearance?.appearance,
-      id
+      id,
+      clientConfig.mobileDevice
     );
     Object.assign(resolvedPromise, ret);
   }
@@ -306,15 +321,37 @@ export class ItemAttachment {
     resources: ClientResources,
     item: Item | undefined,
     spatialLighting?: [number, number],
-    light?: [number, number, number]
+    light?: [number, number, number],
+    animation?: {
+      clipName: string;
+      localTimeSeconds: number;
+      fallbackClipName?: string;
+      fallbackLocalTimeSeconds?: number;
+    }
   ) {
     const attachedItem = this.setAttachedItem(resources, item);
+    if (animation) {
+      const resolvedAnimation = resolveAvailableHeldItemAnimation(
+        attachedItem?.animationClipNames,
+        animation
+      );
+      if (resolvedAnimation) {
+        attachedItem?.updateAnimation?.(
+          resolvedAnimation.clipName,
+          resolvedAnimation.localTimeSeconds
+        );
+      }
+    }
     attachedItem?.three.traverse((obj) => {
       if (
         obj instanceof THREE.Mesh &&
         obj.material instanceof BasePassMaterial
       ) {
+        const baseColor = harthmereChapter1ItemCanonicalBaseColor(
+          obj.material
+        );
         updateBasicMaterial(obj.material, {
+          ...(baseColor ? { baseColor } : {}),
           light,
           spatialLighting,
         });
@@ -322,6 +359,10 @@ export class ItemAttachment {
     });
 
     return attachedItem;
+  }
+
+  socketWorldPosition(socketName: string) {
+    return this.itemMeshInstance?.socketWorldPosition?.(socketName);
   }
 
   private setAttachedItem(resources: ClientResources, item: Item | undefined) {
@@ -383,31 +424,11 @@ export class ItemAttachment {
 export function playerMeshWeaponAttachmentParent(
   root: THREE.Object3D
 ): THREE.Object3D {
-  let equippedAttach: THREE.Object3D | undefined;
-  let exactArmAttach: THREE.Object3D | undefined;
-  let fuzzyHandAttach: THREE.Object3D | undefined;
-  root.traverse((child) => {
-    if (child.name === "Equipped_Attach") {
-      equippedAttach = child;
-    } else if (
-      child.name === "R_Arm" ||
-      child.name === "RightArm" ||
-      child.name === "RightHand"
-    ) {
-      exactArmAttach = child;
-    } else if (
-      /righthand/i.test(child.name) ||
-      /right_hand/i.test(child.name) ||
-      /hand_r/i.test(child.name)
-    ) {
-      fuzzyHandAttach = child;
-    }
-  });
   // Generated Grove avatars can expose R_Arm before Equipped_Attach. Taking
   // the first partial match attaches a world-scale item to an arm mesh and can
   // make a pickaxe fill the whole promotional frame. Prefer the authored item
   // socket, matching the normal player equipment path, and only then fall back.
-  return equippedAttach ?? exactArmAttach ?? fuzzyHandAttach ?? root;
+  return playerHeldItemAttachmentParent(root);
 }
 
 const HARTHMERE_GROVE_INSPIRED_AVATAR_POLISH_VERSION =
@@ -519,7 +540,8 @@ async function makeAnimatedMesh(
   frustumCulling: boolean,
   wearables: ReadonlyItemAssignment | undefined,
   appearance: ReadonlyAppearance | undefined,
-  id: BiomesId
+  id: BiomesId,
+  mobileDevice = false
 ): Promise<Disposable<LoadedPlayerMesh>> {
   // Get both the player animations and the player mesh and merge them together.
   const { mesh, url, hash } = await fetchPlayerMeshGLTF(
@@ -537,7 +559,11 @@ async function makeAnimatedMesh(
     process.env.NODE_ENV !== "production"
       ? loadHarthmerePlayerAppearanceConfig(id)
       : undefined;
-  const playerAnimatedMesh = loadPlayerAnimatedMesh(mesh, animationTimings);
+  const playerAnimatedMesh = loadPlayerAnimatedMesh(
+    mesh,
+    animationTimings,
+    mobileDevice
+  );
   if (localDevHarthmereAppearance) {
     playerAnimatedMesh.three.userData.harthmereAppearance =
       localDevHarthmereAppearance;
@@ -559,15 +585,28 @@ async function makeAnimatedMesh(
       {
         source: "player_mesh.ts",
         stripsGeneratedPlayerOverlayShell: true,
-        stripsPlayerOnlySimpleFaceOverlay: true,
+        stripsPlayerOnlySimpleFaceOverlay: false,
         stripsPlayerOnlyModularClothingRuntime: true,
         stripsPlayerOnlyUniqueEnhancements: true,
         stripsPlayerOnlyScabbardShieldQuiverStaffPolish: true,
         stripsPlayerOnlyFullPolishDetails: true,
-        stripsPlayerOnlyExpressionBridge: true,
+        stripsPlayerOnlyExpressionBridge: false,
         keepsComputedGeneratedMesh: true,
+        keepsProductionExpressionCapableFace: true,
         keepsRuntimeWeaponAttachment: true,
       };
+
+    // The minimal production avatar still needs a real face surface. This is
+    // deliberately the same voxel face used by the richer local path, attached
+    // to the animated head/chest hierarchy and driven by the shared 71-entry
+    // expression catalog. The old early return stripped both the face and its
+    // event bridge from every production player.
+    addLocalDevBoltHeadShellToObject(playerAnimatedMesh.three, id);
+    const disposeExpressionBridge =
+      installHarthmerePlayerFacialExpressionBridge(
+        playerAnimatedMesh.three,
+        id
+      );
 
     // Keep the renderer-safe material coercion and the standard weapon/item
     // attachment. This is the important part of "strip the avatar, not the
@@ -591,6 +630,7 @@ async function makeAnimatedMesh(
       },
       () => {
         disposeDeathPoseBridge?.();
+        disposeExpressionBridge?.();
         itemAttachment.dispose();
       }
     );
@@ -1937,8 +1977,61 @@ function installHarthmerePlayerFacialExpressionBridge(
   userId: BiomesId
 ) {
   if (typeof window === "undefined") return undefined;
+  const easeMs = 120;
   const actorIds = new Set(["player", "you", "Player", String(userId)]);
   let lastStateAt = 0;
+  let activeState = makeHarthmereFacialExpressionState({
+    actorId: String(userId),
+    expression: "neutral",
+    source: "ambient",
+    reason: "expression-bridge-initialized",
+  });
+  let activeIntensity = 0;
+  let animationFrame: number | undefined;
+  let expiryTimer: number | undefined;
+
+  const cancelTransition = () => {
+    if (animationFrame !== undefined) {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = undefined;
+    }
+  };
+
+  const transitionTo = (next: HarthmereFacialExpressionState) => {
+    cancelTransition();
+    const fadingToNeutral = next.expression === "neutral";
+    const transitionState = fadingToNeutral ? activeState : next;
+    const from = fadingToNeutral ? activeIntensity : 0;
+    const to = fadingToNeutral ? 0 : next.intensity;
+    const startedAt = window.performance.now();
+
+    if (!fadingToNeutral) {
+      activeState = next;
+      activeIntensity = 0;
+    }
+
+    const tick = (now: number) => {
+      const linear = Math.min(1, Math.max(0, (now - startedAt) / easeMs));
+      const eased = linear * linear * (3 - 2 * linear);
+      activeIntensity = from + (to - from) * eased;
+      applyHarthmerePlayerFacialExpressionToObject(root, {
+        ...transitionState,
+        intensity: activeIntensity,
+      });
+      if (linear < 1) {
+        animationFrame = window.requestAnimationFrame(tick);
+        return;
+      }
+      animationFrame = undefined;
+      if (fadingToNeutral) {
+        activeState = next;
+        activeIntensity = 0;
+        applyHarthmerePlayerFacialExpressionToObject(root, next);
+      }
+    };
+    animationFrame = window.requestAnimationFrame(tick);
+  };
+
   const handler = (event: Event) => {
     const detail = (event as CustomEvent).detail as
       HarthmereFacialExpressionState | undefined;
@@ -1947,13 +2040,16 @@ function installHarthmerePlayerFacialExpressionBridge(
     if (!actorIds.has(actorId)) return;
     const state = makeHarthmereFacialExpressionState(detail);
     lastStateAt = state.at;
-    applyHarthmerePlayerFacialExpressionToObject(root, state);
+    if (expiryTimer !== undefined) {
+      window.clearTimeout(expiryTimer);
+      expiryTimer = undefined;
+    }
+    transitionTo(state);
     const remaining = state.expiresAt ? state.expiresAt - Date.now() : 0;
     if (remaining > 0) {
-      window.setTimeout(() => {
+      expiryTimer = window.setTimeout(() => {
         if (lastStateAt !== state.at) return;
-        applyHarthmerePlayerFacialExpressionToObject(
-          root,
+        transitionTo(
           makeHarthmereFacialExpressionState({
             actorId,
             expression: "neutral",
@@ -1978,8 +2074,13 @@ function installHarthmerePlayerFacialExpressionBridge(
       expression,
       source: String(options.source ?? "script"),
     });
-  return () =>
+  return () => {
+    cancelTransition();
+    if (expiryTimer !== undefined) {
+      window.clearTimeout(expiryTimer);
+    }
     window.removeEventListener(HARTHMERE_FACIAL_EXPRESSION_EVENT, handler);
+  };
 }
 
 function harthmereFindAnchor(
@@ -3157,7 +3258,13 @@ async function loadHarthmerePlayerClothingModel(
     return undefined;
   }
   try {
-    const gltf = await loadGltf(item.modelUrl);
+    // HARTHMERE_GLTF_PROTOTYPE_CACHE: this already clones what it loads, so the
+    // load itself is shared per URL. Previously every wearer of a garment --
+    // player, townsfolk, business owners, customers -- re-fetched and re-parsed
+    // the same GLB, and the town has many NPCs in a handful of outfits.
+    const gltf = await loadSharedGltf(item.modelUrl, {
+      variant: "harthmere-clothing-model",
+    });
     const object = SkeletonUtils.clone(gltfToThree(gltf));
     object.name = `harthmere-player-clothing-model-${item.slot}-${item.id}`;
     object.userData.harthmereClothingItem = item;
@@ -5420,10 +5527,6 @@ function addLocalDevBoltHeadShellToObject(
   root: THREE.Object3D,
   userId?: BiomesId
 ): void {
-  if (process.env.NODE_ENV === "production") {
-    return;
-  }
-
   removeLocalDevPlayerFaceOverlays(root);
 
   // Match the simple block head used by Bolt / the local-dev Harthmere
@@ -5911,7 +6014,8 @@ export async function makeSnapshotPlayerLikeAppearanceMesh(
  */
 export async function makeSnapshotCutscenePlayerMesh(
   deps: ClientResourceDeps,
-  id: BiomesId
+  id: BiomesId,
+  mobileDevice = false
 ): Promise<Disposable<LoadedPlayerMesh>> {
   const cosmetics = harthmereLiveHumanMeshCosmetics(id);
   const mesh = await makeAnimatedMesh(
@@ -5919,7 +6023,8 @@ export async function makeSnapshotCutscenePlayerMesh(
     false,
     cosmetics.wearables,
     cosmetics.appearance,
-    id
+    id,
+    mobileDevice
   );
   mesh.three.userData.snapshotCutscenePlayerMesh = {
     version: "snapshot-cutscene-player-mesh-v1",
@@ -6012,7 +6117,10 @@ export async function addPlayerMeshResources(
     (_deps: ClientResourceDeps, resource: any) => resource
   );
 
-  builder.add("/scene/player/mesh_preview", makePlayerPreviewMesh);
+  builder.add(
+    "/scene/player/mesh_preview",
+    loader.provide(makePlayerPreviewMesh)
+  );
   builder.add("/scene/player/common_effects", makePlayerCommonEffects);
   builder.add(
     "/scene/player/buff_effects",

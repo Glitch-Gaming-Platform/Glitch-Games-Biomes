@@ -27,15 +27,14 @@ import {
 } from "@/shared/harthmere/mmo_jobs_board_authority";
 import type { Vec3 } from "@/shared/math/types";
 import { harthmereGatheringAuthorityNode } from "@/shared/harthmere/gathering_node_authority";
+import { humanReadableHarthmereIdentifier } from "@/shared/harthmere/harthmere_readable_names";
+import { harthmereMaterialAcquisitionPlan } from "@/shared/harthmere/material_acquisition_guidance";
 
 export const HARTHMERE_JOB_OBJECTIVE_VERSION =
   "harthmere-job-objective" as const;
 
 export type HarthmereJobPhase =
-  | "pickup"
-  | "field"
-  | "return_to_board"
-  | "failed";
+  "pickup" | "field" | "return_to_board" | "failed";
 
 export interface HarthmereJobProgress {
   // Delivery
@@ -122,13 +121,7 @@ export function harthmereToolSourceForAction(
 }
 
 export type HarthmereJobItemSourceKind =
-  | "gather"
-  | "craft"
-  | "vendor"
-  | "pickup"
-  | "quest_grant"
-  | "loot"
-  | "unknown";
+  "gather" | "craft" | "vendor" | "pickup" | "quest_grant" | "loot" | "unknown";
 
 export interface HarthmereJobItemSourceGuidance {
   itemId: string;
@@ -496,7 +489,7 @@ export function harthmereJobItemSourceGuidance(input: {
         haveCount: have,
         missingCount: missing,
         sourceKind: "pickup",
-        sourceName: req.pickupMarkerId,
+        sourceName: humanReadableHarthmereIdentifier(req.pickupMarkerId),
         markerId: req.pickupMarkerId,
         hint: `Pick up ${missing} ${pluralItem(
           itemName,
@@ -525,6 +518,32 @@ export function harthmereJobItemSourceGuidance(input: {
         hint: definition.hint(itemName, missing),
       };
     }
+    // Reuse the Chapter 1 acquisition graph for every executable job item that
+    // does not need a hand-authored Jobs Board override. This keeps jobs,
+    // crafting recipes, gathering nodes, and vendor stock on one source of
+    // truth instead of falling back to the unhelpful "vendors or loot" copy.
+    const acquisitionRoute = harthmereMaterialAcquisitionPlan({
+      itemId: req.itemId,
+      itemName,
+      count: missing,
+    })?.routes.find((route) => route.markerId || route.markerPosition);
+    if (acquisitionRoute) {
+      return {
+        itemId: req.itemId,
+        itemName: acquisitionRoute.itemName || itemName,
+        requiredCount: required,
+        haveCount: have,
+        missingCount: missing,
+        sourceKind:
+          acquisitionRoute.kind === "buy" ? "vendor" : acquisitionRoute.kind,
+        sourceName: acquisitionRoute.sourceName,
+        markerId: acquisitionRoute.markerId,
+        markerPosition: acquisitionRoute.markerPosition
+          ? ([...acquisitionRoute.markerPosition] as Vec3)
+          : undefined,
+        hint: acquisitionRoute.description,
+      };
+    }
     if (
       req.mapMarkerId &&
       (input.kind === "gather" || input.kind === "cleanup")
@@ -536,7 +555,9 @@ export function harthmereJobItemSourceGuidance(input: {
         haveCount: have,
         missingCount: missing,
         sourceKind: input.kind === "cleanup" ? "loot" : "gather",
-        sourceName: req.targetName ?? req.mapMarkerId,
+        sourceName: humanReadableHarthmereIdentifier(
+          req.targetName ?? req.mapMarkerId
+        ),
         markerId: req.mapMarkerId,
         hint: `Get ${missing} ${pluralItem(itemName, missing)} at the marked ${
           req.targetName ?? "job location"

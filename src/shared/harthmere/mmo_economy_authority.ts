@@ -18,6 +18,10 @@ import {
   processBusinessCheckIn,
   type BusinessDailyCheckInState,
 } from "./business_daily_checkin";
+import {
+  harthmereLoanTermsForPersuasion,
+  harthmereSublevelProgress,
+} from "./harthmere_sublevel_benefits";
 
 // UTC day index, matching harthmereCareDay / the client's harthmereDayIndex.
 // Inlined (not imported from mmo_care_loops) to avoid a circular import.
@@ -491,6 +495,7 @@ export interface HarthmereEconomyMutationContext {
   canManageGuildBusiness?: (guildId: string) => boolean;
   canManageTownBusiness?: (townId: string) => boolean;
   maxBusinessCount?: number;
+  actorSkillLevels?: Record<string, number | undefined>;
 }
 
 export interface HarthmereEconomyMutationResult {
@@ -2930,20 +2935,46 @@ function takeBusinessLoan(
     business.licenseLevel * 1000 +
     Math.max(0, business.reputation) * 10 -
     business.debtGold;
-  const cap = Math.max(250, rawCap);
+  const businessOperationsProgress = harthmereSublevelProgress(
+    context.actorSkillLevels?.business_operations ?? 1
+  );
+  const cap = Math.floor(
+    Math.max(250, rawCap) * (1 + 0.25 * businessOperationsProgress)
+  );
   if (principal <= 0 || rawCap <= 0 || principal > cap)
     return reject(result, "economy_rejected:business_loan_principal_invalid");
   const loanId = `econ_loan_${result.next.nextLoanNumber++}`;
-  const rate = clampNumber(request.dailyInterestRate, 0.005, 0.08, 0.015);
+  const baseRate = clampNumber(
+    request.dailyInterestRate,
+    0.005,
+    0.08,
+    0.015
+  );
+  const persuasionTerms = harthmereLoanTermsForPersuasion({
+    persuasionLevel: context.actorSkillLevels?.persuasion ?? 1,
+    basePrincipal: cap,
+    baseDailyInterestRate: baseRate,
+    baseDays: 14,
+  });
+  const dueAtMs = request.dueAtMs
+    ? Math.max(
+        request.nowMs + 1,
+        Math.min(
+          request.dueAtMs,
+          request.nowMs +
+            persuasionTerms.maxDays * HARTHMERE_ECONOMY_DAY_MS
+        )
+      )
+    : request.nowMs + 14 * HARTHMERE_ECONOMY_DAY_MS;
   result.next.loans[loanId] = {
     loanId,
     businessId: business.businessId,
     principalOriginal: principal,
     principalRemaining: principal,
     interestPaid: 0,
-    dailyInterestRate: rate,
+    dailyInterestRate: persuasionTerms.dailyInterestRate,
     openedAtMs: request.nowMs,
-    dueAtMs: request.dueAtMs ?? request.nowMs + 14 * HARTHMERE_ECONOMY_DAY_MS,
+    dueAtMs,
     status: "active",
   };
   business.balanceGold += principal;

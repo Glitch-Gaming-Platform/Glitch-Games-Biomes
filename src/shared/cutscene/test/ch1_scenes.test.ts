@@ -94,6 +94,25 @@ describe("ch1 cutscenes - validity", () => {
     }
   });
 
+  it("smooths every Chapter 1 camera handoff instead of hard-cutting", () => {
+    for (const scene of ch1AllScenes()) {
+      assert.equal(scene.shots[0].transitionIn, "fade", scene.id);
+      for (const shot of scene.shots.slice(1)) {
+        assert.notEqual(
+          shot.transitionIn,
+          "cut",
+          `${scene.id}/${shot.id}: interior camera hard-cut`
+        );
+        if (shot.transitionIn === "blend") {
+          assert.ok(
+            shot.blendSeconds >= 0.55,
+            `${scene.id}/${shot.id}: blend is too abrupt`
+          );
+        }
+      }
+    }
+  });
+
   it("keeps every expression cue on an existing actor and inside its shot", () => {
     for (const scene of ch1AllScenes()) {
       const roles = new Set(scene.cast.map((member) => member.role));
@@ -253,8 +272,8 @@ describe("ch1 cutscenes - validity", () => {
       shot.camera.kind === "static"
         ? [shot.camera.position]
         : shot.camera.kind === "dolly"
-        ? shot.camera.waypoints.map((waypoint) => waypoint.position)
-        : []
+          ? shot.camera.waypoints.map((waypoint) => waypoint.position)
+          : []
     );
     assert.deepStrictEqual(cameraPositions, [
       [550, 74, -230],

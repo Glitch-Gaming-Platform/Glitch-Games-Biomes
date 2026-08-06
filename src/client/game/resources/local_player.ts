@@ -28,6 +28,21 @@ import type { RegistryLoader } from "@/shared/registry";
 
 type PlayerStatus = "alive" | "dead" | "respawning";
 
+export function harthmerePlayerAttackEmote(
+  timingClass: HarthmerePlayerAttackTimingClass
+): EmoteType {
+  switch (timingClass) {
+    case "heavy":
+      return "attack2";
+    case "magic":
+      return "magicCast";
+    case "ranged":
+      return "rangedRelease";
+    case "basic":
+      return "attack1";
+  }
+}
+
 export class LocalPlayer {
   player!: Readonly<Player>;
   adminFlying = false;
@@ -98,12 +113,18 @@ export class LocalPlayer {
     return this.#attackCount;
   }
 
+  resetCombatAttackState() {
+    this.attackInfo = undefined;
+    this.player.resetHarthmereAttackVariation();
+  }
+
   startAttack(
     time: number,
     tool: Item | undefined,
     resources: ClientResources,
     events: Events,
-    audioManager: AudioManager
+    audioManager: AudioManager,
+    attackInfo?: AttackInfo
   ) {
     ++this.#attackCount;
 
@@ -111,30 +132,35 @@ export class LocalPlayer {
       resetIfAlreadyPlaying: true,
     });
 
-    const attackEmotes: EmoteType[] = ["attack1", "attack2"];
+    const timingClass: HarthmerePlayerAttackTimingClass =
+      attackInfo?.timingClass ??
+      (() => {
+        switch (harthmereNativeItemCombatProfile(tool)?.kind) {
+          case "heavy":
+            return "heavy";
+          case "ranged":
+            return "ranged";
+          case "spell":
+            return "magic";
+          default:
+            return "basic";
+        }
+      })();
+    const attackEmote = harthmerePlayerAttackEmote(timingClass);
 
     this.player.eagerEmote(
       events,
       resources,
-      attackEmotes[this.attackCount % attackEmotes.length]
+      attackEmote,
+      undefined,
+      attackInfo?.combatCombo?.variation
     );
 
-    const timingClass: HarthmerePlayerAttackTimingClass = (() => {
-      switch (harthmereNativeItemCombatProfile(tool)?.kind) {
-        case "heavy":
-          return "heavy";
-        case "ranged":
-          return "ranged";
-        case "spell":
-          return "magic";
-        default:
-          return "basic";
-      }
-    })();
-    this.attackInfo = {
+    this.attackInfo = attackInfo ?? {
       start: time,
       duration: harthmerePlayerAttackCommitmentSeconds(timingClass),
       movementScale: HARTHMERE_PLAYER_ATTACK_TIMINGS[timingClass].movementScale,
+      timingClass,
     };
   }
 

@@ -9,6 +9,17 @@ import {
   harthmereSkillTotalXpCap,
   isHarthmereSkillId,
 } from "@/shared/harthmere/mmo_class_ability_collectibles";
+import {
+  harthmereCombatEfficiencySkillWeights,
+  harthmereCombatSkillWeights,
+  harthmereSublevelCurrentEffects,
+  harthmereSublevelNextMilestone,
+  harthmereSublevelTitle,
+  harthmereTargetAwareCombatSkillWeights,
+  harthmereWeightedEfficiencyMultiplier,
+  harthmereWeightedPotencyMultiplier,
+  normalizeHarthmereSublevelId,
+} from "@/shared/harthmere/harthmere_sublevel_benefits";
 import type { BiomesId } from "@/shared/ids";
 
 export const HARTHMERE_NATIVE_SKILL_TRIGGER_ROOT =
@@ -86,17 +97,9 @@ export interface HarthmereSkillClientProjection {
   nextLevel: number;
   title: string;
   trainingActions: readonly string[];
+  currentEffects: readonly string[];
+  nextUnlock?: { level: number; label: string };
   [key: string]: unknown;
-}
-
-function projectedSkillTitle(level: number) {
-  return level >= 50
-    ? "Adept"
-    : level >= 25
-    ? "Apprentice"
-    : level > 0
-    ? "Novice"
-    : "Untrained";
 }
 
 function finiteNonNegativeInteger(value: unknown, fallback: number) {
@@ -143,8 +146,9 @@ export function createHarthmereSkillClientProjection(input: {
           1,
           finiteNonNegativeInteger(input.characterProgression.nextLevel, 1)
         ),
-        title: projectedSkillTitle(level),
+        title: harthmereSublevelTitle(level),
         trainingActions: HARTHMERE_SKILL_ACTION_COVERAGE.character_level ?? [],
+        currentEffects: [],
       };
     }
 
@@ -181,8 +185,10 @@ export function createHarthmereSkillClientProjection(input: {
       level,
       xp: progress.xp,
       nextLevel: Math.max(1, progress.nextLevel),
-      title: projectedSkillTitle(level),
+      title: harthmereSublevelTitle(level),
       trainingActions: HARTHMERE_SKILL_ACTION_COVERAGE[definition.id] ?? [],
+      currentEffects: harthmereSublevelCurrentEffects(definition.id, level),
+      nextUnlock: harthmereSublevelNextMilestone(definition.id, level),
     };
   });
 }
@@ -244,6 +250,56 @@ export function readHarthmereNativeSkillProgress(
   return {
     skillId,
     ...harthmereSkillProgressFromTotalXp(skillId, totalXp),
+  };
+}
+
+export function readHarthmereNativeSkillLevel(
+  state: ReadonlyTriggerState | TriggerState | undefined,
+  skillId: string
+) {
+  return readHarthmereNativeSkillProgress(state, skillId)?.level ?? 1;
+}
+
+export function readHarthmereNativeSkillLevels(
+  state: ReadonlyTriggerState | TriggerState | undefined,
+  skillIds: readonly string[] = HARTHMERE_SKILL_IDS
+) {
+  return Object.fromEntries(
+    skillIds
+      .filter((skillId) => skillId !== "character_level")
+      .map((skillId) => [skillId, readHarthmereNativeSkillLevel(state, skillId)])
+  );
+}
+
+export function harthmereNativeCombatSublevelMultipliers(
+  state: ReadonlyTriggerState | TriggerState | undefined,
+  input: {
+    itemId?: string;
+    kind: "unarmed" | "melee" | "heavy" | "ranged" | "spell";
+    targetDescriptor?: string;
+  }
+) {
+  const potencyWeights = harthmereTargetAwareCombatSkillWeights(
+    harthmereCombatSkillWeights(input),
+    input.targetDescriptor
+  );
+  const efficiencyWeights = harthmereCombatEfficiencySkillWeights(input);
+  const levels = readHarthmereNativeSkillLevels(state, [
+    ...new Set([
+      ...Object.keys(potencyWeights),
+      ...Object.keys(efficiencyWeights),
+    ]),
+  ]);
+  return {
+    potency: harthmereWeightedPotencyMultiplier(levels, potencyWeights),
+    statusPotency: harthmereWeightedPotencyMultiplier(
+      levels,
+      potencyWeights
+    ),
+    efficiency: harthmereWeightedEfficiencyMultiplier(
+      levels,
+      efficiencyWeights
+    ),
   };
 }
 
@@ -359,10 +415,10 @@ export function harthmereNativeCombatSkillAwards(input: {
 
 export function harthmereNativeShieldSkillAwards(input: {
   equippedItemIds: readonly string[];
-  damageTaken: number;
+  damagePrevented: number;
 }) {
   if (
-    input.damageTaken <= 0 ||
+    input.damagePrevented <= 0 ||
     !input.equippedItemIds.some((itemId) => /shield|buckler/i.test(itemId))
   ) {
     return [];
@@ -370,7 +426,7 @@ export function harthmereNativeShieldSkillAwards(input: {
   return [
     award(
       "shield_mastery",
-      Math.max(1, Math.min(20, Math.ceil(input.damageTaken / 10))),
+      Math.max(1, Math.min(20, Math.ceil(input.damagePrevented / 5))),
       "native_shield_defense"
     ),
   ];
@@ -429,23 +485,9 @@ export function harthmereNativeGatheringSkillAwards(input: {
   return awards;
 }
 
-const PROFESSION_ALIASES: Readonly<Record<string, string>> = {
-  smithing: "blacksmithing",
-  logging: "gathering",
-  herbalism: "gathering",
-  scavenging: "gathering",
-  magical_harvesting: "gathering",
-  archaeology: "gathering",
-  skinning: "gathering",
-  monster_harvesting: "gathering",
-  foraging: "gathering",
-  trading: "business_operations",
-  community: "persuasion",
-};
-
 export function normalizeHarthmereSkillId(skillId: string | undefined) {
   if (!skillId) return undefined;
-  const normalized = PROFESSION_ALIASES[skillId] ?? skillId;
+  const normalized = normalizeHarthmereSublevelId(skillId) ?? skillId;
   return isHarthmereSkillId(normalized) ? normalized : undefined;
 }
 
@@ -469,7 +511,10 @@ export function harthmereWorldInteractionSkillAwards(input: {
 }) {
   const text = normalizedText(input.kind, input.label);
   const awards: HarthmereSkillXpAward[] = [];
-  if (input.kind === "open_door" || input.kind === "open_gate") {
+  if (
+    (input.kind === "open_door" || input.kind === "open_gate") &&
+    /lock|locked|lockpick|secured/.test(text)
+  ) {
     awards.push(award("lockpicking", 8, "world_lock_interaction"));
   }
   if (input.kind === "repair") {
@@ -528,7 +573,7 @@ export const HARTHMERE_SKILL_ACTION_COVERAGE: Readonly<
   combat: ["Hit an enemy"],
   melee_combat: ["Hit an enemy with your fists or a melee weapon"],
   ranged_combat: ["Hit an enemy from a distance"],
-  shield_mastery: ["Take an enemy hit while a shield is equipped"],
+  shield_mastery: ["Prevent damage with an equipped shield"],
   dagger_mastery: ["Hit an enemy with a dagger or knife"],
   lockpicking: ["Open a locked door or gate"],
   archery: ["Hit an enemy with a bow or crossbow"],

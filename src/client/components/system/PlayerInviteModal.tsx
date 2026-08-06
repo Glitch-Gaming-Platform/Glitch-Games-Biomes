@@ -4,6 +4,7 @@ import {
   openPointerLockUnlockWhileOpen,
   type PointerLockUnlockWhileOpenReturnRef,
 } from "@/client/components/contexts/pointerLockModalPolicy";
+import { containMobileControlEvent } from "@/client/components/mobileControlEvents";
 import {
   createPlayerInvite,
   type PlayerInviteCreateResponse,
@@ -35,7 +36,8 @@ async function copyText(text: string) {
 export const PlayerInviteModal: React.FunctionComponent<{
   open: boolean;
   onClose: () => void;
-}> = ({ open, onClose }) => {
+  mobile?: boolean;
+}> = ({ open, onClose, mobile = false }) => {
   const pointerLockManager = usePointerLockManager();
   const returnPointerLockRef =
     React.useRef<PointerLockUnlockWhileOpenReturnRef>({ current: false });
@@ -120,7 +122,29 @@ export const PlayerInviteModal: React.FunctionComponent<{
               Invite Friends To Play With You!
             </h2>
           </div>
-          <button type="button" className="biomes-ui-tab" onClick={onClose}>
+          <button
+            type="button"
+            className="biomes-ui-tab"
+            aria-label="Close invite"
+            onPointerDown={(event) => {
+              if (!mobile) {
+                return;
+              }
+              // MOBILE_PLAYER_INVITE_CLOSE_TOUCH: use the same immediate phone
+              // close policy as the HUD controls and BiomesUI overlays.
+              containMobileControlEvent(event);
+              onClose();
+            }}
+            onClick={(event) => {
+              if (mobile) {
+                containMobileControlEvent(event);
+                if (event.detail !== 0) {
+                  return;
+                }
+              }
+              onClose();
+            }}
+          >
             Close
           </button>
         </header>

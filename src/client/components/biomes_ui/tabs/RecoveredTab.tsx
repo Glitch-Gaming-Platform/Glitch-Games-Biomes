@@ -1,6 +1,7 @@
 import { CH1_AUGUR9_RECHARGES } from "@/shared/harthmere/ch1_augur9";
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { publishChapter1LatentSkillUse } from "@/client/components/challenges/chapter1LatentSkillPresentation";
+import { publishChapter1RecoveredTabVisibility } from "@/client/components/challenges/Chapter1ObjectiveWorldState";
 import { CH1_LINK_RECIPES } from "@/shared/harthmere/ch1_fragment_ledger";
 import { ch1Item } from "@/shared/harthmere/ch1_items";
 import type { Ch1LatentSkillId } from "@/shared/harthmere/ch1_latent_skills";
@@ -196,6 +197,11 @@ export const RecoveredTab: React.FunctionComponent = () => {
   const [state, setState] = useState<RecoveredState>();
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    publishChapter1RecoveredTabVisibility(true);
+    return () => publishChapter1RecoveredTabVisibility(false);
+  }, []);
 
   const refresh = useCallback(async () => {
     try {

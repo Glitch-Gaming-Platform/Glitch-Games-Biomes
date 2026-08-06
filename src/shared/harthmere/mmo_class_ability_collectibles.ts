@@ -3,6 +3,7 @@ import {
   type HarthmereEconomyBusinessTypeId,
   type HarthmereProductionEconomyState,
 } from "@/shared/harthmere/mmo_economy_authority";
+import { harthmereSublevelTitle } from "@/shared/harthmere/harthmere_sublevel_benefits";
 import {
   SNAPSHOT_GROVE_LANDMARKS,
   SNAPSHOT_GROVE_NPCS,
@@ -1192,14 +1193,7 @@ export function createHarthmereProgressionClientSnapshot(input: {
         level,
         xp,
         nextLevel,
-        title:
-          level >= 50
-            ? "Adept"
-            : level >= 25
-            ? "Apprentice"
-            : level > 0
-            ? "Novice"
-            : "Untrained",
+        title: harthmereSublevelTitle(level),
       };
     }),
     abilities: Object.values(HARTHMERE_ABILITY_DEFINITIONS).map((ability) => {

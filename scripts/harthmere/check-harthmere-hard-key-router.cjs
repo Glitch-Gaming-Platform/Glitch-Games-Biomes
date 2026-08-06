@@ -7,8 +7,7 @@ const text = fs.readFileSync(file, "utf8");
 const checks = [
   "HARTHMERE_HARD_COMBAT_KEY_ROUTER_VERSION",
   "hardCombatActionForCode",
-  'code === "KeyB"',
-  'return "basic"',
+  'basic: "Mouse0"',
   'code === "KeyH"',
   'return "heavy"',
   'code === "KeyL"',
@@ -23,5 +22,8 @@ for (const check of checks) {
   console.log(`${found ? "OK" : "MISSING"} ${check}`);
   ok &&= found;
 }
+const keyBFree = !/code\s*===\s*["']KeyB["'][\s\S]{0,90}return\s+["']basic["']/.test(text);
+console.log(`${keyBFree ? "OK" : "MISSING"} KeyB remains free for Bank`);
+ok &&= keyBFree;
 console.log(ok ? "RESULT: PASS" : "RESULT: FAIL");
 process.exit(ok ? 0 : 1);

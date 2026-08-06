@@ -90,6 +90,7 @@ import { getCameraDirection, setPosition } from "@/shared/game/spatial";
 import { blockIsEmpty } from "@/shared/game/terrain_helper";
 import { invalidateHarthmereGroundedColumnsNear } from "@/client/game/util/harthmere_entity_grounding";
 import { harthmereNativeItemIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
+import { getHarthmerePremiumWeapon } from "@/shared/harthmere/premium_weapon_catalog";
 import {
   HARTHMERE_PROJECTILE_VISUAL_EVENT,
   getHarthmereProjectileVisual,
@@ -162,7 +163,10 @@ const HARTHMERE_NATIVE_TERRAIN_BLOCK_PLACED_EVENT =
 export function emitHarthmereNativeNpcAttackContact({
   attackedEntities,
   tool,
-}: Pick<AttackInteraction, "attackedEntities" | "tool">) {
+  attackInfo,
+}: Pick<AttackInteraction, "attackedEntities" | "tool"> & {
+  attackInfo?: AttackInfo;
+}) {
   if (typeof window === "undefined") {
     return;
   }
@@ -240,13 +244,20 @@ export function emitHarthmereNativeNpcAttackContact({
       : (harthmereNativeItemIdForBiomesId(Number(rawToolId)) ??
         String(rawToolId));
   const projectileVisual = getHarthmereProjectileVisual(semanticToolId);
+  const premiumWeapon = getHarthmerePremiumWeapon(semanticToolId);
+  const arrowSocket = (
+    window as typeof window & {
+      __harthmereHeldBowArrowSocket?: readonly [number, number, number];
+    }
+  ).__harthmereHeldBowArrowSocket;
   const at = Date.now();
   const detail =
     hits.length > 0
       ? {
           version: HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE,
           source: "client.game.interact.helpers.handleAttackInteraction",
-          attack: "basic",
+          attack: attackInfo?.timingClass === "heavy" ? "heavy" : "basic",
+          damageMultiplier: attackInfo?.damageMultiplier ?? 1,
           at,
           toolId: rawToolId,
           itemId: semanticToolId,
@@ -275,6 +286,10 @@ export function emitHarthmereNativeNpcAttackContact({
           attack: "basic",
           result: hits.length > 0 ? "hit" : "miss",
           nativeTargetEntityId: hits[0]?.id,
+          origin:
+            premiumWeapon?.family === "bow" && arrowSocket
+              ? [...arrowSocket]
+              : undefined,
           targetPoint: hits[0]?.position
             ? [
                 hits[0].position[0],
@@ -411,27 +426,33 @@ export function beginAttackInteraction(
 ) {
   const clock = deps.resources.get("/clock");
   const player = deps.resources.get("/scene/local_player");
-  if (!player.isAttacking(clock.time)) {
+  const linkedComboAttackReady =
+    player.attackInfo?.combatCombo !== undefined &&
+    clock.time >= player.attackInfo.combatCombo.nextAttackAt;
+  if (!player.isAttacking(clock.time) || linkedComboAttackReady) {
     player.startAttack(
       clock.time,
       tool,
       deps.resources,
       deps.events,
-      deps.audioManager
+      deps.audioManager,
+      attackInfo
     );
     player.attackInfo = { ...attackInfo };
+    return true;
   }
+  return false;
 }
 
 export function resolveAttackInteraction(
   deps: AttackInteractionDeps,
-  { attackedEntities, tool }: AttackInteraction
+  { attackedEntities, tool, attackInfo }: AttackInteraction
 ) {
   const player = deps.resources.get("/scene/local_player");
 
   // This bridge applies local-mode contact damage, so it belongs at the
   // authored impact frame alongside the native ECS events, not at button-down.
-  emitHarthmereNativeNpcAttackContact({ attackedEntities, tool });
+  emitHarthmereNativeNpcAttackContact({ attackedEntities, tool, attackInfo });
 
   const playerDamageBuff =
     deps.resources.get("/player/modifiers").attackDamage.increase;
@@ -486,7 +507,8 @@ export function resolveAttackInteraction(
       dir: attackDir,
     };
     const clientDamage =
-      damagePerEntityAttack(tool, primaryEnergyTarget) + playerDamageBuff;
+      (damagePerEntityAttack(tool, primaryEnergyTarget) + playerDamageBuff) *
+      (attackInfo.damageMultiplier ?? 1);
     fireAndForget(
       (async () => {
         await deps.events.publish(
@@ -494,6 +516,8 @@ export function resolveAttackInteraction(
             id: primaryEnergyTarget.id,
             hp: -clientDamage,
             damageSource,
+            attackTimingClass: attackInfo.timingClass,
+            attackTime: attackInfo.attackTime,
           })
         );
         for (const candidate of energySecondaryTargets) {
@@ -519,7 +543,9 @@ export function resolveAttackInteraction(
       continue;
     }
 
-    const damage = damagePerEntityAttack(tool, entity) + playerDamageBuff;
+    const damage =
+      (damagePerEntityAttack(tool, entity) + playerDamageBuff) *
+      (attackInfo.damageMultiplier ?? 1);
     const attackDir = normalizev(
       sub(entity.position.v, player.player.position)
     );
@@ -537,6 +563,8 @@ export function resolveAttackInteraction(
             id: entity.id,
             hpDelta: -damage,
             damageSource,
+            attackTimingClass: attackInfo.timingClass,
+            attackTime: attackInfo.attackTime,
           })
         )
       );
@@ -546,7 +574,13 @@ export function resolveAttackInteraction(
       // authority and prevented native death, loot, and npcKilled triggers.
       fireAndForget(
         deps.events.publish(
-          new UpdateNpcHealthEvent({ id: entity.id, hp: -damage, damageSource })
+          new UpdateNpcHealthEvent({
+            id: entity.id,
+            hp: -damage,
+            damageSource,
+            attackTimingClass: attackInfo.timingClass,
+            attackTime: attackInfo.attackTime,
+          })
         )
       );
     }

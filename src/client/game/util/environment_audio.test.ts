@@ -1,5 +1,8 @@
 import {
   CAVE_OVERBURDEN_MIN_SOLID_BLOCKS,
+  HARTHMERE_CAVE_MUSIC_FALLBACK_BELOW_Y,
+  WORLD_CAVE_MUSIC_FALLBACK_BELOW_Y,
+  caveMusicFallbackBelowY,
   hasThickCaveOverburden,
   isCaveAudioEnvironment,
   isMountainTopAudioEnvironment,
@@ -7,6 +10,10 @@ import {
 } from "@/client/game/util/environment_audio";
 import { getTerrainID } from "@/shared/asset_defs/terrain";
 import { blockPos, voxelShard } from "@/shared/game/shard";
+import {
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+  HARTHMERE_EXTENSION_WORLD_BOUNDS,
+} from "@/shared/harthmere/world_extension";
 import assert from "assert";
 
 function tensor(values: Map<string, number>) {
@@ -52,6 +59,58 @@ describe("environment audio terrain classification", () => {
     assert.equal(knownHarthmereCaveAt([689.481, 60, -89.532]), undefined);
   });
 
+  it("recognizes authored caves after the additive-world X transform", () => {
+    assert.equal(
+      knownHarthmereCaveAt([HARTHMERE_ADDITIVE_TOWN_OFFSET_X + 400, 48, -240])
+        ?.caveId,
+      "old_well_descent_room"
+    );
+    assert.equal(
+      knownHarthmereCaveAt([HARTHMERE_ADDITIVE_TOWN_OFFSET_X + 210, -32, -369])
+        ?.caveId,
+      "deep_spindle_massive_cave"
+    );
+  });
+
+  it("uses separate Harthmere and broader-world Y cutoffs", () => {
+    const harthmerePosition: [number, number, number] = [
+      HARTHMERE_EXTENSION_WORLD_BOUNDS.minX + 500,
+      HARTHMERE_CAVE_MUSIC_FALLBACK_BELOW_Y - 1,
+      0,
+    ];
+    const worldPosition: [number, number, number] = [
+      0,
+      WORLD_CAVE_MUSIC_FALLBACK_BELOW_Y - 1,
+      0,
+    ];
+    assert.equal(
+      caveMusicFallbackBelowY(harthmerePosition),
+      HARTHMERE_CAVE_MUSIC_FALLBACK_BELOW_Y
+    );
+    assert.equal(
+      caveMusicFallbackBelowY(worldPosition),
+      WORLD_CAVE_MUSIC_FALLBACK_BELOW_Y
+    );
+    assert.equal(isCaveAudioEnvironment(deps({}), harthmerePosition), true);
+    assert.equal(
+      isCaveAudioEnvironment(deps({}), [
+        harthmerePosition[0],
+        HARTHMERE_CAVE_MUSIC_FALLBACK_BELOW_Y,
+        harthmerePosition[2],
+      ]),
+      false
+    );
+    assert.equal(isCaveAudioEnvironment(deps({}), worldPosition), true);
+    assert.equal(
+      isCaveAudioEnvironment(deps({}), [
+        worldPosition[0],
+        WORLD_CAVE_MUSIC_FALLBACK_BELOW_Y,
+        worldPosition[2],
+      ]),
+      false
+    );
+  });
+
   it("requires thick terrain instead of treating a one-block roof as a cave", () => {
     const roof = new Set<number>([5]);
     const cave = new Set<number>();
@@ -59,10 +118,7 @@ describe("environment audio terrain classification", () => {
       cave.add(i);
     }
     const sample = (solid: Set<number>) =>
-      hasThickCaveOverburden(
-        (_x, y) => solid.has(y - 51),
-        [0, 50, 0]
-      );
+      hasThickCaveOverburden((_x, y) => solid.has(y - 51), [0, 50, 0]);
     assert.equal(sample(roof), false);
     assert.equal(sample(cave), true);
   });

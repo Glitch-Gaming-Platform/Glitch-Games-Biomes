@@ -19,7 +19,7 @@ export interface TabShortcut {
   tab: TabKey;
 }
 
-export const RESERVED_GAMEPLAY_SHORTCUT_KEYS = new Set(["z", "x", "c"]);
+export const RESERVED_GAMEPLAY_SHORTCUT_KEYS = new Set(["z", "e", "q"]);
 
 export function isReservedGameplayShortcutKey(key: string): boolean {
   return RESERVED_GAMEPLAY_SHORTCUT_KEYS.has(key.trim().toLowerCase());
@@ -29,13 +29,12 @@ export function isReservedGameplayShortcutKey(key: string): boolean {
 export const DEFAULT_TAB_SHORTCUTS: TabShortcut[] = [
   { key: "i", label: "I", tab: "inventory" },
   { key: "p", label: "P", tab: "farming" },
-  { key: "b", label: "B", tab: "abilities" },
   { key: "k", label: "K", tab: "skills" },
   { key: "y", label: "Y", tab: "classes" },
   { key: "l", label: "L", tab: "land" },
   { key: "o", label: "O", tab: "loot" },
   { key: "g", label: "G", tab: "guilds" },
-  { key: "q", label: "Q", tab: "banking" },
+  { key: "b", label: "B", tab: "banking" },
   { key: "m", label: "M", tab: "map" },
   { key: "[", label: "[", tab: "recovered" },
   { key: "]", label: "]", tab: "collections" },

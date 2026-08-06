@@ -7,10 +7,11 @@
 // for backward compatibility and admin tooling.
 //
 // Keyboard: 1..9 selects directly; ←/→ moves selection; Enter activates
-// (fires onUse). Q drops, R reloads/cycles (delegated to onAction).
+// (fires onUse). Throwing remains an explicit button action so gameplay keys
+// such as Q/evade are never intercepted by the hotbar.
 
 import * as React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { harthmerePlayerCapacityMessage } from "@/client/components/harthmere_capacity_messages";
 import { Highlightable } from "../highlight/HighlightOverlay";
 import { UI_IDS } from "../uniqueIds";
@@ -21,6 +22,8 @@ export interface HotbarSlotItem {
   /** Either an image url or an emoji/glyph */
   icon: string;
   count?: number;
+  /** Ammo/resource counters must remain visible when depleted. */
+  showZeroCount?: boolean;
   /** Quality tier — controls border tinting */
   quality?: "common" | "uncommon" | "rare" | "epic" | "legendary" | "quest";
   /** Human-readable label for the item's authored primary action. */
@@ -68,6 +71,16 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
 }) => {
   const [pendingAction, setPendingAction] = useState<"use" | "drop">();
   const [actionError, setActionError] = useState<string>();
+  const mobileSlotsRef = useRef<HTMLDivElement>(null);
+  const mobileSlotTapRef = useRef<
+    | {
+        pointerId: number;
+        slot: number;
+        startX: number;
+        startY: number;
+      }
+    | undefined
+  >();
   const selectedItem = slots[selectedIndex] ?? null;
 
   const runAction = useCallback(
@@ -111,33 +124,31 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
       } else if (e.key === "Enter") {
         e.preventDefault();
         void runAction("use", () => onUse?.(selectedIndex));
-      } else if (e.key.toLowerCase() === "q") {
-        e.preventDefault();
-        if (!selectedItem) {
-          setActionError("That hotbar slot is empty.");
-        } else if (selectedItem.canDrop === false) {
-          setActionError("This item is protected and cannot be thrown.");
-        } else {
-          void runAction("drop", () => onDrop?.(selectedIndex));
-        }
       }
     },
-    [
-      enabled,
-      slots.length,
-      selectedIndex,
-      selectedItem?.canDrop,
-      onSelect,
-      onUse,
-      onDrop,
-      runAction,
-    ]
+    [enabled, slots.length, selectedIndex, onSelect, onUse, runAction]
   );
 
   useEffect(() => {
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [handleKey]);
+
+  useEffect(() => {
+    const slotsElement = mobileSlotsRef.current;
+    if (!mobile || !slotsElement) return;
+    const selectedSlot = slotsElement.querySelector<HTMLElement>(
+      `[data-biomes-mobile-hotbar-slot="${selectedIndex}"]`
+    );
+    if (!selectedSlot) return;
+    const centeredScrollLeft =
+      selectedSlot.offsetLeft -
+      (slotsElement.clientWidth - selectedSlot.offsetWidth) / 2;
+    slotsElement.scrollTo({
+      left: Math.max(0, centeredScrollLeft),
+      behavior: "smooth",
+    });
+  }, [mobile, selectedIndex]);
 
   return (
     <div
@@ -192,7 +203,7 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
             >
               {pendingAction === "use"
                 ? "Working…"
-                : selectedItem.primaryActionLabel ?? "Use"}
+                : (selectedItem.primaryActionLabel ?? "Use")}
             </button>
           ) : null}
           {onDrop && selectedItem ? (
@@ -212,8 +223,8 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
               {pendingAction === "drop"
                 ? "Throwing…"
                 : selectedItem.canDrop === false
-                ? "Cannot Throw"
-                : "Throw 1"}
+                  ? "Cannot Throw"
+                  : "Throw 1"}
             </button>
           ) : null}
           {actionError ? (
@@ -224,6 +235,7 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
         </div>
       ) : null}
       <div
+        ref={mobileSlotsRef}
         role="toolbar"
         aria-label="Action hotbar"
         className="biomes-ui-panel biomes-ui-hotbar__slots"
@@ -257,6 +269,7 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
             >
               <div
                 className="biomes-ui-hotbar__slot-wrap"
+                data-biomes-mobile-hotbar-slot={mobile ? i : undefined}
                 style={{
                   position: "relative",
                   display: "inline-flex",
@@ -275,7 +288,66 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
                   data-selected={selected ? "true" : undefined}
                   className="biomes-ui-slot"
                   style={{ borderColor: selected ? undefined : qcolor }}
-                  onClick={() => onSelect(i)}
+                  onPointerDown={(event) => {
+                    if (!mobile || event.pointerType !== "touch") {
+                      return;
+                    }
+                    // MOBILE_HOTBAR_TOUCH_SELECT: physical iOS Safari can
+                    // complete a trusted touch without synthesizing click.
+                    // Do not preventDefault here: the container must retain
+                    // native horizontal pan. A later move cancels the tap.
+                    event.stopPropagation();
+                    mobileSlotTapRef.current = {
+                      pointerId: event.pointerId,
+                      slot: i,
+                      startX: event.clientX,
+                      startY: event.clientY,
+                    };
+                  }}
+                  onPointerMove={(event) => {
+                    const tap = mobileSlotTapRef.current;
+                    if (
+                      !mobile ||
+                      event.pointerType !== "touch" ||
+                      tap?.pointerId !== event.pointerId
+                    ) {
+                      return;
+                    }
+                    if (
+                      Math.hypot(
+                        event.clientX - tap.startX,
+                        event.clientY - tap.startY
+                      ) > 12
+                    ) {
+                      mobileSlotTapRef.current = undefined;
+                    }
+                  }}
+                  onPointerUp={(event) => {
+                    const tap = mobileSlotTapRef.current;
+                    if (
+                      !mobile ||
+                      event.pointerType !== "touch" ||
+                      tap?.pointerId !== event.pointerId
+                    ) {
+                      return;
+                    }
+                    mobileSlotTapRef.current = undefined;
+                    event.stopPropagation();
+                    onSelect(tap.slot);
+                  }}
+                  onPointerCancel={(event) => {
+                    if (
+                      mobileSlotTapRef.current?.pointerId === event.pointerId
+                    ) {
+                      mobileSlotTapRef.current = undefined;
+                    }
+                  }}
+                  onClick={(event) => {
+                    if (mobile && event.detail !== 0) {
+                      return;
+                    }
+                    onSelect(i);
+                  }}
                   onDoubleClick={() => void runAction("use", () => onUse?.(i))}
                 >
                   {slot && (
@@ -300,8 +372,10 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
                           {slot.icon}
                         </span>
                       )}
-                      {slot.count && slot.count >= 1 ? (
+                      {slot.count !== undefined &&
+                      (slot.count >= 1 || slot.showZeroCount) ? (
                         <span
+                          data-hotbar-count={slot.count}
                           style={{
                             position: "absolute",
                             right: 4,

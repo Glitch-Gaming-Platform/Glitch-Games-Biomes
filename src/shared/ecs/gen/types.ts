@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from types.ts.j2. Do not modify directly.
-// Content Hash: a5ad4e76308c31dbbb6c128ef25a8a8b
+// Content Hash: 65a1812488a187ee39e9fc4c3758a784
 
 export type { Item, ReadonlyItem } from "@/shared/ecs/extern";
 export {
@@ -101,6 +101,9 @@ export const zConsumptionAction = z.enum(["drink", "eat"]);
 export const zEmoteType = z.enum([
   "attack1",
   "attack2",
+  "rangedAim",
+  "rangedRelease",
+  "rangedReload",
   "magicChannel",
   "magicCast",
   "destroy",
@@ -826,6 +829,9 @@ export type ConsumptionAction = "drink" | "eat";
 export type EmoteType =
   | "attack1"
   | "attack2"
+  | "rangedAim"
+  | "rangedRelease"
+  | "rangedReload"
   | "magicChannel"
   | "magicCast"
   | "destroy"
@@ -997,10 +1003,7 @@ type T145 = "npc";
 export type PlaceableAnimationType = "open" | "close" | "play";
 export type AnimationRepeatKind = "once" | "repeat";
 export type ChallengeState =
-  | "available"
-  | "completed"
-  | "in_progress"
-  | "start";
+  "available" | "completed" | "in_progress" | "start";
 export type LifetimeStatsType =
   | "collected"
   | "crafted"
@@ -1047,7 +1050,7 @@ export type Mat3f = [
   number,
   number,
   number,
-  number
+  number,
 ];
 type T29 = [number, number, number];
 export type OptionalBool = boolean | undefined;
@@ -1075,12 +1078,14 @@ export type ItemAssignmentReference = { key: BiomesId };
 export type ItemContainerReference = { idx: number };
 export type ItemBagReference = { key: string };
 export type OptionalMovementActionType =
-  | ("dodge" | "evade" | "doubleJump")
-  | undefined;
+  ("dodge" | "evade" | "doubleJump") | undefined;
 export type OptionalEmoteType =
   | (
       | "attack1"
       | "attack2"
+      | "rangedAim"
+      | "rangedRelease"
+      | "rangedReload"
       | "magicChannel"
       | "magicCast"
       | "destroy"
@@ -1334,7 +1339,7 @@ type T102 = [
     | "placeRobot"
     | "placeEphemeral"
     | "demuckerWand"
-  >
+  >,
 ];
 type T104 = Map<
   | "employee"
@@ -1519,7 +1524,7 @@ type T64 = [
     | ({ key: string } & { kind: "currency" })
     | ({ key: BiomesId } & { kind: "wearable" })
   ),
-  ItemAndCount
+  ItemAndCount,
 ];
 export type EmoteFishingLineEndPosition =
   | ({
@@ -1569,12 +1574,11 @@ export type TargetedAcl =
         | "placeRobot"
         | "placeEphemeral"
         | "demuckerWand"
-      >
+      >,
     ]
   | undefined;
 export type OptionalAabb =
-  | [[number, number, number], [number, number, number]]
-  | undefined;
+  [[number, number, number], [number, number, number]] | undefined;
 type T110 = {
   kind: "aabb";
   aabb: [[number, number, number], [number, number, number]];
@@ -1601,8 +1605,7 @@ export type OptionalPlaceableAnimation =
     }
   | undefined;
 export type OptionalPlaceEventInfo =
-  | { time: number; position: [number, number, number] }
-  | undefined;
+  { time: number; position: [number, number, number] } | undefined;
 export type BuffsList = {
   item_id: BiomesId;
   start_time: number | undefined;
@@ -1688,7 +1691,7 @@ export type InventoryAssignmentPattern = [
     | ({ key: string } & { kind: "currency" })
     | ({ key: BiomesId } & { kind: "wearable" })
   ),
-  ItemAndCount
+  ItemAndCount,
 ][];
 type T66 = [
   (
@@ -1697,7 +1700,7 @@ type T66 = [
     | ({ key: string } & { kind: "currency" })
     | ({ key: BiomesId } & { kind: "wearable" })
   ),
-  ItemAndCount
+  ItemAndCount,
 ][];
 type T76 =
   | (
@@ -1845,7 +1848,7 @@ export type Acl = {
           | "placeRobot"
           | "placeEphemeral"
           | "demuckerWand"
-        >
+        >,
       ]
     | undefined;
   creatorTeam:
@@ -1868,7 +1871,7 @@ export type Acl = {
           | "placeRobot"
           | "placeEphemeral"
           | "demuckerWand"
-        >
+        >,
       ]
     | undefined;
 };
@@ -1961,7 +1964,7 @@ export type OptionalInventoryAssignmentPattern =
         | ({ key: string } & { kind: "currency" })
         | ({ key: BiomesId } & { kind: "wearable" })
       ),
-      ItemAndCount
+      ItemAndCount,
     ][]
   | undefined;
 export type EmoteFishingInfo = {
@@ -2164,7 +2167,7 @@ export type ProtectionParams = {
             | "placeRobot"
             | "placeEphemeral"
             | "demuckerWand"
-          >
+          >,
         ]
       | undefined;
     creatorTeam:
@@ -2187,7 +2190,7 @@ export type ProtectionParams = {
             | "placeRobot"
             | "placeEphemeral"
             | "demuckerWand"
-          >
+          >,
         ]
       | undefined;
   };
@@ -2316,7 +2319,7 @@ export type RestorationParams = {
             | "placeRobot"
             | "placeEphemeral"
             | "demuckerWand"
-          >
+          >,
         ]
       | undefined;
     creatorTeam:
@@ -2339,7 +2342,7 @@ export type RestorationParams = {
             | "placeRobot"
             | "placeEphemeral"
             | "demuckerWand"
-          >
+          >,
         ]
       | undefined;
   };
@@ -2354,7 +2357,7 @@ export type Trader = {
       | ({ key: string } & { kind: "currency" })
       | ({ key: BiomesId } & { kind: "wearable" })
     ),
-    ItemAndCount
+    ItemAndCount,
   ][];
   accepted: boolean;
 };
@@ -2552,7 +2555,7 @@ export type OptionalProtectionParams =
                 | "placeRobot"
                 | "placeEphemeral"
                 | "demuckerWand"
-              >
+              >,
             ]
           | undefined;
         creatorTeam:
@@ -2575,7 +2578,7 @@ export type OptionalProtectionParams =
                 | "placeRobot"
                 | "placeEphemeral"
                 | "demuckerWand"
-              >
+              >,
             ]
           | undefined;
       };
@@ -2706,7 +2709,7 @@ export type OptionalRestorationParams =
                 | "placeRobot"
                 | "placeEphemeral"
                 | "demuckerWand"
-              >
+              >,
             ]
           | undefined;
         creatorTeam:
@@ -2729,7 +2732,7 @@ export type OptionalRestorationParams =
                 | "placeRobot"
                 | "placeEphemeral"
                 | "demuckerWand"
-              >
+              >,
             ]
           | undefined;
       };
@@ -2825,6 +2828,9 @@ export type ReadonlyConsumptionAction = "drink" | "eat";
 export type ReadonlyEmoteType =
   | "attack1"
   | "attack2"
+  | "rangedAim"
+  | "rangedRelease"
+  | "rangedReload"
   | "magicChannel"
   | "magicCast"
   | "destroy"
@@ -2996,10 +3002,7 @@ type ReadonlyT145 = "npc";
 export type ReadonlyPlaceableAnimationType = "open" | "close" | "play";
 export type ReadonlyAnimationRepeatKind = "once" | "repeat";
 export type ReadonlyChallengeState =
-  | "available"
-  | "completed"
-  | "in_progress"
-  | "start";
+  "available" | "completed" | "in_progress" | "start";
 export type ReadonlyLifetimeStatsType =
   | "collected"
   | "crafted"
@@ -3046,7 +3049,7 @@ export type ReadonlyMat3f = readonly [
   number,
   number,
   number,
-  number
+  number,
 ];
 type ReadonlyT29 = readonly [number, number, number];
 export type ReadonlyOptionalBool = boolean | undefined;
@@ -3083,12 +3086,14 @@ export type ReadonlyItemAssignmentReference = {
 export type ReadonlyItemContainerReference = { readonly idx: number };
 export type ReadonlyItemBagReference = { readonly key: string };
 export type ReadonlyOptionalMovementActionType =
-  | ("dodge" | "evade" | "doubleJump")
-  | undefined;
+  ("dodge" | "evade" | "doubleJump") | undefined;
 export type ReadonlyOptionalEmoteType =
   | (
       | "attack1"
       | "attack2"
+      | "rangedAim"
+      | "rangedRelease"
+      | "rangedReload"
       | "magicChannel"
       | "magicCast"
       | "destroy"
@@ -3258,8 +3263,7 @@ type ReadonlyT140 = { readonly kind: "fireDamage" };
 type ReadonlyT142 = { readonly kind: "fireHeal" };
 type ReadonlyT144 = { readonly kind: "heal" };
 export type ReadonlyOptionalAnimationRepeatKind =
-  | ("once" | "repeat")
-  | undefined;
+  ("once" | "repeat") | undefined;
 export type ReadonlyChallengeStateMap = ReadonlyMap<
   ReadonlyBiomesId,
   "available" | "completed" | "in_progress" | "start"
@@ -3324,7 +3328,7 @@ export type ReadonlyOptionalMat3f =
       number,
       number,
       number,
-      number
+      number,
     ]
   | undefined;
 export type ReadonlyVec3iList = ReadonlyArray<
@@ -3335,15 +3339,14 @@ export type ReadonlyBox2 = {
   readonly v1: readonly [number, number, number];
 };
 export type ReadonlyOptionalVec3f =
-  | readonly [number, number, number]
-  | undefined;
+  readonly [number, number, number] | undefined;
 export type ReadonlyVec3fList = ReadonlyArray<
   readonly [number, number, number]
 >;
 export type ReadonlyOptionalVec2f = readonly [number, number] | undefined;
 export type ReadonlyTerrainUpdate = readonly [
   readonly [number, number, number],
-  number
+  number,
 ];
 export type ReadonlyPricedItemSlot =
   | {
@@ -3356,8 +3359,7 @@ export type ReadonlyItemContainer = ReadonlyArray<
   ReadonlyItemAndCount | undefined
 >;
 export type ReadonlyOptionalItemBag =
-  | ReadonlyMap<string, ReadonlyItemAndCount>
-  | undefined;
+  ReadonlyMap<string, ReadonlyItemAndCount> | undefined;
 export type ReadonlyOwnedItemReference =
   | ({ readonly idx: number } & { kind: "item" })
   | ({ readonly idx: number } & { kind: "hotbar" })
@@ -3406,7 +3408,7 @@ type ReadonlyT102 = readonly [
     | "placeRobot"
     | "placeEphemeral"
     | "demuckerWand"
-  >
+  >,
 ];
 type ReadonlyT104 = ReadonlyMap<
   | "employee"
@@ -3473,7 +3475,7 @@ type ReadonlyT105 = ReadonlyMap<
 >;
 export type ReadonlyAabb = readonly [
   readonly [number, number, number],
-  readonly [number, number, number]
+  readonly [number, number, number],
 ];
 type ReadonlyT112 = {
   readonly kind: "point";
@@ -3514,8 +3516,7 @@ export type ReadonlyBuff = {
   readonly is_disabled: boolean | undefined;
 };
 export type ReadonlyOptionalTagRoundState =
-  | { readonly it_player: ReadonlyBiomesId }
-  | undefined;
+  { readonly it_player: ReadonlyBiomesId } | undefined;
 type ReadonlyT169 = {
   readonly checkpoint_ids: ReadonlySet<ReadonlyBiomesId>;
   readonly start_ids: ReadonlySet<ReadonlyBiomesId>;
@@ -3643,7 +3644,7 @@ type ReadonlyT64 = readonly [
     | ({ readonly key: string } & { kind: "currency" })
     | ({ readonly key: ReadonlyBiomesId } & { kind: "wearable" })
   ),
-  ReadonlyItemAndCount
+  ReadonlyItemAndCount,
 ];
 export type ReadonlyEmoteFishingLineEndPosition =
   | ({
@@ -3699,20 +3700,20 @@ export type ReadonlyTargetedAcl =
         | "placeRobot"
         | "placeEphemeral"
         | "demuckerWand"
-      >
+      >,
     ]
   | undefined;
 export type ReadonlyOptionalAabb =
   | readonly [
       readonly [number, number, number],
-      readonly [number, number, number]
+      readonly [number, number, number],
     ]
   | undefined;
 type ReadonlyT110 = {
   readonly kind: "aabb";
   readonly aabb: readonly [
     readonly [number, number, number],
-    readonly [number, number, number]
+    readonly [number, number, number],
   ];
 };
 type ReadonlyT114 = {
@@ -3786,8 +3787,7 @@ type ReadonlyT184 = {
   readonly round_expires: number;
   readonly alive_round_players: ReadonlySet<ReadonlyBiomesId>;
   readonly tag_round_state:
-    | { readonly it_player: ReadonlyBiomesId }
-    | undefined;
+    { readonly it_player: ReadonlyBiomesId } | undefined;
 };
 export type ReadonlySimpleRaceInstanceState = {
   readonly player_state: "waiting" | "racing";
@@ -3857,7 +3857,7 @@ export type ReadonlyInventoryAssignmentPattern = ReadonlyArray<
       | ({ readonly key: string } & { kind: "currency" })
       | ({ readonly key: ReadonlyBiomesId } & { kind: "wearable" })
     ),
-    ReadonlyItemAndCount
+    ReadonlyItemAndCount,
   ]
 >;
 type ReadonlyT66 = ReadonlyArray<
@@ -3868,7 +3868,7 @@ type ReadonlyT66 = ReadonlyArray<
       | ({ readonly key: string } & { kind: "currency" })
       | ({ readonly key: ReadonlyBiomesId } & { kind: "wearable" })
     ),
-    ReadonlyItemAndCount
+    ReadonlyItemAndCount,
   ]
 >;
 type ReadonlyT76 =
@@ -4020,7 +4020,7 @@ export type ReadonlyAcl = {
           | "placeRobot"
           | "placeEphemeral"
           | "demuckerWand"
-        >
+        >,
       ]
     | undefined;
   readonly creatorTeam:
@@ -4043,7 +4043,7 @@ export type ReadonlyAcl = {
           | "placeRobot"
           | "placeEphemeral"
           | "demuckerWand"
-        >
+        >,
       ]
     | undefined;
 };
@@ -4052,7 +4052,7 @@ export type ReadonlyAclDomain =
       readonly kind: "aabb";
       readonly aabb: readonly [
         readonly [number, number, number],
-        readonly [number, number, number]
+        readonly [number, number, number],
       ];
     } & { kind: "aabb" })
   | ({
@@ -4120,8 +4120,7 @@ type ReadonlyT185 =
       readonly round_expires: number;
       readonly alive_round_players: ReadonlySet<ReadonlyBiomesId>;
       readonly tag_round_state:
-        | { readonly it_player: ReadonlyBiomesId }
-        | undefined;
+        { readonly it_player: ReadonlyBiomesId } | undefined;
     } & { kind: "playing_round" });
 export type ReadonlyMinigameInstanceActivePlayerMap = ReadonlyMap<
   ReadonlyBiomesId,
@@ -4159,7 +4158,7 @@ export type ReadonlyOptionalInventoryAssignmentPattern =
           | ({ readonly key: string } & { kind: "currency" })
           | ({ readonly key: ReadonlyBiomesId } & { kind: "wearable" })
         ),
-        ReadonlyItemAndCount
+        ReadonlyItemAndCount,
       ]
     >
   | undefined;
@@ -4238,8 +4237,7 @@ export type ReadonlySpleefInstanceState = {
         readonly round_expires: number;
         readonly alive_round_players: ReadonlySet<ReadonlyBiomesId>;
         readonly tag_round_state:
-          | { readonly it_player: ReadonlyBiomesId }
-          | undefined;
+          { readonly it_player: ReadonlyBiomesId } | undefined;
       } & { kind: "playing_round" });
   readonly observer_spawn_points: ReadonlyArray<
     readonly [number, number, number]
@@ -4383,7 +4381,7 @@ export type ReadonlyProtectionParams = {
             | "placeRobot"
             | "placeEphemeral"
             | "demuckerWand"
-          >
+          >,
         ]
       | undefined;
     readonly creatorTeam:
@@ -4406,7 +4404,7 @@ export type ReadonlyProtectionParams = {
             | "placeRobot"
             | "placeEphemeral"
             | "demuckerWand"
-          >
+          >,
         ]
       | undefined;
   };
@@ -4535,7 +4533,7 @@ export type ReadonlyRestorationParams = {
             | "placeRobot"
             | "placeEphemeral"
             | "demuckerWand"
-          >
+          >,
         ]
       | undefined;
     readonly creatorTeam:
@@ -4558,7 +4556,7 @@ export type ReadonlyRestorationParams = {
             | "placeRobot"
             | "placeEphemeral"
             | "demuckerWand"
-          >
+          >,
         ]
       | undefined;
   };
@@ -4574,7 +4572,7 @@ export type ReadonlyTrader = {
         | ({ readonly key: string } & { kind: "currency" })
         | ({ readonly key: ReadonlyBiomesId } & { kind: "wearable" })
       ),
-      ReadonlyItemAndCount
+      ReadonlyItemAndCount,
     ]
   >;
   readonly accepted: boolean;
@@ -4642,8 +4640,7 @@ export type ReadonlyMinigameInstanceState =
             readonly round_expires: number;
             readonly alive_round_players: ReadonlySet<ReadonlyBiomesId>;
             readonly tag_round_state:
-              | { readonly it_player: ReadonlyBiomesId }
-              | undefined;
+              { readonly it_player: ReadonlyBiomesId } | undefined;
           } & { kind: "playing_round" });
       readonly observer_spawn_points: ReadonlyArray<
         readonly [number, number, number]
@@ -4790,7 +4787,7 @@ export type ReadonlyOptionalProtectionParams =
                 | "placeRobot"
                 | "placeEphemeral"
                 | "demuckerWand"
-              >
+              >,
             ]
           | undefined;
         readonly creatorTeam:
@@ -4813,7 +4810,7 @@ export type ReadonlyOptionalProtectionParams =
                 | "placeRobot"
                 | "placeEphemeral"
                 | "demuckerWand"
-              >
+              >,
             ]
           | undefined;
       };
@@ -4944,7 +4941,7 @@ export type ReadonlyOptionalRestorationParams =
                 | "placeRobot"
                 | "placeEphemeral"
                 | "demuckerWand"
-              >
+              >,
             ]
           | undefined;
         readonly creatorTeam:
@@ -4967,7 +4964,7 @@ export type ReadonlyOptionalRestorationParams =
                 | "placeRobot"
                 | "placeEphemeral"
                 | "demuckerWand"
-              >
+              >,
             ]
           | undefined;
       };
@@ -5043,8 +5040,7 @@ export type ReadonlyOptionalRichEmoteComponents =
                   readonly start: readonly [number, number, number];
                 };
                 readonly angular_velocity:
-                  | readonly [number, number]
-                  | undefined;
+                  readonly [number, number] | undefined;
               }
             | undefined
           )
@@ -5102,7 +5098,7 @@ export const defaultChallengeState = "available";
 export const defaultLifetimeStatsType = "collected";
 export const defaultPlantStatus = "planted";
 export const defaultMinigameType = "simple_race";
-export const defaultT174 = () => ({} as T174);
+export const defaultT174 = () => ({}) as T174;
 export const defaultT190 = "waiting";
 export const defaultT200 = "water";
 export const defaultT202 = "fertilize";
@@ -5151,14 +5147,14 @@ export const defaultAppearance = () =>
     eye_color_id: defaultString,
     hair_color_id: defaultString,
     head_id: defaultBiomesId,
-  } as Appearance);
+  }) as Appearance;
 export const defaultItemSlot = undefined;
 export const defaultT48 = () =>
   ({
     contents: defaultItemAndCount(),
     price: defaultItemAndCount(),
     seller_id: defaultBiomesId,
-  } as T48);
+  }) as T48;
 export const defaultOptionalItem = undefined;
 export const defaultOptionalItemAndCount = undefined;
 export const defaultItemSet = () => new Map() as ItemSet;
@@ -5167,15 +5163,15 @@ export const defaultItemAssignment = () => new Map() as ItemAssignment;
 export const defaultItemAssignmentReference = () =>
   ({
     key: defaultBiomesId,
-  } as ItemAssignmentReference);
+  }) as ItemAssignmentReference;
 export const defaultItemContainerReference = () =>
   ({
     idx: defaultU16,
-  } as ItemContainerReference);
+  }) as ItemContainerReference;
 export const defaultItemBagReference = () =>
   ({
     key: defaultString,
-  } as ItemBagReference);
+  }) as ItemBagReference;
 export const defaultOptionalMovementActionType = undefined;
 export const defaultOptionalEmoteType = undefined;
 export const defaultOptionalShardId = undefined;
@@ -5187,63 +5183,63 @@ export const defaultNUXStatus = () =>
   ({
     complete: defaultBool,
     state_id: defaultString,
-  } as NUXStatus);
+  }) as NUXStatus;
 export const defaultUserRoleSet = () => new Set() as UserRoleSet;
 export const defaultT101 = () => new Set() as T101;
 export const defaultT117 = () =>
   ({
     kind: defaultT116,
-  } as T117);
+  }) as T117;
 export const defaultT119 = () =>
   ({
     kind: defaultT118,
-  } as T119);
+  }) as T119;
 export const defaultT121 = () =>
   ({
     kind: defaultT120,
-  } as T121);
+  }) as T121;
 export const defaultT123 = () =>
   ({
     kind: defaultT122,
-  } as T123);
+  }) as T123;
 export const defaultT126 = () =>
   ({
     kind: defaultT125,
-  } as T126);
+  }) as T126;
 export const defaultT128 = () =>
   ({
     kind: defaultT127,
-  } as T128);
+  }) as T128;
 export const defaultT130 = () =>
   ({
     kind: defaultT129,
     biscuitId: defaultBiomesId,
-  } as T130);
+  }) as T130;
 export const defaultT132 = () =>
   ({
     kind: defaultT131,
     distance: defaultF64,
-  } as T132);
+  }) as T132;
 export const defaultT136 = () =>
   ({
     kind: defaultT135,
-  } as T136);
+  }) as T136;
 export const defaultT138 = () =>
   ({
     kind: defaultT137,
-  } as T138);
+  }) as T138;
 export const defaultT140 = () =>
   ({
     kind: defaultT139,
-  } as T140);
+  }) as T140;
 export const defaultT142 = () =>
   ({
     kind: defaultT141,
-  } as T142);
+  }) as T142;
 export const defaultT144 = () =>
   ({
     kind: defaultT143,
-  } as T144);
+  }) as T144;
 export const defaultOptionalAnimationRepeatKind = undefined;
 export const defaultChallengeStateMap = () => new Map() as ChallengeStateMap;
 export const defaultTriggerTrees = () => new Map() as TriggerTrees;
@@ -5251,93 +5247,93 @@ export const defaultChallengeTime = () => new Map() as ChallengeTime;
 export const defaultTagRoundState = () =>
   ({
     it_player: defaultBiomesId,
-  } as TagRoundState);
+  }) as TagRoundState;
 export const defaultT175 = () =>
   ({
     round_start: defaultF64,
-  } as T175);
+  }) as T175;
 export const defaultT176 = () =>
   ({
     round_end: defaultF64,
-  } as T176);
+  }) as T176;
 export const defaultT177 = () =>
   ({
     timestamp: defaultF64,
-  } as T177);
+  }) as T177;
 export const defaultSpleefPlayerStats = () =>
   ({
     playerId: defaultBiomesId,
     rounds_won: defaultI32,
-  } as SpleefPlayerStats);
+  }) as SpleefPlayerStats;
 export const defaultT188 = () =>
   ({
     time: defaultF64,
-  } as T188);
+  }) as T188;
 export const defaultGiveMinigameKitData = () =>
   ({
     ...defaultT174(),
     kind: "simple_race",
-  } as GiveMinigameKitData);
+  }) as GiveMinigameKitData;
 export const defaultT201 = () =>
   ({
     kind: defaultT200,
     amount: defaultF32,
     timestamp: defaultF64,
-  } as T201);
+  }) as T201;
 export const defaultT203 = () =>
   ({
     kind: defaultT202,
     fertilizer: defaultItem(),
     timestamp: defaultF64,
-  } as T203);
+  }) as T203;
 export const defaultT205 = () =>
   ({
     kind: defaultT204,
     timestamp: defaultF64,
-  } as T205);
+  }) as T205;
 export const defaultT207 = () =>
   ({
     kind: defaultT206,
     timestamp: defaultF64,
-  } as T207);
+  }) as T207;
 export const defaultT209 = () =>
   ({
     kind: defaultT208,
     timestamp: defaultF64,
-  } as T209);
+  }) as T209;
 export const defaultTeamMemberMetadata = () =>
   ({
     joined_at: defaultF64,
-  } as TeamMemberMetadata);
+  }) as TeamMemberMetadata;
 export const defaultTeamInvite = () =>
   ({
     inviter_id: defaultBiomesId,
     invitee_id: defaultBiomesId,
     created_at: defaultF64,
-  } as TeamInvite);
+  }) as TeamInvite;
 export const defaultTeamJoinRequest = () =>
   ({
     entity_id: defaultBiomesId,
     created_at: defaultF64,
-  } as TeamJoinRequest);
+  }) as TeamJoinRequest;
 export const defaultT231 = () =>
   ({
     kind: defaultT230,
     radius: defaultF64,
-  } as T231);
+  }) as T231;
 export const defaultTradeSpec = () =>
   ({
     trade_id: defaultBiomesId,
     id1: defaultBiomesId,
     id2: defaultBiomesId,
-  } as TradeSpec);
+  }) as TradeSpec;
 export const defaultOptionalMat3f = undefined;
 export const defaultVec3iList = () => [];
 export const defaultBox2 = () =>
   ({
     v0: defaultVec3f(),
     v1: defaultVec3f(),
-  } as Box2);
+  }) as Box2;
 export const defaultOptionalVec3f = undefined;
 export const defaultVec3fList = () => [];
 export const defaultOptionalVec2f = undefined;
@@ -5350,32 +5346,32 @@ export const defaultOwnedItemReference = () =>
   ({
     ...defaultItemContainerReference(),
     kind: "item",
-  } as OwnedItemReference);
+  }) as OwnedItemReference;
 export const defaultEmoteFishingLinePhysicsPosition = () =>
   ({
     velocity: defaultVec3f(),
     gravity: defaultVec3f(),
     start: defaultVec3f(),
-  } as EmoteFishingLinePhysicsPosition);
+  }) as EmoteFishingLinePhysicsPosition;
 export const defaultEmoteFishingLineReelInPosition = () =>
   ({
     start: defaultVec3f(),
     duration: defaultF64,
-  } as EmoteFishingLineReelInPosition);
+  }) as EmoteFishingLineReelInPosition;
 export const defaultEmoteFishingLineFixedPosition = () =>
   ({
     pos: defaultVec3f(),
-  } as EmoteFishingLineFixedPosition);
+  }) as EmoteFishingLineFixedPosition;
 export const defaultWarpTarget = () =>
   ({
     warp_to: defaultVec3f(),
     orientation: defaultVec2f(),
-  } as WarpTarget);
+  }) as WarpTarget;
 export const defaultEntitiesAndExpiry = () =>
   ({
     entity_ids: defaultT92(),
     expiry: defaultT93,
-  } as EntitiesAndExpiry);
+  }) as EntitiesAndExpiry;
 export const defaultAllNUXStatus = () => new Map() as AllNUXStatus;
 export const defaultT102 = () => [defaultBiomesId, defaultT101()] as T102;
 export const defaultT104 = () => new Map() as T104;
@@ -5385,48 +5381,48 @@ export const defaultT112 = () =>
   ({
     kind: defaultT111,
     point: defaultVec3f(),
-  } as T112);
+  }) as T112;
 export const defaultNpcDamageSource = () =>
   ({
     ...defaultT117(),
     kind: "dayNight",
-  } as NpcDamageSource);
+  }) as NpcDamageSource;
 export const defaultPlaceableAnimation = () =>
   ({
     type: defaultPlaceableAnimationType,
     repeat: defaultOptionalAnimationRepeatKind,
     start_time: defaultF64,
-  } as PlaceableAnimation);
+  }) as PlaceableAnimation;
 export const defaultLifetimeStatsMap = () => new Map() as LifetimeStatsMap;
 export const defaultPositionBeamMap = () => new Map() as PositionBeamMap;
 export const defaultPlaceEventInfo = () =>
   ({
     time: defaultF64,
     position: defaultVec3i(),
-  } as PlaceEventInfo);
+  }) as PlaceEventInfo;
 export const defaultBuff = () =>
   ({
     item_id: defaultBiomesId,
     start_time: defaultT93,
     from_id: defaultOptionalBiomesId,
     is_disabled: defaultOptionalBool,
-  } as Buff);
+  }) as Buff;
 export const defaultOptionalTagRoundState = undefined;
 export const defaultT169 = () =>
   ({
     checkpoint_ids: defaultBiomesIdSet(),
     start_ids: defaultBiomesIdSet(),
     end_ids: defaultBiomesIdSet(),
-  } as T169);
+  }) as T169;
 export const defaultT170 = () =>
   ({
     start_ids: defaultBiomesIdSet(),
-  } as T170);
+  }) as T170;
 export const defaultT171 = () =>
   ({
     start_ids: defaultBiomesIdSet(),
     arena_marker_ids: defaultBiomesIdSet(),
-  } as T171);
+  }) as T171;
 export const defaultDeathMatchPlayerState = () =>
   ({
     playerId: defaultBiomesId,
@@ -5434,28 +5430,28 @@ export const defaultDeathMatchPlayerState = () =>
     deaths: defaultI32,
     last_kill: defaultOptionalF64,
     last_death: defaultOptionalF64,
-  } as DeathMatchPlayerState);
+  }) as DeathMatchPlayerState;
 export const defaultT178 = () =>
   ({
     ...defaultT174(),
     kind: "waiting_for_players",
-  } as T178);
+  }) as T178;
 export const defaultT183 = () =>
   ({
     round_start: defaultF64,
     last_winner_id: defaultOptionalBiomesId,
-  } as T183);
+  }) as T183;
 export const defaultT186 = () => new Map() as T186;
 export const defaultReachedCheckpoints = () => new Map() as ReachedCheckpoints;
 export const defaultFarmingPlayerAction = () =>
   ({
     ...defaultT201(),
     kind: "water",
-  } as FarmingPlayerAction);
+  }) as FarmingPlayerAction;
 export const defaultT212 = () =>
   ({
     type_ids: defaultBiomesIdList(),
-  } as T212);
+  }) as T212;
 export const defaultBucketedImageCloudBundle = () =>
   ({
     webp_320w: defaultOptionalString,
@@ -5464,7 +5460,7 @@ export const defaultBucketedImageCloudBundle = () =>
     png_1280w: defaultOptionalString,
     webp_original: defaultOptionalString,
     bucket: defaultT214,
-  } as BucketedImageCloudBundle);
+  }) as BucketedImageCloudBundle;
 export const defaultTerrainRestorationEntry = () =>
   ({
     position_index: defaultU16,
@@ -5474,7 +5470,7 @@ export const defaultTerrainRestorationEntry = () =>
     placer: defaultOptionalF64,
     dye: defaultOptionalF64,
     shape: defaultOptionalF64,
-  } as TerrainRestorationEntry);
+  }) as TerrainRestorationEntry;
 export const defaultTeamPendingInvites = () => new Map() as TeamPendingInvites;
 export const defaultTeamPendingRequests = () => [];
 export const defaultTeamMembers = () => new Map() as TeamMembers;
@@ -5482,7 +5478,7 @@ export const defaultT229 = () =>
   ({
     kind: defaultT228,
     box: defaultVec3f(),
-  } as T229);
+  }) as T229;
 export const defaultTradeSpecList = () => [];
 export const defaultTerrainUpdateList = () => [];
 export const defaultPricedItemContainer = () => [];
@@ -5494,41 +5490,41 @@ export const defaultEmoteFishingLineEndPosition = () =>
   ({
     ...defaultEmoteFishingLinePhysicsPosition(),
     kind: "physics",
-  } as EmoteFishingLineEndPosition);
+  }) as EmoteFishingLineEndPosition;
 export const defaultEmoteThrowInfo = () =>
   ({
     physics: defaultEmoteFishingLinePhysicsPosition(),
     angular_velocity: defaultOptionalVec2f,
-  } as EmoteThrowInfo);
+  }) as EmoteThrowInfo;
 export const defaultOptionalWarpTarget = undefined;
 export const defaultGrabBagFilter = () =>
   ({
     ...defaultEntitiesAndExpiry(),
     kind: "block",
-  } as GrabBagFilter);
+  }) as GrabBagFilter;
 export const defaultTargetedAcl = undefined;
 export const defaultOptionalAabb = undefined;
 export const defaultT110 = () =>
   ({
     kind: defaultT109,
     aabb: defaultAabb(),
-  } as T110);
+  }) as T110;
 export const defaultT114 = () =>
   ({
     kind: defaultT113,
     points: defaultVec3fList(),
-  } as T114);
+  }) as T114;
 export const defaultT134 = () =>
   ({
     kind: defaultT133,
     attacker: defaultBiomesId,
     dir: defaultOptionalVec3f,
-  } as T134);
+  }) as T134;
 export const defaultT146 = () =>
   ({
     kind: defaultT145,
     type: defaultNpcDamageSource(),
-  } as T146);
+  }) as T146;
 export const defaultOptionalPlaceableAnimation = undefined;
 export const defaultOptionalPlaceEventInfo = undefined;
 export const defaultBuffsList = () => [];
@@ -5536,7 +5532,7 @@ export const defaultMinigameMetadata = () =>
   ({
     ...defaultT169(),
     kind: "simple_race",
-  } as MinigameMetadata);
+  }) as MinigameMetadata;
 export const defaultT179 = undefined;
 export const defaultT180 = () => new Map() as T180;
 export const defaultT184 = () =>
@@ -5544,7 +5540,7 @@ export const defaultT184 = () =>
     round_expires: defaultF64,
     alive_round_players: defaultBiomesIdSet(),
     tag_round_state: defaultOptionalTagRoundState,
-  } as T184);
+  }) as T184;
 export const defaultSimpleRaceInstanceState = () =>
   ({
     player_state: defaultT190,
@@ -5552,31 +5548,31 @@ export const defaultSimpleRaceInstanceState = () =>
     deaths: defaultI32,
     reached_checkpoints: defaultReachedCheckpoints(),
     finished_at: defaultOptionalF64,
-  } as SimpleRaceInstanceState);
+  }) as SimpleRaceInstanceState;
 export const defaultMinigameInstanceActivePlayerInfo = () =>
   ({
     entry_stash_id: defaultBiomesId,
     entry_position: defaultVec3f(),
     entry_warped_to: defaultOptionalVec3f,
     entry_time: defaultF64,
-  } as MinigameInstanceActivePlayerInfo);
+  }) as MinigameInstanceActivePlayerInfo;
 export const defaultT196 = () =>
   ({
     box: defaultBox2(),
     clipboard_entity_id: defaultBiomesId,
-  } as T196);
+  }) as T196;
 export const defaultFarmingPlayerActionList = () => [];
 export const defaultItemBuyerSpec = () =>
   ({
     ...defaultT212(),
     kind: "item_types",
-  } as ItemBuyerSpec);
+  }) as ItemBuyerSpec;
 export const defaultTerrainRestorationEntryList = () => [];
 export const defaultVolume = () =>
   ({
     ...defaultT229(),
     kind: "box",
-  } as Volume);
+  }) as Volume;
 export const defaultInventoryAssignmentPattern = () => [];
 export const defaultT66 = () => [];
 export const defaultT76 = undefined;
@@ -5589,41 +5585,41 @@ export const defaultAcl = () =>
     teams: defaultT105(),
     creator: defaultTargetedAcl,
     creatorTeam: defaultTargetedAcl,
-  } as Acl);
+  }) as Acl;
 export const defaultAclDomain = () =>
   ({
     ...defaultT110(),
     kind: "aabb",
-  } as AclDomain);
+  }) as AclDomain;
 export const defaultDamageSource = () =>
   ({
     ...defaultT126(),
     kind: "suicide",
-  } as DamageSource);
+  }) as DamageSource;
 export const defaultDeathmatchInstanceState = () =>
   ({
     instance_state: defaultT179,
     player_states: defaultT180(),
-  } as DeathmatchInstanceState);
+  }) as DeathmatchInstanceState;
 export const defaultT185 = () =>
   ({
     ...defaultT174(),
     kind: "waiting_for_players",
-  } as T185);
+  }) as T185;
 export const defaultMinigameInstanceActivePlayerMap = () =>
   new Map() as MinigameInstanceActivePlayerMap;
 export const defaultT197 = () =>
   ({
     ...defaultT196(),
     kind: "aabb",
-  } as T197);
+  }) as T197;
 export const defaultOptionalVolume = undefined;
 export const defaultOptionalInventoryAssignmentPattern = undefined;
 export const defaultEmoteFishingInfo = () =>
   ({
     line_end_position: defaultT76,
     line_end_item: defaultOptionalItem,
-  } as EmoteFishingInfo);
+  }) as EmoteFishingInfo;
 export const defaultOptionalEmoteThrowInfo = undefined;
 export const defaultOptionalDamageSource = undefined;
 export const defaultSpleefInstanceState = () =>
@@ -5632,32 +5628,32 @@ export const defaultSpleefInstanceState = () =>
     observer_spawn_points: defaultVec3fList(),
     player_stats: defaultT186(),
     round_number: defaultI32,
-  } as SpleefInstanceState);
+  }) as SpleefInstanceState;
 export const defaultMinigameInstanceSpaceClipboardInfo = () =>
   ({
     region: defaultT197(),
-  } as MinigameInstanceSpaceClipboardInfo);
+  }) as MinigameInstanceSpaceClipboardInfo;
 export const defaultProtectionParams = () =>
   ({
     acl: defaultAcl(),
-  } as ProtectionParams);
+  }) as ProtectionParams;
 export const defaultRestorationParams = () =>
   ({
     acl: defaultAcl(),
     restore_delay_s: defaultF64,
-  } as RestorationParams);
+  }) as RestorationParams;
 export const defaultTrader = () =>
   ({
     id: defaultBiomesId,
     offer_assignment: defaultInventoryAssignmentPattern(),
     accepted: defaultBool,
-  } as Trader);
+  }) as Trader;
 export const defaultOptionalEmoteFishingInfo = undefined;
 export const defaultMinigameInstanceState = () =>
   ({
     ...defaultSimpleRaceInstanceState(),
     kind: "simple_race",
-  } as MinigameInstanceState);
+  }) as MinigameInstanceState;
 export const defaultOptionalMinigameInstanceSpaceClipboardInfo = undefined;
 export const defaultOptionalProtectionParams = undefined;
 export const defaultOptionalRestorationParams = undefined;
@@ -5666,7 +5662,7 @@ export const defaultRichEmoteComponents = () =>
     fishing_info: defaultOptionalEmoteFishingInfo,
     throw_info: defaultOptionalEmoteThrowInfo,
     item_override: defaultOptionalItem,
-  } as RichEmoteComponents);
+  }) as RichEmoteComponents;
 export const defaultOptionalRichEmoteComponents = undefined;
 
 // ==================

@@ -24,7 +24,6 @@ import {
   HARTHMERE_BUSINESS_OUTPOSTS,
   harthmereBusinessScaledJobPay,
   harthmereBusinessOutpostJobsBoardPosition,
-  harthmereBusinessOutpostMapMarkerId,
   type HarthmereBusinessOutpost,
 } from "./business_customer_simulator";
 import { HARTHMERE_EXOTIC_MATTER_COMPONENTS } from "./exotic_matter_caves";
@@ -48,6 +47,14 @@ import type { BiomesId } from "@/shared/ids";
 import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
 import { HARTHMERE_EXTENSION_FEET_Y } from "@/shared/harthmere/world_extension";
 import { harthmereRequestBoardJobsBoardLocations } from "@/shared/harthmere/native_request_board_locations";
+import {
+  CH1_GROVE_JOB_TEMPLATE_IDS,
+  isCh1GroveJobPosting,
+} from "@/shared/harthmere/ch1_interaction_surfaces";
+import {
+  HARTHMERE_LEGACY_PROTECTION_ESCORT_DESTINATIONS,
+  type HarthmereLegacyProtectionEscortDestination,
+} from "@/shared/harthmere/legacy_protection_escort_destinations";
 
 export const HARTHMERE_JOBS_BOARD_AUTHORITY_VERSION =
   "harthmere-jobs-board-authority" as const;
@@ -120,6 +127,7 @@ export interface HarthmereEscortCompanion {
   destination: { x: number; y: number; z: number };
   destinationTargetId?: string;
   destinationMarkerId?: string;
+  arrivalDialogue?: string;
   createdAtMs: number;
   updatedAtMs: number;
   arrivedAtMs?: number;
@@ -1184,6 +1192,12 @@ function activeJobIdsForActor(state: HarthmereJobsBoardState, actorId: string) {
     .map((job) => job.jobId);
 }
 
+function activeJobsForActor(state: HarthmereJobsBoardState, actorId: string) {
+  return Object.values(state.postings).filter(
+    (job) => job.acceptedByActorId === actorId && job.status === "active"
+  );
+}
+
 function createJobPosting(
   result: MutableJobsResult,
   request: HarthmereJobsBoardMutationRequest,
@@ -1489,11 +1503,20 @@ function acceptJobPosting(
     result.next.actorCooldowns[request.actorId] = cooldown;
     return reject(result, "jobs_board_rejected:accept_cooldown");
   }
-  if (
-    activeJobIdsForActor(result.next, request.actorId).length >=
+  const activeJobs = activeJobsForActor(result.next, request.actorId);
+  if (isCh1GroveJobPosting(job)) {
+    if (
+      activeJobs.filter(isCh1GroveJobPosting).length >=
+      CH1_GROVE_JOB_TEMPLATE_IDS.length
+    ) {
+      return reject(result, "jobs_board_rejected:chapter1_active_job_limit");
+    }
+  } else if (
+    activeJobs.filter((activeJob) => !isCh1GroveJobPosting(activeJob)).length >=
     HARTHMERE_JOBS_BOARD_MAX_ACTIVE_ACCEPTED_PER_SEEKER
-  )
+  ) {
     return reject(result, "jobs_board_rejected:seeker_active_job_limit");
+  }
   job.status = "active";
   job.acceptedAtMs = request.nowMs;
   job.acceptedByActorId = request.actorId;
@@ -2260,6 +2283,98 @@ function pointObject(value: { x: number; y: number; z: number }) {
   };
 }
 
+export const HARTHMERE_ESCORT_DESTINATION_MIN_DISTANCE = 96;
+export const HARTHMERE_ESCORT_DESTINATION_MAX_DISTANCE = 900;
+
+function horizontalDistanceFromPoint(
+  point: { x: number; z: number },
+  destination: HarthmereLegacyProtectionEscortDestination
+) {
+  return Math.hypot(
+    destination.position[0] - point.x,
+    destination.position[2] - point.z
+  );
+}
+
+export function harthmereLegacyProtectionEscortCandidates(input: {
+  x: number;
+  z: number;
+}) {
+  return HARTHMERE_LEGACY_PROTECTION_ESCORT_DESTINATIONS.filter(
+    (destination) => {
+      const distance = horizontalDistanceFromPoint(input, destination);
+      return (
+        destination.position[1] >= 15 &&
+        destination.position[1] <= 140 &&
+        distance >= HARTHMERE_ESCORT_DESTINATION_MIN_DISTANCE &&
+        distance <= HARTHMERE_ESCORT_DESTINATION_MAX_DISTANCE
+      );
+    }
+  );
+}
+
+function applyEscortDestinationToJob(
+  job: HarthmereJobsBoardPosting,
+  destination: HarthmereLegacyProtectionEscortDestination
+) {
+  job.mapMarkerId = destination.markerId;
+  job.targetId = destination.markerId;
+  job.title = "Escort a Newcomer to a Protected Landmark";
+  job.description = `Stay close to the newcomer until you both reach ${destination.name}. They will confirm when the escort is complete.`;
+  for (const requirement of job.requirements) {
+    if (
+      requirement.serviceKind === "escort" ||
+      requirement.targetId ||
+      requirement.mapMarkerId
+    ) {
+      requirement.serviceKind = requirement.serviceKind ?? "escort";
+      requirement.serviceUnits = requirement.serviceUnits ?? 1;
+      requirement.targetId = destination.markerId;
+      requirement.targetName = destination.name;
+      requirement.mapMarkerId = destination.markerId;
+    }
+  }
+  job.logs.push(`escort_destination:${destination.markerId}`);
+  if (job.escortCompanion) {
+    job.escortCompanion.destination = {
+      x: destination.position[0],
+      y: destination.position[1],
+      z: destination.position[2],
+    };
+    job.escortCompanion.destinationTargetId = destination.markerId;
+    job.escortCompanion.destinationMarkerId = destination.markerId;
+    job.escortCompanion.arrivalDialogue = `Thank you for seeing me safely to ${destination.name}. Please tell the Jobs Board we made it.`;
+  }
+}
+
+export function repairHarthmereEscortJobDestination(
+  job: HarthmereJobsBoardPosting,
+  boardPosition: { x: number; y: number; z: number }
+) {
+  if (job.kind !== "escort") return false;
+  const current = harthmereJobsBoardQuestMarkerRuntimePositionForId(
+    job.mapMarkerId ?? job.targetId
+  );
+  if (
+    current &&
+    Math.hypot(
+      current.position[0] - boardPosition.x,
+      current.position[2] - boardPosition.z
+    ) >= HARTHMERE_ESCORT_DESTINATION_MIN_DISTANCE
+  ) {
+    return false;
+  }
+  const candidates = harthmereLegacyProtectionEscortCandidates(boardPosition);
+  if (!candidates.length) return false;
+  const destination =
+    candidates[
+      harthmereDeterministicHash(`escort-destination:${job.jobId}`) %
+        candidates.length
+    ];
+  applyEscortDestinationToJob(job, destination);
+  return true;
+}
+
 function createEscortCompanionForAcceptedJob(
   state: HarthmereJobsBoardState,
   job: HarthmereJobsBoardPosting,
@@ -2279,6 +2394,10 @@ function createEscortCompanionForAcceptedJob(
           z: boardRecord.location.z,
         }
       : { x: 501.99486179104775, y: 70, z: -132.00350672753194 });
+  repairHarthmereEscortJobDestination(
+    job,
+    pointObject(boardRecord?.location ?? anchor)
+  );
   const destinationMarker =
     harthmereJobsBoardQuestMarkerRuntimePositionForId(job.mapMarkerId) ??
     harthmereJobsBoardQuestMarkerRuntimePositionForId(job.targetId);
@@ -2307,6 +2426,9 @@ function createEscortCompanionForAcceptedJob(
     destination,
     destinationTargetId: job.targetId,
     destinationMarkerId: destinationMarker?.markerId ?? job.mapMarkerId,
+    arrivalDialogue: `Thank you for seeing me safely to ${
+      destinationMarker?.label ?? "the destination"
+    }. Please tell the Jobs Board we made it.`,
     createdAtMs: request.nowMs,
     updatedAtMs: request.nowMs,
   };
@@ -2461,7 +2583,10 @@ export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES: AutoSeedTemplate[] = [
       },
     ],
     rewardGold: { min: 35, max: 75 },
-    requiresFieldWork: true,
+    // The berry patch is an acquisition source, not a hand-in target. Once the
+    // authoritative inventory contains the berries, the player returns here to
+    // the board to stock the crate and collect payment.
+    requiresFieldWork: false,
     mapMarkerId: "grove_garden_edge_berries",
     boardScope: "grove",
   },
@@ -2524,6 +2649,7 @@ export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES: AutoSeedTemplate[] = [
       {
         itemId: "sealed_package",
         count: 1,
+        pickupMarkerId: "coop_supply_box",
         mapMarkerId: "grove_mail_bank_satchel",
       },
     ],
@@ -3042,18 +3168,17 @@ interface RepeatableDeliveryDropoffCandidate {
 }
 
 function repeatableDeliveryPickupMarkersForBoard(boardId: string) {
-  const outpostMarkers = HARTHMERE_BUSINESS_OUTPOSTS.map((outpost) =>
-    harthmereBusinessOutpostMapMarkerId(outpost.outpostId)
-  );
   if (boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID) {
-    return [...HARTHMERE_GROVE_DELIVERY_PICKUP_MARKERS, ...outpostMarkers];
+    return [...HARTHMERE_GROVE_DELIVERY_PICKUP_MARKERS];
   }
+  // Pickup markers must resolve to a physical F-interactable prop. Business
+  // outpost centre markers are navigation-only and previously produced an
+  // invisible "pickup" with a developer id on the map.
+  const physicalOutpostMarkers = harthmereJobsBoardFieldTargets().map(
+    (target) => target.mapMarkerId
+  );
   return [
-    "harthmere_bridge_center",
-    "harthmere_market_office",
-    "harthmere_chapel_stone",
-    "harthmere_connector",
-    ...outpostMarkers,
+    ...physicalOutpostMarkers,
     ...HARTHMERE_GROVE_DELIVERY_PICKUP_MARKERS,
   ];
 }
@@ -3157,6 +3282,7 @@ function randomizedAutoSeedRequirements(input: {
   const requirements = input.template.requirements.map((req) => ({ ...req }));
   let mapMarkerId = input.template.mapMarkerId;
   let targetId = input.template.targetId;
+  let escortDestinationName: string | undefined;
   const logs: string[] = [];
 
   if (input.template.monsterId) {
@@ -3196,19 +3322,21 @@ function randomizedAutoSeedRequirements(input: {
         targetId = dropoff.targetId;
         logs.push(`delivery_dropoff:${dropoff.markerId}`);
       }
-      const pickupMarkerId = randomRepeatableDeliveryPickupMarker({
-        boardId: input.boardId,
-        rng: input.rng,
-        avoidMarkerIds: [
-          firstDeliveryReq.mapMarkerId,
-          firstDeliveryReq.targetId,
-          firstDeliveryReq.recipientNpcId
-            ? `${HARTHMERE_BUSINESS_OWNER_MARKER_PREFIX}${firstDeliveryReq.recipientNpcId}`
-            : undefined,
-          mapMarkerId,
-          targetId,
-        ],
-      });
+      const pickupMarkerId =
+        firstDeliveryReq.pickupMarkerId ??
+        randomRepeatableDeliveryPickupMarker({
+          boardId: input.boardId,
+          rng: input.rng,
+          avoidMarkerIds: [
+            firstDeliveryReq.mapMarkerId,
+            firstDeliveryReq.targetId,
+            firstDeliveryReq.recipientNpcId
+              ? `${HARTHMERE_BUSINESS_OWNER_MARKER_PREFIX}${firstDeliveryReq.recipientNpcId}`
+              : undefined,
+            mapMarkerId,
+            targetId,
+          ],
+        });
       if (pickupMarkerId) {
         firstDeliveryReq.pickupMarkerId = pickupMarkerId;
         logs.push(`delivery_pickup:${pickupMarkerId}`);
@@ -3216,7 +3344,42 @@ function randomizedAutoSeedRequirements(input: {
     }
   }
 
-  return { requirements, mapMarkerId, targetId, logs };
+  if (input.template.kind === "escort") {
+    const boardLocation =
+      HARTHMERE_JOBS_BOARD_LOCATIONS[input.boardId]?.location;
+    const candidates = boardLocation
+      ? harthmereLegacyProtectionEscortCandidates(boardLocation)
+      : [];
+    const destination = candidates.length
+      ? candidates[
+          Math.min(
+            candidates.length - 1,
+            Math.floor(input.rng() * candidates.length)
+          )
+        ]
+      : undefined;
+    if (destination) {
+      escortDestinationName = destination.name;
+      mapMarkerId = destination.markerId;
+      targetId = destination.markerId;
+      for (const requirement of requirements) {
+        requirement.serviceKind = requirement.serviceKind ?? "escort";
+        requirement.serviceUnits = requirement.serviceUnits ?? 1;
+        requirement.targetId = destination.markerId;
+        requirement.targetName = destination.name;
+        requirement.mapMarkerId = destination.markerId;
+      }
+      logs.push(`escort_destination:${destination.markerId}`);
+    }
+  }
+
+  return {
+    requirements,
+    mapMarkerId,
+    targetId,
+    logs,
+    escortDestinationName,
+  };
 }
 
 function randomizedBusinessTemplateRequirements(input: {
@@ -3513,8 +3676,12 @@ function economyAutoSeedProductionBusinessJobs(
       issuerKind: "business",
       issuerId: business.businessId,
       issuerBusinessType: business.typeId,
-      title: template.title,
-      description: template.description,
+      title: randomized.escortDestinationName
+        ? "Escort a Newcomer to a Protected Landmark"
+        : template.title,
+      description: randomized.escortDestinationName
+        ? `Stay close to the newcomer until you both reach ${randomized.escortDestinationName}. They will confirm when the escort is complete.`
+        : template.description,
       kind: template.kind,
       requirements: randomized.requirements,
       templateId: template.templateId,
@@ -3594,12 +3761,32 @@ function economyAutoSeedJobs(
     return;
   }
   economyAutoSeedProductionBusinessJobs(result, request, board);
+  const openAutoPostings = Object.values(result.next.postings).filter(
+    (job) =>
+      job.boardId === boardId &&
+      job.status === "open" &&
+      job.autoPosted === true
+  );
+  const openTemplateIds = new Set(
+    openAutoPostings
+      .map((job) => job.templateId)
+      .filter((templateId): templateId is string => Boolean(templateId))
+  );
+  const missingChapter1TemplateCount =
+    boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID
+      ? CH1_GROVE_JOB_TEMPLATE_IDS.filter(
+          (templateId) => !openTemplateIds.has(templateId)
+        ).length
+      : 0;
   const openAuto = countOpenAutoPostings(result.next, boardId);
   const slotsToFill = Math.max(
     0,
     Math.min(
       HARTHMERE_JOBS_BOARD_AUTO_SEED_MAX_PER_TICK,
-      HARTHMERE_JOBS_BOARD_AUTO_SEED_TARGET_OPEN - openAuto
+      Math.max(
+        HARTHMERE_JOBS_BOARD_AUTO_SEED_TARGET_OPEN - openAuto,
+        missingChapter1TemplateCount
+      )
     )
   );
   if (slotsToFill === 0) {
@@ -3647,18 +3834,17 @@ function economyAutoSeedJobs(
     result.touched.add("jobs_board_auto_seed_no_templates");
     return;
   }
-  const openAutoPostings = Object.values(result.next.postings).filter(
-    (job) =>
-      job.boardId === boardId &&
-      job.status === "open" &&
-      job.autoPosted === true
-  );
-  const openTemplateIds = new Set(
-    openAutoPostings
-      .map((job) => job.templateId)
-      .filter((templateId): templateId is string => Boolean(templateId))
-  );
   const openKinds = new Set(openAutoPostings.map((job) => job.kind));
+  const missingChapter1Templates =
+    boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID
+      ? CH1_GROVE_JOB_TEMPLATE_IDS.flatMap((templateId) => {
+          if (openTemplateIds.has(templateId)) return [];
+          const template = templates.find(
+            (candidate) => candidate.templateId === templateId
+          );
+          return template ? [template] : [];
+        })
+      : [];
   const exoticMatterTemplates =
     boardId === HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID
       ? templates.filter((template) =>
@@ -3706,19 +3892,27 @@ function economyAutoSeedJobs(
           openTemplateIds.size >= templates.length)
     );
     const shouldPrimeExotic = shouldPrimeExoticMatterMining && produced === 0;
+    const missingChapter1Pool = missingChapter1Templates.filter(
+      (template) => !usedTemplateIds.has(template.templateId)
+    );
+    const shouldPrimeChapter1 =
+      !shouldPrimeExotic && missingChapter1Pool.length > 0;
     const shouldPrimeRepeatablePlacement =
       !shouldPrimeExotic &&
+      !shouldPrimeChapter1 &&
       produced < repeatablePlacementLimit &&
       missingRepeatablePlacementPool.length > 0;
     const baseTemplatePool = shouldPrimeExotic
       ? exoticMatterTemplates
-      : shouldPrimeRepeatablePlacement
-        ? rotateAutoSeedEntries(missingRepeatablePlacementPool, {
-            boardId,
-            rotation: result.next.nextJobNumber,
-            salt: "repeatable-placement",
-          })
-        : templates;
+      : shouldPrimeChapter1
+        ? missingChapter1Pool
+        : shouldPrimeRepeatablePlacement
+          ? rotateAutoSeedEntries(missingRepeatablePlacementPool, {
+              boardId,
+              rotation: result.next.nextJobNumber,
+              salt: "repeatable-placement",
+            })
+          : templates;
     const distinctTemplatePool = baseTemplatePool.filter(
       (template) =>
         !usedTemplateIds.has(template.templateId) &&
@@ -3729,18 +3923,20 @@ function economyAutoSeedJobs(
       (template) =>
         !openKinds.has(template.kind) && !usedKinds.has(template.kind)
     );
-    const templatePool = shouldPrimeRepeatablePlacement
-      ? distinctTemplatePool.length > 0
-        ? distinctTemplatePool
-        : baseTemplatePool
-      : diverseKindPool.length > 0
-        ? diverseKindPool
-        : distinctTemplatePool.length > 0
+    const templatePool =
+      shouldPrimeChapter1 || shouldPrimeRepeatablePlacement
+        ? distinctTemplatePool.length > 0
           ? distinctTemplatePool
-          : baseTemplatePool;
-    const template = shouldPrimeRepeatablePlacement
-      ? templatePool[0]
-      : templatePool[Math.floor(slotRng() * templatePool.length)];
+          : baseTemplatePool
+        : diverseKindPool.length > 0
+          ? diverseKindPool
+          : distinctTemplatePool.length > 0
+            ? distinctTemplatePool
+            : baseTemplatePool;
+    const template =
+      shouldPrimeChapter1 || shouldPrimeRepeatablePlacement
+        ? templatePool[0]
+        : templatePool[Math.floor(slotRng() * templatePool.length)];
     if (!template) break;
     if (
       usedTemplateIds.has(template.templateId) &&

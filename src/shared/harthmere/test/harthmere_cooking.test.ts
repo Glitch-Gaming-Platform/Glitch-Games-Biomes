@@ -113,6 +113,7 @@ describe("harthmere cooking — enqueue", () => {
       stationKind: "cookpot",
       recipeId: "worker_meal",
       nowMs: NOW,
+      cookingSkillLevel: 10,
     });
     assert.ok(
       noVeg.warnings.includes("cooking_rejected:missing_input:loaf_bread")
@@ -148,6 +149,7 @@ describe("harthmere cooking — enqueue", () => {
         stationKind: "campfire",
         recipeId: "worker_meal",
         nowMs: NOW,
+        cookingSkillLevel: 10,
       }
     );
     assert.ok(

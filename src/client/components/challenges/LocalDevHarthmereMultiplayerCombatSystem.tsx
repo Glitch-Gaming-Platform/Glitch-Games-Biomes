@@ -84,6 +84,12 @@ import {
   readHarthmereCrosshairCombatActors,
   type HarthmereCrosshairAim,
 } from "@/client/components/challenges/harthmereCrosshairCombatTarget";
+import {
+  pickHarthmereLockedCombatActor,
+  readHarthmereCombatLockState,
+  shouldToggleHarthmereCombatLockForKey,
+  toggleHarthmereCombatLock,
+} from "@/client/components/challenges/harthmere_combat_lock_on";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS } from "@/shared/harthmere/combat_reach";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
@@ -123,7 +129,7 @@ function emitHarthmereFullAnimationRequest(detail: {
 export const HARTHMERE_COMBAT_KEY_BINDINGS = {
   draw: "Quote",
   target: "Tab",
-  basic: "KeyB",
+  basic: "Mouse0",
   heavy: "KeyH",
   spark: "KeyL",
   pvp: "KeyN",
@@ -486,7 +492,7 @@ function defaultState(): HarthmereMultiplayerCombatState {
     recent: [
       logEntry(
         "Controls Ready",
-        "Press X to draw/sheathe, Tab to cycle target, B for Basic Attack → GLTF Attack, H for Heavy Attack → GLTF HeavyAttack, L for Spark → GLTF BasicMagic, and P for PvP. These keys are reserved and do not overlap with map/quest/menu keys."
+        "Use primary click for Basic Attack, hold primary for Heavy Attack, Tab to lock or release a target, L for Spark, and N for PvP. B is reserved for the Bank interface."
       ),
     ],
   };
@@ -683,7 +689,7 @@ export function selectHarthmereCombatTarget(
     ...appendLog(
       state,
       reason,
-      `Current combat target: ${label}. B runs Basic Attack/Attack, H runs Heavy Attack/HeavyAttack, and L runs Spark/BasicMagic.`
+      `Current combat target: ${label}. Primary click runs Basic Attack, holding it runs Heavy Attack, and L runs Spark/BasicMagic.`
     ),
     currentTargetOffset: offset,
     currentTargetLabel: label,
@@ -698,6 +704,32 @@ export function cycleHarthmereCombatTarget() {
   const nextTarget =
     TARGETS[(currentIndex + 1 + TARGETS.length) % TARGETS.length];
   selectHarthmereCombatTarget(nextTarget.offset, nextTarget.label);
+}
+
+export function toggleHarthmereCombatTargetLock() {
+  if (!isBrowser()) return undefined;
+  const wasActive = readHarthmereCombatLockState().active;
+  const locked = toggleHarthmereCombatLock({
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight,
+  });
+  if (locked) {
+    selectHarthmereCombatTarget(
+      locked.offset,
+      locked.label ?? "Target",
+      "Target Locked"
+    );
+  } else if (wasActive) {
+    const combat = readHarthmereMultiplayerCombatState();
+    writeHarthmereMultiplayerCombatState(
+      appendLog(
+        combat,
+        "Target Lock Released",
+        "Camera and movement returned to free aim."
+      )
+    );
+  }
+  return locked;
 }
 
 function afterHostileAction(
@@ -1049,7 +1081,11 @@ function normalizeHarthmereMouseLiveModeHit(
 function submitHarthmereLiveModeMousePrimaryAttack(
   hits: ReadonlyArray<number | HarthmereMousePrimaryLiveModeHit>,
   runtime: HarthmereForwardArcRuntimeSnapshot | undefined,
-  source: "native_contact" | "forward_arc_fallback" | "crosshair_visible_actor"
+  source:
+    | "native_contact"
+    | "forward_arc_fallback"
+    | "crosshair_visible_actor"
+    | "locked_visible_actor"
 ) {
   if (!isBrowser() || nativeBiomesEcsAuthorityEnabled() || hits.length === 0) {
     // Native contact handling already publishes UpdateNpcHealthEvent. Retain
@@ -1235,23 +1271,33 @@ export function performHarthmereMousePrimaryAttack(
     // frame. Button-down aim is a tell, not a guaranteed hit: a target that
     // dodges or leaves the blade arc during windup must be allowed to escape.
     const crosshairActors = readHarthmereCrosshairCombatActors();
-    const crosshairPick = aim
-      ? pickHarthmereCrosshairCombatTarget({
-          actors: crosshairActors,
-          aim,
-          playerX: runtime?.position?.[0],
-          playerZ: runtime?.position?.[2],
-          worldReach: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS,
-        })
-      : undefined;
+    const lockedPick = pickHarthmereLockedCombatActor({
+      actors: crosshairActors,
+      playerX: runtime?.position?.[0],
+      playerZ: runtime?.position?.[2],
+      worldReach: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS,
+    });
+    const crosshairPick =
+      lockedPick ??
+      (aim
+        ? pickHarthmereCrosshairCombatTarget({
+            actors: crosshairActors,
+            aim,
+            playerX: runtime?.position?.[0],
+            playerZ: runtime?.position?.[2],
+            worldReach: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS,
+          })
+        : undefined);
     let arcResult: { hitOffsets: number[]; candidateOffsets: number[] };
     if (crosshairPick) {
       performHarthmereCombatAttack(crosshairPick.offset, attack, {
         contactProven: true,
         contactSource: "forward_arc",
         contactDistance: crosshairPick.worldDistance,
-        contactReason: "crosshair_aimed_actor_at_impact_frame",
-        debugLabel: `crosshair:${attack}`,
+        contactReason: lockedPick
+          ? "locked_actor_at_impact_frame"
+          : "crosshair_aimed_actor_at_impact_frame",
+        debugLabel: `${lockedPick ? "lock" : "crosshair"}:${attack}`,
       });
       arcResult = {
         hitOffsets: [crosshairPick.offset],
@@ -1266,7 +1312,7 @@ export function performHarthmereMousePrimaryAttack(
           },
         ],
         runtime,
-        "crosshair_visible_actor"
+        lockedPick ? "locked_visible_actor" : "crosshair_visible_actor"
       );
     } else {
       arcResult = performHarthmereForwardArcAttack(attack, runtime);
@@ -1332,7 +1378,7 @@ function dispatchHarthmereNativeCombatKeyAction(
 }
 
 /**
- * Route every B/H/L entry point, including HUD buttons, through one authority.
+ * Route every combat entry point, including HUD buttons, through one authority.
  * Native mode drives the selected item's canonical interaction; only explicit
  * legacy mode may mutate the retired local combat simulator.
  */
@@ -1693,7 +1739,7 @@ export function useHarthmereCombatHotkeys() {
         // a second authority if another listener still observes the key.
         return;
       }
-      if (["Quote", "Tab", "KeyB", "KeyH", "KeyL", "KeyN"].includes(code)) {
+      if (["Quote", "Tab", "KeyH", "KeyL", "KeyN"].includes(code)) {
         debugHarthmereKeyCombat("keyed.hotkey", { code });
       }
       if (code === HARTHMERE_COMBAT_KEY_BINDINGS.draw) {
@@ -1702,10 +1748,23 @@ export function useHarthmereCombatHotkeys() {
         event.stopImmediatePropagation();
         toggleHarthmereWeaponDrawn();
       } else if (code === HARTHMERE_COMBAT_KEY_BINDINGS.target) {
+        if (
+          !shouldToggleHarthmereCombatLockForKey({
+            code,
+            repeat: event.repeat,
+            defaultPrevented: event.defaultPrevented,
+            altKey: event.altKey,
+            ctrlKey: event.ctrlKey,
+            metaKey: event.metaKey,
+            editableTarget: isTypingTarget(event.target),
+          })
+        ) {
+          return;
+        }
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
-        cycleHarthmereCombatTarget();
+        toggleHarthmereCombatTargetLock();
       } else if (code === HARTHMERE_COMBAT_KEY_BINDINGS.basic) {
         event.preventDefault();
         event.stopPropagation();
@@ -1953,7 +2012,7 @@ export const HarthmereMultiplayerCombatMenuPanel: React.FunctionComponent<{}> =
               <span className="font-semibold text-white">
                 {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.target}
               </span>{" "}
-              cycle target
+              lock / release target
             </div>
             <div>
               <span className="font-semibold text-white">
@@ -1987,8 +2046,8 @@ export const HarthmereMultiplayerCombatMenuPanel: React.FunctionComponent<{}> =
             GLTF clip routing
           </div>
           <div>
-            <span className="font-semibold text-white">B</span> Basic Attack →
-            Attack, Attack2, SideSwing
+            <span className="font-semibold text-white">Mouse 1</span> Basic
+            Attack → Attack, Attack2, SideSwing
           </div>
           <div>
             <span className="font-semibold text-white">H</span> Heavy Attack →
@@ -2060,15 +2119,15 @@ export const HarthmereMultiplayerCombatMenuPanel: React.FunctionComponent<{}> =
           <ActionButton onClick={() => toggleHarthmereWeaponDrawn()}>
             {state.weaponDrawn ? "Put Weapon Away" : "Draw Weapon"}
           </ActionButton>
-          <ActionButton onClick={() => cycleHarthmereCombatTarget()}>
-            Cycle Target
+          <ActionButton onClick={() => toggleHarthmereCombatTargetLock()}>
+            Lock / Release Target
           </ActionButton>
           <ActionButton
             disabled={Boolean(basicBlock)}
             onClick={() => performHarthmereKeyedAttack("basic")}
             title={basicBlock}
           >
-            B Basic Attack → Attack
+            Mouse 1 Basic Attack → Attack
           </ActionButton>
           <ActionButton
             disabled={Boolean(heavyBlock)}
@@ -2168,10 +2227,11 @@ export const HarthmereMultiplayerCombatMenuPanel: React.FunctionComponent<{}> =
 // --------------------------------
 // This is intentionally installed at module load time, before React effects from
 // HUD/class/inventory panels can register their own capture listeners. The goal
-// is to make B/H/L deterministic and prevent older spell handlers from stealing
-// KeyB and routing it to Spark.
+// is to keep the remaining H/L combat shortcuts and Tab lock toggle
+// deterministic. Basic and heavy attacks share primary click; B belongs
+// exclusively to the Bank interface.
 const HARTHMERE_HARD_COMBAT_KEY_ROUTER_VERSION =
-  "harthmere-hard-key-router-native-ecs-v2";
+  "harthmere-hard-key-router-native-ecs-v3";
 
 function isHarthmereTextEntryTarget(target: EventTarget | null) {
   const element = target instanceof HTMLElement ? target : undefined;
@@ -2206,9 +2266,6 @@ function isHarthmereGameplayMouseTarget(target: EventTarget | null) {
 function hardCombatActionForCode(
   code: string
 ): HarthmereCombatKeyAction | undefined {
-  if (code === "KeyB") {
-    return "basic";
-  }
   if (code === "KeyH") {
     return "heavy";
   }
@@ -2264,6 +2321,50 @@ function installHarthmereHardCombatKeyRouter() {
   };
 
   const handler = (event: KeyboardEvent) => {
+    if (event.code === HARTHMERE_COMBAT_KEY_BINDINGS.target) {
+      const editableTarget = isHarthmereTextEntryTarget(event.target);
+      if (
+        !shouldToggleHarthmereCombatLockForKey({
+          code: event.code,
+          repeat: event.repeat,
+          defaultPrevented: event.defaultPrevented,
+          altKey: event.altKey,
+          ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
+          editableTarget,
+        })
+      ) {
+        pushLog({
+          type: "ignored",
+          code: event.code,
+          action: "target_lock",
+          repeat: event.repeat,
+          defaultPrevented: event.defaultPrevented,
+          metaKey: event.metaKey,
+          ctrlKey: event.ctrlKey,
+          altKey: event.altKey,
+          editableTarget,
+        });
+        return;
+      }
+
+      // Install this before React effects so browser focus handlers and
+      // replacement HUD tabs cannot consume Tab before combat sees it. The
+      // hook-level listener remains as a compatibility fallback but will not
+      // observe this stopped event.
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      const locked = toggleHarthmereCombatTargetLock();
+      pushLog({
+        type: "keydown",
+        code: event.code,
+        action: "target_lock",
+        locked: Boolean(locked),
+      });
+      return;
+    }
+
     const action = hardCombatActionForCode(event.code);
     if (!action) {
       return;
@@ -2292,7 +2393,8 @@ function installHarthmereHardCombatKeyRouter() {
       return;
     }
 
-    // Critical part: stop older capture/bubble handlers from seeing B/H/L without stealing notifications.
+    // Stop older capture/bubble handlers from seeing H/L without stealing
+    // notifications. B must continue to the Bank shortcut.
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
@@ -2397,11 +2499,21 @@ function installHarthmereHardCombatMouseRouter() {
       playerZ: runtimeForGate?.position?.[2],
       worldReach: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS,
     });
+    const hasLockedTarget = Boolean(
+      pickHarthmereLockedCombatActor({
+        actors: readHarthmereCrosshairCombatActors(),
+        playerX: runtimeForGate?.position?.[0],
+        playerZ: runtimeForGate?.position?.[2],
+        worldReach: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS,
+      })
+    );
     // Engage if there is something under the crosshair OR within the legacy
     // proximity probe. The crosshair check does not need the player-origin
     // runtime, so it still engages when that snapshot is missing.
     const hasAttackableTargetNearby =
-      hasCrosshairTarget || harthmereHasAttackableTargetNearPlayer();
+      hasLockedTarget ||
+      hasCrosshairTarget ||
+      harthmereHasAttackableTargetNearPlayer();
     if (
       !shouldEngageHarthmereMousePrimaryAttack({
         button: event.button,

@@ -24,6 +24,7 @@ import {
 } from "@/shared/harthmere/mmo_jobs_board_authority";
 import { HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES } from "@/shared/harthmere/jobs_board_business_templates";
 import { muckMonsterAreaForPosition } from "@/shared/harthmere/muck_monster_aggression_ai";
+import { buildBiomesUIMapAdapterForTest } from "../mapLiveAdapter";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
   HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
@@ -183,6 +184,50 @@ describe("BiomesUI jobs board quest map adapter", () => {
     assert.equal(steps[0].id, "jobs_board:harthmere_job_todo_7");
     assert.equal(steps[0].done, false);
     assert.ok(steps[0].objective.includes("Clear the Muckwad Patch"));
+  });
+
+  it("pins an escort's authoritative destination instead of its live companion", () => {
+    const snapshot = acceptedJobsBoardSnapshot();
+    const escortEntityId = 8_810_000_000_088_900;
+    snapshot.myAcceptedJobs = [
+      {
+        ...snapshot.myAcceptedJobs[0],
+        jobId: "job_escort_newcomer",
+        title: "Escort a Newcomer to the Road Post",
+        kind: "escort",
+        mapMarkerId: String(escortEntityId),
+        targetId: String(escortEntityId),
+        escortCompanion: {
+          companionId: "escort_companion:job_escort_newcomer:player",
+          entityId: escortEntityId,
+          jobId: "job_escort_newcomer",
+          actorId: "player_jobs_map_001",
+          displayName: "Newcomer",
+          status: "following",
+          position: { x: 504.2, y: 70, z: -131.8 },
+          destination: { x: 500, y: 69, z: -140 },
+          destinationTargetId: "old_grove_road_post",
+          destinationMarkerId: "old_grove_road_post",
+          createdAtMs: NOW_MS,
+          updatedAtMs: NOW_MS,
+        },
+      },
+    ] as any;
+    snapshot.myTodos = [
+      {
+        ...snapshot.myTodos[0],
+        jobId: "job_escort_newcomer",
+        title: "Escort a Newcomer to the Road Post",
+        kind: "escort",
+        mapMarkerId: String(escortEntityId),
+        targetId: String(escortEntityId),
+      },
+    ] as any;
+
+    const [marker] = jobsBoardAcceptedJobLandmarksForBiomesUI(snapshot);
+    assert.deepEqual(marker.position, [500, 69, -140]);
+    assert.equal(marker.mapMarkerId, "old_grove_road_post");
+    assert.equal(marker.targetId, "old_grove_road_post");
   });
 
   it("keeps every accepted posting paired with its exact returned todo identity", () => {
@@ -430,6 +475,41 @@ describe("BiomesUI jobs board quest map adapter", () => {
     const steps = activeJobsBoardMissionStepsForBiomesUI(snapshot, 1000);
     assert.equal(steps.length, 1);
     assert.ok(steps[0].objective.includes("Return to the jobs board"));
+  });
+
+  it("uses the registered physical pickup label for Run the Coop", () => {
+    const snapshot = acceptedJobsBoardSnapshot();
+    snapshot.myAcceptedJobs[0] = {
+      ...snapshot.myAcceptedJobs[0],
+      jobId: "job_coop_food",
+      title: "Run the Coop Food Parcel",
+      description: "Collect the parcel from the hen-yard crate.",
+      kind: "delivery",
+      requirements: [
+        {
+          itemId: "sealed_package",
+          count: 1,
+          pickupMarkerId: "coop_supply_box",
+          mapMarkerId: "grove_mail_bank_satchel",
+        },
+      ],
+      mapMarkerId: "grove_mail_bank_satchel",
+    } as any;
+    snapshot.myTodos[0] = {
+      ...snapshot.myTodos[0],
+      todoId: "todo_coop_food",
+      jobId: "job_coop_food",
+      title: "Run the Coop Food Parcel",
+      kind: "delivery",
+      mapMarkerId: "grove_mail_bank_satchel",
+    } as any;
+
+    const [source] = jobsBoardItemSourceLandmarksForBiomesUI(snapshot);
+    assert.equal(source.mapMarkerId, "coop_supply_box");
+    assert.equal(source.label, "Get Sealed Package — Old Supply Box");
+    assert.ok(!source.label.includes("_"));
+    const [quest] = jobsBoardTrackableQuestsForBiomesUI(snapshot, NOW_MS);
+    assert.equal(quest.itemSource?.sourceName, "Old Supply Box");
   });
 
   it("drops markers for fully completed todos, but surfaces completed AND failed in the tracker", () => {
@@ -823,6 +903,23 @@ describe("BiomesUI jobs board item-only turn-in routing", () => {
     );
     assert.ok(missingQuest.itemSource);
     assert.equal(missingQuest.itemSource!.missingCount, 2);
+    const mapAdapter = buildBiomesUIMapAdapterForTest(
+      1,
+      [501.99, 70, -132],
+      missing
+    );
+    const sourceMarker = mapAdapter
+      .getMarkers()
+      .find((marker) => marker.id === missingQuest.firstMarkerId);
+    assert.ok(
+      sourceMarker,
+      "Show on map must resolve the exact synthetic item-source marker id"
+    );
+    assert.match(sourceMarker!.label, /Get Wood Plank.*Fountain Workbench/i);
+    assert.ok(
+      sourceMarker!.worldPosition,
+      "source marker needs world coordinates"
+    );
 
     const ready = craftBoardTurnInSnapshot({ wood_plank: 3 });
     const [turnInMarker] = jobsBoardAcceptedJobLandmarksForBiomesUI(ready);

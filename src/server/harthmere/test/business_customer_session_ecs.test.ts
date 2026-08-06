@@ -450,6 +450,73 @@ describe("native ECS business customer session materialization", () => {
       ),
       false
     );
+    assert.ok(
+      changes.some(
+        (change) =>
+          change.kind === "delete" && change.id === prior.queue[0].entityId
+      ),
+      "an inactive customer cancelled at the exterior spawn must not poison later shifts"
+    );
+  });
+
+  it("preserves progress for an inactive cancelled customer already walking out", () => {
+    const record = HARTHMERE_BUSINESS_INTERIORS[0];
+    const prior = sessionFor(record, "_cancelled_departure");
+    prior.status = "aborted";
+    prior.queue[0].status = "left";
+    prior.queue[0].spatialPhase = "cancelled";
+    const oldState = deserializeNpcCustomState(undefined);
+    oldState.businessCustomer = {
+      version: "harthmere-business-customer-behavior-v1",
+      sessionId: prior.sessionId,
+      ticketId: prior.queue[0].ticketId,
+      outpostId: record.outpostId,
+      businessType: record.businessType,
+      phase: "cancelled",
+      reaction: "neutral",
+      entrance: [0, 0, 0],
+      queueTarget: [0, 0, 0],
+      customer: [0, 0, 0],
+      staff: [0, 0, 0],
+      departure: [0, 0, 0],
+      waypoints: [
+        [1, 0, 1],
+        [2, 0, 2],
+        [3, 0, 3],
+      ],
+      waypointIndex: 2,
+      progressPosition: [2.5, 0, 2.5],
+      progressAtSeconds: 99,
+      lastPhaseChangedAtSeconds: 90,
+    };
+    const changes = buildHarthmereBusinessCustomerSessionNpcChanges({
+      economy: economyFor(prior),
+      nowSeconds: 100,
+      existingEntities: new Map([
+        [
+          prior.queue[0].entityId,
+          {
+            id: prior.queue[0].entityId,
+            position: Position.create({ v: [2.5, 0, 2.5] }),
+            npc_state: NpcState.create({
+              data: serializeNpcCustomState(oldState),
+            }),
+          },
+        ],
+      ]),
+    });
+    const update = changes.find(
+      (change) =>
+        change.kind === "update" && change.entity.id === prior.queue[0].entityId
+    );
+    assert.ok(update && update.kind === "update");
+    const customer = deserializeNpcCustomState(
+      update.entity.npc_state?.data
+    ).businessCustomer!;
+    assert.equal(customer.phase, "cancelled");
+    assert.equal(customer.waypointIndex, 2);
+    assert.deepEqual(customer.waypoints, oldState.businessCustomer.waypoints);
+    assert.deepEqual(customer.progressPosition, [2.5, 0, 2.5]);
   });
 
   it("cancels persisted expired customers and defers the whole replacement route", () => {

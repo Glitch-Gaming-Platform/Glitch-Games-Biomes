@@ -4,6 +4,7 @@ import {
   mobileActionButtons,
   mobileActionDisabledReason,
   mobileCombatActionForKind,
+  mobilePrimaryActionGlyph,
   mobilePrimaryActionLabel,
   type MobileActionAvailability,
 } from "@/client/game/util/mobile_action_controls";
@@ -34,7 +35,7 @@ describe("mobile action controls", () => {
     for (const availability of [NATIVE_SHEATHED, NATIVE_DRAWN]) {
       const list = kinds(availability);
       assert.equal(list[0], "primary");
-      assert.equal(list[1], "secondary");
+      assert.ok(list.includes("secondary"));
     }
   });
 
@@ -42,22 +43,16 @@ describe("mobile action controls", () => {
     // The retired local combat simulator is a developer path and must not be
     // reachable from a phone HUD.
     const list = kinds({ nativeCombatEnabled: false, weaponDrawn: true });
-    assert.ok(!list.includes("draw"));
-    assert.ok(!list.includes("heavy"));
     assert.ok(!list.includes("spark"));
   });
 
-  it("reveals target/heavy/spark only once the weapon is drawn", () => {
-    // Mirrors the keyboard flow, where the first B/H press draws and the second
-    // strikes.
+  it("reveals target/spark only once the weapon is drawn", () => {
     const sheathed = kinds(NATIVE_SHEATHED);
-    assert.ok(sheathed.includes("draw"));
-    assert.ok(!sheathed.includes("heavy"));
     assert.ok(!sheathed.includes("spark"));
     assert.ok(!sheathed.includes("target"));
 
     const drawn = kinds(NATIVE_DRAWN);
-    for (const kind of ["draw", "target", "heavy", "spark"]) {
+    for (const kind of ["target", "spark"]) {
       assert.ok(drawn.includes(kind as any), `expected ${kind}`);
     }
   });
@@ -69,8 +64,7 @@ describe("mobile action controls", () => {
     const byKind = new Map(buttons.map((b) => [b.kind, b]));
     assert.equal(byKind.get("primary")!.holdable, true);
     assert.equal(byKind.get("secondary")!.holdable, true);
-    assert.equal(byKind.get("heavy")!.holdable, false);
-    assert.equal(byKind.get("draw")!.holdable, false);
+    assert.equal(byKind.get("target")!.holdable, false);
   });
 
   it("labels primary from the selected item, defaulting to Mine", () => {
@@ -78,13 +72,35 @@ describe("mobile action controls", () => {
     assert.equal(mobilePrimaryActionLabel("place"), "Place");
     assert.equal(mobilePrimaryActionLabel("attack"), "Attack");
     assert.equal(mobilePrimaryActionLabel("cast"), "Cast");
+    assert.equal(mobilePrimaryActionGlyph(undefined), "⛏");
+    assert.equal(mobilePrimaryActionGlyph("attack"), "⚔");
+    assert.equal(mobilePrimaryActionGlyph("place"), "🧱");
   });
 
   it("routes combat buttons to the native combat actions", () => {
-    assert.equal(mobileCombatActionForKind("heavy"), "heavy");
     assert.equal(mobileCombatActionForKind("spark"), "spark");
     assert.equal(mobileCombatActionForKind("primary"), undefined);
-    assert.equal(mobileCombatActionForKind("draw"), undefined);
+  });
+
+  it("uses one contextual primary for mine, light attack, and held heavy", () => {
+    const drawn = mobileActionButtons(NATIVE_DRAWN);
+    assert.equal(drawn.filter((button) => button.kind === "primary").length, 1);
+    assert.equal(
+      drawn.some((button) => button.kind === ("attack" as any)),
+      false
+    );
+    assert.equal(
+      drawn.some((button) => button.kind === ("heavy" as any)),
+      false
+    );
+    assert.equal(
+      drawn.some((button) => button.kind === ("draw" as any)),
+      false
+    );
+    assert.match(
+      drawn.find((button) => button.kind === "primary")!.ariaLabel,
+      /tap.*light attack.*hold.*heavy attack/i
+    );
   });
 
   it("never disables primary or secondary", () => {
@@ -105,10 +121,6 @@ describe("mobile action controls", () => {
       attackBlockedReason: "Respawn protection is active.",
       sparkBlockedReason: "Select a valid target before casting Spark.",
     };
-    assert.equal(
-      mobileActionDisabledReason("heavy", blocked),
-      "Respawn protection is active."
-    );
     assert.equal(
       mobileActionDisabledReason("spark", blocked),
       "Select a valid target before casting Spark."
@@ -132,5 +144,14 @@ describe("mobile action controls", () => {
     assert.equal(new Set(attributes).size, attributes.length);
     assert.ok(attributes.every((a) => a.length > 0));
     assert.ok(buttons.every((b) => b.ariaLabel.length > 0));
+  });
+
+  it("uses an obvious block glyph for the secondary Place action", () => {
+    const place = mobileActionButtons(NATIVE_SHEATHED).find(
+      (button) => button.kind === "secondary"
+    );
+    assert(place);
+    assert.equal(place.glyph, "🧱");
+    assert.match(place.ariaLabel, /place/i);
   });
 });

@@ -18,10 +18,11 @@ function assertReasonMatches(
 describe("harthmere combat and death interface rules", () => {
   const now = 1_000_000;
 
-  it("keeps combat key copy aligned with the installed H heavy-attack route", () => {
-    assert.equal(HARTHMERE_COMBAT_INTERFACE_KEY_COPY.basic, "B");
+  it("keeps B free for Bank while primary click owns the basic attack", () => {
+    assert.equal(HARTHMERE_COMBAT_INTERFACE_KEY_COPY.basic, "Mouse 1");
     assert.equal(HARTHMERE_COMBAT_INTERFACE_KEY_COPY.heavy, "H");
     assert.equal(HARTHMERE_COMBAT_INTERFACE_KEY_COPY.spark, "L");
+    assert.equal(HARTHMERE_COMBAT_INTERFACE_KEY_COPY.pvp, "N");
   });
 
   it("allows the base PvE combat case while showing PvE reward policy", () => {

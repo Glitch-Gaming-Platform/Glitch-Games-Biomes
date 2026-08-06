@@ -41,7 +41,7 @@ import { zrpcSerialize } from "@/shared/zrpc/serde";
 import { makeWebSocketClient } from "@/shared/zrpc/websocket_client";
 import { ok } from "assert";
 import EventEmitter from "events";
-import { isEqual, random, zip } from "lodash";
+import { isEqual, zip } from "lodash";
 import type TypedEventEmitter from "typed-emitter";
 
 export interface ServerTime {
@@ -98,6 +98,28 @@ function determineSyncTarget(
     kind: "localUser",
     userId,
   };
+}
+
+export function browserSyncBaseUrl(
+  configured: string,
+  href: string
+): string {
+  const sameOrigin = new URL("/", href).toString();
+  if (configured === "api") {
+    return sameOrigin;
+  }
+  try {
+    const candidate = new URL(configured, href);
+    if (
+      candidate.hostname === "biomes.gg" ||
+      candidate.hostname.endsWith(".biomes.gg")
+    ) {
+      return sameOrigin;
+    }
+  } catch {
+    return sameOrigin;
+  }
+  return configured;
 }
 
 class SyncStats {
@@ -813,10 +835,10 @@ export async function loadClientIo(
     ]);
   const ioConfig: ClientIoConfig = {
     url: (target: SyncTarget) => {
-      const base =
-        config.syncBaseUrl === "api"
-          ? `https://api${random(6)}.biomes.gg/`
-          : config.syncBaseUrl;
+      const base = browserSyncBaseUrl(
+        config.syncBaseUrl,
+        window.location.href
+      );
       const suffix =
         target.kind === "localUser"
           ? config.useProdSync

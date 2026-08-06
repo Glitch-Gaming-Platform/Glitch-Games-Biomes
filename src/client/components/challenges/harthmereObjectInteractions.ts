@@ -16,7 +16,9 @@ import {
 import {
   HARTHMERE_JOBS_BOARD_OPEN_EVENT,
   HARTHMERE_WANTED_BOARD_OPEN_EVENT,
+  HARTHMERE_INVENTORY_EVENT,
 } from "@/client/components/challenges/harthmereEvents";
+import { dispatchHarthmereLiveModeResponseEventsForTest } from "@/client/components/challenges/harthmereLiveModeClientEvents";
 import {
   fetchHarthmereJobsBoardState,
   submitHarthmereJobsBoardMutation,
@@ -187,6 +189,10 @@ export async function submitHarthmereWorldObjectInteraction(input: {
         : [String(body?.error ?? "world_object_interaction_failed")]
     );
   }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(HARTHMERE_INVENTORY_EVENT));
+    dispatchHarthmereLiveModeResponseEventsForTest(body);
+  }
   return body;
 }
 
@@ -281,6 +287,10 @@ export function harthmereJobsBoardObjectMatchesFieldTarget(input: {
   todo: HarthmereJobsBoardTodo;
   job?: HarthmereJobsBoardPosting;
 }) {
+  // Item-source interactions for board-turn-in jobs are acquisition receipts,
+  // not field-completion receipts. Treating the source marker as a hand-in is
+  // what produced the misleading "not ready to complete here" toast.
+  if (input.job && !input.job.requiresFieldWork) return false;
   const objectAliases = targetAliasesForObject(input);
   if (!objectAliases.size) return false;
   const targetAliases = jobsBoardPostingTargetAliases(input.todo, input.job);

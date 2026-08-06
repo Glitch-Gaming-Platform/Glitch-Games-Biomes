@@ -11,6 +11,7 @@ import {
 } from "../mmo_economy_authority";
 import {
   HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS,
+  HARTHMERE_BUSINESS_CUSTOMERS_PER_SHIFT,
   createHarthmereBusinessMiniGameDecisionForOffer,
   resolveHarthmereBusinessMiniGameDecision,
   validateHarthmereBusinessOutpostLiveWorldNavigation,
@@ -20,7 +21,9 @@ import {
 const ACTOR = "business_customer_owner";
 const NOW_MS = 1_800_000_000_000;
 
-function ctx(overrides: Partial<HarthmereEconomyMutationContext> = {}): HarthmereEconomyMutationContext {
+function ctx(
+  overrides: Partial<HarthmereEconomyMutationContext> = {}
+): HarthmereEconomyMutationContext {
   return {
     actorGold: 50_000,
     actorInventoryItems: {},
@@ -29,7 +32,10 @@ function ctx(overrides: Partial<HarthmereEconomyMutationContext> = {}): Harthmer
   };
 }
 
-function req(operation: string, payload: Partial<HarthmereEconomyMutationRequest> = {}): HarthmereEconomyMutationRequest {
+function req(
+  operation: string,
+  payload: Partial<HarthmereEconomyMutationRequest> = {}
+): HarthmereEconomyMutationRequest {
   return {
     requestId: `business-customer-${operation}-${Math.random()}`,
     actorId: ACTOR,
@@ -43,39 +49,66 @@ function mutate(
   state: HarthmereProductionEconomyState,
   operation: string,
   payload: Partial<HarthmereEconomyMutationRequest> = {},
-  context: HarthmereEconomyMutationContext = ctx(),
+  context: HarthmereEconomyMutationContext = ctx()
 ) {
-  return reduceHarthmereEconomyMutation(state, req(operation, payload), context);
+  return reduceHarthmereEconomyMutation(
+    state,
+    req(operation, payload),
+    context
+  );
 }
 
-function createOpenBusiness(typeId: HarthmereEconomyBusinessTypeId = "food_service_restaurant") {
+function createOpenBusiness(
+  typeId: HarthmereEconomyBusinessTypeId = "food_service_restaurant"
+) {
   let state = defaultHarthmereProductionEconomyState();
-  let result = mutate(state, "register_business", { businessType: typeId, name: `${typeId} Test Shop` });
+  let result = mutate(state, "register_business", {
+    businessType: typeId,
+    name: `${typeId} Test Shop`,
+  });
   assert.deepEqual(result.warnings, []);
   state = result.economy;
   const businessId = Object.keys(state.businesses)[0];
-  const minLicense = typeId === "exotic_matter_refinery" || typeId === "portal_transit_company" ? 3 : typeId === "medical_doctor" || typeId === "magic_goods" || typeId === "teleport_owner" ? 2 : 1;
-  result = mutate(state, "issue_license", { businessId, licenseLevel: minLicense });
+  const minLicense =
+    typeId === "exotic_matter_refinery" || typeId === "portal_transit_company"
+      ? 3
+      : typeId === "medical_doctor" ||
+          typeId === "magic_goods" ||
+          typeId === "teleport_owner"
+        ? 2
+        : 1;
+  result = mutate(state, "issue_license", {
+    businessId,
+    licenseLevel: minLicense,
+  });
   assert.deepEqual(result.warnings, []);
   state = result.economy;
-  result = mutate(state, "open_business", { businessId, propertyId: `property_${businessId}`, townId: "harthmere_grove" });
+  result = mutate(state, "open_business", {
+    businessId,
+    propertyId: `property_${businessId}`,
+    townId: "harthmere_grove",
+  });
   assert.deepEqual(result.warnings, []);
   return { state: result.economy, businessId };
 }
 
 function sessions(state: HarthmereProductionEconomyState) {
-  return Object.values((state.businessSystems as any).customerSessions ?? {}) as HarthmereBusinessCustomerSession[];
+  return Object.values(
+    (state.businessSystems as any).customerSessions ?? {}
+  ) as HarthmereBusinessCustomerSession[];
 }
 
 function productionMiniGameTypeIds() {
-  return Object.keys(HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS) as HarthmereEconomyBusinessTypeId[];
+  return Object.keys(
+    HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS
+  ) as HarthmereEconomyBusinessTypeId[];
 }
 
 function stockAllRequiredServiceItems(
   state: HarthmereProductionEconomyState,
   businessId: string,
   typeId: HarthmereEconomyBusinessTypeId,
-  multiplier = 20,
+  multiplier = 20
 ) {
   const inventory = state.businesses[businessId].inventory;
   for (const offer of HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS[typeId].offers) {
@@ -93,7 +126,10 @@ describe("mmo economy business customer sessions", function () {
 
   it("starts an owner-run customer shift with queued customer-only NPC tickets", () => {
     const setup = createOpenBusiness();
-    const result = mutate(setup.state, "start_business_customer_session", { businessId: setup.businessId, count: 4 });
+    const result = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 4,
+    });
     assert.deepEqual(result.warnings, []);
     const session = sessions(result.economy)[0];
     assert.equal(session.businessId, setup.businessId);
@@ -103,10 +139,96 @@ describe("mmo economy business customer sessions", function () {
     assert.ok(session.currentTicketId);
     assert.ok(session.dailyBonusGold > 0);
     assert.ok(session.queue.every((ticket) => Number(ticket.entityId) > 0));
-    assert.ok(session.queue.every((ticket) => ticket.spatialPhase === "entering"));
+    assert.ok(
+      session.queue.every((ticket) => ticket.spatialPhase === "entering")
+    );
 
-    const duplicate = mutate(result.economy, "start_business_customer_session", { businessId: setup.businessId });
-    assert.ok(duplicate.warnings.includes("economy_rejected:business_customer_session_already_active"));
+    const duplicate = mutate(
+      result.economy,
+      "start_business_customer_session",
+      { businessId: setup.businessId }
+    );
+    assert.ok(
+      duplicate.warnings.includes(
+        "economy_rejected:business_customer_session_already_active"
+      )
+    );
+  });
+
+  it("starts the player-facing default shift with ten progressively faster customers", () => {
+    const setup = createOpenBusiness("medical_doctor");
+    const result = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+    });
+    const session = sessions(result.economy)[0];
+    assert.equal(session.queue.length, HARTHMERE_BUSINESS_CUSTOMERS_PER_SHIFT);
+    assert.deepEqual(
+      session.queue.map((ticket) => ticket.patience),
+      [30, 28, 26, 24, 22, 20, 18, 16, 14, 12]
+    );
+  });
+
+  it("completes all ten customers while recording correct rewards and incorrect zero-payout results", () => {
+    const setup = createOpenBusiness("medical_doctor");
+    stockAllRequiredServiceItems(
+      setup.state,
+      setup.businessId,
+      "medical_doctor"
+    );
+    let result = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+    });
+    const definition = HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS.medical_doctor;
+
+    for (let index = 0; index < 10; index += 1) {
+      const active = sessions(result.economy)[0];
+      const ticket = active.queue.find(
+        (candidate) => candidate.ticketId === active.currentTicketId
+      );
+      assert.ok(ticket, `customer ${index + 1} must be current`);
+      const correctOffer = definition.offers.find(
+        (offer) => offer.offerId === ticket.requestedOfferId
+      )!;
+      const selectedOffer =
+        index % 2 === 0
+          ? correctOffer
+          : definition.offers.find(
+              (offer) => offer.offerId !== ticket.requestedOfferId
+            )!;
+      result = mutate(result.economy, "serve_business_customer", {
+        businessId: setup.businessId,
+        sessionId: active.sessionId,
+        ticketId: ticket.ticketId,
+        offerId: selectedOffer.offerId,
+        minigameAction: createHarthmereBusinessMiniGameDecisionForOffer(
+          "medical_doctor",
+          selectedOffer.offerId
+        ),
+      });
+      assert.deepEqual(result.warnings, []);
+    }
+
+    const completed = sessions(result.economy)[0];
+    assert.equal(completed.status, "completed");
+    assert.equal(completed.servedTicketIds.length, 5);
+    assert.equal(completed.failedTicketIds.length, 5);
+    assert.ok(completed.earnedGold > 0);
+    assert.ok(completed.progressPoints > 0);
+    assert.deepEqual(
+      completed.queue.map((ticket) => ticket.status),
+      [
+        "served",
+        "failed",
+        "served",
+        "failed",
+        "served",
+        "failed",
+        "served",
+        "failed",
+        "served",
+        "failed",
+      ]
+    );
   });
 
   it("ends a live shift safely and sends every remaining customer to the exit", () => {
@@ -148,10 +270,10 @@ describe("mmo economy business customer sessions", function () {
       },
       ctx()
     );
-    // The helper uses NOW_MS. Force the first arrival far enough into the past
-    // before the authoritative tick so this case does not sleep.
+    // Once the customer reaches service, force the patience clock far enough
+    // into the past so this case does not sleep.
     const beforeTimeout = sessions(result.economy)[0];
-    beforeTimeout.queue[0].arrivedAtMs = NOW_MS - 120_000;
+    beforeTimeout.queue[0].patienceStartedAtMs = NOW_MS - 120_000;
     result = mutate(result.economy, "tick_business_customer_session", {
       businessId: setup.businessId,
       sessionId: beforeTimeout.sessionId,
@@ -163,6 +285,101 @@ describe("mmo economy business customer sessions", function () {
     assert.equal(advanced.queue[0].reaction, "timeout");
     assert.equal(advanced.queue[1].spatialPhase, "approaching_counter");
     assert.equal(advanced.queue[1].queueIndex, 0);
+  });
+
+  it("publishes an incremental authoritative patience countdown before timeout", () => {
+    const setup = createOpenBusiness("portal_transit_company");
+    let result = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 1,
+    });
+    const started = sessions(result.economy)[0];
+    const ticket = started.queue[0];
+    assert.ok(ticket.patience <= 30);
+    const serviceStartedAtMs = ticket.arrivedAtMs + 40_000;
+    result = reduceHarthmereEconomyMutation(
+      result.economy,
+      {
+        requestId: "business-customer-patience-route-travel",
+        actorId: ACTOR,
+        nowMs: serviceStartedAtMs,
+        operation: "tick_business_customer_session",
+        businessId: setup.businessId,
+        sessionId: started.sessionId,
+        nativeCustomerReady: false,
+      },
+      ctx()
+    );
+    assert.deepEqual(result.warnings, []);
+    const approaching = sessions(result.economy)[0];
+    assert.equal(approaching.queue[0].patienceRemaining, ticket.patience);
+    assert.equal(approaching.queue[0].patienceStartedAtMs, undefined);
+    result = reduceHarthmereEconomyMutation(
+      result.economy,
+      {
+        requestId: "business-customer-patience-start",
+        actorId: ACTOR,
+        nowMs: serviceStartedAtMs,
+        operation: "tick_business_customer_session",
+        businessId: setup.businessId,
+        sessionId: started.sessionId,
+        nativeCustomerReady: true,
+      },
+      ctx()
+    );
+    assert.deepEqual(result.warnings, []);
+    const startedPatience = sessions(result.economy)[0];
+    assert.equal(startedPatience.queue[0].spatialPhase, "serving");
+    assert.equal(startedPatience.queue[0].patienceRemaining, ticket.patience);
+    assert.equal(
+      startedPatience.queue[0].patienceStartedAtMs,
+      serviceStartedAtMs
+    );
+    const elapsedSeconds = 3;
+    result = reduceHarthmereEconomyMutation(
+      result.economy,
+      {
+        requestId: "business-customer-patience-visible-countdown",
+        actorId: ACTOR,
+        nowMs: serviceStartedAtMs + elapsedSeconds * 1000,
+        operation: "tick_business_customer_session",
+        businessId: setup.businessId,
+        sessionId: started.sessionId,
+        nativeCustomerReady: true,
+      },
+      ctx()
+    );
+    assert.deepEqual(result.warnings, []);
+    const ticked = sessions(result.economy)[0];
+    assert.equal(ticked.status, "active");
+    assert.equal(ticked.queue[0].status, "waiting");
+    assert.equal(
+      ticked.queue[0].patienceRemaining,
+      ticket.patience - elapsedSeconds
+    );
+    assert.equal(ticked.queue[0].spatialPhase, "serving");
+  });
+
+  it("caps every skill-adjusted customer countdown at thirty seconds", () => {
+    const setup = createOpenBusiness("portal_transit_company");
+    const result = reduceHarthmereEconomyMutation(
+      setup.state,
+      {
+        requestId: "business-customer-thirty-second-cap",
+        actorId: ACTOR,
+        nowMs: NOW_MS,
+        operation: "start_business_customer_session",
+        businessId: setup.businessId,
+        count: 12,
+      },
+      ctx({ actorSkillLevels: { business_operations: 100 } })
+    );
+    assert.deepEqual(result.warnings, []);
+    for (const queued of sessions(result.economy)[0].queue) {
+      assert.ok(queued.patience >= 12);
+      assert.ok(queued.patience <= 30);
+      assert.equal(queued.patienceRemaining, queued.patience);
+    }
   });
 
   it("starts and successfully serves every ask template for every production business mini-game", () => {
@@ -179,15 +396,26 @@ describe("mmo economy business customer sessions", function () {
 
       const started = sessions(result.economy)[0];
       assert.equal(started.typeId, typeId, `${typeId}: session type`);
-      assert.equal(started.queue.length, definition.askTemplates.length, `${typeId}: all ask templates queued`);
+      assert.equal(
+        started.queue.length,
+        definition.askTemplates.length,
+        `${typeId}: all ask templates queued`
+      );
 
       while (true) {
         const active = sessions(result.economy)[0];
         if (active.status !== "active") break;
-        const ticket = active.queue.find((entry) => entry.ticketId === active.currentTicketId);
+        const ticket = active.queue.find(
+          (entry) => entry.ticketId === active.currentTicketId
+        );
         assert.ok(ticket, `${typeId}: current ticket exists`);
-        const offer = definition.offers.find((entry) => entry.offerId === ticket.requestedOfferId);
-        assert.ok(offer, `${typeId}: requested offer ${ticket.requestedOfferId} exists`);
+        const offer = definition.offers.find(
+          (entry) => entry.offerId === ticket.requestedOfferId
+        );
+        assert.ok(
+          offer,
+          `${typeId}: requested offer ${ticket.requestedOfferId} exists`
+        );
         result = mutate(result.economy, "serve_business_customer", {
           businessId: setup.businessId,
           sessionId: active.sessionId,
@@ -195,18 +423,40 @@ describe("mmo economy business customer sessions", function () {
           offerId: offer.offerId,
           minigameAction: createHarthmereBusinessMiniGameDecisionForOffer(
             typeId,
-            offer.offerId,
+            offer.offerId
           ),
         });
-        assert.deepEqual(result.warnings, [], `${typeId}: serve ${ticket.askId} via ${offer.offerId}`);
+        assert.deepEqual(
+          result.warnings,
+          [],
+          `${typeId}: serve ${ticket.askId} via ${offer.offerId}`
+        );
       }
 
       const finished = sessions(result.economy)[0];
       assert.equal(finished.status, "completed", `${typeId}: completed shift`);
-      assert.equal(finished.servedTicketIds.length, definition.askTemplates.length, `${typeId}: served every ask`);
-      assert.equal(finished.failedTicketIds.length, 0, `${typeId}: no failed asks`);
-      assert.equal((result.economy.businessSystems as any).customerStats[setup.businessId].totalServed, definition.askTemplates.length, `${typeId}: stats recorded every service`);
-      assert.equal(result.economy.businesses[setup.businessId].flags.customer_service_shift_completed, true, `${typeId}: completion flag set`);
+      assert.equal(
+        finished.servedTicketIds.length,
+        definition.askTemplates.length,
+        `${typeId}: served every ask`
+      );
+      assert.equal(
+        finished.failedTicketIds.length,
+        0,
+        `${typeId}: no failed asks`
+      );
+      assert.equal(
+        (result.economy.businessSystems as any).customerStats[setup.businessId]
+          .totalServed,
+        definition.askTemplates.length,
+        `${typeId}: stats recorded every service`
+      );
+      assert.equal(
+        result.economy.businesses[setup.businessId].flags
+          .customer_service_shift_completed,
+        true,
+        `${typeId}: completion flag set`
+      );
     }
   });
 
@@ -216,15 +466,23 @@ describe("mmo economy business customer sessions", function () {
       for (const offer of definition.offers) {
         const decision = createHarthmereBusinessMiniGameDecisionForOffer(
           typeId,
-          offer.offerId,
+          offer.offerId
         );
         const result = resolveHarthmereBusinessMiniGameDecision({
           typeId,
           offerId: offer.offerId,
           decision,
         });
-        assert.equal(result.ok, true, `${typeId}: generated decision passes ${offer.offerId}: ${result.warnings.join(", ")}`);
-        assert.deepEqual(result.failedRules, [], `${typeId}: no failed rules for ${offer.offerId}`);
+        assert.equal(
+          result.ok,
+          true,
+          `${typeId}: generated decision passes ${offer.offerId}: ${result.warnings.join(", ")}`
+        );
+        assert.deepEqual(
+          result.failedRules,
+          [],
+          `${typeId}: no failed rules for ${offer.offerId}`
+        );
       }
     }
   });
@@ -239,13 +497,18 @@ describe("mmo economy business customer sessions", function () {
             businessId: setup.businessId,
             count: 1,
           });
-          assert.deepEqual(result.warnings, [], `${typeId}: start missing-stock case`);
+          assert.deepEqual(
+            result.warnings,
+            [],
+            `${typeId}: start missing-stock case`
+          );
           const active = sessions(result.economy)[0];
           active.queue[0].requestedOfferId = offer.offerId;
           active.queue[0].askId = `forced_${offer.offerId}`;
           active.queue[0].askLine = `Need ${offer.label}`;
 
-          const inventory = result.economy.businesses[setup.businessId].inventory;
+          const inventory =
+            result.economy.businesses[setup.businessId].inventory;
           for (const [itemId, count] of Object.entries(offer.requiredItems)) {
             if (itemId !== missingItemId) {
               inventory[itemId] = { itemId, count };
@@ -259,19 +522,41 @@ describe("mmo economy business customer sessions", function () {
             offerId: offer.offerId,
             minigameAction: createHarthmereBusinessMiniGameDecisionForOffer(
               typeId,
-              offer.offerId,
+              offer.offerId
             ),
           });
           assert.ok(
-            result.warnings.includes(`economy_rejected:business_item_required:${missingItemId}`),
-            `${typeId}: missing ${missingItemId} rejects ${offer.offerId}`,
+            result.warnings.includes(
+              `economy_rejected:business_item_required:${missingItemId}`
+            ),
+            `${typeId}: missing ${missingItemId} rejects ${offer.offerId}`
           );
           const unchanged = sessions(result.economy)[0];
-          assert.equal(unchanged.status, "active", `${typeId}: shift remains active after missing ${missingItemId}`);
-          assert.equal(unchanged.currentTicketId, active.currentTicketId, `${typeId}: active customer unchanged after missing ${missingItemId}`);
-          assert.equal(unchanged.queue[0].status, "waiting", `${typeId}: ticket still waiting after missing ${missingItemId}`);
-          assert.equal(unchanged.servedTicketIds.length, 0, `${typeId}: missing ${missingItemId} does not serve`);
-          assert.equal(unchanged.failedTicketIds.length, 0, `${typeId}: missing ${missingItemId} does not fail`);
+          assert.equal(
+            unchanged.status,
+            "active",
+            `${typeId}: shift remains active after missing ${missingItemId}`
+          );
+          assert.equal(
+            unchanged.currentTicketId,
+            active.currentTicketId,
+            `${typeId}: active customer unchanged after missing ${missingItemId}`
+          );
+          assert.equal(
+            unchanged.queue[0].status,
+            "waiting",
+            `${typeId}: ticket still waiting after missing ${missingItemId}`
+          );
+          assert.equal(
+            unchanged.servedTicketIds.length,
+            0,
+            `${typeId}: missing ${missingItemId} does not serve`
+          );
+          assert.equal(
+            unchanged.failedTicketIds.length,
+            0,
+            `${typeId}: missing ${missingItemId} does not fail`
+          );
         }
       }
     }
@@ -279,8 +564,14 @@ describe("mmo economy business customer sessions", function () {
 
   it("serves a matching customer ask, consumes stock, rewards the business, and records stats", () => {
     const setup = createOpenBusiness();
-    setup.state.businesses[setup.businessId].inventory.worker_meal = { itemId: "worker_meal", count: 2 };
-    let result = mutate(setup.state, "start_business_customer_session", { businessId: setup.businessId, count: 1 });
+    setup.state.businesses[setup.businessId].inventory.worker_meal = {
+      itemId: "worker_meal",
+      count: 2,
+    };
+    let result = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 1,
+    });
     const session = sessions(result.economy)[0];
     const beforeGold = result.economy.businesses[setup.businessId].balanceGold;
     result = mutate(result.economy, "serve_business_customer", {
@@ -290,7 +581,7 @@ describe("mmo economy business customer sessions", function () {
       offerId: "serve_worker_meal",
       minigameAction: createHarthmereBusinessMiniGameDecisionForOffer(
         "food_service_restaurant",
-        "serve_worker_meal",
+        "serve_worker_meal"
       ),
     });
     assert.deepEqual(result.warnings, []);
@@ -301,7 +592,9 @@ describe("mmo economy business customer sessions", function () {
     const finished = sessions(result.economy)[0];
     assert.equal(finished.status, "completed");
     assert.equal(finished.servedTicketIds.length, 1);
-    const stats = (result.economy.businessSystems as any).customerStats[setup.businessId];
+    const stats = (result.economy.businessSystems as any).customerStats[
+      setup.businessId
+    ];
     assert.equal(stats.totalServed, 1);
     assert.ok(stats.serviceXp > 0);
     assert.ok(stats.likeability > 0);
@@ -313,8 +606,14 @@ describe("mmo economy business customer sessions", function () {
 
   it("pays the working player personally (HUD wallet) when a customer is served", () => {
     const setup = createOpenBusiness();
-    setup.state.businesses[setup.businessId].inventory.worker_meal = { itemId: "worker_meal", count: 2 };
-    let result = mutate(setup.state, "start_business_customer_session", { businessId: setup.businessId, count: 1 });
+    setup.state.businesses[setup.businessId].inventory.worker_meal = {
+      itemId: "worker_meal",
+      count: 2,
+    };
+    let result = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 1,
+    });
     // Starting a shift must not pay the player anything yet.
     assert.equal(result.inventoryGoldDelta, 0);
     const session = sessions(result.economy)[0];
@@ -325,14 +624,14 @@ describe("mmo economy business customer sessions", function () {
       offerId: "serve_worker_meal",
       minigameAction: createHarthmereBusinessMiniGameDecisionForOffer(
         "food_service_restaurant",
-        "serve_worker_meal",
+        "serve_worker_meal"
       ),
     });
     assert.deepEqual(result.warnings, []);
     // The player is paid into their personal wallet so it shows up in the HUD.
     assert.ok(
       result.inventoryGoldDelta > 0,
-      `expected a positive player payout, got ${result.inventoryGoldDelta}`,
+      `expected a positive player payout, got ${result.inventoryGoldDelta}`
     );
     // The shift earnings tally and the player payout should agree.
     const served = sessions(result.economy)[0];
@@ -341,8 +640,14 @@ describe("mmo economy business customer sessions", function () {
 
   it("does not pay the player when the mini-game decision is wrong", () => {
     const setup = createOpenBusiness();
-    setup.state.businesses[setup.businessId].inventory.worker_meal = { itemId: "worker_meal", count: 2 };
-    let result = mutate(setup.state, "start_business_customer_session", { businessId: setup.businessId, count: 1 });
+    setup.state.businesses[setup.businessId].inventory.worker_meal = {
+      itemId: "worker_meal",
+      count: 2,
+    };
+    let result = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 1,
+    });
     const session = sessions(result.economy)[0];
     result = mutate(result.economy, "serve_business_customer", {
       businessId: setup.businessId,
@@ -352,7 +657,7 @@ describe("mmo economy business customer sessions", function () {
       minigameAction: {
         ...createHarthmereBusinessMiniGameDecisionForOffer(
           "food_service_restaurant",
-          "serve_worker_meal",
+          "serve_worker_meal"
         ),
         mealType: "road_ration",
       },
@@ -362,14 +667,21 @@ describe("mmo economy business customer sessions", function () {
 
   it("rejects missing stock without losing the waiting customer", () => {
     const setup = createOpenBusiness();
-    let result = mutate(setup.state, "start_business_customer_session", { businessId: setup.businessId, count: 1 });
+    let result = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 1,
+    });
     const session = sessions(result.economy)[0];
     result = mutate(result.economy, "serve_business_customer", {
       businessId: setup.businessId,
       sessionId: session.sessionId,
       offerId: "serve_worker_meal",
     });
-    assert.ok(result.warnings.includes("economy_rejected:business_item_required:worker_meal"));
+    assert.ok(
+      result.warnings.includes(
+        "economy_rejected:business_item_required:worker_meal"
+      )
+    );
     const stillWaiting = sessions(result.economy)[0];
     assert.equal(stillWaiting.queue[0].status, "waiting");
     assert.equal(stillWaiting.servedTicketIds.length, 0);
@@ -407,7 +719,7 @@ describe("mmo economy business customer sessions", function () {
       offerId: offer!.offerId,
       minigameAction: createHarthmereBusinessMiniGameDecisionForOffer(
         "medical_doctor",
-        offer!.offerId,
+        offer!.offerId
       ),
     });
 
@@ -419,8 +731,14 @@ describe("mmo economy business customer sessions", function () {
 
   it("fails the ticket when the business mini-game rule decision is wrong", () => {
     const setup = createOpenBusiness();
-    setup.state.businesses[setup.businessId].inventory.worker_meal = { itemId: "worker_meal", count: 2 };
-    let result = mutate(setup.state, "start_business_customer_session", { businessId: setup.businessId, count: 1 });
+    setup.state.businesses[setup.businessId].inventory.worker_meal = {
+      itemId: "worker_meal",
+      count: 2,
+    };
+    let result = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 1,
+    });
     const session = sessions(result.economy)[0];
     result = mutate(result.economy, "serve_business_customer", {
       businessId: setup.businessId,
@@ -430,22 +748,36 @@ describe("mmo economy business customer sessions", function () {
       minigameAction: {
         ...createHarthmereBusinessMiniGameDecisionForOffer(
           "food_service_restaurant",
-          "serve_worker_meal",
+          "serve_worker_meal"
         ),
         mealType: "road_ration",
       },
     });
-    assert.ok(result.warnings.some((warning) => warning.startsWith("economy_business_customer_minigame_rule_failed")));
+    assert.ok(
+      result.warnings.some((warning) =>
+        warning.startsWith("economy_business_customer_minigame_rule_failed")
+      )
+    );
     const failed = sessions(result.economy)[0];
     assert.equal(failed.status, "completed");
     assert.equal(failed.failedTicketIds.length, 1);
-    assert.equal(result.economy.businesses[setup.businessId].inventory.worker_meal.count, 2);
-    assert.equal((result.economy.businessSystems as any).customerStats[setup.businessId].totalFailed, 1);
+    assert.equal(
+      result.economy.businesses[setup.businessId].inventory.worker_meal.count,
+      2
+    );
+    assert.equal(
+      (result.economy.businessSystems as any).customerStats[setup.businessId]
+        .totalFailed,
+      1
+    );
   });
 
   it("marks wrong service choices as failed customer interactions", () => {
     const setup = createOpenBusiness();
-    let result = mutate(setup.state, "start_business_customer_session", { businessId: setup.businessId, count: 1 });
+    let result = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 1,
+    });
     const session = sessions(result.economy)[0];
     result = mutate(result.economy, "serve_business_customer", {
       businessId: setup.businessId,
@@ -457,52 +789,97 @@ describe("mmo economy business customer sessions", function () {
     const failed = sessions(result.economy)[0];
     assert.equal(failed.status, "completed");
     assert.equal(failed.failedTicketIds.length, 1);
-    assert.equal((result.economy.businessSystems as any).customerStats[setup.businessId].totalFailed, 1);
-    assert.ok(result.economy.businesses[setup.businessId].customerSatisfaction < 50);
-    assert.equal(result.economy.businesses[setup.businessId].flags.customer_service_shift_completed, true);
+    assert.equal(
+      (result.economy.businessSystems as any).customerStats[setup.businessId]
+        .totalFailed,
+      1
+    );
+    assert.ok(
+      result.economy.businesses[setup.businessId].customerSatisfaction < 50
+    );
+    assert.equal(
+      result.economy.businesses[setup.businessId].flags
+        .customer_service_shift_completed,
+      true
+    );
   });
 
   it("lets customers leave when real patience time runs out", () => {
     const setup = createOpenBusiness();
-    setup.state.businesses[setup.businessId].inventory.worker_meal = { itemId: "worker_meal", count: 2 };
-    let result = mutate(setup.state, "start_business_customer_session", { businessId: setup.businessId, count: 1 });
+    setup.state.businesses[setup.businessId].inventory.worker_meal = {
+      itemId: "worker_meal",
+      count: 2,
+    };
+    let result = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 1,
+    });
     const session = sessions(result.economy)[0];
     const ticket = session.queue[0];
+    ticket.patienceStartedAtMs = NOW_MS;
 
-    result = reduceHarthmereEconomyMutation(result.economy, {
-      requestId: "business-customer-patience-expired",
-      actorId: ACTOR,
-      nowMs: NOW_MS + (ticket.patience + 1) * 1000,
-      operation: "serve_business_customer",
-      businessId: setup.businessId,
-      sessionId: session.sessionId,
-      ticketId: ticket.ticketId,
-      offerId: ticket.requestedOfferId,
-    }, ctx());
+    result = reduceHarthmereEconomyMutation(
+      result.economy,
+      {
+        requestId: "business-customer-patience-expired",
+        actorId: ACTOR,
+        nowMs: NOW_MS + (ticket.patience + 1) * 1000,
+        operation: "serve_business_customer",
+        businessId: setup.businessId,
+        sessionId: session.sessionId,
+        ticketId: ticket.ticketId,
+        offerId: ticket.requestedOfferId,
+      },
+      ctx()
+    );
 
-    assert.ok(result.warnings.includes("economy_rejected:business_customer_left_waiting"));
+    assert.ok(
+      result.warnings.includes(
+        "economy_rejected:business_customer_left_waiting"
+      )
+    );
     const expired = sessions(result.economy)[0];
     assert.equal(expired.status, "completed");
     assert.equal(expired.queue[0].status, "left");
     assert.equal(expired.queue[0].patienceRemaining, 0);
     assert.equal(expired.failedTicketIds.length, 1);
-    assert.equal((result.economy.businessSystems as any).customerStats[setup.businessId].totalFailed, 1);
-    assert.equal(result.economy.businesses[setup.businessId].flags.customer_service_shift_completed, true);
+    assert.equal(
+      (result.economy.businessSystems as any).customerStats[setup.businessId]
+        .totalFailed,
+      1
+    );
+    assert.equal(
+      result.economy.businesses[setup.businessId].flags
+        .customer_service_shift_completed,
+      true
+    );
   });
 
   it("rejects out-of-order ticket service so customers cannot be skipped", () => {
     const setup = createOpenBusiness();
-    setup.state.businesses[setup.businessId].inventory.worker_meal = { itemId: "worker_meal", count: 4 };
-    let result = mutate(setup.state, "start_business_customer_session", { businessId: setup.businessId, count: 2 });
+    setup.state.businesses[setup.businessId].inventory.worker_meal = {
+      itemId: "worker_meal",
+      count: 4,
+    };
+    let result = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 2,
+    });
     const session = sessions(result.economy)[0];
-    const nextTicket = session.queue.find((ticket) => ticket.ticketId !== session.currentTicketId)!;
+    const nextTicket = session.queue.find(
+      (ticket) => ticket.ticketId !== session.currentTicketId
+    )!;
     result = mutate(result.economy, "serve_business_customer", {
       businessId: setup.businessId,
       sessionId: session.sessionId,
       ticketId: nextTicket.ticketId,
       offerId: nextTicket.requestedOfferId,
     });
-    assert.ok(result.warnings.includes("economy_rejected:business_customer_ticket_not_current"));
+    assert.ok(
+      result.warnings.includes(
+        "economy_rejected:business_customer_ticket_not_current"
+      )
+    );
     const unchanged = sessions(result.economy)[0];
     assert.equal(unchanged.currentTicketId, session.currentTicketId);
     assert.equal(unchanged.servedTicketIds.length, 0);
@@ -510,11 +887,24 @@ describe("mmo economy business customer sessions", function () {
 
   it("expires stale shifts before starting a new one and rejects duplicate session ids", () => {
     const setup = createOpenBusiness();
-    let result = mutate(setup.state, "start_business_customer_session", { businessId: setup.businessId, count: 1, sessionId: "shift_fixed" });
+    let result = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 1,
+      sessionId: "shift_fixed",
+    });
     assert.deepEqual(result.warnings, []);
 
-    const duplicate = mutate(result.economy, "start_business_customer_session", { businessId: setup.businessId, sessionId: "shift_fixed" }, ctx());
-    assert.ok(duplicate.warnings.includes("economy_rejected:business_customer_session_already_active"));
+    const duplicate = mutate(
+      result.economy,
+      "start_business_customer_session",
+      { businessId: setup.businessId, sessionId: "shift_fixed" },
+      ctx()
+    );
+    assert.ok(
+      duplicate.warnings.includes(
+        "economy_rejected:business_customer_session_already_active"
+      )
+    );
 
     const laterRequest = {
       requestId: "business-customer-later-shift",
@@ -524,19 +914,39 @@ describe("mmo economy business customer sessions", function () {
       businessId: setup.businessId,
       sessionId: "shift_after_expiry",
     };
-    result = reduceHarthmereEconomyMutation(result.economy, laterRequest as any, ctx());
+    result = reduceHarthmereEconomyMutation(
+      result.economy,
+      laterRequest as any,
+      ctx()
+    );
     assert.deepEqual(result.warnings, []);
     const allSessions = sessions(result.economy);
-    assert.equal(allSessions.find((session) => session.sessionId === "shift_fixed")?.status, "expired");
-    assert.equal(allSessions.find((session) => session.sessionId === "shift_after_expiry")?.status, "active");
+    assert.equal(
+      allSessions.find((session) => session.sessionId === "shift_fixed")
+        ?.status,
+      "expired"
+    );
+    assert.equal(
+      allSessions.find((session) => session.sessionId === "shift_after_expiry")
+        ?.status,
+      "active"
+    );
 
-    const idCollision = reduceHarthmereEconomyMutation(result.economy, {
-      ...laterRequest,
-      requestId: "business-customer-id-collision",
-      nowMs: NOW_MS + 6 * 60 * 60 * 1000,
-      sessionId: "shift_fixed",
-    } as any, ctx());
-    assert.ok(idCollision.warnings.includes("economy_rejected:business_customer_session_id_exists"));
+    const idCollision = reduceHarthmereEconomyMutation(
+      result.economy,
+      {
+        ...laterRequest,
+        requestId: "business-customer-id-collision",
+        nowMs: NOW_MS + 6 * 60 * 60 * 1000,
+        sessionId: "shift_fixed",
+      } as any,
+      ctx()
+    );
+    assert.ok(
+      idCollision.warnings.includes(
+        "economy_rejected:business_customer_session_id_exists"
+      )
+    );
   });
 
   it("opens branches, assigns staff automation, and routes branch profit back to the parent business", () => {
@@ -556,16 +966,31 @@ describe("mmo economy business customer sessions", function () {
       outpostId: "outpost_restaurant_redpot",
     });
     assert.deepEqual(result.warnings, []);
-    const branches = Object.values((result.economy.businessSystems as any).empireBranches ?? {}) as any[];
+    const branches = Object.values(
+      (result.economy.businessSystems as any).empireBranches ?? {}
+    ) as any[];
     assert.equal(branches.length, 1);
     assert.equal(branches[0].outpostId, "outpost_restaurant_redpot");
-    assert.equal(branches[0].outpostBuildingId, "outpost_restaurant_redpot_backend_voxel_building");
-    assert.equal(result.economy.businesses[setup.businessId].flags.empire_branch_opened, true);
+    assert.equal(
+      branches[0].outpostBuildingId,
+      "outpost_restaurant_redpot_backend_voxel_building"
+    );
+    assert.equal(
+      result.economy.businesses[setup.businessId].flags.empire_branch_opened,
+      true
+    );
     assert.equal(result.buildingMaterializationPlans?.length, 1);
-    assert.equal(result.buildingMaterializationPlans?.[0]?.requestId, "outpost_restaurant_redpot_backend_materialization");
-    assert.equal(validateHarthmereBusinessOutpostLiveWorldNavigation(
-      (result.economy.businessSystems as any).outpostBuildings.outpost_restaurant_redpot,
-    ).ok, true);
+    assert.equal(
+      result.buildingMaterializationPlans?.[0]?.requestId,
+      "outpost_restaurant_redpot_backend_materialization"
+    );
+    assert.equal(
+      validateHarthmereBusinessOutpostLiveWorldNavigation(
+        (result.economy.businessSystems as any).outpostBuildings
+          .outpost_restaurant_redpot
+      ).ok,
+      true
+    );
 
     result = mutate(result.economy, "assign_business_automation", {
       businessId: setup.businessId,
@@ -574,7 +999,9 @@ describe("mmo economy business customer sessions", function () {
       skill: 3,
     });
     assert.deepEqual(result.warnings, []);
-    const automations = Object.values((result.economy.businessSystems as any).automationAssignments ?? {}) as any[];
+    const automations = Object.values(
+      (result.economy.businessSystems as any).automationAssignments ?? {}
+    ) as any[];
     assert.equal(automations.length, 1);
     assert.equal(automations[0].role, "branch_manager");
     assert.equal(automations[0].branchId, branches[0].branchId);
@@ -593,7 +1020,10 @@ describe("mmo economy business customer sessions", function () {
       employeeId: "employee_regional_manager",
     });
     assert.deepEqual(result.warnings, []);
-    result.economy.businesses[setup.businessId].inventory.worker_meal = { itemId: "worker_meal", count: 4 };
+    result.economy.businesses[setup.businessId].inventory.worker_meal = {
+      itemId: "worker_meal",
+      count: 4,
+    };
     result = mutate(result.economy, "route_business_branch_stock", {
       businessId: setup.businessId,
       branchId: branches[0].branchId,
@@ -607,38 +1037,71 @@ describe("mmo economy business customer sessions", function () {
       employeeIds: ["employee_regional_manager"],
     } as any);
     assert.deepEqual(result.warnings, []);
-    const preparedBranch = (result.economy.businessSystems as any).empireBranches[branches[0].branchId];
-    assert.equal(preparedBranch.regionalManagerEmployeeId, "employee_regional_manager");
+    const preparedBranch = (result.economy.businessSystems as any)
+      .empireBranches[branches[0].branchId];
+    assert.equal(
+      preparedBranch.regionalManagerEmployeeId,
+      "employee_regional_manager"
+    );
     assert.equal(preparedBranch.warehouseInventory.worker_meal, 3);
-    assert.deepEqual(preparedBranch.scheduledStaffIds, ["employee_regional_manager"]);
+    assert.deepEqual(preparedBranch.scheduledStaffIds, [
+      "employee_regional_manager",
+    ]);
 
     const beforeGold = result.economy.businesses[setup.businessId].balanceGold;
-    result = reduceHarthmereEconomyMutation(result.economy, {
-      requestId: "business-empire-settlement",
-      actorId: ACTOR,
-      nowMs: NOW_MS + 24 * 60 * 60 * 1000,
-      operation: "run_business_empire_day",
-      businessId: setup.businessId,
-      days: 1,
-    } as any, ctx());
+    result = reduceHarthmereEconomyMutation(
+      result.economy,
+      {
+        requestId: "business-empire-settlement",
+        actorId: ACTOR,
+        nowMs: NOW_MS + 24 * 60 * 60 * 1000,
+        operation: "run_business_empire_day",
+        businessId: setup.businessId,
+        days: 1,
+      } as any,
+      ctx()
+    );
     assert.deepEqual(result.warnings, []);
-    assert.ok(result.economy.businesses[setup.businessId].balanceGold > beforeGold);
-    const settledBranch = Object.values((result.economy.businessSystems as any).empireBranches ?? {})[0] as any;
+    assert.ok(
+      result.economy.businesses[setup.businessId].balanceGold > beforeGold
+    );
+    const settledBranch = Object.values(
+      (result.economy.businessSystems as any).empireBranches ?? {}
+    )[0] as any;
     assert.ok(settledBranch.lifetimeProfitGold > 0);
     assert.ok(settledBranch.warehouseInventory.worker_meal < 3);
     assert.ok(settledBranch.regionalDemandMultiplier >= 1);
-    const dashboard = (result.economy.businessSystems as any).branchDashboards[settledBranch.branchId];
+    const dashboard = (result.economy.businessSystems as any).branchDashboards[
+      settledBranch.branchId
+    ];
     assert.ok(dashboard);
     assert.equal(dashboard.managerAssigned, true);
     assert.ok(dashboard.stockUnits >= 0);
     assert.ok(dashboard.staffCoverage > 0);
     assert.equal(automations[0].lastRunAtMs, undefined);
-    const settledAutomation = Object.values((result.economy.businessSystems as any).automationAssignments ?? {})[0] as any;
+    const settledAutomation = Object.values(
+      (result.economy.businessSystems as any).automationAssignments ?? {}
+    )[0] as any;
     assert.equal(settledAutomation.lastRunAtMs, NOW_MS + 24 * 60 * 60 * 1000);
     result = mutate(result.economy, "validate_economy_balance");
-    assert.deepEqual(result.warnings.filter((warning) => warning.startsWith("balance:outpost_passability")), []);
-    assert.deepEqual(result.warnings.filter((warning) => warning.startsWith("balance:outpost_live_navigation")), []);
-    assert.deepEqual(result.warnings.filter((warning) => warning.startsWith("balance:business_customer_missing")), []);
+    assert.deepEqual(
+      result.warnings.filter((warning) =>
+        warning.startsWith("balance:outpost_passability")
+      ),
+      []
+    );
+    assert.deepEqual(
+      result.warnings.filter((warning) =>
+        warning.startsWith("balance:outpost_live_navigation")
+      ),
+      []
+    );
+    assert.deepEqual(
+      result.warnings.filter((warning) =>
+        warning.startsWith("balance:business_customer_missing")
+      ),
+      []
+    );
   });
 
   it("assigns every automation role with visible staff AI behavior", () => {
@@ -683,10 +1146,24 @@ describe("mmo economy business customer sessions", function () {
         businessId: setup.businessId,
         employeeId: `employee_${role}`,
         role,
-        assignedTask: role === "branch_manager" ? "branch_manager" : role === "courier_dispatch" ? "dispatch_runner" : role === "purchasing_manager" ? "stock_runner" : role === "quality_inspector" ? "quality_check" : "front_counter",
+        assignedTask:
+          role === "branch_manager"
+            ? "branch_manager"
+            : role === "courier_dispatch"
+              ? "dispatch_runner"
+              : role === "purchasing_manager"
+                ? "stock_runner"
+                : role === "quality_inspector"
+                  ? "quality_check"
+                  : "front_counter",
       });
-      assert.deepEqual(result.warnings.filter((warning) => warning.includes("rejected")), []);
-      const runs = Object.values((result.economy.businessSystems as any).employeeTaskRuns ?? {}) as any[];
+      assert.deepEqual(
+        result.warnings.filter((warning) => warning.includes("rejected")),
+        []
+      );
+      const runs = Object.values(
+        (result.economy.businessSystems as any).employeeTaskRuns ?? {}
+      ) as any[];
       assert.equal(runs[runs.length - 1].automationRole, role);
       assert.notEqual(runs[runs.length - 1].status, "failed");
     }
@@ -700,7 +1177,9 @@ describe("mmo economy business customer sessions", function () {
       count: 3,
     });
     assert.deepEqual(result.warnings, []);
-    let candidates = Object.values((result.economy.businessSystems as any).employeeCandidates ?? {}) as any[];
+    let candidates = Object.values(
+      (result.economy.businessSystems as any).employeeCandidates ?? {}
+    ) as any[];
     assert.equal(candidates.length, 3);
     const candidateId = candidates[0].candidateId;
 
@@ -710,10 +1189,18 @@ describe("mmo economy business customer sessions", function () {
       interviewStyle: "friendly",
     });
     assert.deepEqual(result.warnings, []);
-    candidates = Object.values((result.economy.businessSystems as any).employeeCandidates ?? {}) as any[];
-    assert.equal(candidates.find((candidate) => candidate.candidateId === candidateId).status, "interviewed");
+    candidates = Object.values(
+      (result.economy.businessSystems as any).employeeCandidates ?? {}
+    ) as any[];
+    assert.equal(
+      candidates.find((candidate) => candidate.candidateId === candidateId)
+        .status,
+      "interviewed"
+    );
 
-    const wage = candidates.find((candidate) => candidate.candidateId === candidateId).wageAskGoldPerDay;
+    const wage = candidates.find(
+      (candidate) => candidate.candidateId === candidateId
+    ).wageAskGoldPerDay;
     result = mutate(result.economy, "negotiate_business_employee_candidate", {
       businessId: setup.businessId,
       candidateId,
@@ -736,7 +1223,10 @@ describe("mmo economy business customer sessions", function () {
     });
     assert.deepEqual(result.warnings, []);
     assert.equal(result.economy.employees[employeeId].skill, beforeSkill + 1);
-    assert.equal(result.economy.employees[employeeId].assignedTask, "quality_check");
+    assert.equal(
+      result.economy.employees[employeeId].assignedTask,
+      "quality_check"
+    );
   });
 
   it("runs employee pathing, animation, collision recovery, and morale failure through backend state", () => {
@@ -756,13 +1246,22 @@ describe("mmo economy business customer sessions", function () {
       offerId: "serve_worker_meal",
       forceSharedServiceLane: true,
     });
-    assert.deepEqual(result.warnings.filter((warning) => warning.includes("rejected")), []);
-    let runs = Object.values((result.economy.businessSystems as any).employeeTaskRuns ?? {}) as any[];
+    assert.deepEqual(
+      result.warnings.filter((warning) => warning.includes("rejected")),
+      []
+    );
+    let runs = Object.values(
+      (result.economy.businessSystems as any).employeeTaskRuns ?? {}
+    ) as any[];
     const run = runs[0];
     assert.equal(run.animationCue, "procedural_plate_slide_counter");
     assert.ok(run.employeePath.length > 0);
     assert.ok(run.collisionAudit.resolvedCollisions > 0);
-    assert.equal(result.economy.businesses[setup.businessId].flags.employee_stuck_recovery_used, true);
+    assert.equal(
+      result.economy.businesses[setup.businessId].flags
+        .employee_stuck_recovery_used,
+      true
+    );
 
     result.economy.employees.employee_pathing.morale = 8;
     result = mutate(result.economy, "run_business_employee_task", {
@@ -771,10 +1270,17 @@ describe("mmo economy business customer sessions", function () {
       assignedTask: "front_counter",
       offerId: "serve_worker_meal",
     });
-    runs = Object.values((result.economy.businessSystems as any).employeeTaskRuns ?? {}) as any[];
-    const failed = runs.find((entry) => entry.failureReason === "employee_morale_too_low");
+    runs = Object.values(
+      (result.economy.businessSystems as any).employeeTaskRuns ?? {}
+    ) as any[];
+    const failed = runs.find(
+      (entry) => entry.failureReason === "employee_morale_too_low"
+    );
     assert.ok(failed);
-    assert.equal(result.economy.businesses[setup.businessId].flags.employee_morale_failure, true);
+    assert.equal(
+      result.economy.businesses[setup.businessId].flags.employee_morale_failure,
+      true
+    );
   });
 
   it("drives morale into absence, theft-risk loss, and resignation during staff lifecycle ticks", () => {
@@ -794,9 +1300,20 @@ describe("mmo economy business customer sessions", function () {
       businessId: setup.businessId,
       days: 1,
     });
-    assert.ok(result.warnings.some((warning) => warning.includes("employee_absent_or_mistake")));
-    assert.ok(result.warnings.some((warning) => warning.includes("employee_theft_risk_loss")));
-    assert.equal(result.economy.employees.employee_low_morale.assignedTask, "rest_required");
+    assert.ok(
+      result.warnings.some((warning) =>
+        warning.includes("employee_absent_or_mistake")
+      )
+    );
+    assert.ok(
+      result.warnings.some((warning) =>
+        warning.includes("employee_theft_risk_loss")
+      )
+    );
+    assert.equal(
+      result.economy.employees.employee_low_morale.assignedTask,
+      "rest_required"
+    );
 
     result.economy.employees.employee_low_morale.morale = 5;
     result.economy.employees.employee_low_morale.loyalty = 5;
@@ -804,7 +1321,9 @@ describe("mmo economy business customer sessions", function () {
       businessId: setup.businessId,
       days: 1,
     });
-    assert.ok(result.warnings.some((warning) => warning.includes("employee_resigned")));
+    assert.ok(
+      result.warnings.some((warning) => warning.includes("employee_resigned"))
+    );
     assert.equal(result.economy.employees.employee_low_morale, undefined);
   });
 
@@ -823,8 +1342,16 @@ describe("mmo economy business customer sessions", function () {
       businessId: setup.businessId,
       outpostId: "outpost_restaurant_redpot",
     });
-    assert.ok(result.warnings.includes("economy_rejected:business_branch_requires_tier_3"));
-    assert.equal(Object.keys((result.economy.businessSystems as any).empireBranches ?? {}).length, 0);
+    assert.ok(
+      result.warnings.includes(
+        "economy_rejected:business_branch_requires_tier_3"
+      )
+    );
+    assert.equal(
+      Object.keys((result.economy.businessSystems as any).empireBranches ?? {})
+        .length,
+      0
+    );
   });
 
   it("closes branches cleanly and rejects double closure", () => {
@@ -843,7 +1370,9 @@ describe("mmo economy business customer sessions", function () {
       outpostId: "outpost_restaurant_redpot",
     });
     assert.deepEqual(result.warnings, []);
-    const branch = Object.values((result.economy.businessSystems as any).empireBranches)[0] as any;
+    const branch = Object.values(
+      (result.economy.businessSystems as any).empireBranches
+    )[0] as any;
     result = mutate(result.economy, "assign_business_automation", {
       businessId: setup.businessId,
       branchId: branch.branchId,
@@ -851,39 +1380,64 @@ describe("mmo economy business customer sessions", function () {
       skill: 3,
     });
     assert.deepEqual(result.warnings, []);
-    const beforeCloseGold = result.economy.businesses[setup.businessId].balanceGold;
+    const beforeCloseGold =
+      result.economy.businesses[setup.businessId].balanceGold;
     result = mutate(result.economy, "close_business_branch", {
       businessId: setup.businessId,
       branchId: branch.branchId,
     });
     assert.deepEqual(result.warnings, []);
-    const closedBranch = (result.economy.businessSystems as any).empireBranches[branch.branchId];
+    const closedBranch = (result.economy.businessSystems as any).empireBranches[
+      branch.branchId
+    ];
     assert.equal(closedBranch.status, "closed");
-    assert.ok(result.economy.businesses[setup.businessId].balanceGold > beforeCloseGold);
-    assert.equal((Object.values((result.economy.businessSystems as any).automationAssignments) as any[])[0].active, false);
+    assert.ok(
+      result.economy.businesses[setup.businessId].balanceGold > beforeCloseGold
+    );
+    assert.equal(
+      (
+        Object.values(
+          (result.economy.businessSystems as any).automationAssignments
+        ) as any[]
+      )[0].active,
+      false
+    );
     const duplicate = mutate(result.economy, "close_business_branch", {
       businessId: setup.businessId,
       branchId: branch.branchId,
     });
-    assert.ok(duplicate.warnings.includes("economy_rejected:business_branch_already_closed"));
+    assert.ok(
+      duplicate.warnings.includes(
+        "economy_rejected:business_branch_already_closed"
+      )
+    );
   });
 
   it("requires an open business for customer shifts and allows non-owner job shifts once open", () => {
     let state = defaultHarthmereProductionEconomyState();
-    let result = mutate(state, "register_business", { businessType: "general_trader", name: "Closed Counter" });
+    let result = mutate(state, "register_business", {
+      businessType: "general_trader",
+      name: "Closed Counter",
+    });
     state = result.economy;
     const businessId = Object.keys(state.businesses)[0];
     result = mutate(state, "start_business_customer_session", { businessId });
     assert.ok(result.warnings.includes("economy_rejected:business_not_open"));
 
-    const otherActor = reduceHarthmereEconomyMutation(state, {
-      requestId: "other_actor_customer_shift",
-      actorId: "not_owner",
-      nowMs: NOW_MS,
-      operation: "start_business_customer_session",
-      businessId,
-    }, ctx());
-    assert.ok(otherActor.warnings.includes("economy_rejected:business_not_open"));
+    const otherActor = reduceHarthmereEconomyMutation(
+      state,
+      {
+        requestId: "other_actor_customer_shift",
+        actorId: "not_owner",
+        nowMs: NOW_MS,
+        operation: "start_business_customer_session",
+        businessId,
+      },
+      ctx()
+    );
+    assert.ok(
+      otherActor.warnings.includes("economy_rejected:business_not_open")
+    );
 
     result = mutate(state, "issue_license", { businessId, licenseLevel: 1 });
     assert.deepEqual(result.warnings, []);
@@ -894,13 +1448,17 @@ describe("mmo economy business customer sessions", function () {
     });
     assert.deepEqual(result.warnings, []);
 
-    const openOtherActor = reduceHarthmereEconomyMutation(result.economy, {
-      requestId: "other_actor_open_customer_shift",
-      actorId: "not_owner",
-      nowMs: NOW_MS,
-      operation: "start_business_customer_session",
-      businessId,
-    }, ctx());
+    const openOtherActor = reduceHarthmereEconomyMutation(
+      result.economy,
+      {
+        requestId: "other_actor_open_customer_shift",
+        actorId: "not_owner",
+        nowMs: NOW_MS,
+        operation: "start_business_customer_session",
+        businessId,
+      },
+      ctx()
+    );
     assert.deepEqual(openOtherActor.warnings, []);
     assert.equal(sessions(openOtherActor.economy)[0].actorId, "not_owner");
   });
@@ -1024,7 +1582,11 @@ describe("mmo economy business customer sessions", function () {
   // sessions as live).
   it("expires a stale customer session and lets the owner start a fresh shift", () => {
     const setup = createOpenBusiness();
-    stockAllRequiredServiceItems(setup.state, setup.businessId, "food_service_restaurant");
+    stockAllRequiredServiceItems(
+      setup.state,
+      setup.businessId,
+      "food_service_restaurant"
+    );
 
     const started = mutate(setup.state, "start_business_customer_session", {
       businessId: setup.businessId,
@@ -1043,41 +1605,53 @@ describe("mmo economy business customer sessions", function () {
       nowMs: afterExpiryMs,
     });
     assert.ok(
-      expiredServe.warnings.includes("economy_rejected:business_customer_session_expired"),
-      `expected expiry rejection, got ${expiredServe.warnings.join(", ")}`,
+      expiredServe.warnings.includes(
+        "economy_rejected:business_customer_session_expired"
+      ),
+      `expected expiry rejection, got ${expiredServe.warnings.join(", ")}`
     );
     assert.equal(sessions(expiredServe.economy)[0].status, "expired");
     assert.equal(sessions(expiredServe.economy)[0].currentTicketId, undefined);
     assert.ok(
       sessions(expiredServe.economy)[0].queue.every(
         (ticket) =>
-          ticket.status !== "waiting" && ticket.spatialPhase === "cancelled",
+          ticket.status !== "waiting" && ticket.spatialPhase === "cancelled"
       ),
-      "expiry must send every waiting customer through native cancellation cleanup",
+      "expiry must send every waiting customer through native cancellation cleanup"
     );
 
     // A second serve attempt on the now-dead session reports it is not active
     // (this is the warning the live client kept hitting while stuck).
-    const secondServe = mutate(expiredServe.economy, "serve_business_customer", {
-      businessId: setup.businessId,
-      sessionId: session.sessionId,
-      ticketId: session.currentTicketId,
-      nowMs: afterExpiryMs,
-    });
+    const secondServe = mutate(
+      expiredServe.economy,
+      "serve_business_customer",
+      {
+        businessId: setup.businessId,
+        sessionId: session.sessionId,
+        ticketId: session.currentTicketId,
+        nowMs: afterExpiryMs,
+      }
+    );
     assert.ok(
-      secondServe.warnings.includes("economy_rejected:business_customer_session_not_active"),
-      `expected not_active rejection, got ${secondServe.warnings.join(", ")}`,
+      secondServe.warnings.includes(
+        "economy_rejected:business_customer_session_not_active"
+      ),
+      `expected not_active rejection, got ${secondServe.warnings.join(", ")}`
     );
 
     // The expired session must not block a fresh shift.
-    const restarted = mutate(secondServe.economy, "start_business_customer_session", {
-      businessId: setup.businessId,
-      count: 4,
-      nowMs: afterExpiryMs,
-    });
+    const restarted = mutate(
+      secondServe.economy,
+      "start_business_customer_session",
+      {
+        businessId: setup.businessId,
+        count: 4,
+        nowMs: afterExpiryMs,
+      }
+    );
     assert.deepEqual(restarted.warnings, []);
     const liveSessions = sessions(restarted.economy).filter(
-      (s) => s.status === "active" && s.expiresAtMs > afterExpiryMs,
+      (s) => s.status === "active" && s.expiresAtMs > afterExpiryMs
     );
     assert.equal(liveSessions.length, 1, "exactly one fresh active session");
     assert.notEqual(liveSessions[0].sessionId, session.sessionId);

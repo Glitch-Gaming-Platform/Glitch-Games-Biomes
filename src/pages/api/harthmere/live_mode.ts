@@ -77,9 +77,7 @@ import {
 } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import { ensureHarthmereNativeItemCatalogue } from "@/shared/harthmere/harthmere_native_bikkie_items";
 import { harthmereNativeRecipeIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
-import {
-  harthmereGatheringRequirementKeysForEquippedTool,
-} from "@/shared/harthmere/gathering_node_authority";
+import { harthmereGatheringRequirementKeysForEquippedTool } from "@/shared/harthmere/gathering_node_authority";
 import { blockPos, SHARD_SHAPE, voxelShard } from "@/shared/game/shard";
 import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
 import { safeParseBiomesId, type BiomesId } from "@/shared/ids";
@@ -177,7 +175,12 @@ export async function readHarthmereBusinessCustomerNativeReadyForTest(input: {
   sessionId: unknown;
   ticketId: unknown;
 }) {
-  if (input.operation !== "serve_business_customer") return undefined;
+  if (
+    input.operation !== "serve_business_customer" &&
+    input.operation !== "tick_business_customer_session"
+  ) {
+    return undefined;
+  }
   const entityId = safeParseBiomesId(String(input.customerEntityId ?? ""));
   if (!entityId) return false;
   const entity = await input.worldApi.get(entityId);
@@ -1272,8 +1275,8 @@ async function hydrateHarthmereLiveModeIdempotencyReplay(input: {
       typeof input.envelope.payload.stationId === "string"
         ? input.envelope.payload.stationId
         : typeof input.envelope.payload.stationId === "number"
-        ? String(Math.trunc(input.envelope.payload.stationId))
-        : undefined;
+          ? String(Math.trunc(input.envelope.payload.stationId))
+          : undefined;
     const stationType =
       typeof input.envelope.payload.stationType === "string"
         ? input.envelope.payload.stationType
@@ -1630,8 +1633,7 @@ export async function readServerActorNativeContextForLiveMode(
         ...new Set(
           equippedItems.flatMap((item) => {
             const semanticItemId =
-              semanticIds.get(item.id) ??
-              biomesIdToHarthmereItemId(item.id);
+              semanticIds.get(item.id) ?? biomesIdToHarthmereItemId(item.id);
             return harthmereGatheringRequirementKeysForEquippedTool({
               id: item.id,
               semanticItemId,
@@ -2765,14 +2767,16 @@ export async function materializeHarthmereBusinessCustomersToEcs(input: {
   actorPosition?: { x: number; y: number; z: number };
 }) {
   const sessions = Object.values(
-    (input.state.economy.production.businessSystems as any)
-      ?.customerSessions ?? {}
+    (input.state.economy.production.businessSystems as any)?.customerSessions ??
+      {}
   );
   const ids = sessions.flatMap((session: any) =>
     Array.isArray(session.queue)
       ? session.queue
           .map((ticket: any) => safeParseBiomesId(String(ticket.entityId)))
-          .filter((id: BiomesId | undefined): id is BiomesId => id !== undefined)
+          .filter(
+            (id: BiomesId | undefined): id is BiomesId => id !== undefined
+          )
       : []
   );
   if (!ids.length) return { changeCount: 0, outcome: "success" as const };
@@ -3017,8 +3021,8 @@ async function hydrateAndRepairHarthmereLiveModeIdempotencyReplay(input: {
               typeof input.envelope.payload.stationId === "string"
                 ? input.envelope.payload.stationId
                 : typeof input.envelope.payload.stationId === "number"
-                ? String(Math.trunc(input.envelope.payload.stationId))
-                : undefined,
+                  ? String(Math.trunc(input.envelope.payload.stationId))
+                  : undefined,
             requestedCraftingStationType:
               typeof input.envelope.payload.stationType === "string"
                 ? input.envelope.payload.stationType
@@ -3216,8 +3220,8 @@ function summarizeHarthmereLiveActorStateProgress(
     typeof parsed.materialStorage.items === "object"
       ? parsed.materialStorage.items
       : parsed?.materialStorage && typeof parsed.materialStorage === "object"
-      ? parsed.materialStorage
-      : {};
+        ? parsed.materialStorage
+        : {};
   const itemCount = Object.values({ ...items, ...materialStorage }).reduce(
     (sum: number, value: unknown) => sum + Math.max(0, Number(value) || 0),
     0
@@ -3838,8 +3842,8 @@ export async function persistHarthmereLiveModeResponse(
         typeof envelope.payload.stationId === "string"
           ? envelope.payload.stationId
           : typeof envelope.payload.stationId === "number"
-          ? String(Math.trunc(envelope.payload.stationId))
-          : undefined;
+            ? String(Math.trunc(envelope.payload.stationId))
+            : undefined;
       const requestedCraftingStationType =
         typeof envelope.payload.stationType === "string"
           ? envelope.payload.stationType
@@ -3860,9 +3864,8 @@ export async function persistHarthmereLiveModeResponse(
         !isHarthmereLiveModeReadOnlySnapshotRequest(envelope, reduced.summary);
       if (persistActorAndSharedState && !nativeBiomesEcsAuthorityEnabled()) {
         stageStartedAt = Date.now();
-        const latestRawStateForStatusChannels = await txPrimary.get(
-          playerStateKey
-        );
+        const latestRawStateForStatusChannels =
+          await txPrimary.get(playerStateKey);
         const statusChannelPreservation =
           preserveFreshHarthmereLiveModeStatusChannelsForTest({
             currentState,

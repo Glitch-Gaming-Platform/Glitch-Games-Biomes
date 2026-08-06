@@ -81,7 +81,9 @@ import type {
 import type { SimulatedNpc } from "@/shared/npc/simulated";
 import {
   decayThreat,
+  pickRetaliationParticipantTarget,
   pickThreatPreferredTarget,
+  type RetaliationParticipantCandidate,
   type ThreatTable,
   type ThreatTargetCandidate,
 } from "@/shared/npc/threat";
@@ -867,6 +869,8 @@ export const zChaseAttackComponent = z.object({
       rangedCooldowns: z.record(z.number()).optional(),
       rangedGlobalCooldownUntil: z.number().optional(),
       rangedSelectionCursor: z.number().int().nonnegative().optional(),
+      rangedMana: z.number().nonnegative().optional(),
+      rangedManaUpdatedAt: z.number().optional(),
       // Pathfinding behavior for chasing around walls/obstacles.
       pathfinding: zPathfindingComponent.optional(),
       // Briefly use direct pursuit after a path makes no progress. This lets
@@ -892,7 +896,14 @@ export const zChaseAttackComponent = z.object({
 export type ChaseAttackComponent = z.infer<typeof zChaseAttackComponent>;
 
 export type RangedAttackTickPhase =
-  "none" | "cooldown" | "fired" | "charging" | "in_flight" | "hit" | "miss";
+  | "none"
+  | "cooldown"
+  | "resource"
+  | "fired"
+  | "charging"
+  | "in_flight"
+  | "hit"
+  | "miss";
 
 export interface RangedAttackTickResult {
   handled: boolean;
@@ -1016,10 +1027,30 @@ export function rangedAttackTargetTick(
   npc: SimulatedNpc,
   target: ReadonlyEntity | undefined,
   params: readonly BehaviorRangedAttackParams[],
-  now = secondsSinceEpoch()
+  now = secondsSinceEpoch(),
+  manaConfig?: Pick<BehaviorChaseAttackParams, "maxMana" | "manaRegenPerSecond">
 ): RangedAttackTickResult {
   const chaseState = npc.state.chaseAttack;
   if (!chaseState) return { handled: false, phase: "none" };
+
+  const finiteMaxMana = Number.isFinite(manaConfig?.maxMana)
+    ? Math.max(0, manaConfig?.maxMana ?? 0)
+    : Number.POSITIVE_INFINITY;
+  const manaRegenPerSecond = Math.max(0, manaConfig?.manaRegenPerSecond ?? 0);
+  const lastManaUpdate = chaseState.rangedManaUpdatedAt ?? now;
+  const elapsedManaSeconds = Math.max(0, now - lastManaUpdate);
+  const availableMana = Number.isFinite(finiteMaxMana)
+    ? Math.min(
+        finiteMaxMana,
+        (chaseState.rangedMana ?? finiteMaxMana) +
+          elapsedManaSeconds * manaRegenPerSecond
+      )
+    : Number.POSITIVE_INFINITY;
+  if (Number.isFinite(finiteMaxMana)) {
+    const mutable = npc.mutableState().chaseAttack!;
+    mutable.rangedMana = availableMana;
+    mutable.rangedManaUpdatedAt = now;
+  }
 
   const active = chaseState.rangedAttack;
   if (active && active.result === undefined) {
@@ -1059,7 +1090,11 @@ export function rangedAttackTargetTick(
     mutable.result = hitTargetIds.length ? "hit" : "miss";
     mutable.resolvedAt = now;
     for (const hitTargetId of hitTargetIds) {
-      npc.attack(hitTargetId, activeParams.attackDamage, {
+      const hitTarget = env.resources.get("/ecs/entity", hitTargetId);
+      if (!hitTarget) {
+        continue;
+      }
+      npc.attack(hitTarget, activeParams.attackDamage, {
         attackAbilityId: active.abilityId,
         attackTime: releaseTime,
         impactPoint: active.aimPoint,
@@ -1094,6 +1129,7 @@ export function rangedAttackTargetTick(
         maxHp: npc.health.maxHp,
         params: candidate,
       }) &&
+      (candidate.manaCost ?? 0) <= availableMana &&
       now >= (cooldowns[candidate.abilityId] ?? 0)
   );
   if (ready.length === 0) {
@@ -1108,6 +1144,20 @@ export function rangedAttackTargetTick(
         })
     );
     if (hasRangedOption) {
+      const hasAffordableOption = params.some(
+        (candidate) =>
+          distance >= candidate.minimumDistance &&
+          distance <= candidate.attackDistance &&
+          rangedAttackHealthRatioEligible({
+            hp: npc.hp,
+            maxHp: npc.health.maxHp,
+            params: candidate,
+          }) &&
+          (candidate.manaCost ?? 0) <= availableMana
+      );
+      if (!hasAffordableOption) {
+        return { handled: false, phase: "resource" };
+      }
       return { handled: false, phase: "cooldown" };
     }
     return { handled: false, phase: "none" };
@@ -1147,6 +1197,11 @@ export function rangedAttackTargetTick(
   const releaseTime = castTime + HARTHMERE_MAGIC_RELEASE_WINDUP_SECS;
   const impactTime = releaseTime + selected.castTimeSecs;
   const mutableChaseState = npc.mutableState().chaseAttack!;
+  const manaCost = Math.max(0, selected.manaCost ?? 0);
+  if (manaCost > 0 && Number.isFinite(finiteMaxMana)) {
+    mutableChaseState.rangedMana = Math.max(0, availableMana - manaCost);
+    mutableChaseState.rangedManaUpdatedAt = now;
+  }
   // A ranged cast is a separate attack cycle. Clear any completed/pending
   // melee timing so returning to close range cannot land a stale swing.
   mutableChaseState.attackTime = undefined;
@@ -1213,7 +1268,9 @@ export function chaseAttackTargetTick(
       env,
       npc,
       target,
-      params.rangedAttacks
+      params.rangedAttacks,
+      secondsSinceEpoch(),
+      params
     );
     if (ranged.handled) {
       return out;
@@ -1407,7 +1464,7 @@ export function chaseAttackTargetTick(
       mutable.meleeAttack.result = "hit";
       mutable.meleeAttack.resolvedAt = now;
     }
-    npc.attack(target.id, params.attackDamage, {
+    npc.attack(target, params.attackDamage, {
       attackTime: mutable.meleeAttack?.attackTime ?? mutable.attackTime ?? now,
       impactPoint,
     });
@@ -1653,6 +1710,35 @@ export function getNearestPlayer(
 // they actually enter a chase attack they will continue it until they lose
 // their target by distance/death/peace.
 export const ATTACK_MEMORY_SECONDS = 30;
+// A real hit opens combat to players close enough to be part of the same
+// visible encounter. This is deliberately smaller than the ordinary
+// disengage leash so retaliation cannot recruit spectators across a region.
+export const RETALIATION_VICINITY_RADIUS_METERS = 18;
+// Keep one target long enough for a readable windup/recovery exchange, then let
+// solo creatures and bosses rotate through the other nearby participants.
+export const RETALIATION_TARGET_ROTATION_SECONDS = 6;
+
+export function retaliationTargetRotationIndex(input: {
+  nowSeconds: number;
+  encounterOpenedAtSeconds: number;
+  responderRank?: number;
+}): number {
+  const elapsed = Math.max(
+    0,
+    input.nowSeconds - input.encounterOpenedAtSeconds
+  );
+  return (
+    Math.max(0, Math.floor(input.responderRank ?? 0)) +
+    Math.floor(elapsed / RETALIATION_TARGET_ROTATION_SECONDS)
+  );
+}
+
+interface RetaliationEncounterSource {
+  attackerId: BiomesId;
+  openedAtSeconds: number;
+  direct: boolean;
+  responderRank?: number;
+}
 
 // Group alerts are intentionally local. The guarded herds fit inside this
 // radius, while separate spawns in the same broad Muck region do not form one
@@ -1695,9 +1781,12 @@ export function shouldDropNpcTargetAtSafeZoneBoundary(input: {
   targetId: BiomesId;
   recentDirectAttackerId: BiomesId | undefined;
   targetInSafeZone: boolean;
+  activeRetaliationParticipant?: boolean;
 }): boolean {
   return (
-    input.targetInSafeZone && input.targetId !== input.recentDirectAttackerId
+    input.targetInSafeZone &&
+    input.targetId !== input.recentDirectAttackerId &&
+    !input.activeRetaliationParticipant
   );
 }
 
@@ -1840,6 +1929,35 @@ export function evaluateRetaliationTarget(
   return lastAttackerId;
 }
 
+function recentRetaliationEncounterSource(
+  npc: SimulatedNpc,
+  now: number
+): RetaliationEncounterSource | undefined {
+  const damageSource = npc.health.lastDamageSource as
+    { kind: string; attacker: BiomesId } | undefined;
+  const damageTime = npc.health.lastDamageTime;
+  if (damageSource?.kind !== "attack" || damageTime === undefined) {
+    return undefined;
+  }
+  const damageAge = now - damageTime;
+  if (damageAge < 0 || damageAge >= ATTACK_MEMORY_SECONDS) {
+    return undefined;
+  }
+  // Old snapshots may omit lastDamageAmount. Preserve their direct retaliation,
+  // but do not let a known heal or zero-damage contact open multiplayer combat.
+  if (
+    npc.health.lastDamageAmount !== undefined &&
+    npc.health.lastDamageAmount >= 0
+  ) {
+    return undefined;
+  }
+  return {
+    attackerId: damageSource.attacker,
+    openedAtSeconds: damageTime,
+    direct: true,
+  };
+}
+
 function lastValidAttackerId(
   env: Environment,
   npc: SimulatedNpc,
@@ -1855,6 +1973,192 @@ function lastValidAttackerId(
     now,
     memorySeconds: ATTACK_MEMORY_SECONDS,
   });
+}
+
+function retaliationVicinityRadius(params: BehaviorChaseAttackParams): number {
+  const authoredAggroDistance =
+    params.aggroTrigger.kind === "proximity"
+      ? params.aggroTrigger.distance
+      : RETALIATION_VICINITY_RADIUS_METERS;
+  return Math.min(
+    params.disengageDistance,
+    Math.max(RETALIATION_VICINITY_RADIUS_METERS, authoredAggroDistance)
+  );
+}
+
+function hasCommittedAttackAgainstCurrentTarget(
+  npc: SimulatedNpc,
+  currentTargetId: BiomesId | undefined
+): boolean {
+  if (!currentTargetId) {
+    return false;
+  }
+  const chaseState = npc.state.chaseAttack;
+  return Boolean(
+    (chaseState?.meleeAttack?.targetId === currentTargetId &&
+      chaseState.meleeAttack.result === undefined) ||
+    (chaseState?.rangedAttack?.targetId === currentTargetId &&
+      chaseState.rangedAttack.result === undefined)
+  );
+}
+
+export function isRetaliationEncounterParticipant(input: {
+  participantId: BiomesId;
+  encounterNpcId: BiomesId;
+  openerId: BiomesId;
+  isPlayer: boolean;
+  isNpc: boolean;
+  npcAttackTarget?: BiomesId;
+}): boolean {
+  if (input.isPlayer || input.participantId === input.openerId) {
+    return true;
+  }
+  return input.isNpc && input.npcAttackTarget === input.encounterNpcId;
+}
+
+function retaliationParticipantCandidate(
+  env: Environment,
+  npc: SimulatedNpc,
+  entity: ReadonlyEntity | undefined,
+  source: RetaliationEncounterSource,
+  radiusSq: number,
+  requireLineOfSight: boolean
+): RetaliationParticipantCandidate | undefined {
+  if (!Entity.has(entity, "health", "position") || entity.id === npc.id) {
+    return undefined;
+  }
+  if (entity.health.hp <= 0) {
+    return undefined;
+  }
+  const isPlayer = Entity.has(entity, "player_status");
+  const isNpc = Entity.has(entity, "npc_metadata");
+  const openedEncounter = entity.id === source.attackerId;
+  if (
+    !isRetaliationEncounterParticipant({
+      participantId: entity.id,
+      encounterNpcId: npc.id,
+      openerId: source.attackerId,
+      isPlayer,
+      isNpc,
+      npcAttackTarget: entity.npc_combat_state?.attack_target,
+    })
+  ) {
+    // Nearby civilians, quest givers, livestock, and unrelated monsters do not
+    // become collateral encounter participants. An NPC/escort joins only by
+    // actually attacking this creature (or by opening the encounter itself).
+    return undefined;
+  }
+  const distanceSq = distSq(entity.position.v, npc.position);
+  if (distanceSq > radiusSq) {
+    return undefined;
+  }
+  if (isPlayer) {
+    const buffs = getPlayerBuffs(env.voxeloo, env.resources, entity.id);
+    if (getPlayerModifiersFromBuffs(buffs)?.peace.enabled) {
+      return undefined;
+    }
+  }
+  // A real hit has already opened this bounded encounter. Safe zones still
+  // suppress proactive aggro, but they must not collapse a multiplayer fight
+  // back onto only the opener: every alive, non-peace player in the encounter
+  // vicinity remains an eligible retaliation participant. NPCs remain limited
+  // to the opener or a combatant that is actively attacking this creature.
+  if (
+    requireLineOfSight &&
+    !openedEncounter &&
+    !hasLineOfSightToPlayer(env, npc, entity)
+  ) {
+    return undefined;
+  }
+  return {
+    id: entity.id,
+    distanceSq,
+    threat: npc.state.threat?.table?.[String(entity.id)] ?? 0,
+    openedEncounter,
+  };
+}
+
+function chooseRetaliationVicinityTarget(
+  env: Environment,
+  npc: SimulatedNpc,
+  params: BehaviorChaseAttackParams,
+  source: RetaliationEncounterSource,
+  now: number,
+  options: {
+    includeBystanders: boolean;
+    requireLineOfSight: boolean;
+  }
+): BiomesId | undefined {
+  const radius = retaliationVicinityRadius(params);
+  const radiusSq = radius * radius;
+  const candidates = new Map<BiomesId, RetaliationParticipantCandidate>();
+
+  if (options.includeBystanders) {
+    for (const playerId of env.ecsMetaIndex.player_selector.scanSphere({
+      center: npc.position,
+      radius,
+    })) {
+      const candidate = retaliationParticipantCandidate(
+        env,
+        npc,
+        env.resources.get("/ecs/entity", playerId),
+        source,
+        radiusSq,
+        options.requireLineOfSight
+      );
+      if (candidate) {
+        candidates.set(candidate.id, candidate);
+      }
+    }
+    for (const npcId of env.ecsMetaIndex.npc_selector.scanSphere({
+      center: npc.position,
+      radius,
+    })) {
+      const candidate = retaliationParticipantCandidate(
+        env,
+        npc,
+        env.resources.get("/ecs/entity", npcId),
+        source,
+        radiusSq,
+        options.requireLineOfSight
+      );
+      if (candidate) {
+        candidates.set(candidate.id, candidate);
+      }
+    }
+  }
+
+  // Preserve the authored direct-retaliation leash even when the opener has
+  // moved beyond the smaller multiplayer vicinity bubble.
+  const opener = retaliationParticipantCandidate(
+    env,
+    npc,
+    env.resources.get("/ecs/entity", source.attackerId),
+    source,
+    params.disengageDistance ** 2,
+    false
+  );
+  if (opener) {
+    candidates.set(opener.id, opener);
+  }
+
+  const currentTargetId = npc.state.chaseAttack?.attackTarget;
+  if (
+    hasCommittedAttackAgainstCurrentTarget(npc, currentTargetId) &&
+    currentTargetId !== undefined &&
+    candidates.has(currentTargetId)
+  ) {
+    return currentTargetId;
+  }
+
+  return pickRetaliationParticipantTarget(
+    [...candidates.values()],
+    retaliationTargetRotationIndex({
+      nowSeconds: now,
+      encounterOpenedAtSeconds: source.openedAtSeconds,
+      responderRank: source.responderRank,
+    })
+  );
 }
 
 function mixedCreatureEntityIsEligible(entity: ReadonlyEntity | undefined) {
@@ -2137,6 +2441,12 @@ export function updateAttackTarget(
   const usesSightBoundHarthmereChase =
     !usesSoundHunting && isHarthmereSightBoundChaserNpc(npc);
   const isNight = isNightForNpcAggro(now);
+  const npcInSafeZone = isSafeZone(
+    env.voxeloo,
+    npc.position,
+    env.ecsMetaIndex,
+    env.resources
+  );
 
   // HARTHMERE_NPC_RETALIATION_SAFE_ZONE:
   // Independent of the aggro trigger kind, if the NPC was just attacked by a
@@ -2147,24 +2457,53 @@ export function updateAttackTarget(
   // memory check ever ran. That made the "hit a Muckling but it won't hit back"
   // bug reported from the Grove combat primer where every hostile sits next to
   // Jackie/Thom/etc. and is therefore inside ward range.
+  const directEncounterSource = recentRetaliationEncounterSource(npc, now);
   const recentAttackerId = lastValidAttackerId(
     env,
     npc,
     deAggroDistanceSq,
     now
   );
-  // A direct hit on this NPC always wins. Otherwise a member of this NPC's OWN
-  // authored group can share its real recent player attacker. Alert state is
-  // never itself the evidence, so propagation cannot fan out into a second ring.
+  // A direct hit opens this NPC's retaliation encounter. Otherwise a member of
+  // this NPC's OWN authored group can share its real recent player attacker.
+  // Alert state is never itself the evidence, so propagation cannot fan out
+  // into a second ring.
   const groupAttackerId = recentAttackerId
     ? undefined
     : nearbyGroupAlertAttackerId(env, npc, deAggroDistanceSq, now);
   const provokedAttackerId = recentAttackerId ?? groupAttackerId;
+  const activeGroupAlert = groupAttackerId
+    ? (npc.state.groupAlert as GroupAlert | undefined)
+    : undefined;
+  const retaliationSource =
+    directEncounterSource ??
+    (groupAttackerId && activeGroupAlert
+      ? {
+          attackerId: groupAttackerId,
+          openedAtSeconds: activeGroupAlert.raisedAtSeconds,
+          direct: false,
+          responderRank: activeGroupAlert.responderRank,
+        }
+      : undefined);
+  const retaliationTargetId = retaliationSource
+    ? chooseRetaliationVicinityTarget(
+        env,
+        npc,
+        params,
+        retaliationSource,
+        now,
+        {
+          // The damage event opened a bounded multiplayer encounter. Safe zones
+          // still prevent proactive aggro, but do not remove nearby players from
+          // retaliation after one participant starts the fight.
+          includeBystanders: true,
+          requireLineOfSight: usesSightBoundHarthmereChase,
+        }
+      )
+    : undefined;
+  const provokedTargetId = retaliationTargetId ?? provokedAttackerId;
 
-  if (
-    !provokedAttackerId &&
-    isSafeZone(env.voxeloo, npc.position, env.ecsMetaIndex, env.resources)
-  ) {
+  if (!provokedTargetId && npcInSafeZone) {
     // No active attacker and we're inside a safe zone — never hold a proactive
     // target. Retaliation is the deliberate exception, handled above.
     if (npc.state.chaseAttack.attackTarget) {
@@ -2181,14 +2520,14 @@ export function updateAttackTarget(
 
   // Check to see if we can acquire a new target.
   if (params.aggroTrigger.kind === "onlyIfAttacked") {
-    targetId = provokedAttackerId ?? targetId;
+    targetId = provokedTargetId ?? targetId;
   } else {
-    if (provokedAttackerId) {
+    if (provokedTargetId) {
       // HARTHMERE_NPC_RETALIATION_PROXIMITY_PRIORITY:
-      // A specific attacker outranks a generic proximity scan — players who
-      // commit to a fight should not get ignored in favor of a stranger
-      // wandering into aggro range.
-      targetId = provokedAttackerId;
+      // A real hit opens a bounded encounter containing every eligible nearby
+      // player. The opener remains first, while group ranks and the shared
+      // rotation clock distribute later exchanges across that encounter.
+      targetId = provokedTargetId;
     } else if (usesSoundHunting) {
       targetId = chooseProximityTarget(
         env,
@@ -2243,7 +2582,7 @@ export function updateAttackTarget(
     const attackTarget = env.resources.get("/ecs/entity", targetId);
     const buffs = getPlayerBuffs(env.voxeloo, env.resources, targetId);
     const targetIsProvoked =
-      targetId === provokedAttackerId ||
+      targetId === provokedTargetId ||
       (npc.state.threat?.table?.[String(targetId)] ?? 0) > 0;
 
     if (!attackTarget?.position || (attackTarget.health?.hp ?? 0) <= 0) {
@@ -2258,6 +2597,8 @@ export function updateAttackTarget(
       shouldDropNpcTargetAtSafeZoneBoundary({
         targetId,
         recentDirectAttackerId: recentAttackerId,
+        activeRetaliationParticipant:
+          retaliationSource !== undefined && targetId === retaliationTargetId,
         targetInSafeZone: isSafeZone(
           env.voxeloo,
           attackTarget.position.v,
@@ -2266,9 +2607,9 @@ export function updateAttackTarget(
         ),
       })
     ) {
-      // Direct retaliation is the deliberate safe-zone exception. A shared
-      // group alert, proactive aggro, or stale remembered target must stop at
-      // the boundary instead of dragging an entire herd into a protected area.
+      // Proactive aggro and stale remembered targets stop at the protected
+      // boundary. Direct attackers and other members of a currently active,
+      // bounded retaliation encounter remain valid until that encounter ends.
       targetId = undefined;
     } else if (usesNightMuckerHexAggro && !targetIsProvoked && !isNight) {
       targetId = undefined;
@@ -2323,11 +2664,11 @@ export function updateAttackTarget(
     CreatureGroupMembership | undefined;
   if (
     targetId &&
-    targetId !== recentAttackerId &&
+    targetId !== provokedTargetId &&
     preyMembership &&
     shouldFleeGroupAlert({
       faction: preyMembership.assistFaction,
-      directlyAttacked: recentAttackerId !== undefined,
+      directlyAttacked: directEncounterSource !== undefined,
     })
   ) {
     targetId = undefined;

@@ -10,15 +10,22 @@ import type {
   OwnedItemReference,
   ReadonlyItemBag,
 } from "@/shared/ecs/gen/types";
+import type { ReadonlyTriggerState } from "@/shared/ecs/gen/components";
 import type { FishedEvent } from "@/shared/firehose/events";
 import type { ItemPayload } from "@/shared/game/item";
-import { countOf, fishingBagTransform } from "@/shared/game/items";
+import { countOf, createBag, fishingBagTransform } from "@/shared/game/items";
 import { itemBagToString } from "@/shared/game/items_serde";
 import { onlyMapValue } from "@/shared/util/collections";
 import {
   awardHarthmereNativeSkillXp,
   harthmereNativeGatheringSkillAwards,
+  readHarthmereNativeSkillLevel,
 } from "@/shared/harthmere/harthmere_skill_progression";
+import {
+  HARTHMERE_SUBLEVEL_YIELD_CAP,
+  harthmereSublevelWeightedProgress,
+  harthmereWeightedEfficiencyMultiplier,
+} from "@/shared/harthmere/harthmere_sublevel_benefits";
 
 // The client still orchestrates timing and the drop roll, but the server never
 // trusts an arbitrary tool, duration, or bag. A future server-issued cast token
@@ -64,6 +71,38 @@ function requireFishingRod(
   return slot;
 }
 
+export function harthmereNativeFishingClaimSkillOutcome(input: {
+  triggerState: ReadonlyTriggerState | undefined;
+  playerId: number;
+  catchTime: number;
+  caughtItemId: number;
+}) {
+  const levels = {
+    gathering: readHarthmereNativeSkillLevel(
+      input.triggerState,
+      "gathering"
+    ),
+    fishing: readHarthmereNativeSkillLevel(input.triggerState, "fishing"),
+  };
+  const weights = { gathering: 0.3, fishing: 0.7 };
+  const progress = harthmereSublevelWeightedProgress(levels, weights);
+  let hash = 2166136261;
+  const seed = `${input.playerId}:${input.catchTime}:${input.caughtItemId}`;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return {
+    durabilityMultiplier: harthmereWeightedEfficiencyMultiplier(
+      levels,
+      weights
+    ),
+    bonusCatch:
+      (hash >>> 0) / 0x1_0000_0000 <
+      HARTHMERE_SUBLEVEL_YIELD_CAP * progress,
+  };
+}
+
 const fishingClaimEventHandler = makeEventHandler("fishingClaimEvent", {
   involves: (event) => ({ player: q.includeIced(event.id) }),
   apply: ({ player }, event, context) => {
@@ -75,8 +114,35 @@ const fishingClaimEventHandler = makeEventHandler("fishingClaimEvent", {
     ) {
       throw new RollbackError("Invalid fishing claim");
     }
-    decrementItemDurability(inventory, event.tool_ref, event.catch_time * 1000);
-    inventory.giveOrThrow(fishingBagTransform(event.bag));
+    const skillOutcome = harthmereNativeFishingClaimSkillOutcome({
+      triggerState: player.triggerState(),
+      playerId: player.id,
+      catchTime: event.catch_time,
+      caughtItemId: onlyMapValue(event.bag)!.item.id,
+    });
+    decrementItemDurability(
+      inventory,
+      event.tool_ref,
+      Math.max(
+        1,
+        Math.round(
+          event.catch_time *
+            1000 *
+            skillOutcome.durabilityMultiplier
+        )
+      )
+    );
+    const transformed = fishingBagTransform(event.bag);
+    const caught = onlyMapValue(transformed)!;
+    inventory.giveOrThrow(
+      createBag(
+        countOf(
+          caught.item.id,
+          caught.item.payload,
+          caught.count + (skillOutcome.bonusCatch ? 1n : 0n)
+        )
+      )
+    );
     awardHarthmereNativeSkillXp(
       player.mutableTriggerState(),
       harthmereNativeGatheringSkillAwards({

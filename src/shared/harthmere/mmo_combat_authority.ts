@@ -14,6 +14,14 @@
  * The reducer calls reduceHarthmereCombatAction and uses its result.
  */
 
+import {
+  harthmereCombatSkillWeights,
+  harthmereTargetAwareCombatSkillWeights,
+  harthmereWeightedEfficiencyMultiplier,
+  harthmereWeightedPotencyMultiplier,
+  harthmereWeightedStatusPotencyMultiplier,
+} from "@/shared/harthmere/harthmere_sublevel_benefits";
+
 export const MMO_COMBAT_AUTHORITY_VERSION = "mmo-combat-authority";
 
 // ---------------------------------------------------------------------------
@@ -103,6 +111,31 @@ export interface HarthmereAbilityCatalogueEntry {
   unlocksMilestones: string[];
   /** Required talent node to be active */
   requiredTalentNode?: string;
+  statusEffects?: HarthmereAbilityStatusEffect[];
+}
+
+export type HarthmereStatusEffectKind =
+  | "damage_over_time"
+  | "heal_over_time"
+  | "control"
+  | "buff"
+  | "debuff";
+
+export interface HarthmereAbilityStatusEffect {
+  effectId: string;
+  kind: HarthmereStatusEffectKind;
+  basePotency: number;
+  durationMs: number;
+  target: "actor" | "resolved_target";
+}
+
+export interface HarthmereResolvedStatusEffect
+  extends HarthmereAbilityStatusEffect {
+  sourceAbilityId: string;
+  sourceActorId: string;
+  targetId: string;
+  potency: number;
+  expiresAtMs: number;
 }
 
 export interface HarthmereClassDefinition {
@@ -171,6 +204,9 @@ export interface HarthmereCombatTargetSnapshot {
   isPlayer: boolean;
   /** Zone PvP rules applying to this target at time of action */
   zonePvPRule: HarthmereZonePvPRule;
+  entityKind?: string;
+  species?: string;
+  tags?: string[];
 }
 
 export interface HarthmereZoneSnapshot {
@@ -227,6 +263,7 @@ export interface HarthmereCombatActionResult {
   damage: number;
   /** Server-computed healing */
   healing: number;
+  statusEffects: HarthmereResolvedStatusEffect[];
   /** Gold cost (for respec) */
   goldCost: number;
   /** XP to award the attacker/caster */
@@ -473,6 +510,7 @@ function resultFail(
     warnings: [],
     damage: 0,
     healing: 0,
+    statusEffects: [],
     goldCost: 0,
     xpDelta: 0,
     skillXpDelta: 0,
@@ -501,6 +539,7 @@ function resultOk(
     warnings: [],
     damage: 0,
     healing: 0,
+    statusEffects: [],
     goldCost: 0,
     xpDelta: 0,
     skillXpDelta: 0,
@@ -569,7 +608,8 @@ function validateAbilityCast(
   actor: HarthmereCombatActorSnapshot,
   target: HarthmereCombatTargetSnapshot | undefined,
   zone: HarthmereZoneSnapshot,
-  nearbyTargets: HarthmereCombatTargetSnapshot[] = []
+  nearbyTargets: HarthmereCombatTargetSnapshot[] = [],
+  skillLevels: Record<string, number | undefined> = {}
 ): HarthmereCombatActionResult {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -585,6 +625,68 @@ function validateAbilityCast(
   // --- Ability catalogue lookup (server-authoritative) ---
   const ability = getHarthmereAbility(abilityId);
   if (!ability) return resultFail(req, ["unknown_ability_id"]);
+  const abilityText = `${ability.abilityId} ${ability.displayName}`.toLowerCase();
+  const actionKind: "melee" | "ranged" | "spell" =
+    actor.mainHandWeaponType === "bow" ||
+    actor.mainHandWeaponType === "crossbow"
+      ? "ranged"
+      : actor.mainHandWeaponType === "staff" ||
+          actor.mainHandWeaponType === "wand" ||
+          /spell|heal|bless|smite|spark|fire|shadow|curse|drain|root|rejuven|song|verse/.test(
+            abilityText
+          )
+        ? "spell"
+        : "melee";
+  let sublevelWeights: Readonly<Record<string, number>> =
+    harthmereCombatSkillWeights({
+      itemId: `${actor.mainHandWeaponType} ${abilityText}`,
+      kind: actionKind,
+    });
+  if (ability.baseHealing > 0) {
+    sublevelWeights = /nature|root|rejuven|druid/.test(abilityText)
+      ? { nature_magic: 1 }
+      : { holy_magic: 1 };
+  } else if (/song|verse|performance|courage/.test(abilityText)) {
+    sublevelWeights = { performance: 1 };
+  } else if (/judgment|rumor|persuad/.test(abilityText)) {
+    sublevelWeights = { persuasion: 1 };
+  } else if (/shield|guard|block/.test(abilityText)) {
+    sublevelWeights = { shield_mastery: 1 };
+  }
+  sublevelWeights = harthmereTargetAwareCombatSkillWeights(
+    sublevelWeights,
+    target
+      ? `${target.entityKind ?? ""} ${target.species ?? ""} ${(target.tags ?? []).join(" ")}`
+      : undefined
+  );
+  const efficiencyWeights =
+    actionKind === "spell"
+      ? {
+          ...Object.fromEntries(
+            Object.entries(sublevelWeights).map(([skillId, weight]) => [
+              skillId,
+              weight * 0.8,
+            ])
+          ),
+          arcane_literacy: 0.2,
+        }
+      : sublevelWeights;
+  const sublevelPotency = harthmereWeightedPotencyMultiplier(
+    skillLevels,
+    sublevelWeights
+  );
+  const sublevelEfficiency = harthmereWeightedEfficiencyMultiplier(
+    skillLevels,
+    efficiencyWeights
+  );
+  const sublevelStatusPotency = harthmereWeightedStatusPotencyMultiplier(
+    skillLevels,
+    sublevelWeights
+  );
+  const effectiveResourceCost = Math.max(
+    0,
+    Math.round(ability.resourceCost * sublevelEfficiency)
+  );
 
   // --- Known ability check ---
   if (!actor.knownAbilities.includes(abilityId)) {
@@ -634,7 +736,7 @@ function validateAbilityCast(
   if (actor.resourceKind !== ability.resourceKind) {
     combatFail(errors, "resource_kind_mismatch");
   }
-  if (actor.resource < ability.resourceCost) {
+  if (actor.resource < effectiveResourceCost) {
     combatFail(errors, "insufficient_resource");
   }
 
@@ -736,9 +838,11 @@ function validateAbilityCast(
         actor.attackPowerBonus,
         actor.spellPowerBonus
       );
+      damage = Math.max(0, Math.round(damage * sublevelPotency));
     }
     if (ability.baseHealing > 0) {
       healing = computeHarthmereAbilityHealing(ability, classDef, actor.level);
+      healing = Math.max(0, Math.round(healing * sublevelPotency));
     }
   } else {
     warnings.push("class_definition_not_found_damage_fallback");
@@ -801,7 +905,31 @@ function validateAbilityCast(
       nowMs + ability.sharedCooldownMs;
   }
 
-  const actorResourceAfter = Math.max(0, actor.resource - ability.resourceCost);
+  const actorResourceAfter = Math.max(0, actor.resource - effectiveResourceCost);
+  const statusEffects =
+    hitResolution === "miss"
+      ? []
+      : (ability.statusEffects ?? []).flatMap((effect) => {
+          const effectTargetId =
+            effect.target === "actor"
+              ? actor.actorId
+              : resolvedTarget?.targetId ?? req.targetId;
+          if (!effectTargetId) return [];
+          const potency = Math.max(
+            0,
+            effect.basePotency * sublevelStatusPotency
+          );
+          return [
+            {
+              ...effect,
+              sourceAbilityId: abilityId,
+              sourceActorId: actor.actorId,
+              targetId: effectTargetId,
+              potency,
+              expiresAtMs: nowMs + Math.max(0, effect.durationMs),
+            },
+          ];
+        });
 
   return resultOk(req, {
     targetId:
@@ -812,6 +940,7 @@ function validateAbilityCast(
     hitResolution,
     damage,
     healing,
+    statusEffects,
     xpDelta: killsTarget ? ability.xpReward : 0,
     skillXpDelta: Math.ceil(ability.xpReward * 0.1),
     newCooldowns,
@@ -829,6 +958,12 @@ function validateAbilityCast(
         : []),
       ...(damage > 0 ? [`damage:${damage}`] : []),
       ...(healing > 0 ? [`healing:${healing}`] : []),
+      `sublevel_potency:${sublevelPotency.toFixed(4)}`,
+      `sublevel_efficiency:${sublevelEfficiency.toFixed(4)}`,
+      `sublevel_status_potency:${sublevelStatusPotency.toFixed(4)}`,
+      ...statusEffects.map(
+        (effect) => `status:${effect.effectId}:${effect.potency.toFixed(4)}`
+      ),
       ...(killsTarget ? ["kill"] : []),
       ...(isPvPKill ? ["pvp_kill"] : []),
     ],
@@ -1022,6 +1157,8 @@ export interface HarthmereCombatActionContext {
   actorGold: number;
   /** Available talent points (server-computed from level + spent) */
   talentPointsAvailable: number;
+  /** Server-owned specialized skill levels used for action-only modifiers. */
+  skillLevels?: Record<string, number | undefined>;
 }
 
 export function reduceHarthmereCombatAction(
@@ -1036,7 +1173,8 @@ export function reduceHarthmereCombatAction(
         ctx.actor,
         ctx.target,
         ctx.zone,
-        ctx.nearbyTargets
+        ctx.nearbyTargets,
+        ctx.skillLevels
       );
 
     case "respec":

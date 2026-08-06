@@ -22,6 +22,7 @@ import {
 } from "@/shared/ecs/gen/components";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import {
+  HarthmereRangedResourceAttackEvent,
   UpdateNpcHealthEvent,
   UpdatePlayerHealthEvent,
 } from "@/shared/ecs/gen/events";
@@ -71,7 +72,16 @@ import {
   serializeNpcCustomState,
 } from "@/shared/npc/serde";
 import { readHarthmereJobsBoardNativeKillLedger } from "@/shared/harthmere/jobs_board_native_kill_ledger";
-import { readHarthmereNativeSkillTotalXp } from "@/shared/harthmere/harthmere_skill_progression";
+import {
+  readHarthmereNativeSkillTotalXp,
+  writeHarthmereNativeSkillTotalXp,
+} from "@/shared/harthmere/harthmere_skill_progression";
+import { harthmereSkillTotalXpCap } from "@/shared/harthmere/mmo_class_ability_collectibles";
+import {
+  HARTHMERE_ARROW_DAMAGE,
+  HARTHMERE_ARROW_ITEM_ID,
+  readHarthmereRangedResourceReceipt,
+} from "@/shared/harthmere/harthmere_ranged_resources";
 import {
   readHarthmereEnergySecondaryAuthorization,
   readHarthmerePulseCarbineShotCount,
@@ -98,7 +108,10 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     const fixtures = new Map();
     for (const itemId of [
       "iron_longsword",
+      "great_sword",
+      "woodcutters_axe",
       "hunter_bow",
+      HARTHMERE_ARROW_ITEM_ID,
       "steel_dart",
       "crystal_focus",
       "smoke_bomb",
@@ -173,6 +186,31 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
         migrationVersion: 1,
       });
     });
+  }
+
+  function giveBackpackArrows(playerId: BiomesId, count = 1n) {
+    const arrowId = harthmereNativeBiomesIdForItemId(HARTHMERE_ARROW_ITEM_ID)!;
+    editEntity(logic.world, playerId, (player) => {
+      player.mutableInventory().items[0] = countOf(arrowId, count);
+    });
+  }
+
+  async function authorizeRangedResourceAttack(
+    attacker: BiomesId,
+    target: BiomesId
+  ) {
+    const attackTime = Math.round(Date.now()) / 1000;
+    await logic.publish(
+      new GameEvent(
+        attacker,
+        new HarthmereRangedResourceAttackEvent({
+          id: attacker,
+          target_id: target,
+          attack_time: attackTime,
+        })
+      )
+    );
+    return attackTime;
   }
 
   function spawnNativeNpc(
@@ -494,6 +532,72 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     assert.equal(mucker?.health?.hp, 100);
   });
 
+  it("derives bare-hand, tool, sword, and great-sword reach from the selected held item", async () => {
+    const seed = harthmereGroundedMuckMonsterSeedsInTerritory()[0];
+    const spawnReachTarget = (position: [number, number, number]) =>
+      spawnNativeNpc(seed, position, 100).id;
+    const attack = async (attacker: BiomesId, target: BiomesId) => {
+      await logic.publish(
+        new GameEvent(
+          attacker,
+          new UpdateNpcHealthEvent({
+            id: target,
+            hp: -999,
+            damageSource: {
+              kind: "attack",
+              attacker,
+              dir: [1, 0, 0],
+            },
+          })
+        )
+      );
+      return logic.world.table.get(target)!.health!.hp;
+    };
+    const playerAtOrigin = async () =>
+      (
+        await addGameUser(logic.world, generateTestId(), {
+          position: [0, 0, 0],
+        })
+      ).id;
+
+    const bareHand = await playerAtOrigin();
+    editEntity(logic.world, bareHand, (player) => {
+      const inventory = player.mutableInventory();
+      inventory.hotbar[0] = undefined;
+      inventory.selected = { kind: "hotbar", idx: 0 };
+      player.setSelectedItem(SelectedItem.create());
+      writeHarthmereNativeCombatProgression(player.mutableTriggerState(), {
+        level: 20,
+        migrationVersion: 1,
+      });
+    });
+    const bareHandBoundary = spawnReachTarget([2.8, 0, 0]);
+    assert.equal(await attack(bareHand, bareHandBoundary), 100);
+
+    const toolUser = await playerAtOrigin();
+    equipNativeItem(toolUser, "woodcutters_axe", 20);
+    const toolBoundary = spawnReachTarget([2.8, 0, 0]);
+    assert.ok((await attack(toolUser, toolBoundary)) < 100);
+    const toolOverreachUser = await playerAtOrigin();
+    equipNativeItem(toolOverreachUser, "woodcutters_axe", 20);
+    const toolOverreach = spawnReachTarget([3.6, 0, 0]);
+    assert.equal(await attack(toolOverreachUser, toolOverreach), 100);
+
+    const swordUser = await playerAtOrigin();
+    equipNativeItem(swordUser, "iron_longsword", 20);
+    const swordBoundary = spawnReachTarget([3.6, 0, 0]);
+    assert.ok((await attack(swordUser, swordBoundary)) < 100);
+    const swordOverreachUser = await playerAtOrigin();
+    equipNativeItem(swordOverreachUser, "iron_longsword", 20);
+    const swordOverreach = spawnReachTarget([4.3, 0, 0]);
+    assert.equal(await attack(swordOverreachUser, swordOverreach), 100);
+
+    const greatSwordUser = await playerAtOrigin();
+    equipNativeItem(greatSwordUser, "great_sword", 20);
+    const greatSwordBoundary = spawnReachTarget([4.3, 0, 0]);
+    assert.ok((await attack(greatSwordUser, greatSwordBoundary)) < 100);
+  });
+
   it("does not drive health below the kill threshold prematurely (sanity)", async () => {
     const attacker = (
       await addGameUser(logic.world, generateTestId(), {
@@ -605,6 +709,148 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     assert.ok(
       readHarthmereNativeSkillTotalXp(attackerState, "melee_combat") > 0
     );
+  });
+
+  it("applies the mastered native melee sublevel bonus in the real NPC health transaction", async () => {
+    const attacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
+    equipNativeItem(attacker, "iron_longsword", 2);
+    editEntity(logic.world, attacker, (player) => {
+      for (const skillId of ["combat", "melee_combat"]) {
+        writeHarthmereNativeSkillTotalXp(
+          player.mutableTriggerState(),
+          skillId,
+          harthmereSkillTotalXpCap(skillId)
+        );
+      }
+    });
+    const seed = harthmereGroundedMuckMonsterSeedsInTerritory()[0];
+    const target = spawnNativeNpc(seed, [2, 0, 0], 500);
+    const itemId = harthmereNativeBiomesIdForItemId("iron_longsword")!;
+    const itemProfile = harthmereNativeItemCombatProfile(anItem(itemId))!;
+    const progression = readHarthmereNativeCombatProgression(
+      logic.world.table.get(attacker)?.trigger_state
+    );
+    const profile = harthmereNativeNpcCombatProfileForSeed(seed);
+    const statDamage = applyHarthmereNativeAttackStats({
+      baseDamage: itemProfile.damagePerHit,
+      kind: itemProfile.kind,
+      stats: harthmereNativeLevelStats(progression.level),
+      targetEvasion: harthmereNativeLevelStats(profile.level).evasion,
+      criticalSeed: [attacker, target.id, progression.lastAttackMs, itemId],
+    });
+    const levelFactor = Math.max(
+      0.65,
+      Math.min(1.75, 1 + (progression.level - profile.level) * 0.04)
+    );
+    const expectedDamage = Math.max(
+      1,
+      Math.round(statDamage.damage * 1.25 * levelFactor)
+    );
+
+    await logic.publish(
+      new GameEvent(
+        attacker,
+        new UpdateNpcHealthEvent({
+          id: target.id,
+          hp: -999,
+          damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+        })
+      )
+    );
+
+    assert.equal(
+      logic.world.table.get(target.id)?.health?.hp,
+      500 - expectedDamage
+    );
+  });
+
+  it("authorizes held-heavy timing at 1.5x authoritative sword damage", async () => {
+    const attacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
+    equipNativeItem(attacker, "iron_longsword", 2);
+    const target = spawnNativeNpc(
+      harthmereGroundedMuckMonsterSeedsInTerritory()[0],
+      [2, 0, 0],
+      500
+    );
+    const publish = (attackTimingClass: "basic" | "heavy") =>
+      logic.publish(
+        new GameEvent(
+          attacker,
+          new UpdateNpcHealthEvent({
+            id: target.id,
+            hp: -999,
+            damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+            attackTimingClass,
+          })
+        )
+      );
+
+    await publish("basic");
+    const basicDamage =
+      500 - (logic.world.table.get(target.id)?.health?.hp ?? 500);
+    editEntity(logic.world, target.id, (entity) => {
+      entity.setHealth(Health.create({ hp: 500, maxHp: 500 }));
+    });
+    editEntity(logic.world, attacker, (player) => {
+      writeHarthmereNativeCombatProgression(player.mutableTriggerState(), {
+        lastAttackMs: 0,
+        comboHits: 0,
+        comboExpiresAtMs: 0,
+        comboCooldownUntilMs: 0,
+      });
+    });
+
+    await publish("heavy");
+    const heavyDamage =
+      500 - (logic.world.table.get(target.id)?.health?.hp ?? 500);
+    assert.ok(
+      heavyDamage >= basicDamage * 1.45 && heavyDamage <= basicDamage * 1.55,
+      `${heavyDamage} is not within the 1.5x heavy envelope for ${basicDamage}`
+    );
+  });
+
+  it("accepts one contact-linked combo hit but rejects an early extra replay", async () => {
+    const attacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
+    equipNativeItem(attacker, "iron_longsword", 2);
+    editEntity(logic.world, attacker, (player) => {
+      const nowMs = Date.now();
+      writeHarthmereNativeCombatProgression(player.mutableTriggerState(), {
+        lastAttackMs: nowMs - 400,
+        comboHits: 1,
+        comboExpiresAtMs: nowMs + 4_000,
+        comboCooldownUntilMs: 0,
+      });
+    });
+    const target = spawnNativeNpc(
+      harthmereGroundedMuckMonsterSeedsInTerritory()[0],
+      [2, 0, 0],
+      500
+    );
+    const event = () =>
+      new UpdateNpcHealthEvent({
+        id: target.id,
+        hp: -999,
+        damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+        attackTimingClass: "basic",
+      });
+
+    await logic.publish(new GameEvent(attacker, event()));
+    const afterLinked = logic.world.table.get(target.id)?.health?.hp ?? 500;
+    assert.ok(afterLinked < 500);
+    await logic.publish(new GameEvent(attacker, event()));
+    assert.equal(logic.world.table.get(target.id)?.health?.hp, afterLinked);
   });
 
   it("allows ordinary attacks at zero movement stamina without spending it", async () => {
@@ -784,15 +1030,18 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
         position: [0, 0, 0],
       })
     ).id;
-    equipNativeItem(attacker, "hunter_bow", 1);
+    equipNativeItem(attacker, "hunter_bow", 20);
+    giveBackpackArrows(attacker);
     const before =
       logic.world.table.get(attacker)?.inventory?.hotbar[0]?.item
         .lifetimeDurabilityMs;
     const target = spawnNativeNpc(
       harthmereGroundedMuckMonsterSeedsInTerritory()[0],
       [20, 0, 0],
-      100
+      100,
+      20
     );
+    const attackTime = await authorizeRangedResourceAttack(attacker, target.id);
 
     await logic.publish(
       new GameEvent(
@@ -801,11 +1050,19 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
           id: target.id,
           hp: -999,
           damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+          attackTime,
         })
       )
     );
 
-    assert.equal(logic.world.table.get(target.id)?.health?.hp, 93);
+    assert.equal(
+      logic.world.table.get(target.id)?.health?.hp,
+      100 - HARTHMERE_ARROW_DAMAGE
+    );
+    assert.equal(
+      logic.world.table.get(attacker)?.inventory?.items[0]?.count ?? 0n,
+      0n
+    );
     const after =
       logic.world.table.get(attacker)?.inventory?.hotbar[0]?.item
         .lifetimeDurabilityMs;
@@ -816,6 +1073,111 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
       readHarthmereNativeSkillTotalXp(attackerState, "ranged_combat") > 0
     );
     assert.ok(readHarthmereNativeSkillTotalXp(attackerState, "archery") > 0);
+  });
+
+  it("requires backpack arrows, ignores hotbar-only ammo, and spends one on a miss", async () => {
+    const attacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
+    equipNativeItem(attacker, "hunter_bow", 1);
+    const arrowId = harthmereNativeBiomesIdForItemId(HARTHMERE_ARROW_ITEM_ID)!;
+    editEntity(logic.world, attacker, (player) => {
+      player.mutableInventory().hotbar[1] = countOf(arrowId, 9n);
+    });
+
+    const noBackpackAttackTime = await authorizeRangedResourceAttack(
+      attacker,
+      generateTestId()
+    );
+    assert.equal(
+      readHarthmereRangedResourceReceipt(
+        logic.world.table.get(attacker)?.trigger_state
+      ).attackTimeMs,
+      0,
+      "hotbar arrows are not backpack ammunition"
+    );
+
+    giveBackpackArrows(attacker, 2n);
+    const missTime = Math.max(
+      noBackpackAttackTime + 0.5,
+      Math.round(Date.now() + 500) / 1000
+    );
+    await logic.publish(
+      new GameEvent(
+        attacker,
+        new HarthmereRangedResourceAttackEvent({
+          id: attacker,
+          attack_time: missTime,
+        })
+      )
+    );
+    assert.equal(
+      logic.world.table.get(attacker)?.inventory?.items[0]?.count,
+      1n,
+      "a released miss still spends its physical arrow"
+    );
+
+    await logic.publish(
+      new GameEvent(
+        attacker,
+        new HarthmereRangedResourceAttackEvent({
+          id: attacker,
+          attack_time: missTime,
+        })
+      )
+    );
+    assert.equal(
+      logic.world.table.get(attacker)?.inventory?.items[0]?.count,
+      1n,
+      "an exact replay cannot consume another arrow"
+    );
+  });
+
+  it("spends magic mana at release and rejects a cast that costs more than current mana", async () => {
+    const attacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
+    equipNativeItem(attacker, "crystal_focus", 5);
+    editEntity(logic.world, attacker, (player) => {
+      writeHarthmereNativeVitals(player.mutableTriggerState(), {
+        mana: 100,
+        maxMana: 100,
+      });
+    });
+    const targetId = generateTestId();
+    await authorizeRangedResourceAttack(attacker, targetId);
+    const afterRelease = readHarthmereNativeVitals(
+      logic.world.table.get(attacker)?.trigger_state
+    ).mana;
+    assert.ok(afterRelease < 100);
+
+    editEntity(logic.world, attacker, (player) => {
+      writeHarthmereNativeVitals(player.mutableTriggerState(), { mana: 0 });
+    });
+    const priorReceipt = readHarthmereRangedResourceReceipt(
+      logic.world.table.get(attacker)?.trigger_state
+    );
+    await logic.publish(
+      new GameEvent(
+        attacker,
+        new HarthmereRangedResourceAttackEvent({
+          id: attacker,
+          target_id: targetId,
+          attack_time: Math.round(Date.now() + 2_000) / 1000,
+        })
+      )
+    );
+    assert.deepEqual(
+      readHarthmereRangedResourceReceipt(
+        logic.world.table.get(attacker)?.trigger_state
+      ),
+      priorReceipt,
+      "an unaffordable cast cannot create a damage receipt"
+    );
   });
 
   it("uses authored thrown and magic profiles for native range, damage, and skills", async () => {
@@ -835,6 +1197,10 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
         [15, 0, 0],
         100
       );
+      const attackTime =
+        itemId === "crystal_focus"
+          ? await authorizeRangedResourceAttack(attacker, target.id)
+          : undefined;
 
       await logic.publish(
         new GameEvent(
@@ -843,6 +1209,7 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
             id: target.id,
             hp: -999,
             damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+            attackTime,
           })
         )
       );
@@ -1205,6 +1572,40 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     assert.equal(logic.world.table.get(player)?.health?.hp, hpAfterHit);
   });
 
+  it("lets a hostile NPC damage a combat escort NPC once per melee receipt", async () => {
+    const attacker = spawnNativeNpc(
+      harthmereGroundedMuckMonsterSeedsInTerritory()[0],
+      [0, 0, 0]
+    );
+    const escort = spawnNativeNpc(
+      harthmereGroundedMuckMonsterSeedsInTerritory()[1],
+      [1.5, 0, 0]
+    );
+    const receipt = stageNativeMeleeReceipt(attacker, escort.id);
+    const event = new UpdateNpcHealthEvent({
+      id: escort.id,
+      hp: -999,
+      damageSource: {
+        kind: "attack",
+        attacker: attacker.id,
+        dir: [1, 0, 0],
+      },
+      attackTime: receipt.event.attackTime,
+    });
+
+    const before = logic.world.table.get(escort.id)?.health?.hp ?? 0;
+    await logic.publish(new GameEvent(attacker.id, event));
+    const after = logic.world.table.get(escort.id)?.health?.hp ?? before;
+    assert.ok(after < before, "receipt-backed NPC melee did not damage escort");
+
+    await logic.publish(new GameEvent(attacker.id, event));
+    assert.equal(
+      logic.world.table.get(escort.id)?.health?.hp,
+      after,
+      "replayed NPC-to-NPC melee receipt applied damage twice"
+    );
+  });
+
   it("uses the same body-aware vertical melee reach as Anima", async () => {
     const player = (
       await addGameUser(logic.world, generateTestId(), {
@@ -1355,6 +1756,76 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
 
     await logic.publish(new GameEvent(player, event));
     assert.equal(logic.world.table.get(player)?.health?.hp, hpAfterHit);
+  });
+
+  it("lets a Hex damage an escort NPC once with a ranged Anima receipt", async () => {
+    const hexSeed = harthmereGroundedMuckMonsterSeedsInTerritory().find(
+      ({ combatKind }) => combatKind === "hex"
+    )!;
+    const attacker = spawnNativeNpc(hexSeed, [0, 0, 0]);
+    const escort = spawnNativeNpc(
+      harthmereGroundedMuckMonsterSeedsInTerritory().find(
+        ({ combatKind }) => combatKind === "mux"
+      )!,
+      [8, 0, 0]
+    );
+    const fireball = attacker.profile.rangedAttacks?.find(
+      ({ abilityId }) => abilityId === "fireball"
+    );
+    assert.ok(fireball);
+    const now = secondsSinceEpoch();
+    const chargeTimeSecs = harthmereMagicChargeDurationSecs({
+      damageType: fireball.damageType,
+      projectileVisualId: fireball.projectileVisualId,
+      attackDamage: fireball.attackDamage,
+      cooldownSecs: fireball.cooldownSecs,
+      attackShape: fireball.attackShape,
+    });
+    const releaseTime = now - fireball.castTimeSecs;
+    const castTime = releaseTime - chargeTimeSecs;
+    editEntity(logic.world, attacker.id, (entity) => {
+      entity.setNpcState(
+        NpcState.create({
+          data: serializeNpcCustomState({
+            chaseAttack: {
+              attackTarget: escort.id,
+              rangedAttack: {
+                abilityId: "fireball",
+                projectileVisualId: "fireball",
+                targetId: escort.id,
+                castTime,
+                chargeTimeSecs,
+                releaseTime,
+                impactTime: now - 0.01,
+                cooldownUntil: releaseTime + fireball.cooldownSecs,
+                aimPoint: [8, 1, 0],
+                hitTargetIds: [escort.id],
+                result: "hit",
+                resolvedAt: now,
+              },
+            },
+          }),
+        })
+      );
+    });
+    const event = new UpdateNpcHealthEvent({
+      id: escort.id,
+      hp: -999,
+      damageSource: {
+        kind: "attack",
+        attacker: attacker.id,
+        dir: [1, 0, 0],
+      },
+      attackTime: releaseTime,
+    });
+
+    const before = logic.world.table.get(escort.id)?.health?.hp ?? 0;
+    await logic.publish(new GameEvent(attacker.id, event));
+    const after = logic.world.table.get(escort.id)?.health?.hp ?? before;
+    assert.ok(after < before, "ranged NPC receipt did not damage escort");
+
+    await logic.publish(new GameEvent(attacker.id, event));
+    assert.equal(logic.world.table.get(escort.id)?.health?.hp, after);
   });
 
   it("rejects a Hex Fireball whose fixed aim point misses the target", async () => {
@@ -1752,6 +2223,56 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     assert.ok(readHarthmereNativeSkillTotalXp(attackerState, "combat") > 0);
     assert.ok(
       readHarthmereNativeSkillTotalXp(attackerState, "melee_combat") > 0
+    );
+  });
+
+  it("keeps a paid bow receipt at exactly five damage against an armored high-level player", async () => {
+    const attacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
+    const defender = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [12, 0, 0],
+      })
+    ).id;
+    equipNativeItem(attacker, "hunter_bow", 20);
+    giveBackpackArrows(attacker);
+    const leather = anItem(harthmereNativeBiomesIdForItemId("leather_armor")!);
+    const shield = anItem(harthmereNativeBiomesIdForItemId("wooden_shield")!);
+    editEntity(logic.world, defender, (entity) => {
+      const wearing = Wearing.clone(entity.wearing());
+      wearing.items.set(findItemEquippableSlot(leather)!, leather);
+      wearing.items.set(findItemEquippableSlot(shield)!, shield);
+      entity.setWearing(wearing);
+      writeHarthmereNativeCombatProgression(entity.mutableTriggerState(), {
+        level: 20,
+        migrationVersion: 1,
+      });
+      writeHarthmereNativeSkillTotalXp(
+        entity.mutableTriggerState(),
+        "shield_mastery",
+        100_000
+      );
+    });
+    const attackTime = await authorizeRangedResourceAttack(attacker, defender);
+
+    await logic.publish(
+      new GameEvent(
+        attacker,
+        new UpdatePlayerHealthEvent({
+          id: defender,
+          hpDelta: -999,
+          damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+          attackTime,
+        })
+      )
+    );
+
+    assert.equal(
+      logic.world.table.get(defender)?.health?.hp,
+      100 - HARTHMERE_ARROW_DAMAGE
     );
   });
 });

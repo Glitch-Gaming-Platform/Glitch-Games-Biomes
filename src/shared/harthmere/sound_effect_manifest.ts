@@ -5,7 +5,7 @@ import {
 } from "@/shared/harthmere/creature_sound_profiles";
 
 export const HARTHMERE_SOUND_EFFECT_MANIFEST_VERSION =
-  "harthmere-sound-effects-elevenlabs-v6-indisworm" as const;
+  "harthmere-sound-effects-elevenlabs-v8-mobile-aac" as const;
 
 export const HARTHMERE_SOUND_EFFECT_EVENT =
   "biomes:harthmere-sound-effect" as const;
@@ -48,6 +48,7 @@ export interface HarthmereSoundEffectDefinition {
   authority: readonly HarthmereSoundAuthority[];
   trigger: string;
   path: string;
+  mobilePath?: string;
   source: "existing" | "elevenlabs";
   durationSeconds: number;
   loop: boolean;
@@ -59,6 +60,10 @@ const GENERATED_ROOT = "/assets/harthmere/audio/sfx";
 
 export function harthmereGeneratedSoundPath(id: string) {
   return `${GENERATED_ROOT}/${id}.webm`;
+}
+
+export function harthmereGeneratedMobileSoundPath(id: string) {
+  return `${GENERATED_ROOT}/${id}.m4a`;
 }
 
 function existing(
@@ -99,6 +104,7 @@ function generated(input: {
   return {
     ...input,
     path: harthmereGeneratedSoundPath(input.id),
+    mobilePath: harthmereGeneratedMobileSoundPath(input.id),
     source: "elevenlabs",
     loop: input.loop ?? false,
     promptInfluence: input.promptInfluence ?? 0.72,
@@ -503,6 +509,26 @@ const GENERATED_ROWS: readonly GeneratedRow[] = [
     "Fantasy player revive, returning breath, soft rising life energy and a grounded recovery chime, hopeful but not musical, no speech.",
   ],
 
+  [
+    "bow_empty_click",
+    "Empty Bow Click",
+    "ranged",
+    "A dry nock and string click communicates that no backpack arrow is available.",
+    ["client_presentation", "native_ecs"],
+    "A selected bow is fired without an arrow in backpack storage.",
+    0.5,
+    "Close dry medieval bow handling click with an empty string pluck and wooden grip tick, clearly no arrow launch, no impact, no voice, no music.",
+  ],
+  [
+    "magic_empty_fizzle",
+    "Insufficient Mana Fizzle",
+    "magic",
+    "A compact failed-cast cue communicates that the caster lacks mana.",
+    ["client_presentation", "native_ecs", "anima"],
+    "A player or NPC attempts a spell whose mana cost exceeds current mana.",
+    0.5,
+    "Short fantasy magic failure fizzle, weak energy sputter collapsing into a muted crystalline click, no successful spell release, no voice, no music.",
+  ],
   [
     "bow_nock",
     "Nock Arrow",

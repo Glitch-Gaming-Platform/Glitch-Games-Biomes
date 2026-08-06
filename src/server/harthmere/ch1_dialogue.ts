@@ -146,7 +146,7 @@ const CH1_OBJECTIVE_DIALOGUE_BASE: Readonly<
     },
     {
       speaker: "Doc",
-      text: "One more thing. Some sequestrants defend themselves by turning a direct explanation into panic and distrust.",
+      text: "Some sequestrants defend themselves by turning direct explanations into panic and distrust. Press J to open BiomesUI, select MEM — Recovered, and write down what returns before improving it.",
     },
   ]),
   open_the_tab: sequence("Recovered", [
@@ -1365,8 +1365,8 @@ function nextRouteStopAfterCurrent(
 
 /**
  * Player-facing handoff shown before every Chapter 1 conversation closes.
- * It deliberately names both the next task and its destination; the map then
- * supplies the route. Multi-person objectives point to their next live stop
+ * It deliberately tells the player where to go next without the mechanical
+ * "Next task" prefix. Multi-person objectives point to their next live stop
  * instead of incorrectly skipping to the following catalog step.
  */
 export function ch1ObjectiveExitGuidanceForTest(input: {
@@ -1380,7 +1380,7 @@ export function ch1ObjectiveExitGuidanceForTest(input: {
       input.context?.runtime?.testimonies ?? []
     );
     if (next) {
-      return `Next task: hear the next account. Go to ${next.label}; your map will mark the way.`;
+      return `Go to ${next.label} for the next account; your map will mark the way.`;
     }
   }
   if (input.stepId === "the_three_answers") {
@@ -1390,21 +1390,24 @@ export function ch1ObjectiveExitGuidanceForTest(input: {
       input.context?.runtime?.objectiveRouteProgress[effectKey] ?? []
     );
     if (next) {
-      return `Next task: hear the next answer. Go to ${next.label}; your map will mark the way.`;
+      return `Go to ${next.label} for the next answer; your map will mark the way.`;
     }
   }
   const next = nextCatalogObjective(input.questId, input.stepId);
   if (!next) {
     return "Chapter 1 is complete. Open Quests to choose your next journey.";
   }
+  if (next.step.id === "open_the_tab") {
+    return "Press J to open BiomesUI, then select MEM — Recovered.";
+  }
   const target = ch1ObjectiveTarget(
     next.quest.id,
     next.stepIndex,
     input.context
   );
-  return `Next task: ${next.step.title}. Go to ${
+  return `Go to ${
     target?.label ?? next.step.targetLabel ?? next.quest.district
-  }; your map will mark the way.`;
+  } for ${next.step.title}; your map will mark the way.`;
 }
 
 export function ch1DialogueWithExitGuidanceForTest(
@@ -1418,7 +1421,7 @@ export function ch1DialogueWithExitGuidanceForTest(
     ...dialogue,
     completionLabel: choiceFollows
       ? "Continue to your choice"
-      : (dialogue.completionLabel ?? "Continue to the next task"),
+      : (dialogue.completionLabel ?? "Continue"),
     pages: [
       ...dialogue.pages.map((page) => ({ ...page })),
       {

@@ -1,9 +1,15 @@
 import {
   KTX2_TRANSCODER_PATH,
+  WORLD_TO_VOX_SCALE,
   createGltfLoader,
+  gltfDispose,
   gltfToThree,
   parseGltf,
 } from "@/client/game/util/gltf_helpers";
+import {
+  cloneMaterials,
+  replaceThreeMaterials,
+} from "@/client/game/renderers/util";
 import {
   makeBlockBufferGeometry,
   makeGroupBufferGeometry,
@@ -81,6 +87,72 @@ describe("Three.js asset and geometry contract", () => {
       clonedMesh.skeleton.bones.map((entry) => entry.name),
       ["RootBone", "ChildBone"]
     );
+  });
+
+  it("keeps the exact hunter bow rig attached through both runtime clone stages", async function () {
+    this.timeout(20_000);
+    const bowBuffer = await readFile(
+      "public/assets/harthmere/glb/weapons/hunter_bow.glb"
+    );
+    const originalProgressEvent = globalThis.ProgressEvent;
+    class TestProgressEvent extends Event {
+      readonly lengthComputable: boolean;
+      readonly loaded: number;
+      readonly total: number;
+
+      constructor(type: string, init: ProgressEventInit = {}) {
+        super(type);
+        this.lengthComputable = init.lengthComputable ?? false;
+        this.loaded = init.loaded ?? 0;
+        this.total = init.total ?? 0;
+      }
+    }
+    if (!originalProgressEvent) {
+      globalThis.ProgressEvent =
+        TestProgressEvent as unknown as typeof ProgressEvent;
+    }
+
+    let gltf: Awaited<ReturnType<typeof parseGltf>>;
+    try {
+      gltf = await parseGltf(
+        bowBuffer.buffer.slice(
+          bowBuffer.byteOffset,
+          bowBuffer.byteOffset + bowBuffer.byteLength
+        ) as ArrayBuffer
+      );
+    } finally {
+      if (originalProgressEvent) {
+        globalThis.ProgressEvent = originalProgressEvent;
+      } else {
+        delete (globalThis as { ProgressEvent?: typeof ProgressEvent })
+          .ProgressEvent;
+      }
+    }
+
+    const template = cloneSkeleton(gltfToThree(gltf));
+    const [templateMaterials] = replaceThreeMaterials(template, true, true);
+    template.scale.setScalar(WORLD_TO_VOX_SCALE);
+    const instance = cloneSkeleton(template);
+    const [instanceMaterials] = cloneMaterials(instance);
+    instance.updateMatrixWorld(true);
+
+    let skinnedMeshCount = 0;
+    instance.traverse((object) => {
+      const skinned = object as THREE.SkinnedMesh;
+      if (!skinned.isSkinnedMesh) return;
+      skinnedMeshCount += 1;
+      assert.ok(skinned.skeleton.bones.length > 0, skinned.name);
+      assert.ok(skinned.skeleton.bones.every(Boolean), skinned.name);
+      skinned.frustumCulled = false;
+      assert.doesNotThrow(() => skinned.computeBoundingSphere(), skinned.name);
+    });
+    assert.ok(skinnedMeshCount > 0);
+    assert.ok(instance.getObjectByName("ArrowSocket")?.isBone);
+    assert.ok(instance.getObjectByName("GripSocket")?.isBone);
+
+    instanceMaterials.forEach((material) => material.dispose());
+    templateMaterials.forEach((material) => material.dispose());
+    gltfDispose(gltf);
   });
 
   it("loads and clones the Indisworm creature and poison projectile on r185", async function () {
@@ -264,7 +336,17 @@ describe("Three.js asset and geometry contract", () => {
       4
     );
     assert.ok(colorArray instanceof THREE.DataArrayTexture);
+    assert.deepEqual(Array.from(colorArray.image.data), [1, 2, 3, 4]);
     assert.equal(colorArray.internalFormat, "SRGB8_ALPHA8");
+
+    assert.throws(
+      () => makeColorMap(new Uint8Array([1, 2, 3, 4]), 1, 1, 3),
+      /Packed texture byte length mismatch/
+    );
+    assert.throws(
+      () => makeColorMapArray(new Uint8Array([1, 2, 3]), 1, 1, 1, 4),
+      /Packed texture byte length mismatch/
+    );
 
     const integers = makeBufferTexture(new Uint32Array([7]), 1, 1);
     assert.equal(integers.format, THREE.RedIntegerFormat);

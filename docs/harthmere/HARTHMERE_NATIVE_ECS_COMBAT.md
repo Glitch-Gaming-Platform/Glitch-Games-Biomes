@@ -18,6 +18,7 @@ fallback authority while `NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY` is enabled.
 | Clothing/armor                         | ECS `Wearing`                             | avatar renderer and server mitigation         |
 | Player and NPC health                  | ECS `Health`                              | HUD, death, Anima, drops                      |
 | NPC behavior                           | exact `/npcs/types` Bikkie behavior       | Anima chase/attack/meander                    |
+| Retaliation participants and targets   | Anima + ECS combat/damage state           | public `NpcCombatState`, renderer             |
 | Combat level, XP, cooldown, boss kills | ECS `TriggerState`                        | server handlers and vitals HUD                |
 | Drops and kill triggers                | native NPC death transaction              | grab bags and trigger server                  |
 | Hit feedback                           | confirmed ECS health change               | BiomesUI/Harthmere HUD status indicator       |
@@ -44,6 +45,37 @@ Native rendering uses ECS `Position` directly. Snapshot-only grounding, browser
 route motion, and browser navigation are disabled in native mode because moving
 only the mesh creates a visible body and an authoritative hitbox in different
 locations.
+
+## Multiplayer retaliation and NPC opponents
+
+Damage evidence, not proximity alone, opens retaliation. For 30 seconds after a
+real hit, the directly attacked creature and its eligible authored responders
+select from the alive combat participants in a bounded 18-metre vicinity. The
+direct attacker is first; group responder rank distributes a pack across nearby
+players, and a solo creature rotates every six seconds. Threat still orders the
+list, and a taunt-sized threat value prevents rotation away from its owner.
+
+Safe zones still prevent proactive aggro. After a real hit opens the bounded
+encounter, however, every alive non-peace player inside the 18-metre vicinity is
+an eligible participant even on protected or clean terrain; otherwise the fight
+collapses back onto the opener and reproduces the multiplayer defect. An NPC is
+eligible only when it opened the encounter or its public combat state shows it
+is actively attacking that creature. That permits player-owned combat escorts
+to participate without making civilians, quest NPCs, unrelated animals, or
+nearby monsters valid collateral targets.
+
+NPC attacks use the same health authorities as player combat:
+
+- a player target receives `UpdatePlayerHealthEvent`;
+- an NPC/escort target receives `UpdateNpcHealthEvent`;
+- Logic verifies the attacking NPC's current Anima melee or ranged receipt,
+  derives the authoritative damage, and rejects stale, mismatched, or replayed
+  receipts;
+- NPC-caused kills do not publish player kill credit, XP, or quest attribution.
+
+Jobs-board escorts use `defend_leader` by default. They never start a proximity
+fight, but can defend themselves and their player. Explicitly authored
+`noncombatant` and unkillable story assignments retain those protections.
 
 ## Weapons, armor, levels, and validation
 
@@ -113,6 +145,10 @@ Automated tests must cover:
 - armor/defense/evasion and armor durability;
 - moving and stationary exact NPC types;
 - hostile, retaliation-only livestock/tutorial creatures, and sentinels;
+- two nearby players sharing retaliation, deterministic pack distribution, and
+  solo target rotation;
+- combat escorts defending their player and receiving receipt-authorized melee
+  and ranged NPC damage exactly once;
 - player-versus-NPC and migrated Harthmere player-versus-player damage;
 - lethal hit, zero clamp, XP, boss credit, exact drops, and respawn scheduling;
 - exact Muckwad ID and inability to attack while it is selected;

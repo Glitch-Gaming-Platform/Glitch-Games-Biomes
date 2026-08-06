@@ -25,7 +25,11 @@
 //   scripts/harthmere/typecheck-anima-combat.sh
 {
   "extends": "./tsconfig.json",
-  "compilerOptions": { "noEmit": true, "incremental": false },
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false,
+    "types": ["node", "mocha"]
+  },
   "include": [
     "src/server/harthmere/live_entity_ecs_seed.ts",
     "src/server/harthmere/ch1_escort_scheduler.ts",

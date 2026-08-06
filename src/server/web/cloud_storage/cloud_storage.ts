@@ -14,6 +14,26 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import { dirname } from "path";
 
 let instance: gcs.Storage | null = null;
+const localDirectoryInitializers = new Map<string, Promise<void>>();
+
+async function ensureLocalDirectory(directory: string) {
+  let initializer = localDirectoryInitializers.get(directory);
+  if (!initializer) {
+    // Local image bundles upload five resized variants concurrently. On the
+    // production-shaped Docker overlay, racing recursive mkdir calls for a new
+    // user directory can surface a transient ENOENT even though each call is
+    // individually recursive. Share one initializer per directory instead.
+    initializer = mkdir(directory, { recursive: true }).then(() => undefined);
+    localDirectoryInitializers.set(directory, initializer);
+    const clearInitializer = () => {
+      if (localDirectoryInitializers.get(directory) === initializer) {
+        localDirectoryInitializers.delete(directory);
+      }
+    };
+    void initializer.then(clearInitializer, clearInitializer);
+  }
+  await initializer;
+}
 
 function getInstance(): gcs.Storage {
   if (instance === null) {
@@ -37,7 +57,7 @@ export async function uploadToBucket(
     );
     // Make the parent directory
     const file = localPath(bucket, path);
-    await mkdir(dirname(file), { recursive: true });
+    await ensureLocalDirectory(dirname(file));
     await writeFile(file, data);
     return;
   }

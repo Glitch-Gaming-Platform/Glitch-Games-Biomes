@@ -6,7 +6,10 @@ import type { PermissionsManager } from "@/client/game/context_managers/permissi
 import type { ClientTable } from "@/client/game/game";
 import { BasePassMaterial } from "@/client/game/renderers/base_pass_material";
 import type { Renderable } from "@/client/game/renderers/cull_entities";
-import { cullEntities } from "@/client/game/renderers/cull_entities";
+import {
+  cullEntities,
+  nearestKEntitiesInFrustum,
+} from "@/client/game/renderers/cull_entities";
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import { safePlayerLightDirection } from "@/client/game/renderers/player_lighting";
 import type { Scenes } from "@/client/game/renderers/scenes";
@@ -14,6 +17,10 @@ import { addToScenes } from "@/client/game/renderers/scenes";
 import { computeNonDarkSpatialLighting } from "@/client/game/renderers/util";
 import type { Camera } from "@/client/game/resources/camera";
 import { drawLimitValueWithTweak } from "@/client/game/resources/graphics_settings";
+import {
+  harthmereHotbarHeldItemForAttachment,
+  isHarthmereChapter1DisplayOnlyHeldItem,
+} from "@/client/game/resources/harthmere_held_item";
 import { ItemMeshKey } from "@/client/game/resources/item_mesh";
 import type { LocalPlayer } from "@/client/game/resources/local_player";
 import type { ParticleSystemMaterials } from "@/client/game/resources/particles";
@@ -30,6 +37,11 @@ import {
   thirdPersonCamPosition,
 } from "@/client/game/util/camera";
 import { physicsHookPosition } from "@/client/game/util/fishing/helpers";
+import {
+  harthmereHeldBowClipForEmote,
+  harthmereHeldItemClipForEmote,
+} from "@/client/game/util/held_item_animation";
+import { remotePlayerMeshLoadLimitForDevice } from "@/client/game/util/mobile_player_mesh_budget";
 import { syncAnimationsToPlayerState } from "@/client/game/util/player_animations";
 import { updateBasicMaterial } from "@/gen/client/game/shaders/basic";
 import { updatePlayerSkinnedMaterial } from "@/gen/client/game/shaders/player_skinned";
@@ -46,6 +58,9 @@ import type {
 } from "@/shared/ecs/gen/types";
 import { isFloraId } from "@/shared/game/ids";
 import { anItem } from "@/shared/game/item";
+import { isHarthmereBowWeapon } from "@/shared/harthmere/harthmere_ranged_resources";
+import { harthmereNativeItemIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
+import { getHarthmerePremiumWeapon } from "@/shared/harthmere/premium_weapon_catalog";
 import {
   movementActionYaw,
   playerMovementActionAnimationName,
@@ -68,6 +83,8 @@ interface RenderablePlayer {
   playerMesh: LoadedPlayerMesh;
   localPlayer?: LocalPlayer;
 }
+
+export { harthmereHeldBowClipForEmote } from "@/client/game/util/held_item_animation";
 
 const numPlayersCval = new Cval({
   path: ["renderer", "players", "numPlayers"],
@@ -506,17 +523,32 @@ export class PlayersRenderer implements Renderer {
     // Add the local player.
     const tweaks = this.resources.get("/tweaks");
     const camera = this.resources.get("/scene/camera");
+    const remotePlayerRenderLimit = drawLimitValueWithTweak(
+      this.resources,
+      tweaks.clientRendering.remotePlayerRenderLimit
+    );
 
-    const renderablePlayers = this.getRenderablePlayers();
+    const renderablePlayers = this.getRenderablePlayers(
+      remotePlayerRenderLimit
+    );
 
     renderablePlayers.forEach((x) =>
       this.updatePlayerThree(x.player, x.playerMesh, dt, camera, x.localPlayer)
     );
 
-    this.addPlayersToScene(renderablePlayers, tweaks, camera, scenes, dt);
+    this.addPlayersToScene(
+      renderablePlayers,
+      tweaks,
+      camera,
+      scenes,
+      dt,
+      remotePlayerRenderLimit
+    );
   }
 
-  private getRenderablePlayers(): RenderablePlayer[] {
+  private getRenderablePlayers(
+    remotePlayerRenderLimit: number
+  ): RenderablePlayer[] {
     const localPlayer = this.resources.get("/scene/local_player");
     const showGremlins =
       this.authManager.currentUser.hasSpecialRole("seeGremlins") &&
@@ -549,16 +581,48 @@ export class PlayersRenderer implements Renderer {
     if (localPlayerEntity) {
       maybeRenderPlayer(localPlayerEntity);
     }
-    for (const entity of this.table.scan(
-      PlayerSelector.query.spatial.inSphere(camera.frustumBoundingSphere, {
-        approx: true,
-      })
-    )) {
+    // MOBILE_REMOTE_PLAYER_MESH_BUDGET: the ordinary render limit used to run
+    // only after `cached("/scene/player/mesh")` below. At a crowded spawn that
+    // meant Mobile Safari parsed every distinct generated avatar GLB before it
+    // discarded most of them for drawing, crossing the 1.5 GiB WebContent
+    // ceiling. Select the nearest phone-visible players before the first mesh
+    // request. Desktop deliberately keeps the existing broad scan.
+    const mobileMeshLimit = remotePlayerMeshLoadLimitForDevice(
+      this.clientConfig.mobileDevice,
+      remotePlayerRenderLimit
+    );
+    const remoteEntities =
+      mobileMeshLimit === undefined
+        ? this.table.scan(
+            PlayerSelector.query.spatial.inSphere(
+              camera.frustumBoundingSphere,
+              { approx: true }
+            )
+          )
+        : nearestKEntitiesInFrustum(
+            camera,
+            (query) => this.table.scan(query),
+            PlayerSelector,
+            // The local player is loaded above and skipped below. Reserve one
+            // extra candidate so its presence in the spatial result does not
+            // reduce the intended remote-player budget.
+            mobileMeshLimit + 1,
+            { mustKeep: new Set([localPlayer.id]) }
+          );
+    let acceptedRemotePlayers = 0;
+    for (const entity of remoteEntities) {
       if (entity.id === localPlayer.id) {
         // We ensure local player is rendered already, skip it here.
         continue;
       }
+      if (
+        mobileMeshLimit !== undefined &&
+        acceptedRemotePlayers >= mobileMeshLimit
+      ) {
+        break;
+      }
       maybeRenderPlayer(entity);
+      acceptedRemotePlayers += 1;
     }
     return players;
   }
@@ -589,7 +653,8 @@ export class PlayersRenderer implements Renderer {
     tweaks: TweakableConfig,
     camera: Camera,
     scenes: Scenes,
-    dt: number
+    dt: number,
+    remotePlayerRenderLimit: number
   ) {
     numPlayersCval.value = renderablePlayers.length;
 
@@ -600,10 +665,7 @@ export class PlayersRenderer implements Renderer {
     const playersToRender = cullEntities(
       renderables,
       camera,
-      drawLimitValueWithTweak(
-        this.resources,
-        tweaks.clientRendering.remotePlayerRenderLimit
-      )
+      remotePlayerRenderLimit
     );
 
     numRenderedPlayersCval.value = playersToRender.length;
@@ -822,7 +884,9 @@ export class PlayersRenderer implements Renderer {
 
     const clock = this.resources.get("/clock");
     const selectedItem = localPlayer
-      ? this.resources.get("/hotbar/selection").item
+      ? harthmereHotbarHeldItemForAttachment(
+          this.resources.get("/hotbar/selection").item
+        )
       : ecsPlayer.selected_item?.item?.item;
 
     const becomeNpc = this.resources.get("/scene/npc/become_npc");
@@ -833,6 +897,7 @@ export class PlayersRenderer implements Renderer {
 
     const selectedItemActionAllowed =
       !localPlayer ||
+      isHarthmereChapter1DisplayOnlyHeldItem(selectedItem) ||
       this.permissionsManager.itemActionAllowed(
         selectedItem,
         ...this.resources.get("/player/effective_acl").acls
@@ -842,8 +907,8 @@ export class PlayersRenderer implements Renderer {
     const attachedItem = robotComponent
       ? anItem(BikkieIds.remoteControl)
       : player.isEmoting(clock.time)
-      ? player.emoteItemOverride(allowedItem, clock.time)
-      : allowedItem;
+        ? player.emoteItemOverride(allowedItem, clock.time)
+        : allowedItem;
 
     if (playerTakingSelfie(this.resources, renderablePlayer)) {
       // Don't show the camera in the player's hands if they're taking a selfie.
@@ -879,12 +944,47 @@ export class PlayersRenderer implements Renderer {
     } else {
       const sky = this.resources.get("/scene/sky_params");
       const spatialLighting = player.getSpatialLighting();
+      const semanticItemId = attachedItem
+        ? harthmereNativeItemIdForBiomesId(Number(attachedItem.id))
+        : undefined;
+      const premium = semanticItemId
+        ? getHarthmerePremiumWeapon(semanticItemId)
+        : undefined;
+      const emoteType = player.emoteInfo?.emoteType;
+      const animationClip = premium
+        ? harthmereHeldItemClipForEmote(premium, emoteType)
+        : undefined;
+      const animationIsIdle = animationClip === premium?.idleClip;
       playerMesh.itemAttachment.updateAttachedItem(
         this.resources,
         attachedItem,
         spatialLighting,
-        sky.sunDirection.toArray()
+        sky.sunDirection.toArray(),
+        animationClip
+          ? {
+              clipName: animationClip,
+              localTimeSeconds: animationIsIdle
+                ? clock.time
+                : Math.max(
+                    0,
+                    clock.time - (player.emoteInfo?.emoteStartTime ?? 0)
+                  ),
+              fallbackClipName: animationIsIdle ? undefined : premium?.idleClip,
+              fallbackLocalTimeSeconds: clock.time,
+            }
+          : undefined
       );
+      if (localPlayer && typeof window !== "undefined") {
+        const bridgeWindow = window as typeof window & {
+          __harthmereHeldBowArrowSocket?: readonly [number, number, number];
+        };
+        const socket = isHarthmereBowWeapon(attachedItem)
+          ? playerMesh.itemAttachment.socketWorldPosition("ArrowSocket")
+          : undefined;
+        bridgeWindow.__harthmereHeldBowArrowSocket = socket
+          ? [socket.x, socket.y, socket.z]
+          : undefined;
+      }
     }
   }
 }

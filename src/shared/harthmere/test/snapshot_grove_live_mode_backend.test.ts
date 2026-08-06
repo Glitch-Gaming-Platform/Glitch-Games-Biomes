@@ -3,6 +3,7 @@ import assert from "assert";
 import {
   defaultHarthmereLiveModeBackendState,
   reduceHarthmereLiveModeBackendState,
+  snapshotGroveClientEvidenceMatchesAuthoredTriggerForTest,
   type HarthmereLiveModeBackendState,
 } from "@/shared/harthmere/live_mode_backend";
 import type {
@@ -69,6 +70,60 @@ function snapshotQuestPayload(
 }
 
 describe("Snapshot Grove live-mode authority", () => {
+  it("rejects a stale arrival callback when the quest has advanced to collect", () => {
+    const questId = "econ_billys_lost_lunch_pail";
+    const state = freshState();
+    state.quests.active[questId] = {
+      source: "snapshot_grove",
+      stepId: `${questId}:2:collect`,
+      progress: 3,
+    };
+
+    const staleArrival = applyQuestMutation(state, {
+      ...snapshotQuestPayload(questId, 2, 4),
+      reason: "arrived_at_marker",
+      evidenceTrigger: "near_location",
+    });
+
+    assert.ok(
+      staleArrival.summary.warnings.includes(
+        "snapshot_grove_quest_rejected:trigger_evidence_mismatch"
+      )
+    );
+    assert.equal(staleArrival.state.quests.active[questId].progress, 3);
+  });
+
+  it("audits every authored objective against stale trigger evidence", () => {
+    for (const quest of SNAPSHOT_GROVE_QUESTS) {
+      for (let index = 0; index < quest.triggers.length; index += 1) {
+        const authoredTrigger = quest.triggers[index];
+        const staleTrigger = quest.triggers.find(
+          (candidate) => candidate !== authoredTrigger
+        );
+        if (staleTrigger) {
+          assert.equal(
+            snapshotGroveClientEvidenceMatchesAuthoredTriggerForTest({
+              authoredTrigger,
+              evidenceTrigger: staleTrigger,
+              reason: "event",
+            }),
+            false,
+            `${quest.id}:${index} accepted stale ${staleTrigger} evidence for ${authoredTrigger}`
+          );
+        }
+        assert.equal(
+          snapshotGroveClientEvidenceMatchesAuthoredTriggerForTest({
+            authoredTrigger,
+            evidenceTrigger: authoredTrigger,
+            reason: "event",
+          }),
+          true,
+          `${quest.id}:${index} rejected its authored ${authoredTrigger} evidence`
+        );
+      }
+    }
+  });
+
   it("keeps counted-objective progress monotonic across stale cloud writes", () => {
     const state = freshState();
     state.quests.active.color_that_still_points_home = {

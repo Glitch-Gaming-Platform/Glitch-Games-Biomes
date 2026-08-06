@@ -46,5 +46,29 @@ describe("animation locomotion threshold", () => {
     assert.equal(action.weights.idle, 0);
     assert.ok(action.weights.walk > 0);
     assert.equal(action.weights.run, 0);
+    assert.equal(action.playbackRates?.walk, 0.65);
+  });
+
+  it("scales locomotion cadence from horizontal speed, not vertical velocity", () => {
+    const walking = getVelocityBasedWeights({
+      velocity: [0, 12, -1.8],
+      orientation: [0, 0],
+      movementType: "walking",
+      runSpeed: 4,
+      characterSystem,
+      idleSpeed: 0.06,
+    });
+    assert.ok(Math.abs((walking.playbackRates?.walk ?? 0) - 1) < 1e-9);
+
+    const running = getVelocityBasedWeights({
+      velocity: [0, -30, -4],
+      orientation: [0, 0],
+      movementType: "walking",
+      runSpeed: 4,
+      characterSystem,
+      idleSpeed: 0.06,
+    });
+    assert.ok(running.weights.run > 0);
+    assert.ok(Math.abs((running.playbackRates?.run ?? 0) - 1) < 1e-9);
   });
 });

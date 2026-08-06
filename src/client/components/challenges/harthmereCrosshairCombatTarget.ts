@@ -18,12 +18,16 @@
 
 export type HarthmereCrosshairCombatActor = {
   offset: number;
+  entityId?: number;
   attackable: boolean;
   radius: number;
   targetId?: string;
   label?: string;
   asset?: string;
   species?: string;
+  behavior?: string;
+  socialRole?: string;
+  health?: { hp: number; maxHp?: number };
   screenX?: number;
   screenY?: number;
   screenVisible?: boolean;
@@ -96,7 +100,10 @@ export function pickHarthmereCrosshairCombatTarget(
   if (!Number.isFinite(aim.x) || !Number.isFinite(aim.y)) {
     return undefined;
   }
-  const tolerance = crosshairScreenTolerancePx(aim, input.baseScreenTolerancePx);
+  const tolerance = crosshairScreenTolerancePx(
+    aim,
+    input.baseScreenTolerancePx
+  );
   const haveOrigin =
     Number.isFinite(input.playerX) && Number.isFinite(input.playerZ);
 
@@ -150,11 +157,11 @@ export function pickHarthmereCrosshairCombatTarget(
         Number.isFinite(actor.worldX) &&
         Number.isFinite(actor.worldY) &&
         Number.isFinite(actor.worldZ)
-          ? [
+          ? ([
               actor.worldX as number,
               actor.worldY as number,
               actor.worldZ as number,
-            ] satisfies [number, number, number]
+            ] satisfies [number, number, number])
           : undefined;
       best = {
         offset: actor.offset,
@@ -182,9 +189,9 @@ function isBrowserEnv(): boolean {
   return typeof window !== "undefined";
 }
 
-function parseScreen(raw: unknown):
-  | { x?: number; y?: number; visible?: boolean; depth?: number }
-  | undefined {
+function parseScreen(
+  raw: unknown
+): { x?: number; y?: number; visible?: boolean; depth?: number } | undefined {
   if (!raw || typeof raw !== "object") {
     return undefined;
   }
@@ -215,8 +222,8 @@ export function readHarthmereCrosshairCombatActors(): HarthmereCrosshairCombatAc
     win.__harthmereCombatActorPositions,
     win.__harthmereEcsNpcCombatActorPositions,
     win.__harthmereVoxelNpcMotionActorPositions,
-  ].filter(
-    (raw): raw is Record<string, unknown> => Boolean(raw && typeof raw === "object")
+  ].filter((raw): raw is Record<string, unknown> =>
+    Boolean(raw && typeof raw === "object")
   );
 
   const now = Date.now();
@@ -238,15 +245,23 @@ export function readHarthmereCrosshairCombatActors(): HarthmereCrosshairCombatAc
       const screen = parseScreen(actor.screen);
       const world = Array.isArray(actor.world) ? actor.world : undefined;
       const targetId =
-        typeof actor.liveModeTargetId === "string" && actor.liveModeTargetId.trim()
+        typeof actor.liveModeTargetId === "string" &&
+        actor.liveModeTargetId.trim()
           ? actor.liveModeTargetId.trim()
           : typeof actor.targetId === "string" && actor.targetId.trim()
             ? actor.targetId.trim()
             : undefined;
       byOffset.set(offset, {
         offset,
+        entityId: Number.isFinite(Number(actor.entityId))
+          ? Number(actor.entityId)
+          : Number.isFinite(Number(actor.id))
+            ? Number(actor.id)
+            : undefined,
         attackable: actor.attackable === false ? false : true,
-        radius: Number.isFinite(Number(actor.radius)) ? Number(actor.radius) : 1.15,
+        radius: Number.isFinite(Number(actor.radius))
+          ? Number(actor.radius)
+          : 1.15,
         targetId,
         label: typeof actor.label === "string" ? actor.label : undefined,
         asset: typeof actor.asset === "string" ? actor.asset : undefined,
@@ -256,6 +271,21 @@ export function readHarthmereCrosshairCombatActors(): HarthmereCrosshairCombatAc
             : typeof actor.appearanceSpecies === "string"
               ? actor.appearanceSpecies
               : undefined,
+        behavior:
+          typeof actor.behavior === "string" ? actor.behavior : undefined,
+        socialRole:
+          typeof actor.socialRole === "string" ? actor.socialRole : undefined,
+        health:
+          actor.health && typeof actor.health === "object"
+            ? {
+                hp: Number((actor.health as Record<string, unknown>).hp),
+                maxHp: Number.isFinite(
+                  Number((actor.health as Record<string, unknown>).maxHp)
+                )
+                  ? Number((actor.health as Record<string, unknown>).maxHp)
+                  : undefined,
+              }
+            : undefined,
         screenX: screen?.x,
         screenY: screen?.y,
         screenVisible: screen?.visible,

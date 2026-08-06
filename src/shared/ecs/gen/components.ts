@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from components.ts.j2. Do not modify directly.
-// Content Hash: 2b610eb4f17e59d8963182b3fb6da384
+// Content Hash: 79619f2408b11731093f13d12d95d123
 
 import * as t from "@/shared/ecs/gen/types";
 import { cloneDeepWithItems } from "@/shared/game/item";
@@ -1743,6 +1743,7 @@ export interface FarmingPlantComponent {
   player_actions: t.FarmingPlayerActionList;
   fully_grown_at: t.OptionalF64;
   next_stage_at: t.OptionalF64;
+  skill_growth_time_multiplier: t.OptionalF64;
 }
 
 export interface ReadonlyFarmingPlantComponent {
@@ -1762,6 +1763,7 @@ export interface ReadonlyFarmingPlantComponent {
   readonly player_actions: t.ReadonlyFarmingPlayerActionList;
   readonly fully_grown_at: t.ReadonlyOptionalF64;
   readonly next_stage_at: t.ReadonlyOptionalF64;
+  readonly skill_growth_time_multiplier: t.ReadonlyOptionalF64;
 }
 
 export class FarmingPlantComponent {
@@ -1817,6 +1819,9 @@ export class FarmingPlantComponent {
     }
     if (fields.next_stage_at === undefined) {
       fields.next_stage_at = t.defaultOptionalF64;
+    }
+    if (fields.skill_growth_time_multiplier === undefined) {
+      fields.skill_growth_time_multiplier = t.defaultOptionalF64;
     }
     return fields as FarmingPlantComponent;
   }
@@ -3177,6 +3182,13 @@ export interface NpcCombatState {
   ranged_attack_result: t.OptionalString;
   ranged_attack_charge_time_secs: t.OptionalF64;
   ranged_attack_release_time: t.OptionalF64;
+  stagger_kind: t.OptionalString;
+  stagger_start_time: t.OptionalF64;
+  stagger_expiry_time: t.OptionalF64;
+  stagger_direction: t.OptionalVec3f;
+  stagger_sequence: t.OptionalF64;
+  poise: t.OptionalF64;
+  poise_max: t.OptionalF64;
 }
 
 export interface ReadonlyNpcCombatState {
@@ -3188,6 +3200,13 @@ export interface ReadonlyNpcCombatState {
   readonly ranged_attack_result: t.ReadonlyOptionalString;
   readonly ranged_attack_charge_time_secs: t.ReadonlyOptionalF64;
   readonly ranged_attack_release_time: t.ReadonlyOptionalF64;
+  readonly stagger_kind: t.ReadonlyOptionalString;
+  readonly stagger_start_time: t.ReadonlyOptionalF64;
+  readonly stagger_expiry_time: t.ReadonlyOptionalF64;
+  readonly stagger_direction: t.ReadonlyOptionalVec3f;
+  readonly stagger_sequence: t.ReadonlyOptionalF64;
+  readonly poise: t.ReadonlyOptionalF64;
+  readonly poise_max: t.ReadonlyOptionalF64;
 }
 
 export class NpcCombatState {
@@ -3217,6 +3236,27 @@ export class NpcCombatState {
     }
     if (fields.ranged_attack_release_time === undefined) {
       fields.ranged_attack_release_time = t.defaultOptionalF64;
+    }
+    if (fields.stagger_kind === undefined) {
+      fields.stagger_kind = t.defaultOptionalString;
+    }
+    if (fields.stagger_start_time === undefined) {
+      fields.stagger_start_time = t.defaultOptionalF64;
+    }
+    if (fields.stagger_expiry_time === undefined) {
+      fields.stagger_expiry_time = t.defaultOptionalF64;
+    }
+    if (fields.stagger_direction === undefined) {
+      fields.stagger_direction = t.defaultOptionalVec3f;
+    }
+    if (fields.stagger_sequence === undefined) {
+      fields.stagger_sequence = t.defaultOptionalF64;
+    }
+    if (fields.poise === undefined) {
+      fields.poise = t.defaultOptionalF64;
+    }
+    if (fields.poise_max === undefined) {
+      fields.poise_max = t.defaultOptionalF64;
     }
     return fields as NpcCombatState;
   }

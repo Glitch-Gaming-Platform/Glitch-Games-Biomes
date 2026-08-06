@@ -44,21 +44,14 @@ import type { HarthmereCombatKeyAction } from "@/client/components/challenges/ha
 /** Synthetic-motion source names. One per control, so releases never collide. */
 export const MOBILE_PRIMARY_ACTION_SOURCE = "mobile-primary-button";
 export const MOBILE_SECONDARY_ACTION_SOURCE = "mobile-secondary-button";
-
 /**
  * The verbs a phone control can invoke.
  *
- * `primary` / `secondary` are hold-capable input motions. The three combat
+ * `primary` / `secondary` are hold-capable input motions. The remaining combat
  * entries are discrete presses routed through the existing native combat
  * dispatcher so they keep the same authority as their keyboard equivalents.
  */
-export type MobileActionKind =
-  | "primary"
-  | "secondary"
-  | "draw"
-  | "target"
-  | "heavy"
-  | "spark";
+export type MobileActionKind = "primary" | "secondary" | "target" | "spark";
 
 export interface MobileActionButtonSpec {
   kind: MobileActionKind;
@@ -81,14 +74,7 @@ export interface MobileActionButtonSpec {
  * action; we only translate them into a caption.
  */
 export type MobilePrimaryLabelKind =
-  | "attack"
-  | "cast"
-  | "consume"
-  | "fish"
-  | "place"
-  | "tool"
-  | "use"
-  | "mine";
+  "attack" | "cast" | "consume" | "fish" | "place" | "tool" | "use" | "mine";
 
 const PRIMARY_LABELS: Record<MobilePrimaryLabelKind, string> = {
   attack: "Attack",
@@ -99,6 +85,17 @@ const PRIMARY_LABELS: Record<MobilePrimaryLabelKind, string> = {
   tool: "Use",
   use: "Use",
   mine: "Mine",
+};
+
+const PRIMARY_GLYPHS: Record<MobilePrimaryLabelKind, string> = {
+  attack: "⚔",
+  cast: "✦",
+  consume: "◉",
+  fish: "🎣",
+  place: "🧱",
+  tool: "⛏",
+  use: "✋",
+  mine: "⛏",
 };
 
 /**
@@ -113,13 +110,18 @@ export function mobilePrimaryActionLabel(
   return kind ? PRIMARY_LABELS[kind] : PRIMARY_LABELS.mine;
 }
 
+/** The icon changes with the selected item while remaining one button. */
+export function mobilePrimaryActionGlyph(
+  kind: MobilePrimaryLabelKind | undefined
+) {
+  return kind ? PRIMARY_GLYPHS[kind] : PRIMARY_GLYPHS.mine;
+}
+
 /** Map a combat button to the action understood by the native combat router. */
 export function mobileCombatActionForKind(
   kind: MobileActionKind
 ): HarthmereCombatKeyAction | undefined {
   switch (kind) {
-    case "heavy":
-      return "heavy";
     case "spark":
       return "spark";
     default:
@@ -147,30 +149,22 @@ export interface MobileActionAvailability {
   sparkBlockedReason?: string;
 }
 
-const PRIMARY_SPEC: Omit<MobileActionButtonSpec, "label"> = {
+const PRIMARY_SPEC: Omit<MobileActionButtonSpec, "label" | "glyph"> = {
   kind: "primary",
-  glyph: "⛏",
-  ariaLabel: "Primary action: hold to mine, attack, or use the selected item",
+  ariaLabel:
+    "Primary action: tap to mine, use, or light attack; hold to keep mining or perform a heavy attack",
   holdable: true,
   testAttribute: "primary",
 };
 
 const SECONDARY_SPEC: MobileActionButtonSpec = {
   kind: "secondary",
-  glyph: "▣",
+  glyph: "🧱",
   label: "Place",
-  ariaLabel: "Secondary action: place the selected block or use the alternate action",
+  ariaLabel:
+    "Secondary action: place the selected block or use the alternate action",
   holdable: true,
   testAttribute: "secondary",
-};
-
-const DRAW_SPEC: MobileActionButtonSpec = {
-  kind: "draw",
-  glyph: "🗡",
-  label: "Draw",
-  ariaLabel: "Draw or sheathe your weapon",
-  holdable: false,
-  testAttribute: "draw",
 };
 
 const TARGET_SPEC: MobileActionButtonSpec = {
@@ -180,15 +174,6 @@ const TARGET_SPEC: MobileActionButtonSpec = {
   ariaLabel: "Cycle combat target",
   holdable: false,
   testAttribute: "target",
-};
-
-const HEAVY_SPEC: MobileActionButtonSpec = {
-  kind: "heavy",
-  glyph: "⚔",
-  label: "Heavy",
-  ariaLabel: "Heavy attack",
-  holdable: false,
-  testAttribute: "heavy",
 };
 
 const SPARK_SPEC: MobileActionButtonSpec = {
@@ -206,24 +191,28 @@ const SPARK_SPEC: MobileActionButtonSpec = {
  * Ordering matters: it is the thumb-reach order, closest first. Primary and
  * secondary always exist because mining and placing are core to the game and
  * must never depend on combat state. The combat controls only appear in native
- * ECS authority mode, and heavy/spark only once a weapon is drawn -- matching
- * the keyboard flow, where the first B/H press draws the weapon and the second
- * one strikes.
+ * ECS authority mode. Primary is the one context-sensitive mine/use/attack
+ * button: the existing selected-item script interprets a tap as its ordinary
+ * action and a held attack as heavy. Target and Spark appear once combat is
+ * active; dedicated attack, heavy, and draw buttons intentionally do not exist.
  */
 export function mobileActionButtons(
   availability: MobileActionAvailability,
   primaryLabelKind?: MobilePrimaryLabelKind
 ): MobileActionButtonSpec[] {
   const buttons: MobileActionButtonSpec[] = [
-    { ...PRIMARY_SPEC, label: mobilePrimaryActionLabel(primaryLabelKind) },
+    {
+      ...PRIMARY_SPEC,
+      glyph: mobilePrimaryActionGlyph(primaryLabelKind),
+      label: mobilePrimaryActionLabel(primaryLabelKind),
+    },
     SECONDARY_SPEC,
   ];
   if (!availability.nativeCombatEnabled) {
     return buttons;
   }
-  buttons.push(DRAW_SPEC);
   if (availability.weaponDrawn) {
-    buttons.push(TARGET_SPEC, HEAVY_SPEC, SPARK_SPEC);
+    buttons.push(TARGET_SPEC, SPARK_SPEC);
   }
   return buttons;
 }
@@ -243,12 +232,11 @@ export function mobileActionDisabledReason(
   switch (kind) {
     case "primary":
     case "secondary":
-    case "draw":
     case "target":
       return undefined;
-    case "heavy":
-      return availability.attackBlockedReason;
     case "spark":
-      return availability.sparkBlockedReason ?? availability.attackBlockedReason;
+      return (
+        availability.sparkBlockedReason ?? availability.attackBlockedReason
+      );
   }
 }

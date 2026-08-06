@@ -19,6 +19,7 @@ import {
   type HarthmereJobProgress,
 } from "@/shared/harthmere/harthmere_job_objective";
 import { formatHarthmereJobTimeRemaining } from "@/shared/harthmere/mmo_jobs_board_authority";
+import { humanReadableHarthmereIdentifier } from "@/shared/harthmere/harthmere_readable_names";
 import type { Vec3 } from "@/shared/math/types";
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
 
@@ -334,7 +335,7 @@ function jobsBoardTodoMarkerPlanForBiomesUI(
     }
     if (
       kind === "escort" &&
-      (job as any)?.escortCompanion?.status === "arrived"
+      job?.escortCompanion?.status === "arrived"
     ) {
       progress.escortArrived = true;
     }
@@ -353,6 +354,42 @@ function jobsBoardTodoMarkerPlanForBiomesUI(
     boardMarkerId,
     progress,
   });
+}
+
+function jobsBoardEscortDestinationForBiomesUI(
+  todo: HarthmereJobsBoardTodo,
+  job: HarthmereJobsBoardPosting | undefined,
+  plan: HarthmereJobMarkerPlan
+) {
+  if ((todo.kind ?? job?.kind) !== "escort" || plan.phase !== "field") {
+    return undefined;
+  }
+  const companion = job?.escortCompanion;
+  const destination = companion?.destination;
+  const x = Number(destination?.x);
+  const y = Number(destination?.y);
+  const z = Number(destination?.z);
+  if (![x, y, z].every(Number.isFinite)) {
+    return undefined;
+  }
+  const markerId =
+    companion?.destinationMarkerId ??
+    companion?.destinationTargetId ??
+    plan.activeMarkerId ??
+    todo.mapMarkerId ??
+    job?.mapMarkerId ??
+    `escort_destination:${todo.todoId}`;
+  const label =
+    job?.requirements.find(
+      (requirement) =>
+        requirement.mapMarkerId === markerId ||
+        requirement.targetId === markerId
+    )?.targetName ?? "Escort Destination";
+  return {
+    markerId,
+    label,
+    position: [x, y, z] as Vec3,
+  };
 }
 
 function jobsBoardTodoObjectiveForBiomesUI(
@@ -411,11 +448,17 @@ export function jobsBoardAcceptedJobLandmarksForBiomesUI(
     }
     seenTodoIds.add(todo.todoId);
     const plan = jobsBoardTodoMarkerPlanForBiomesUI(snapshot, todo, job);
-    const marker = harthmereJobsBoardQuestMarkerRuntimePositionForTodo({
-      mapMarkerId: plan.activeMarkerId ?? todo.mapMarkerId ?? job?.mapMarkerId,
-      targetId: plan.activeMarkerId ?? todo.targetId ?? job?.targetId,
-      fallbackPosition: jobsBoardTodoFallbackPosition(snapshot, todo),
-    });
+    const marker =
+      jobsBoardEscortDestinationForBiomesUI(todo, job, plan) ??
+      harthmereJobsBoardQuestMarkerRuntimePositionForTodo({
+        mapMarkerId: plan.activeMarkerId ?? todo.mapMarkerId ?? job?.mapMarkerId,
+        targetId: plan.activeMarkerId ?? todo.targetId ?? job?.targetId,
+        fallbackPosition: jobsBoardTodoFallbackPosition(snapshot, todo),
+      });
+    const targetId =
+      (todo.kind ?? job?.kind) === "escort"
+        ? marker.markerId
+        : todo.targetId ?? job?.targetId;
     return [
       {
         id: jobsBoardTodoMarkerId(todo),
@@ -431,7 +474,7 @@ export function jobsBoardAcceptedJobLandmarksForBiomesUI(
         jobsBoardTodoId: todo.todoId,
         jobsBoardJobId: todo.jobId,
         mapMarkerId: marker.markerId,
-        targetId: todo.targetId ?? job?.targetId,
+        targetId,
       },
     ];
   });
@@ -535,13 +578,16 @@ export function jobsBoardItemSourceLandmarksForBiomesUI(
         ? ([...guidance.markerPosition] as Vec3)
         : undefined);
     if (!position) return [];
+    const sourceName =
+      registryMarker?.label ??
+      humanReadableHarthmereIdentifier(guidance.sourceName);
     return [
       {
         id: `${JOBS_BOARD_ITEM_SOURCE_MARKER_ID_PREFIX}${todo.todoId}`,
-        label: `Get ${guidance.itemName} — ${guidance.sourceName}`,
+        label: `Get ${guidance.itemName} — ${sourceName}`,
         position,
         kind: "objective" as const,
-        area: guidance.sourceName,
+        area: sourceName,
         visibleOnWorldMap: true as const,
         visibleOnHudMap: true as const,
         active: true as const,
@@ -590,6 +636,14 @@ export function jobsBoardTrackableQuestsForBiomesUI(
             inventoryItems: snapshot.inventoryItems,
           })
         : undefined;
+    const itemSourceName = itemGuidance
+      ? (itemGuidance.markerId
+          ? harthmereJobsBoardQuestMarkerRuntimePositionForId(
+              itemGuidance.markerId
+            )?.label
+          : undefined) ??
+        humanReadableHarthmereIdentifier(itemGuidance.sourceName)
+      : undefined;
     // Full-detail fields for the click-to-review quest panel. The tool-source
     // callout only shows for an active job whose tool the player does NOT own.
     const guidance =
@@ -636,7 +690,7 @@ export function jobsBoardTrackableQuestsForBiomesUI(
           ? {
               itemId: itemGuidance.itemId,
               itemName: itemGuidance.itemName,
-              sourceName: itemGuidance.sourceName,
+              sourceName: itemSourceName ?? itemGuidance.sourceName,
               markerId: itemGuidance.markerId,
               hint: itemGuidance.hint,
               missingCount: itemGuidance.missingCount,

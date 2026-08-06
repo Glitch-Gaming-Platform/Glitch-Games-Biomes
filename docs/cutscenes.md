@@ -217,6 +217,51 @@ Acceptance requires the projectile prototype to be loaded, `Failed 0`, no
 fallback, one new spawn, `Active: fireball` during travel, and one matching
 impact. A custom action firing successfully is not by itself visual proof.
 
+Before adding another projectile action, use this checklist:
+
+1. Choose a `projectileId` from the shared visual manifest; never use an ability
+   display name or invent a renderer-only id.
+2. Stage/face the caster first, then calculate `origin` from its authored hand,
+   mouth, staff, or body socket. Calculate `target` from the intended world mark
+   or actor position. Both values are world coordinates.
+3. Put the custom action at the release frame, not at charge start. If the shot
+   needs visible charging, author that as an earlier action/beat and keep one
+   projectile release. Charge/channel gesture code is presentation-only: it may
+   play an emote or dispatch a charge visual, but it must not write
+   `LocalPlayer.attackInfo` or otherwise claim gameplay combat authority.
+4. Set `result` to the cinematic outcome (`hit`, `miss`, or `dodge` as supported
+   by the payload). This controls presentation only; gameplay damage, cooldown,
+   and inventory must never be published from the cutscene.
+5. Preview through `/at`, observe active travel for more than one frame, and
+   require a matching impact with no fallback. Asset HTTP 200/304 responses are
+   not visual acceptance.
+
+The release action must dispatch the projectile presentation even when an
+earlier charge visual exists. Ending a charge is not itself a projectile spawn;
+verify both counters/lifecycles independently (`charge released`, then
+`projectile spawned -> active -> impact`).
+
+Gameplay cooldown changes do not retime this hook. For example, the ordinary
+Hex Fireball's 10-second combat cooldown controls when AI may choose Fireball
+again; the cutscene fires only when its authored custom action executes. Do not
+add a repeating timer to imitate the gameplay cooldown.
+
+Likewise, player combo and held-heavy rules do not apply to a cutscene custom
+projectile action. A cutscene projectile has one authored release timestamp and
+presentation result; it does not increment the four-hit fight combo, wait for
+the post-chain three-second cooldown, or infer a Heavy attack from how long a
+shot lasts.
+
+Fast source gate for this path:
+
+```sh
+node_modules/.bin/mocha --config .mocharc.json \
+  src/shared/cutscene/test/hex_fireball_dodge_showcase.test.ts
+
+node scripts/harthmere/test-harthmere-combat-animation-polish-magic-vfx.cjs
+git diff --check
+```
+
 ### First-class expressions and multi-actor emotion
 
 Harthmere's body-language library is part of the normal `emote` action, not a
@@ -507,10 +552,23 @@ A promotional still is now **data**, not client code. Register it in
 node scripts/cutscenes/capture-promo-still.cjs --list
 node scripts/cutscenes/capture-promo-still.cjs dungeon-portal
 node scripts/cutscenes/capture-promo-still.cjs dungeon-portal --at 3.8 --run 2
+node scripts/cutscenes/capture-promo-still.cjs boss-gilded-bull \
+  --camera-preset three-quarter-left \
+  --output-dir artifacts/cutscenes/bull-three-quarter-left \
+  --run bull-left-1 \
+  --print-url
 ```
 
 Writes `artifacts/cutscenes/<filename>` (branded) and `-raw.png` (unbranded
 engine frame), and exits non-zero if the capture did not happen.
+
+For iterative art direction, always provide a unique `--output-dir`. The tool
+then keeps the branded PNG, raw PNG, HAR, and `capture-metadata.json` together.
+Metadata records the preset, registry waypoints, FOV, authored capture time,
+and actual sampled camera. This prevents a new bracket from overwriting either
+the current final filename or the evidence needed to avoid repeating it.
+Use `--print-url` during source review: it validates the scene and named camera
+preset and prints the exact local observer URL without taking the browser lane.
 
 **Why this replaced the hand-driven URL.** `promo_capture.ts` used to hardcode
 the query id, the brand subtitle, the output filename, the shot id, and the
@@ -539,6 +597,110 @@ and `promo_scenes.test.ts` asserts the ones that are checkable:
 | **Light the subject deliberately**                    | The gate is emissive, so it needs a dark sky (`timeOfDay` 0.78) or the shader has nothing to fight. Tested.                       |
 | **`commitOn: []`, `clientPuppet`, no end placements** | A screenshot must never write story state or move a real NPC. Tested.                                                             |
 | **`priority: 100_000`**                               | Otherwise an ambient scene can preempt the capture. Tested.                                                                       |
+
+### Boss and large-creature camera preflight
+
+Large actors need a cheap geometry pass before the live browser pass. Run the
+camera planner against the registry and canonical world-size bounds:
+
+```sh
+node scripts/cutscenes/preflight-boss-promo-angles.cjs \
+  --recommended \
+  --output artifacts/cutscenes/boss-camera-first-attempts.json \
+  --strict
+
+node scripts/cutscenes/preflight-boss-promo-angles.cjs \
+  --boss gilded_bull \
+  --preset three-quarter-left \
+  --preset three-quarter-right \
+  --preset environment-wide \
+  --output artifacts/cutscenes/bull-camera-preflight.json \
+  --strict
+```
+
+The planner uses the same eased dolly sampling as the cutscene director. It
+rejects an out-of-range marketing FOV, a dolly that enters the canonical boss
+body envelope, a reversed push-in, non-finite coordinates, or a camera move too
+short to read. For Elsewhen bosses it also transforms the full dolly and three
+camera-to-subject sightlines into authored dungeon coordinates, then rejects a
+wall, roof, lintel, column, or other canonical terrain intersection before
+Chromium. `--recommended` checks the first logged live-review candidate for
+each boss; it does not claim that the composition has passed visual review.
+Available review presets are `baseline`,
+`three-quarter-left`, `three-quarter-right`, `environment-wide`, and
+`reverse-inward`.
+
+This is intentionally **not** terrain acceptance. Every generated candidate
+still needs the live cutscene generator to prove all of the following:
+
+- the actor's support surface is the intended floor, platform, or terrain;
+- the complete far-to-near dolly is clear of terrain and architecture;
+- the background is recognizable encounter scenery rather than void, a stale
+  interest set, or a different district;
+- the full silhouette is readable and the feet, roots, spectral base, or
+  contact shadow visibly meet the support surface.
+
+The live generator now performs the terrain half of that review before it asks
+the renderer for a PNG. It samples 17 points along the exact eased dolly with a
+small camera-body clearance envelope and three camera-to-subject sightlines
+against the streamed `/terrain/tensor`. Missing tensors wait; a solid camera or
+sightline voxel fails closed with the first world coordinate. This catches
+ordinary-map and runtime-Underways terrain that the offline Elsewhen voxel
+model cannot inspect. Runtime GLB/OBJ decor and the final composition still
+require visual review.
+
+Keep physical grounding and visual grounding separate. For example, the Sun
+Court bull dais occupies world Y 43–45, so its top surface is Y 46 and a
+grounded puppet at Y 46.08 is already on top. If a close lens makes the Bull
+look embedded, raising it another metre creates a floating actor. The correct
+bracket is a wider or more lateral three-quarter camera that leaves visible
+gold cap around the feet.
+
+Use at most three new live brackets for one scene before stopping to inspect a
+contact sheet. Preserve rejected raw/branded frames outside the final filename
+set, and record both the registry waypoints and the actual sampled camera from
+the capture result. Once one bracket passes, move its values into the registry
+and rerun only that scene; do not pay for the full boss batch.
+
+After the representative scenes pass, capture all eleven logged first attempts
+in one warm page:
+
+```sh
+node scripts/harthmere/e2e-jump.cjs promo-batch-url boss-marketing \
+  --bossCameraPlan=recommended \
+  --captureRun=final-boss-marketing-1
+```
+
+The batch applies each boss's own first-priority preset rather than one global
+angle. Every capture result records `sceneId`, `cameraPreset`, and the sampled
+camera position, and each branded/raw pair is persisted before the next scene
+starts. Run this only after the bounded ordinary-map/Elsewhen/Underways/Wilds
+preflight passes; a warm batch is a throughput tool, not a substitute for QA.
+
+#### Fragmented horizon: terrain data versus capture sight
+
+Do not immediately increase camera far distance when a promotional frame shows
+isolated terrain columns over sky. First distinguish three independent radii:
+
+1. camera far plane/draw distance;
+2. Sync interest-set radius;
+3. terrain combined meshes that have actually finished building.
+
+The August 5 boss readback sampled retained Redis every 8 m through a 128 m
+radius around Helix and Hex. Both targets had 797/797 solid support columns,
+with zero missing shards and zero empty terrain tensors. The client already had
+the desktop 128 m dynamic minimum and Sync radius. The broken horizon therefore
+came from the old promo gate: it waited for five hand-picked floor shards but
+not the camera-facing background meshes.
+
+Boss promo scenes now add a bounded view-corridor gate. It samples center/left/
+right lanes at 32, 64, 96, and 112 m through the horizontal frustum, warms the
+lower, local, and upper vertical terrain bands in batches of four, and requires
+each sampled column to expose an ECS terrain entity, an occluder, and at least
+one non-empty combined mesh. A foreground slab can no longer authorize capture
+while the horizon is still fragmented. If this gate passes and the horizon is
+still wrong, investigate camera direction or authored scenery; do not blindly
+raise draw distance beyond the performance contract.
 
 ### Capture gotchas that are now handled for you
 
@@ -1186,6 +1348,21 @@ Every shot and the full scene need hard ceilings. Chapter 1 dialogue shots use
 waiting. All Chapter 1 cinematics hide the gameplay HUD, preserve letterbox and
 subtitle contrast, and restore camera/input/HUD state on completion, skip,
 abort, death, or teardown.
+
+Cleanup also owns actor/player presentation and regional audio. Every exit path
+must cancel a cinematic emote or facial expression immediately, then restore
+music from the visible local player's current region. Do not restart a generic
+world theme and wait for the ordinary audio poll: at the Grove fence that
+briefly selected the world track even though the player still saw the Grove.
+The live regression deliberately starts `ch1-first-gate`, applies `shock`,
+stops the scene, and requires both `emoteType === undefined` and
+`currentTrack === "grove_music"`.
+
+Stopping or replacing a scene may abort the outgoing regional MP3 fetch. The
+Chapter 1 runner classifies only that exact `GET`/`ERR_ABORTED` transition as
+cleanup; other same-origin audio failures remain fatal. A product-scenario pass
+with that cleanup cancellation is focused evidence, but prefer a clean report
+for final release sign-off.
 
 Voice is additive to readable subtitles. Missing audio must never remove or
 delay text. Subtitle speaker names must match the actor the camera is showing.

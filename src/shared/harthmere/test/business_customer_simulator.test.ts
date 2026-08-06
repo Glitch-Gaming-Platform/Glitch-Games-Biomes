@@ -22,6 +22,7 @@ import {
   HARTHMERE_BUSINESS_SERVICE_ANIMATION_CUE_SPECS,
   HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG,
   HARTHMERE_BUSINESS_JOB_PAY_DIVISOR,
+  HARTHMERE_BUSINESS_CUSTOMERS_PER_SHIFT,
   HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES,
   HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN,
   HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES,
@@ -36,6 +37,7 @@ import {
   createHarthmereBusinessMiniGameDecisionForOffer,
   defaultHarthmereBusinessCustomerStats,
   harthmereBusinessScaledJobPay,
+  harthmereBusinessCustomerPatienceForQueueIndex,
   harthmereBusinessOutpostGroundY,
   getHarthmereBusinessBikkieGraphicForServiceCue,
   getHarthmereBusinessBikkieGraphics,
@@ -614,6 +616,10 @@ describe("business_customer_simulator", () => {
     });
     assert.equal(result.queue.length, 5);
     assert.equal(result.nextTicketNumber, 12);
+    assert.deepEqual(
+      result.queue.map((ticket) => ticket.patience),
+      [30, 28, 26, 24, 22]
+    );
     assert.equal(
       new Set(result.queue.map((ticket) => ticket.scenarioId)).size,
       result.queue.length
@@ -627,7 +633,27 @@ describe("business_customer_simulator", () => {
       assert.equal(ticket.status, "waiting");
       assert.ok(ticket.requestedOfferId);
       assert.ok(ticket.patienceRemaining > 0);
+      assert.ok(ticket.patience <= 30);
+      assert.equal(ticket.patienceRemaining, ticket.patience);
     }
+  });
+
+  it("defines a ten-customer shift with a two-second patience ladder", () => {
+    const result = createHarthmereBusinessCustomerQueue({
+      businessId: "business_clinic",
+      typeId: "medical_doctor",
+      sessionId: "ten_customer_shift",
+      nowMs: 1000,
+      count: HARTHMERE_BUSINESS_CUSTOMERS_PER_SHIFT,
+      nextTicketNumber: 1,
+    });
+    assert.equal(result.queue.length, 10);
+    assert.deepEqual(
+      result.queue.map((ticket) => ticket.patience),
+      [30, 28, 26, 24, 22, 20, 18, 16, 14, 12]
+    );
+    assert.equal(harthmereBusinessCustomerPatienceForQueueIndex(9), 12);
+    assert.equal(harthmereBusinessCustomerPatienceForQueueIndex(99), 12);
   });
 
   it("varies repair mini-game questions even when a shift loops through the same base offers", () => {

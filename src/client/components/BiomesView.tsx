@@ -51,7 +51,14 @@ function BiomesCanvas({}: {}) {
       // and the virtual joystick write into this same input manager.
       input.attach(canvas);
       canvas.focus();
-      void audioManager.resumeAudio();
+      // iOS rejects HTMLMediaElement.play() until a trusted touch. Starting
+      // mobile audio here runs during mount and previously forced the full
+      // decoded-PCM fallback (~190 MB for the Grove track). A capture-phase
+      // document touch listener below resumes it from the first real phone
+      // gesture instead. Desktop pointerless browsers keep the existing path.
+      if (!clientConfig.mobileDevice) {
+        void audioManager.resumeAudio();
+      }
     };
 
     if (pointerlessGameplay()) {
@@ -180,7 +187,15 @@ function BiomesCanvas({}: {}) {
       capture: true,
       passive: false,
     };
+    const resumeMobileAudio = () => {
+      void audioManager.resumeAudio();
+    };
     if (clientConfig.mobileDevice) {
+      document.addEventListener(
+        "touchstart",
+        resumeMobileAudio,
+        mobileLookListenerOptions
+      );
       document.addEventListener(
         "touchstart",
         beginMobileLookTouch,
@@ -207,6 +222,11 @@ function BiomesCanvas({}: {}) {
       if (!clientConfig.mobileDevice) {
         return;
       }
+      document.removeEventListener(
+        "touchstart",
+        resumeMobileAudio,
+        mobileLookListenerOptions
+      );
       document.removeEventListener(
         "touchstart",
         beginMobileLookTouch,

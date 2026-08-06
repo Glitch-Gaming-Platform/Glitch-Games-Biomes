@@ -57,6 +57,8 @@ describe("NPC voice audio cache", () => {
       recursive: true,
     });
     fs.writeFileSync(path.join(root, "public", relativePath), "catalog-audio");
+    const mobilePath = relativePath.replace(/\.mp3$/, ".m4a");
+    fs.writeFileSync(path.join(root, "public", mobilePath), "mobile-aac");
     const manifestPath = path.join(
       root,
       "public/harthmere/voices/generated/current/manifest.json"
@@ -69,12 +71,62 @@ describe("NPC voice audio cache", () => {
         provider: "elevenlabs",
         synthesisIdentity: "policy-v1",
         generatedAt: new Date(0).toISOString(),
-        recordings: [{ cacheKey, path: relativePath }],
+        recordings: [{ cacheKey, path: relativePath, mobilePath }],
       })
     );
 
     assert.equal(
       findCachedNpcVoiceAudio({ cacheKey, provider: "elevenlabs", root }),
+      `/${relativePath}`
+    );
+    assert.equal(
+      findCachedNpcVoiceAudio({
+        cacheKey,
+        provider: "elevenlabs",
+        preferredFormat: "aac",
+        root,
+      }),
+      `/${mobilePath}`
+    );
+  });
+
+  it("falls back to committed MP3 when an AAC variant is unavailable", () => {
+    const cacheKey = "f".repeat(64);
+    const relativePath =
+      "harthmere/voices/generated/current/rosalyn/line-02.mp3";
+    fs.mkdirSync(path.join(root, "public", path.dirname(relativePath)), {
+      recursive: true,
+    });
+    fs.writeFileSync(path.join(root, "public", relativePath), "catalog-audio");
+    const manifestPath = path.join(
+      root,
+      "public/harthmere/voices/generated/current/manifest.json"
+    );
+    fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
+    fs.writeFileSync(
+      manifestPath,
+      JSON.stringify({
+        version: NPC_VOICE_AUDIO_CACHE_MANIFEST_VERSION,
+        provider: "elevenlabs",
+        synthesisIdentity: "policy-v1",
+        generatedAt: new Date(0).toISOString(),
+        recordings: [
+          {
+            cacheKey,
+            path: relativePath,
+            mobilePath: relativePath.replace(/\.mp3$/, ".m4a"),
+          },
+        ],
+      })
+    );
+
+    assert.equal(
+      findCachedNpcVoiceAudio({
+        cacheKey,
+        provider: "elevenlabs",
+        preferredFormat: "aac",
+        root,
+      }),
       `/${relativePath}`
     );
   });

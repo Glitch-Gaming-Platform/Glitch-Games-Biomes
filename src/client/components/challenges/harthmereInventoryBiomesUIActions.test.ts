@@ -85,8 +85,45 @@ import {
   HARTHMERE_LIVE_INVENTORY_SYNC_EVENT,
 } from "@/client/components/challenges/harthmereEvents";
 import { dispatchHarthmereLiveModeResponseEventsForTest } from "@/client/components/challenges/harthmereLiveModeClientEvents";
+import { liveInventoryMutationCountForTest } from "@/client/components/biomes_ui/adapters/useBiomesUILiveAdapters";
 
 describe("Harthmere inventory BiomesUI presentation and actions", () => {
+  it("uses one for Drop 1 and the authoritative stack size for Drop All", () => {
+    assert.equal(liveInventoryMutationCountForTest(14, 1), 1);
+    assert.equal(liveInventoryMutationCountForTest(14, undefined), 14);
+    assert.equal(liveInventoryMutationCountForTest(3, 99), 3);
+    assert.equal(liveInventoryMutationCountForTest(3, 0), 1);
+  });
+
+  it("routes live backpack drop/destroy through server authority instead of synthetic ECS slots", () => {
+    const source = fs.readFileSync(
+      path.join(
+        ROOT,
+        "src/client/components/biomes_ui/adapters/useBiomesUILiveAdapters.ts"
+      ),
+      "utf8"
+    );
+    assert.match(
+      source,
+      /const liveItemId = liveItemIdForRef\(ref\)/,
+      "live Redis-backed item refs must resolve to their authoritative item id"
+    );
+    assert.match(
+      source,
+      /liveItemId[\s\S]{0,900}submitInventoryItemLiveModeAction\("drop_item"/,
+      "dropping a live backpack item must post request_inventory_item_action"
+    );
+    assert.match(
+      source,
+      /liveItemId[\s\S]{0,1600}submitInventoryItemLiveModeAction\("destroy_item"/,
+      "destroying a live backpack item must post request_inventory_item_action"
+    );
+    assert.match(
+      source,
+      /liveBackpackStackItems[\s\S]{0,500}canDrop:\s*true[\s\S]{0,200}canDestroy:\s*true/,
+      "ordinary server-backed stacks must expose Drop and Destroy controls"
+    );
+  });
   beforeEach(() => {
     (globalThis as any).window = {
       localStorage: localStorageShim,

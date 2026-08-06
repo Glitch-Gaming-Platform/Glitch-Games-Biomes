@@ -16,6 +16,7 @@ import {
   DOUBLE_JUMP_STAMINA_COST,
   EVADE_MOVEMENT_ACTION_STAMINA_COST,
   MOVEMENT_ACTION_STAMINA_COST,
+  PLAYER_MOVEMENT_ACTION_TIMING,
 } from "@/shared/game/movement_actions";
 import {
   readHarthmereNativeVitals,
@@ -24,6 +25,7 @@ import {
 import { generateTestId } from "@/shared/test_helpers";
 import type { VoxelooModule } from "@/shared/wasm/types";
 import assert from "assert";
+import sinon from "sinon";
 
 describe("native ECS movement actions", () => {
   let voxeloo!: VoxelooModule;
@@ -96,7 +98,10 @@ describe("native ECS movement actions", () => {
       state.invulnerability_expiry_time < state.action_expiry_time,
       "invulnerability must end before the animation/movement window"
     );
-    assert.ok(state.cooldown_expiry_time > state.action_expiry_time);
+    assert.equal(
+      state.cooldown_expiry_time - state.action_start_time,
+      PLAYER_MOVEMENT_ACTION_TIMING.dodge.cooldownSeconds
+    );
     assert.equal(
       readHarthmereNativeVitals(player.trigger_state).stamina,
       50 - MOVEMENT_ACTION_STAMINA_COST
@@ -131,6 +136,51 @@ describe("native ECS movement actions", () => {
       readHarthmereNativeVitals(player.trigger_state).stamina,
       50 - EVADE_MOVEMENT_ACTION_STAMINA_COST
     );
+  });
+
+  it("accepts a replacement evade exactly after the half-second cooldown", async () => {
+    const clock = sinon.useFakeTimers({ now: 1_000_000 });
+    try {
+      const playerId = (await addGameUser(logic.world, generateTestId(), {}))
+        .id;
+      editEntity(logic.world, playerId, (player) => {
+        writeHarthmereNativeVitals(player.mutableTriggerState(), {
+          stamina: 50,
+          maxStamina: 100,
+        });
+      });
+      const publishEvade = (nonce: number) =>
+        logic.publish(
+          new GameEvent(
+            playerId,
+            new MovementActionEvent({
+              id: playerId,
+              action: "evade",
+              direction: [1, 0, 0],
+              nonce,
+            })
+          )
+        );
+
+      await publishEvade(1);
+      await clock.tickAsync(499);
+      await publishEvade(2);
+      assert.equal(
+        logic.world.table.get(playerId)?.movement_state?.action_nonce,
+        1
+      );
+
+      await clock.tickAsync(1);
+      await publishEvade(3);
+      const player = logic.world.table.get(playerId)!;
+      assert.equal(player.movement_state?.action_nonce, 3);
+      assert.equal(
+        readHarthmereNativeVitals(player.trigger_state).stamina,
+        50 - 2 * EVADE_MOVEMENT_ACTION_STAMINA_COST
+      );
+    } finally {
+      clock.restore();
+    }
   });
 
   it("replicates a double jump and deducts its survival stamina cost", async () => {

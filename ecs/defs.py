@@ -240,6 +240,9 @@ def define_types(g: TypeGenerator):
             [
                 "attack1",
                 "attack2",
+                "rangedAim",
+                "rangedRelease",
+                "rangedReload",
                 "magicChannel",
                 "magicCast",
                 "destroy",
@@ -1572,6 +1575,9 @@ def define_components(g: Generator):
             15: FieldDef(name="player_actions", kind=s.FarmingPlayerActionList),
             16: FieldDef(name="fully_grown_at", kind=s.OptionalF64),
             17: FieldDef(name="next_stage_at", kind=s.OptionalF64),
+            # Server-authored Harthmere Farming benefit. A value below 1
+            # shortens Gaia growth time; absence preserves legacy behavior.
+            18: FieldDef(name="skill_growth_time_multiplier", kind=s.OptionalF64),
         },
     )
 
@@ -2080,6 +2086,16 @@ def define_components(g: Generator):
             6: FieldDef(name="ranged_attack_result", kind=s.OptionalString),
             7: FieldDef(name="ranged_attack_charge_time_secs", kind=s.OptionalF64),
             8: FieldDef(name="ranged_attack_release_time", kind=s.OptionalF64),
+            # Sanitized non-boss stagger presentation. Poise remains
+            # server-authoritative in NpcState; these fields let every client
+            # render the exact interruption window and directional impact.
+            9: FieldDef(name="stagger_kind", kind=s.OptionalString),
+            10: FieldDef(name="stagger_start_time", kind=s.OptionalF64),
+            11: FieldDef(name="stagger_expiry_time", kind=s.OptionalF64),
+            12: FieldDef(name="stagger_direction", kind=s.OptionalVec3f),
+            13: FieldDef(name="stagger_sequence", kind=s.OptionalF64),
+            14: FieldDef(name="poise", kind=s.OptionalF64),
+            15: FieldDef(name="poise_max", kind=s.OptionalF64),
         },
     )
 
@@ -2517,6 +2533,18 @@ def define_events(g: Generator):
             standing_notoriety=s.I32,
             standing_notoriety_floor=s.I32,
             authorization=s.String,
+        ),
+    )
+
+    # Server-authorized release receipt for resource-backed player attacks.
+    # Bows consume one backpack arrow and spells consume mana even when they
+    # miss. A later health event must present the exact attack_time receipt.
+    g.add_event(
+        "HarthmereRangedResourceAttack",
+        OrderedDict(
+            id=s.BiomesId,
+            target_id=s.OptionalBiomesId,
+            attack_time=s.F64,
         ),
     )
 
@@ -3054,6 +3082,7 @@ def define_events(g: Generator):
             maxHp=s.OptionalI32,
             damageSource=s.OptionalDamageSource,
             attackAbilityId=s.OptionalString,
+            attackTimingClass=s.OptionalString,
             attackTime=s.OptionalF64,
             impactPoint=s.OptionalVec3f,
         ),
@@ -3065,6 +3094,8 @@ def define_events(g: Generator):
             id=s.BiomesId,
             hp=s.I32,
             damageSource=s.OptionalDamageSource,
+            attackTimingClass=s.OptionalString,
+            attackTime=s.OptionalF64,
         ),
     )
 

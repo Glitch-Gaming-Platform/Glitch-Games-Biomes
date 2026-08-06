@@ -37,7 +37,9 @@ console.log("== Harthmere NPC retaliation full flow current ==");
 
 // 1) Player attack sends authoritative NPC damage with attacker identity.
 check(
-  interact.includes("new UpdateNpcHealthEvent({ id: entity.id, hp: -damage, damageSource })") &&
+  /new UpdateNpcHealthEvent\(\{[\s\S]{0,180}id:\s*entity\.id,[\s\S]{0,120}hp:\s*-damage,[\s\S]{0,120}damageSource/.test(
+    interact
+  ) &&
     interact.includes('kind: "attack"') &&
     interact.includes("attacker: player.id"),
   "player attacks publish UpdateNpcHealthEvent with negative HP delta and player attacker id"
@@ -45,8 +47,12 @@ check(
 
 // 2) Server/NPC health reducer records the damage source and lowers HP.
 check(
-  modifyHealth.includes("npc.mutableHealth().lastDamageSource = damageSource") &&
-    modifyHealth.includes("npc.mutableHealth().lastDamageTime = secondsSinceEpoch") &&
+  modifyHealth.includes(
+    "npc.mutableHealth().lastDamageSource = damageSource"
+  ) &&
+    modifyHealth.includes(
+      "npc.mutableHealth().lastDamageTime = secondsSinceEpoch"
+    ) &&
     modifyHealth.includes("npc.mutableHealth().hp = newHealth") &&
     modifyHealth.includes("recordThreatFromDamage"),
   "NPC health mutation persists HP drop, lastDamageSource, lastDamageTime, and threat"
@@ -55,8 +61,8 @@ check(
 // 3) NPC logic installs fallback retaliation for attackable damaged NPCs only.
 check(
   logic.includes("ATTACKED_NPC_RETALIATION_FALLBACK") &&
-    logic.includes("if (behavior.chaseAttack)") &&
-    logic.includes("return behavior.chaseAttack") &&
+    logic.includes("if (configuredChaseAttack)") &&
+    logic.includes("return configuredChaseAttack") &&
     logic.includes('aggroTrigger: { kind: "onlyIfAttacked" }') &&
     logic.includes('npc.health.lastDamageSource?.kind !== "attack"') &&
     logic.includes("behavior.damageable.attackable === false"),
@@ -77,20 +83,27 @@ check(
   "snapshot Mucklings/Hexers/animals with damageable blocks default to attackable:true unless explicitly false"
 );
 
-// 5) Retaliation target is exactly the last attacker and safe-zone logic does not create harmless health bars.
+// 5) The last attacker opens a bounded multiplayer retaliation encounter. The
+// opener stays first, while other responders/rotation can select nearby players.
 check(
   chase.includes('params.aggroTrigger.kind === "onlyIfAttacked"') &&
-    chase.includes("lastDamageSource.attacker") &&
-    chase.includes("targetId = lastAttackerId") &&
-    chase.includes("retaliatingAfterPlayerHit") &&
-    chase.includes("!retaliatingAfterPlayerHit") &&
-    chase.includes("becoming a harmless health bar"),
-  "only-if-attacked NPCs target the last attacker and are not blocked by proactive safe-zone gating"
+    chase.includes("evaluateRetaliationTarget") &&
+    chase.includes("chooseRetaliationVicinityTarget") &&
+    chase.includes("pickRetaliationParticipantTarget") &&
+    chase.includes("provokedTargetId ?? targetId") &&
+    chase.includes("RETALIATION_VICINITY_RADIUS_METERS") &&
+    chase.includes("RETALIATION_TARGET_ROTATION_SECONDS") &&
+    chase.includes("recentDirectAttackerId: recentAttackerId") &&
+    chase.includes("Direct retaliation is the deliberate safe-zone exception"),
+  "only-if-attacked NPCs open bounded vicinity retaliation while preserving the direct safe-zone exception"
 );
 
 check(
-  chase.includes("secondsSinceEpoch() - health.lastDamageTime < ATTACK_MEMORY_SECONDS") &&
-    chase.includes("distSq(lastAttacker.position.v, npc.position) < deAggroDistanceSq"),
+  chase.includes("damageAge >= memorySeconds") &&
+    chase.includes(
+      "distSq(lastAttacker.position.v, npcPosition) >= deAggroDistanceSq"
+    ) &&
+    chase.includes("memorySeconds: ATTACK_MEMORY_SECONDS"),
   "retaliation has bounded memory and disengage distance"
 );
 
@@ -99,17 +112,19 @@ check(
   chase.includes('emote_type: "attack1"') &&
     chase.includes("emote_start_time: attackTime") &&
     chase.includes("emote_expiry_time") &&
-    chase.includes("npc.attack(target.id, params.attackDamage)"),
+    /npc\.attack\(target, params\.attackDamage, \{/.test(chase),
   "NPC chase attack pulses attack1 animation and calls npc.attack at strike time"
 );
 
-// 7) NPC attack publishes player HP damage with NPC as the attacker.
+// 7) NPC attack dispatches to the matching native health authority.
 check(
   simulated.includes("new UpdatePlayerHealthEvent") &&
+    simulated.includes("new UpdateNpcHealthEvent") &&
+    simulated.includes("if (target.npc_metadata)") &&
     simulated.includes("hpDelta: -damage") &&
     simulated.includes('kind: "attack"') &&
     simulated.includes("attacker: this.id"),
-  "SimulatedNpc.attack sends negative player HP delta with NPC attacker id"
+  "SimulatedNpc.attack routes players and NPC escorts to their native health events"
 );
 
 // 8) Player health reducer actually subtracts HP and stores the NPC attack source.
@@ -125,18 +140,22 @@ check(
 check(
   npcRenderer.includes('emote?.emote_type === "attack1"') &&
     npcRenderer.includes("getAttackAnimationAction") &&
-    npcRenderer.includes('npcSystem.singleAnimationWeight("attack", 1)') &&
+    npcRenderer.includes("bossAnimationStateForClip") &&
+    npcRenderer.includes('default:\n      return "attack"') &&
     npcRenderer.includes('fileAnimationName: "Attack"'),
   "NPC renderer converts attack1 emote into the Attack animation clip"
 );
 
 // 10) Edge cases: no attackable:false regression, no name whitelist, no passive retaliation.
 check(
-  !logic.includes("npc.label") && !logic.includes("displayName"),
+  logic.includes("harthmereNativeNpcCombatProfileForEntity") &&
+    logic.includes("harthmereNativeNpcCombatProfileForTypeId") &&
+    !/if\s*\(.*(?:Muckling|Hexer|Mucker)/.test(logic),
   "retaliation is data-driven, not hard-coded to specific monster names"
 );
 check(
-  logic.includes("!behavior.damageable ||") && logic.includes("behavior.damageable.attackable === false"),
+  logic.includes("!behavior.damageable ||") &&
+    logic.includes("behavior.damageable.attackable === false"),
   "NPCs without health or explicitly attackable:false stay non-retaliatory"
 );
 check(
@@ -188,12 +207,23 @@ function simulateRetaliationFlow() {
 try {
   const { player, npc } = simulateRetaliationFlow();
   check(npc.hp === 42, "simulation: player hit lowers NPC HP");
-  check(npc.state.chaseAttack.attackTarget === player.id, "simulation: NPC targets the player who attacked it");
-  check(npc.emote?.emote_type === "attack1", "simulation: NPC attack animation pulse is present");
+  check(
+    npc.state.chaseAttack.attackTarget === player.id,
+    "simulation: NPC targets the player who attacked it"
+  );
+  check(
+    npc.emote?.emote_type === "attack1",
+    "simulation: NPC attack animation pulse is present"
+  );
   check(player.hp === 110, "simulation: NPC retaliation lowers player HP");
-  check(player.lastDamageSource?.attacker === npc.id, "simulation: player damage source is the retaliating NPC");
+  check(
+    player.lastDamageSource?.attacker === npc.id,
+    "simulation: player damage source is the retaliating NPC"
+  );
 } catch (error) {
-  console.error(`FAIL simulation threw: ${error && error.stack ? error.stack : error}`);
+  console.error(
+    `FAIL simulation threw: ${error && error.stack ? error.stack : error}`
+  );
   process.exitCode = 1;
 }
 

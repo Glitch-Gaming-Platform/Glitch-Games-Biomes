@@ -1,7 +1,12 @@
 import { getClientRenderPosition } from "@/client/components/map/helpers";
+import {
+  harthmereCombatLockCameraFrame,
+  harthmereCombatLockCameraTarget,
+} from "@/client/components/challenges/harthmere_combat_lock_on";
 import type { ClientConfig } from "@/client/game/client_config";
 import type { Events } from "@/client/game/context_managers/events";
 import type { ClientInput } from "@/client/game/context_managers/input";
+import { safeCameraFarPlane } from "@/client/game/util/camera_projection";
 import type { ClientTable } from "@/client/game/game";
 import type { Camera, CameraEffects } from "@/client/game/resources/camera";
 import type { ClientResources } from "@/client/game/resources/types";
@@ -309,7 +314,15 @@ export class CameraScript implements Script {
       camera.three.fov = this.smoothFOV.get();
       camera.isFirstPerson = isFirstPersonCamera;
       camera.three.position.set(...thirdPos);
-      camera.three.far = this.smoothDrawDistance.get();
+      // The first THREE.Clock delta is exactly zero. The far-plane fade starts
+      // at zero too, so assigning it directly produces a singular projection
+      // matrix. Voxeloo's synchronous VisibilitySharder scan then receives
+      // invalid frustum bounds and can pin the browser main thread before the
+      // first frame. Preserve the fade while keeping the matrix invertible.
+      camera.three.far = safeCameraFarPlane(
+        camera.three.near,
+        this.smoothDrawDistance.get()
+      );
       this.applyCameraEffects(camera);
       camera.three.updateMatrixWorld();
       camera.three.updateProjectionMatrix();
@@ -792,6 +805,23 @@ export class CameraScript implements Script {
           this.orientation = [...player.player.orientation];
         }
 
+        const combatLock = harthmereCombatLockCameraTarget(
+          player.player.position
+        );
+        let combatLockFrame:
+          ReturnType<typeof harthmereCombatLockCameraFrame> | undefined;
+        if (combatLock && camTweaks.kind !== "tracking_selfie") {
+          combatLockFrame = harthmereCombatLockCameraFrame({
+            currentOrientation: this.orientation,
+            eye: track,
+            target: combatLock.world,
+            targetRadius: combatLock.radius,
+            distance: combatLock.distance,
+            dt,
+          });
+          this.orientation = combatLockFrame.orientation;
+        }
+
         const movementActionCamera = player.player.movementActionInfo
           ? movementActionCameraEffects({
               action: player.player.movementActionInfo.action,
@@ -842,11 +872,13 @@ export class CameraScript implements Script {
               offsetBack:
                 camTweaks.offsetBack +
                 ((runFovBoost ? camTweaks.runOffsetBackIncrease : 0) ?? 0) +
-                movementActionCamera.pullbackMeters,
+                movementActionCamera.pullbackMeters +
+                (combatLockFrame?.pullbackMeters ?? 0),
               fov:
                 camTweaks.fov +
                 ((runFovBoost ? camTweaks.runFovIncrease : 0) ?? 0) +
-                movementActionCamera.fovBoostDegrees,
+                movementActionCamera.fovBoostDegrees +
+                (combatLockFrame?.fovBoostDegrees ?? 0),
             }
           );
           this.lastTrackedPosition = track;

@@ -52,6 +52,10 @@ function toCookSnapshot(
     )
       ? farmingFoodState.availableCookingStations
       : [],
+    cookingSkillLevel: Math.max(
+      1,
+      Number(farmingFoodState.cookingSkillLevel ?? 1)
+    ),
     updatedAtMs: Number(farmingFoodState.updatedAtMs ?? 0),
   };
 }

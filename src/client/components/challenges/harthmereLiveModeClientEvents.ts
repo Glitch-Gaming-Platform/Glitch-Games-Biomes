@@ -4,14 +4,27 @@ import {
   HARTHMERE_LIVE_INVENTORY_SYNC_EVENT,
 } from "@/client/components/challenges/harthmereEvents";
 
+export const HARTHMERE_ESCORT_ARRIVAL_DIALOGUE_EVENT =
+  "biomes:harthmere-escort-arrival-dialogue";
+
+export interface HarthmereEscortArrivalDialogueDetail {
+  companionId: string;
+  displayName: string;
+  dialogue: string;
+  destinationName?: string;
+  arrivedAtMs?: number;
+}
+
+const deliveredEscortDialogueKeys = new WeakMap<Window, Set<string>>();
+
 export function dispatchHarthmereLiveModeResponseEventsForTest(
   body: any,
-  win: Window | undefined =
-    typeof window !== "undefined" ? window : undefined
+  win: Window | undefined = typeof window !== "undefined" ? window : undefined
 ) {
   const result = {
     inventoryLootState: false,
     playerStatusState: false,
+    escortArrivalDialogues: 0,
   };
   if (!win || !body) {
     return result;
@@ -42,6 +55,43 @@ export function dispatchHarthmereLiveModeResponseEventsForTest(
       })
     );
     result.playerStatusState = true;
+  }
+
+  const combatState = body.combatState ?? body.snapshots?.combatState;
+  const entitySnapshots =
+    combatState?.entitySnapshots &&
+    typeof combatState.entitySnapshots === "object"
+      ? combatState.entitySnapshots
+      : {};
+  const delivered = deliveredEscortDialogueKeys.get(win) ?? new Set<string>();
+  deliveredEscortDialogueKeys.set(win, delivered);
+  for (const [entityId, entity] of Object.entries(entitySnapshots) as Array<
+    [string, Record<string, unknown>]
+  >) {
+    if (entity.escortStatus !== "arrived") continue;
+    const dialogue = String(entity.escortArrivalDialogue ?? "").trim();
+    if (!dialogue) continue;
+    const companionId = String(entity.escortCompanionId ?? entityId).trim();
+    const arrivedAtMs = Number(entity.escortArrivedAtMs);
+    const key = `${companionId}:${
+      Number.isFinite(arrivedAtMs) ? arrivedAtMs : "arrived"
+    }`;
+    if (delivered.has(key)) continue;
+    delivered.add(key);
+    win.dispatchEvent(
+      new CustomEvent<HarthmereEscortArrivalDialogueDetail>(
+        HARTHMERE_ESCORT_ARRIVAL_DIALOGUE_EVENT,
+        {
+          detail: {
+            companionId,
+            displayName: String(entity.escortDisplayName ?? "Newcomer"),
+            dialogue,
+            arrivedAtMs: Number.isFinite(arrivedAtMs) ? arrivedAtMs : undefined,
+          },
+        }
+      )
+    );
+    result.escortArrivalDialogues += 1;
   }
 
   return result;

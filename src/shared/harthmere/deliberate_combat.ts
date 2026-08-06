@@ -9,28 +9,50 @@ export interface HarthmerePlayerAttackTiming {
   movementScale: number;
 }
 
+export type HarthmereCombatComboHit = 1 | 2 | 3 | 4;
+export type HarthmereCombatComboVariation = 1 | 2 | 3 | 4;
+
+export interface HarthmereCombatComboState {
+  hit: HarthmereCombatComboHit;
+  variation: HarthmereCombatComboVariation;
+  chainOffset: number;
+  chainStartedAt: number;
+  nextAttackAt: number;
+  contextExpiresAt: number;
+  cooldownUntil: number;
+}
+
+export const HARTHMERE_COMBAT_COMBO_MAX_HITS = 4;
+export const HARTHMERE_COMBAT_COMBO_COOLDOWN_SECS = 3;
+export const HARTHMERE_COMBAT_COMBO_CONTEXT_SECS = 4;
+export const HARTHMERE_COMBAT_BASIC_AUTHORED_CONTACT_SECS = 0.16;
+export const HARTHMERE_COMBAT_HEAVY_AUTHORED_CONTACT_SECS = 0.72;
+
+export type HarthmereCombatComboDecision =
+  | { allowed: true; state: HarthmereCombatComboState }
+  | { allowed: false; readyAt: number };
+
 /**
  * One combat clock for body animation, weapon animation, damage, movement
  * commitment and cooldown validation. Normal attacks do not spend stamina;
  * dodge, evade, and double jump add an immediate cost to the same survival bar
- * that is already declining during active play. The old 220 ms basic contact
- * was visually readable in isolation but too quick in a live fight, especially
- * when an NPC could answer immediately. These timings deliberately leave a
- * decision-sized windup and a punishable recovery without making ordinary
- * tools feel like boss weapons.
+ * that is already declining during active play. The combat clips are authored
+ * on exact 24 fps samples: light contact at frame 6, heavy contact at frame 10,
+ * and enough recovery to read when the player stops without inserting dead air
+ * between buffered combo attacks.
  */
 export const HARTHMERE_PLAYER_ATTACK_TIMINGS = Object.freeze({
   basic: {
-    windupMs: 260,
-    impactMs: 400,
-    recoveryMs: 620,
+    windupMs: 135,
+    impactMs: 250,
+    recoveryMs: 458,
     staminaCost: 0,
     movementScale: 0.38,
   },
   heavy: {
-    windupMs: 480,
-    impactMs: 720,
-    recoveryMs: 920,
+    windupMs: 229,
+    impactMs: 417,
+    recoveryMs: 666,
     staminaCost: 0,
     movementScale: 0.18,
   },
@@ -53,6 +75,10 @@ export const HARTHMERE_PLAYER_ATTACK_TIMINGS = Object.freeze({
   HarthmerePlayerAttackTiming
 >);
 
+export const HARTHMERE_HEAVY_ATTACK_HOLD_SECS = 0.22;
+export const HARTHMERE_HEAVY_ATTACK_DAMAGE_MULTIPLIER = 1.5;
+export const HARTHMERE_HEAVY_ATTACK_TIME_MULTIPLIER = 1;
+
 export function harthmerePlayerAttackCommitmentMs(
   timingClass: HarthmerePlayerAttackTimingClass
 ) {
@@ -66,24 +92,101 @@ export function harthmerePlayerAttackCommitmentSeconds(
   return harthmerePlayerAttackCommitmentMs(timingClass) / 1000;
 }
 
+export function harthmereCombatComboLinkSeconds(
+  timingClass: HarthmerePlayerAttackTimingClass
+) {
+  if (timingClass === "basic") {
+    return HARTHMERE_COMBAT_BASIC_AUTHORED_CONTACT_SECS;
+  }
+  if (timingClass === "heavy") {
+    return HARTHMERE_COMBAT_HEAVY_AUTHORED_CONTACT_SECS;
+  }
+  return HARTHMERE_PLAYER_ATTACK_TIMINGS[timingClass].impactMs / 1000;
+}
+
 /**
- * How early an attack press is accepted before the current attack's commitment
- * ends.
+ * One coherent light/heavy fight combo budget. The next strike may link after
+ * the current authored contact, never before it. Hit four closes the chain and
+ * starts a three-second cooldown after its full authored commitment. Mining and
+ * empty exploration swings do not call this function.
+ */
+export function nextHarthmereCombatCombo(
+  previous: HarthmereCombatComboState | undefined,
+  nowSeconds: number,
+  timingClass: HarthmerePlayerAttackTimingClass
+): HarthmereCombatComboDecision {
+  if (
+    previous &&
+    previous.hit < HARTHMERE_COMBAT_COMBO_MAX_HITS &&
+    nowSeconds < previous.nextAttackAt
+  ) {
+    return { allowed: false, readyAt: previous.nextAttackAt };
+  }
+  if (
+    previous?.hit === HARTHMERE_COMBAT_COMBO_MAX_HITS &&
+    nowSeconds < previous.cooldownUntil
+  ) {
+    return { allowed: false, readyAt: previous.cooldownUntil };
+  }
+
+  const continuesChain =
+    previous !== undefined &&
+    previous.hit < HARTHMERE_COMBAT_COMBO_MAX_HITS &&
+    nowSeconds <= previous.contextExpiresAt;
+  const hit = (
+    continuesChain ? previous.hit + 1 : 1
+  ) as HarthmereCombatComboHit;
+  const chainOffset = continuesChain
+    ? previous.chainOffset
+    : ((previous?.chainOffset ?? -1) + 1) % HARTHMERE_COMBAT_COMBO_MAX_HITS;
+  const variation = (((chainOffset + hit - 1) %
+    HARTHMERE_COMBAT_COMBO_MAX_HITS) +
+    1) as HarthmereCombatComboVariation;
+  const timing = HARTHMERE_PLAYER_ATTACK_TIMINGS[timingClass];
+  const commitmentEnd =
+    nowSeconds + harthmerePlayerAttackCommitmentSeconds(timingClass);
+  const cooldownUntil =
+    hit === HARTHMERE_COMBAT_COMBO_MAX_HITS
+      ? commitmentEnd + HARTHMERE_COMBAT_COMBO_COOLDOWN_SECS
+      : 0;
+  const nextAttackAt =
+    hit === HARTHMERE_COMBAT_COMBO_MAX_HITS
+      ? cooldownUntil
+      : nowSeconds + harthmereCombatComboLinkSeconds(timingClass);
+
+  return {
+    allowed: true,
+    state: {
+      hit,
+      variation,
+      chainOffset,
+      chainStartedAt: continuesChain ? previous.chainStartedAt : nowSeconds,
+      nextAttackAt,
+      contextExpiresAt:
+        Math.max(commitmentEnd, cooldownUntil) +
+        HARTHMERE_COMBAT_COMBO_CONTEXT_SECS,
+      cooldownUntil,
+    },
+  };
+}
+
+/**
+ * How long a retained follow-up input remains valid after commitment ends.
  *
  * Commitment is the point of this system: an attack cannot be cancelled, and
  * the recovery window is meant to be punishable. But committing the *character*
  * is different from discarding the *player's input*. Previously a press landing
- * anywhere inside a basic attack's 1.02 s commitment (1.64 s for heavy) was
+ * anywhere inside an attack's commitment was
  * dropped, so continuing an exchange required waiting out the full window and
  * timing a fresh press with no feedback — and pressing a few frames early did
  * nothing at all.
  *
- * Buffering the intent and spending it the moment recovery ends preserves every
- * defensive property of commitment while letting a player who read the fight
- * correctly act on it. This value is deliberately shorter than the shortest
- * recovery (620 ms) so it can never span an entire attack.
+ * The press itself may happen anywhere during commitment. This post-recovery
+ * grace only protects the handoff from a slow render/input tick; half a second
+ * is long enough for the captured 16 FPS session and still permits only the one
+ * explicitly retained press.
  */
-export const HARTHMERE_ATTACK_INPUT_BUFFER_SECS = 0.18;
+export const HARTHMERE_ATTACK_INPUT_BUFFER_SECS = 0.5;
 
 // Authored survival-stamina costs. Keep these as named configuration constants
 // so balance can change in one place without duplicating values across client,

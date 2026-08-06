@@ -13,9 +13,16 @@ const catalog = JSON.parse(
 const expectedClips = [
   ...new Set(Object.values(catalog).map((spec) => spec.clip)),
 ];
+const assetVersions = JSON.parse(
+  fs.readFileSync(
+    path.join(root, "src/galois/js/interface/gen/asset_versions.json"),
+    "utf8"
+  )
+);
 const characterPath = path.join(
   root,
-  "src/galois/data/animations/character-animations.gltf"
+  "public/buckets/biomes-static",
+  assetVersions.paths["wearables/animations"]
 );
 const npcDirectory = path.join(root, "src/galois/data/npcs");
 const assetPaths = [
@@ -30,7 +37,33 @@ const assetPaths = [
 const failures = [];
 let motionVerified = 0;
 
-function animationBuffer(gltf, bufferIndex, assetPath) {
+function loadAnimationAsset(assetPath) {
+  const bytes = fs.readFileSync(assetPath);
+  if (bytes.toString("utf8", 0, 4) !== "glTF") {
+    return { gltf: JSON.parse(bytes.toString("utf8")), embeddedBuffers: [] };
+  }
+  let offset = 12;
+  let gltf;
+  const embeddedBuffers = [];
+  while (offset + 8 <= bytes.length) {
+    const length = bytes.readUInt32LE(offset);
+    const type = bytes.readUInt32LE(offset + 4);
+    const chunk = bytes.subarray(offset + 8, offset + 8 + length);
+    if (type === 0x4e4f534a) {
+      gltf = JSON.parse(chunk.toString("utf8").replace(/\0+$/, ""));
+    } else if (type === 0x004e4942) {
+      embeddedBuffers.push(chunk);
+    }
+    offset += 8 + length;
+  }
+  if (!gltf) throw new Error(`${assetPath}: GLB has no JSON chunk`);
+  return { gltf, embeddedBuffers };
+}
+
+function animationBuffer(gltf, bufferIndex, assetPath, embeddedBuffers) {
+  if (embeddedBuffers?.[bufferIndex]) {
+    return embeddedBuffers[bufferIndex];
+  }
   const uri = gltf.buffers?.[bufferIndex]?.uri;
   if (typeof uri !== "string") {
     throw new Error(`${assetPath}: animation buffer ${bufferIndex} has no URI`);
@@ -91,9 +124,9 @@ function animationTransformDelta(gltf, animation, buffers, label) {
 
 for (const assetPath of assetPaths) {
   const relative = path.relative(root, assetPath);
-  const gltf = JSON.parse(fs.readFileSync(assetPath, "utf8"));
+  const { gltf, embeddedBuffers } = loadAnimationAsset(assetPath);
   const buffers = (gltf.buffers ?? []).map((_, index) =>
-    animationBuffer(gltf, index, assetPath)
+    animationBuffer(gltf, index, assetPath, embeddedBuffers)
   );
   const sceneRootNodes = new Set(gltf.scenes?.[gltf.scene ?? 0]?.nodes ?? []);
   const animations = gltf.animations ?? [];
@@ -155,7 +188,7 @@ for (const assetPath of assetPaths) {
   }
 }
 
-const character = JSON.parse(fs.readFileSync(characterPath, "utf8"));
+const character = loadAnimationAsset(characterPath).gltf;
 for (const attackName of ["Attack", "Attack2"]) {
   const attack = character.animations?.find(
     (animation) => animation.name === attackName
@@ -167,6 +200,48 @@ for (const attackName of ["Attack", "Attack2"]) {
       }`
     );
   }
+}
+
+const cinematicRuntime = fs.readFileSync(
+  path.join(root, "src/shared/cutscene/cinematic_expressions.ts"),
+  "utf8"
+);
+const playerRuntime = fs.readFileSync(
+  path.join(root, "src/client/game/util/player_animations.ts"),
+  "utf8"
+);
+const playerState = fs.readFileSync(
+  path.join(root, "src/client/game/resources/players.ts"),
+  "utf8"
+);
+const playerMesh = fs.readFileSync(
+  path.join(root, "src/client/game/resources/player_mesh.ts"),
+  "utf8"
+);
+if (!/additive:\s*true/.test(cinematicRuntime)) {
+  failures.push("cinematic expression definitions are not additive");
+}
+if (!/head\|neck\|chest\|spine/.test(playerRuntime)) {
+  failures.push("player upper-body mask does not include head/chest/spine");
+}
+if (
+  !/easeOutTime:\s*HARTHMERE_CINEMATIC_EXPRESSION_EASE_SECONDS/.test(
+    playerState
+  ) ||
+  !/durationSeconds:\s*harthmereCinematicExpressionSpec/.test(playerState)
+) {
+  failures.push(
+    "expression body timing is not explicit and symmetrically eased"
+  );
+}
+if (
+  !/keepsProductionExpressionCapableFace:\s*true/.test(playerMesh) ||
+  !/installHarthmerePlayerFacialExpressionBridge/.test(playerMesh) ||
+  !/const easeMs = 120/.test(playerMesh)
+) {
+  failures.push(
+    "production player face is not expression-capable with symmetric easing"
+  );
 }
 
 if (failures.length > 0) {

@@ -18,8 +18,10 @@ export const HARTHMERE_ADDITIVE_TOWN_INTERIOR_RENDER_VERSION =
 export const HARTHMERE_ADDITIVE_TOWN_INTERIOR_LOD0_METERS = 16;
 export const HARTHMERE_ADDITIVE_TOWN_INTERIOR_LOD1_METERS = 28;
 export const HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_PREFETCH_METERS = 12;
-export const HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_MAX_LOADED_ASSETS = 8;
-export const HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_MAX_CONCURRENT_LOADS = 2;
+export const HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_MAX_LOADED_ASSETS = 4;
+export const HARTHMERE_DESKTOP_ADDITIVE_TOWN_INTERIOR_MAX_LOADED_ASSETS = 8;
+export const HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_MAX_CONCURRENT_LOADS = 1;
+export const HARTHMERE_DESKTOP_ADDITIVE_TOWN_INTERIOR_MAX_CONCURRENT_LOADS = 2;
 
 type VisualFixture = HarthmereTownInteriorFixture & {
   visualAsset: string;
@@ -89,7 +91,8 @@ function fixturesByAsset() {
 }
 
 export function harthmereMobileAdditiveTownInteriorAssets(
-  position: THREE.Vector3
+  position: THREE.Vector3,
+  maxLoaded = HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_MAX_LOADED_ASSETS
 ): readonly string[] {
   const maxDistance =
     HARTHMERE_ADDITIVE_TOWN_INTERIOR_LOD1_METERS +
@@ -111,7 +114,7 @@ export function harthmereMobileAdditiveTownInteriorAssets(
   }
   return [...nearestDistanceSqByAsset]
     .sort((left, right) => left[1] - right[1])
-    .slice(0, HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_MAX_LOADED_ASSETS)
+    .slice(0, maxLoaded)
     .map(([asset]) => asset);
 }
 
@@ -199,8 +202,8 @@ export class HarthmereAdditiveTownInteriorsRenderer implements Renderer {
   private readonly groupedFixtures = fixturesByAsset();
   private readonly loadedAssets = new Map<string, LoadedInteriorAsset>();
   private readonly loadingAssets = new Map<string, Promise<void>>();
-  private desiredMobileAssets = new Set<string>();
-  private mobileRefreshSeconds = 0;
+  private desiredAssets = new Set<string>();
+  private streamRefreshSeconds = 0;
   private refreshSeconds = 0;
   private readyPromise: Promise<void>;
 
@@ -210,21 +213,12 @@ export class HarthmereAdditiveTownInteriorsRenderer implements Renderer {
     private readonly mobileDevice = false
   ) {
     this.root.name = `Harthmere additive town interiors ${HARTHMERE_ADDITIVE_TOWN_INTERIOR_RENDER_VERSION}`;
-    // The catalogue is 31 assets x two LODs. Loading all 62 GLBs at phone boot
-    // pinned Mobile Safari's main thread before its first frame even when the
-    // nearest additive-town fixture was over a kilometre away. Desktop keeps
-    // the existing eager path; mobile streams only nearby asset families.
-    this.readyPromise = mobileDevice ? Promise.resolve() : this.loadAll();
+    // The catalogue is 31 assets x two LODs. Loading all 62 GLBs at boot pins
+    // the browser's main thread before its first frame even when the nearest
+    // additive-town fixture is over a kilometre away. Stream only nearby asset
+    // families on every platform.
+    this.readyPromise = Promise.resolve();
     this.publishDebugBridge();
-  }
-
-  private async loadAll() {
-    await Promise.all(
-      [...this.groupedFixtures.entries()].map(([asset, fixtures]) =>
-        this.loadAsset(asset, fixtures)
-      )
-    );
-    this.refreshSeconds = 0;
   }
 
   private async loadAsset(asset: string, fixtures: readonly VisualFixture[]) {
@@ -241,7 +235,7 @@ export class HarthmereAdditiveTownInteriorsRenderer implements Renderer {
         this.load(record.lod0Url),
         this.load(record.lod1Url),
       ]);
-      if (this.mobileDevice && !this.desiredMobileAssets.has(asset)) {
+      if (!this.desiredAssets.has(asset)) {
         disposeInteriorAssetRoot(lod0.scene);
         disposeInteriorAssetRoot(lod1.scene);
         return;
@@ -280,6 +274,11 @@ export class HarthmereAdditiveTownInteriorsRenderer implements Renderer {
     for (const batch of loaded.batches) {
       for (const primitive of batch.primitives) {
         primitive.mesh.removeFromParent();
+        // InstancedMesh owns its instanceMatrix GPU buffer independently from
+        // the shared source geometry. Removing it from the scene and disposing
+        // the source GLTF does not release that buffer; dispatch the mesh's
+        // disposal event so Three clears its WebGL attributes/binding state.
+        primitive.mesh.dispose();
       }
       const batchIndex = this.batches.indexOf(batch);
       if (batchIndex >= 0) this.batches.splice(batchIndex, 1);
@@ -292,19 +291,26 @@ export class HarthmereAdditiveTownInteriorsRenderer implements Renderer {
     this.loadedAssets.delete(asset);
   }
 
-  private syncMobileAssets(position: THREE.Vector3) {
-    this.desiredMobileAssets = new Set(
-      harthmereMobileAdditiveTownInteriorAssets(position)
+  private syncNearbyAssets(position: THREE.Vector3) {
+    this.desiredAssets = new Set(
+      harthmereMobileAdditiveTownInteriorAssets(
+        position,
+        this.mobileDevice
+          ? HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_MAX_LOADED_ASSETS
+          : HARTHMERE_DESKTOP_ADDITIVE_TOWN_INTERIOR_MAX_LOADED_ASSETS
+      )
     );
     for (const asset of this.loadedAssets.keys()) {
-      if (!this.desiredMobileAssets.has(asset)) this.unloadAsset(asset);
+      if (!this.desiredAssets.has(asset)) this.unloadAsset(asset);
     }
     let availableLoads = Math.max(
       0,
-      HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_MAX_CONCURRENT_LOADS -
+      (this.mobileDevice
+        ? HARTHMERE_MOBILE_ADDITIVE_TOWN_INTERIOR_MAX_CONCURRENT_LOADS
+        : HARTHMERE_DESKTOP_ADDITIVE_TOWN_INTERIOR_MAX_CONCURRENT_LOADS) -
         this.loadingAssets.size
     );
-    for (const asset of this.desiredMobileAssets) {
+    for (const asset of this.desiredAssets) {
       if (availableLoads <= 0) break;
       if (this.loadedAssets.has(asset) || this.loadingAssets.has(asset)) {
         continue;
@@ -353,12 +359,10 @@ export class HarthmereAdditiveTownInteriorsRenderer implements Renderer {
 
   draw(scenes: Scenes, dt: number) {
     const camera = this.resources.get("/scene/camera").three;
-    if (this.mobileDevice) {
-      this.mobileRefreshSeconds -= Math.min(dt, 0.5);
-      if (this.mobileRefreshSeconds <= 0) {
-        this.mobileRefreshSeconds = 0.25;
-        this.syncMobileAssets(camera.position);
-      }
+    this.streamRefreshSeconds -= Math.min(dt, 0.5);
+    if (this.streamRefreshSeconds <= 0) {
+      this.streamRefreshSeconds = 0.25;
+      this.syncNearbyAssets(camera.position);
     }
     this.refreshSeconds -= Math.min(dt, 0.5);
     if (this.refreshSeconds <= 0) {

@@ -2169,6 +2169,25 @@ function fixtureBaseSize(
   return [1.0, 0.8, 1.0];
 }
 
+function fixtureClearanceBaseSize(
+  building: HarthmereBuilding,
+  blueprint: HarthmereTownInteriorFixtureBlueprint,
+  baseSize: readonly [number, number, number]
+): readonly [number, number, number] {
+  // The Mail Post outgoing crate sits beside an inclusive stair keep-clear
+  // boundary. Production has evaluated this catalogue with both the generated
+  // 0.9x0.86m crate extent and a conservative one-metre placement extent.
+  // Always reserve the larger footprint so import safety cannot depend on
+  // module load order, generated-manifest drift, or sub-decimetre rounding.
+  if (
+    building.name === "mail_post_house" &&
+    blueprint.key === "mail_outgoing"
+  ) {
+    return [Math.max(1, baseSize[0]), baseSize[1], Math.max(1, baseSize[2])];
+  }
+  return baseSize;
+}
+
 function wallYaw(wall: HarthmereTownInteriorWall) {
   if (wall === "north") return 0;
   if (wall === "south") return Math.PI;
@@ -2202,6 +2221,54 @@ interface Candidate {
   readonly wall: HarthmereTownInteriorWall;
   readonly yaw: number;
 }
+
+// HARTHMERE_MAIL_POST_AUTHORED_INTERIOR:
+//
+// The relocated 15x15 Mail Post has a south-door lane, an east-running stair
+// keep-clear volume, a cross partition, and six ground-floor fixtures. A greedy
+// first-fit layout is unnecessarily fragile in that constrained room: a
+// production server bundle reached the sixth fixture with no slot even though
+// the source-level catalogue test could still find one. These are authored,
+// collision-checked positions for the public dispatch floor, not overlap
+// waivers. `fixtureFits` still validates every one before it is accepted, and
+// the ordinary candidate search remains as a fallback if the shell changes.
+//
+// Keeping the complete floor together is important. Pinning only the final
+// bench would still let an earlier greedy choice consume its space.
+const AUTHORED_FIXTURE_CANDIDATES: ReadonlyMap<string, Candidate> = new Map([
+  [
+    "mail_post_house:mail_counter",
+    { x: 518.15, z: -207.15, wall: "south", yaw: wallYaw("south") },
+  ],
+  [
+    "mail_post_house:mail_sorting",
+    { x: 518.15, z: -216.85, wall: "north", yaw: wallYaw("north") },
+  ],
+  [
+    "mail_post_house:mail_scale",
+    { x: 518.15, z: -210.1, wall: "west", yaw: wallYaw("west") },
+  ],
+  [
+    "mail_post_house:mail_secure",
+    { x: 527.85, z: -216.85, wall: "east", yaw: wallYaw("east") },
+  ],
+  [
+    "mail_post_house:mail_outgoing",
+    // The former z=-216.85 coordinate left only 0.07m between the authored
+    // crate AABB and the inclusive stair keep-clear boundary. That passed the
+    // isolated source catalogue but repeatedly failed in the real production
+    // /at dependency graph when a conservative one-metre placement extent was
+    // observed. Keep a durable margin from that boundary instead of relying on
+    // floating-point equality or the exact generated mesh extent.
+    { x: 520.4, z: -217.4, wall: "north", yaw: wallYaw("north") },
+  ],
+  [
+    "mail_post_house:mail_bench",
+    // East of the stair volume with nearly two metres of lateral clearance;
+    // this is more robust than the old north-wall first-fit position.
+    { x: 527.575, z: -214.175, wall: "west", yaw: wallYaw("west") },
+  ],
+]);
 
 function wallCandidates(
   building: HarthmereBuilding,
@@ -2429,17 +2496,22 @@ function placePlan(
     }
     const occupied = occupiedByFloor.get(floor) ?? [];
     const baseSize = fixtureBaseSize(blueprint);
+    const clearanceBaseSize = fixtureClearanceBaseSize(
+      building,
+      blueprint,
+      baseSize
+    );
     let selected:
       | { candidate: Candidate; size: readonly [number, number, number] }
       | undefined;
     const primaryCandidates = options.forceDenseCandidates
       ? []
       : wallCandidates(building, blueprint.preferredWall);
-    for (const candidate of [
-      ...primaryCandidates,
-      ...denseInteriorCandidates(building, blueprint.preferredWall),
-    ]) {
-      const size = rotatedSize(baseSize, candidate.yaw);
+    const authoredCandidate = options.forceDenseCandidates
+      ? undefined
+      : AUTHORED_FIXTURE_CANDIDATES.get(`${building.name}:${blueprint.key}`);
+    const selectCandidate = (candidate: Candidate) => {
+      const size = rotatedSize(clearanceBaseSize, candidate.yaw);
       if (
         fixtureFits({
           building,
@@ -2451,7 +2523,28 @@ function placePlan(
         })
       ) {
         selected = { candidate, size };
-        break;
+        return true;
+      }
+      return false;
+    };
+
+    // Keep authored layouts out of the fallback array/spread loop. Validate an
+    // authored slot directly, but treat it as a preference rather than an
+    // import-time invariant: if the exact production bundle evaluates that
+    // coordinate as unsafe, continue through the same collision-checked
+    // coarse/dense search instead of taking the whole game route down.
+    if (authoredCandidate) selectCandidate(authoredCandidate);
+    if (!selected) {
+      for (const candidate of primaryCandidates) {
+        if (selectCandidate(candidate)) break;
+      }
+    }
+    if (!selected) {
+      for (const candidate of denseInteriorCandidates(
+        building,
+        blueprint.preferredWall
+      )) {
+        if (selectCandidate(candidate)) break;
       }
     }
     if (!selected) {

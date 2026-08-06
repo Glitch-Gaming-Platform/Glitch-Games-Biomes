@@ -178,6 +178,15 @@ const HARTHMERE_GLITCH_VOLATILE_SAVE_KEYS = new Set<string>([
   HARTHMERE_GLITCH_IDENTITY_KEY,
 ]);
 
+export function shouldStartHarthmereGlitchCloudTimers(input: {
+  stopped: boolean;
+  disconnected: boolean;
+  valid: boolean;
+  guest: boolean;
+}) {
+  return !input.stopped && !input.disconnected && input.valid && !input.guest;
+}
+
 export const HARTHMERE_GLITCH_STANDARD_FUNNEL_EVENTS = [
   { step_key: "game_boot", action_key: "start" },
   { step_key: "glitch_auth", action_key: "start" },
@@ -739,7 +748,7 @@ function migrateCloudSaveStorageKeyToCurrentScope(key: string) {
       prefix === "biomes.localDev.harthmere.playerFace.user." ||
       prefix === "biomes.localDev.harthmere.playerBody.user." ||
       prefix === "biomes.localDev.harthmere.playerClothing.user."
-        ? currentCloudSaveCustomizationScope() ?? scope
+        ? (currentCloudSaveCustomizationScope() ?? scope)
         : scope;
     const previousScope = key.slice(prefix.length);
     if (!previousScope || previousScope === nextScope) return undefined;
@@ -825,7 +834,7 @@ function applySnapshot(snapshot: unknown, cloudSaveVersion?: number) {
       window.localStorage.setItem(
         key,
         key === ACTIVE_USER_SCOPE_KEY
-          ? currentCloudSaveRestoreScope() ?? value
+          ? (currentCloudSaveRestoreScope() ?? value)
           : value
       );
       const migratedKeys = [
@@ -1053,9 +1062,9 @@ function isProductionGlitchRuntime(config: HarthmereGlitchRuntimeConfig) {
   if (!isBrowser()) return false;
   return Boolean(
     config.launchedByGlitch &&
-      config.installId &&
-      !config.localOnly &&
-      !isLocalBrowserHost()
+    config.installId &&
+    !config.localOnly &&
+    !isLocalBrowserHost()
   );
 }
 
@@ -1302,10 +1311,10 @@ function cloudSaveConflictFromError(error: unknown) {
     body?.status === "conflict" || body?.conflict_id || body?.server_version
       ? body
       : body?.data && typeof body.data === "object"
-      ? body.data
-      : body?.error && typeof body.error === "object"
-      ? body.error
-      : body;
+        ? body.data
+        : body?.error && typeof body.error === "object"
+          ? body.error
+          : body;
   return {
     conflictId: firstString(conflictBody?.conflict_id, conflictBody?.id),
     serverVersion: normalizeCloudSaveVersion(conflictBody?.server_version),
@@ -1352,7 +1361,7 @@ class HarthmereGlitchBridgeController {
   private lastSuccessfulCloudSaveAt = 0;
   private cloudSaveConflictPaused = false;
   private readonly previousActiveUserScope = isBrowser()
-    ? window.localStorage.getItem(ACTIVE_USER_SCOPE_KEY) ?? undefined
+    ? (window.localStorage.getItem(ACTIVE_USER_SCOPE_KEY) ?? undefined)
     : undefined;
   // Circuit breaker for behavior-event flushing. The aegis bridge endpoint
   // returns 401 when the install token is invalid; previously every interval
@@ -1412,6 +1421,15 @@ class HarthmereGlitchBridgeController {
 
     await this.validateAndClaimInstall();
 
+    // React can unmount/recreate Game while the install claim is in flight. A
+    // stopped controller must never continue after that await and install a
+    // second autosave/heartbeat/polling stack beside the replacement. The
+    // production battle HAR showed exactly this shape: far more storeSave and
+    // heartbeat requests than one controller's authored cadence permits.
+    if (this.stopped || this.disconnected) {
+      return;
+    }
+
     // Guests play the full game with an ephemeral session: no cloud restore, no
     // autosave, no heartbeats. Run only a local playtime timer and stop here.
     if (this.guest) {
@@ -1437,14 +1455,24 @@ class HarthmereGlitchBridgeController {
 
     const forceCloudRestoreForUserSwitch = Boolean(
       this.previousActiveUserScope &&
-        this.identity?.gameUserId &&
-        this.previousActiveUserScope !== this.identity.gameUserId
+      this.identity?.gameUserId &&
+      this.previousActiveUserScope !== this.identity.gameUserId
     );
     await this.restoreLatestIfEmpty(forceCloudRestoreForUserSwitch).catch(
       (error) => {
         this.recordError(error);
       }
     );
+    if (
+      !shouldStartHarthmereGlitchCloudTimers({
+        stopped: this.stopped,
+        disconnected: this.disconnected,
+        valid: this.valid,
+        guest: this.guest,
+      })
+    ) {
+      return;
+    }
     this.startCloudTimers();
     await this.heartbeatInstall("start").catch((error) => {
       this.recordError(error);
@@ -1574,7 +1602,7 @@ class HarthmereGlitchBridgeController {
         lastValidationAt: new Date().toISOString(),
         lastValidationError: this.valid
           ? undefined
-          : claim?.reason ?? "INVALID_INSTALL",
+          : (claim?.reason ?? "INVALID_INSTALL"),
         playtimeSeconds: this.currentPlaytimeSeconds(),
       });
     } catch (error: any) {
@@ -1596,6 +1624,20 @@ class HarthmereGlitchBridgeController {
   }
 
   private startCloudTimers() {
+    if (
+      !shouldStartHarthmereGlitchCloudTimers({
+        stopped: this.stopped,
+        disconnected: this.disconnected,
+        valid: this.valid,
+        guest: this.guest,
+      }) ||
+      this.progressionTimer !== undefined ||
+      this.autosaveTimer !== undefined ||
+      this.heartbeatTimer !== undefined ||
+      this.installHeartbeatTimer !== undefined
+    ) {
+      return;
+    }
     this.progressionTimer = window.setInterval(() => {
       applyIdentityToGameContext(this.clientContext, this.identity);
       void this.submitProgression("interval").catch((error) =>
@@ -2468,7 +2510,9 @@ export function useHarthmereGlitchBridge(
   gameReady: boolean,
   clientContext?: ClientContext | null
 ) {
-  const controllerRef = useRef<HarthmereGlitchBridgeController | undefined>(undefined);
+  const controllerRef = useRef<HarthmereGlitchBridgeController | undefined>(
+    undefined
+  );
 
   useEffect(() => {
     if (!gameReady || !isBrowser()) {

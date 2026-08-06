@@ -46,7 +46,8 @@ describe("BiomesHotbar rendered actions", () => {
               slots={[
                 { id: "muckwad", label: "Muckwad", icon: "■", count: 7, primaryActionLabel: "Place", canDrop: true },
                 { id: "quest", label: "Protected Quest Item", icon: "!", count: 1, primaryActionLabel: "Use", canDrop: false },
-                null, null, null, null, null, null, null,
+                { id: "hunter_bow", label: "Hunter Bow", icon: ")", count: 0, showZeroCount: true, primaryActionLabel: "Attack", canDrop: true },
+                null, null, null, null, null, null,
               ]}
               selectedIndex={selectedIndex}
               onSelect={setSelectedIndex}
@@ -94,9 +95,25 @@ describe("BiomesHotbar rendered actions", () => {
       });
       assert.equal(await place.isVisible(), true);
       assert.equal(await throwOne.isVisible(), true);
+      assert.equal(
+        await page
+          .getByRole("button", { name: "Slot 3: Hunter Bow" })
+          .locator('[data-hotbar-count="0"]')
+          .isVisible(),
+        true,
+        "an equipped bow keeps its depleted backpack arrow count visible"
+      );
 
       await page.keyboard.press("Space");
       assert.equal(await page.evaluate(() => window.__hotbarUses), 0);
+
+      await page.keyboard.press("KeyQ");
+      await page.waitForTimeout(300);
+      assert.equal(
+        await page.evaluate(() => window.__hotbarThrows),
+        0,
+        "Q is reserved for gameplay evade and must never throw the held item"
+      );
 
       await place.click();
       assert.equal(

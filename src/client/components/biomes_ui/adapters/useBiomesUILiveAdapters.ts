@@ -8,6 +8,10 @@ import {
 import { submitHarthmereBuildingLiveModeAction } from "@/client/components/harthmere_building_live_mode";
 import { addToast } from "@/client/components/toast/helpers";
 import {
+  HARTHMERE_ESCORT_ARRIVAL_DIALOGUE_EVENT,
+  type HarthmereEscortArrivalDialogueDetail,
+} from "@/client/components/challenges/harthmereLiveModeClientEvents";
+import {
   BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT,
   type BiomesUIOptimisticPlayerStatusDetail,
 } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
@@ -32,8 +36,9 @@ import {
   assertHarthmereLiveMutationAppliedForTest,
   type HarthmereItemInstance,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
-import { HARTHMERE_HOTBAR_HELD_ITEM_EVENT } from "@/shared/harthmere/premium_weapon_catalog";
+import { getHarthmerePremiumWeapon } from "@/shared/harthmere/premium_weapon_catalog";
 import { performHarthmereMousePrimaryAttack } from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
+import { dispatchHarthmereHotbarHeldItemSelection } from "@/client/game/resources/harthmere_held_item";
 import { emitHarthmereGlitchBehaviorEvent } from "@/client/game/glitch/harthmere_glitch_behavior_events";
 import {
   hasSelectedWorldInteractionCandidate,
@@ -97,6 +102,11 @@ import {
   readHarthmereNativeCombatProgression,
 } from "@/shared/harthmere/harthmere_native_combat";
 import { harthmereNativeLevelStats } from "@/shared/harthmere/harthmere_native_level_stats";
+import {
+  HARTHMERE_ARROW_ITEM_ID,
+  harthmereBackpackArrowCount,
+  isHarthmereBowWeapon,
+} from "@/shared/harthmere/harthmere_ranged_resources";
 import { createHarthmereSkillClientProjection } from "@/shared/harthmere/harthmere_skill_progression";
 import {
   createBiomesUIGuildsAdapter,
@@ -160,6 +170,7 @@ import {
   fetchHarthmereJobsBoardState,
   HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT,
   harthmereJobsBoardStateFromUpdatedEventDetail,
+  jobsBoardSnapshotWithLiveInventoryForTest,
   normalizeHarthmereJobsBoardSnapshot,
 } from "../../harthmere_jobs_board/jobsBoardLiveAdapter";
 import {
@@ -524,7 +535,7 @@ function localHarthmereBackpackItemToUiItem(
     },
     source: "backpack",
     storageLocation: "backpack",
-    canUse: edibleFood ? true : display?.canUse ?? false,
+    canUse: edibleFood ? true : (display?.canUse ?? false),
     useActionLabel: edibleFood ? "Eat" : undefined,
     equipSlot,
     canEquip: display?.canEquip ?? Boolean(equipSlot),
@@ -556,16 +567,16 @@ function localHarthmereHotbarItemToUiItem(
   const primaryActionLabel = edibleFood
     ? "Eat"
     : harthmereItemThrowable(itemId)
-    ? "Throw"
-    : display.category === "weapon"
-    ? "Attack"
-    : display.category === "tool"
-    ? "Use Tool"
-    : display.canUse
-    ? "Use"
-    : isBlockHotbarItemId(itemId)
-    ? "Place"
-    : "Use";
+      ? "Throw"
+      : display.category === "weapon"
+        ? "Attack"
+        : display.category === "tool"
+          ? "Use Tool"
+          : display.canUse
+            ? "Use"
+            : isBlockHotbarItemId(itemId)
+              ? "Place"
+              : "Use";
   return {
     id: itemId,
     label: display.name,
@@ -831,8 +842,8 @@ function slotToInventoryUiItem(
   const category = edibleFood
     ? "consumables"
     : display
-    ? harthmereDisplayCategoryForBiomesUI(display.category, equipSlot)
-    : inferInventoryCategory(item);
+      ? harthmereDisplayCategoryForBiomesUI(display.category, equipSlot)
+      : inferInventoryCategory(item);
   return {
     id: base.id,
     label: display?.name ?? base.label,
@@ -945,10 +956,7 @@ function normalizeContainer(container: unknown): any[] {
 }
 
 export type NativeHotbarRemovalFailureReason =
-  | "player_not_ready"
-  | "slot_empty"
-  | "backpack_full"
-  | "publish_failed";
+  "player_not_ready" | "slot_empty" | "backpack_full" | "publish_failed";
 
 export type NativeHotbarRemovalPlan =
   | { ok: true; destinationIndex: number }
@@ -989,10 +997,10 @@ export function nativeHotbarRemovalFailureFeedback(input: {
     input.reason === "backpack_full"
       ? `Backpack full. Free one of your ${backpackSlots} backpack slots before removing a hotbar item.`
       : input.reason === "player_not_ready"
-      ? "Your character inventory is still loading. Try removing the hotbar item again."
-      : input.reason === "slot_empty"
-      ? "That hotbar slot changed before it could be removed. Try again."
-      : "The hotbar item could not be moved to your backpack. Try again.";
+        ? "Your character inventory is still loading. Try removing the hotbar item again."
+        : input.reason === "slot_empty"
+          ? "That hotbar slot changed before it could be removed. Try again."
+          : "The hotbar item could not be moved to your backpack. Try again.";
   return {
     message,
     telemetry: {
@@ -1422,8 +1430,8 @@ function stackRecordToInventoryUiItems(
       const category = edibleFood
         ? "consumables"
         : display
-        ? harthmereDisplayCategoryForBiomesUI(display.category, equipSlot)
-        : inferInventoryCategory({ id: itemId });
+          ? harthmereDisplayCategoryForBiomesUI(display.category, equipSlot)
+          : inferInventoryCategory({ id: itemId });
       return {
         id: itemId,
         label: display?.name ?? humanizeRealItemId(itemId, itemId),
@@ -1454,7 +1462,7 @@ function stackRecordToInventoryUiItems(
           options.canUse ??
           (edibleFood
             ? true
-            : display?.canUse ?? isLiveUsableBackpackItem(itemId)),
+            : (display?.canUse ?? isLiveUsableBackpackItem(itemId))),
         useActionLabel: edibleFood ? "Eat" : undefined,
         canEquip: options.canEquip ?? display?.canEquip ?? Boolean(equipSlot),
         hotbarEligible: isHotbarEligibleItemId(itemId),
@@ -1469,6 +1477,16 @@ function stackRecordToInventoryUiItems(
             : "This item uses protected inventory handling."),
       };
     });
+}
+
+export function liveInventoryMutationCountForTest(
+  availableCount: number | undefined,
+  requestedCount: number | undefined
+) {
+  const available = Math.max(1, Math.trunc(Number(availableCount) || 1));
+  return requestedCount === undefined
+    ? available
+    : Math.min(available, Math.max(1, Math.trunc(Number(requestedCount) || 1)));
 }
 
 function mergeInventoryStackRecords(
@@ -1512,11 +1530,11 @@ function instanceRecordToInventoryUiItems(
     const category = edibleFood
       ? "consumables"
       : display
-      ? harthmereDisplayCategoryForBiomesUI(display.category, equipSlot)
-      : inferInventoryCategory({
-          id: itemId,
-          category: instance.category,
-        });
+        ? harthmereDisplayCategoryForBiomesUI(display.category, equipSlot)
+        : inferInventoryCategory({
+            id: itemId,
+            category: instance.category,
+          });
     return [
       {
         id: instanceId,
@@ -2108,6 +2126,31 @@ export function useBiomesUILiveAdapters({
     mapManager,
   } = clientContext;
   const pointerLockManager = usePointerLockManager();
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const showEscortCompletionDialogue = (event: Event) => {
+      const detail = (
+        event as CustomEvent<HarthmereEscortArrivalDialogueDetail>
+      ).detail;
+      if (!detail?.dialogue) return;
+      addToast(resources, {
+        kind: "complete",
+        id: `escort-arrival:${detail.companionId}:${
+          detail.arrivedAtMs ?? "arrived"
+        }`,
+        message: `${detail.displayName}: “${detail.dialogue}”`,
+      });
+    };
+    window.addEventListener(
+      HARTHMERE_ESCORT_ARRIVAL_DIALOGUE_EVENT,
+      showEscortCompletionDialogue
+    );
+    return () =>
+      window.removeEventListener(
+        HARTHMERE_ESCORT_ARRIVAL_DIALOGUE_EVENT,
+        showEscortCompletionDialogue
+      );
+  }, [resources]);
   const inventory = reactResources.use("/ecs/c/inventory", userId) as any;
   const wearing = reactResources.use("/ecs/c/wearing", userId) as any;
   const nativeTriggerState = reactResources.use("/ecs/c/trigger_state", userId);
@@ -2146,8 +2189,7 @@ export function useBiomesUILiveAdapters({
         npcTypePosition: (npcTypeId) => {
           const player = reactResources.get("/scene/local_player") as any;
           const playerPosition = player?.player?.position as
-            | readonly number[]
-            | undefined;
+            readonly number[] | undefined;
           let best:
             | { distanceSquared: number; position: [number, number, number] }
             | undefined;
@@ -2371,6 +2413,14 @@ export function useBiomesUILiveAdapters({
   const [farmingFoodHydrated, setFarmingFoodHydrated] = React.useState(false);
   const [jobsBoardState, setJobsBoardState] = React.useState<any | undefined>(
     undefined
+  );
+  const jobsBoardStateWithLiveInventory = React.useMemo(
+    () =>
+      jobsBoardSnapshotWithLiveInventoryForTest(
+        jobsBoardState,
+        inventoryLootState
+      ),
+    [inventoryLootState, jobsBoardState]
   );
   const [questState, setQuestState] = React.useState<any | undefined>(
     undefined
@@ -2740,10 +2790,14 @@ export function useBiomesUILiveAdapters({
   React.useEffect(() => {
     if (typeof window === "undefined") return;
     const landmarks = [
-      ...jobsBoardAcceptedJobLandmarksForBiomesUI(jobsBoardState),
-      ...jobsBoardItemSourceLandmarksForBiomesUI(jobsBoardState),
+      ...jobsBoardAcceptedJobLandmarksForBiomesUI(
+        jobsBoardStateWithLiveInventory
+      ),
+      ...jobsBoardItemSourceLandmarksForBiomesUI(
+        jobsBoardStateWithLiveInventory
+      ),
       ...jobsBoardToolSourceLandmarksForBiomesUI(
-        jobsBoardState,
+        jobsBoardStateWithLiveInventory,
         harthmereJobToolOwnedState()
       ),
     ];
@@ -2784,7 +2838,7 @@ export function useBiomesUILiveAdapters({
     if (pin) {
       writeActiveBiomesUIMapPin(pin);
     }
-  }, [jobsBoardState]);
+  }, [jobsBoardStateWithLiveInventory]);
 
   const refreshQuestState = React.useCallback(async () => {
     if (questStateRefreshInFlightRef.current) return;
@@ -3228,6 +3282,36 @@ export function useBiomesUILiveAdapters({
         );
       return localCount;
     };
+    const heldCompatibilityItemIdForSlot = (index: number) => {
+      if (hotbarSlots[index]) return undefined;
+      const itemId = localHotbarItemIds[index];
+      if (!itemId) return undefined;
+      if (nativeBiomesEcsAuthorityEnabled() && isNativeBikkieItemId(itemId)) {
+        return undefined;
+      }
+      if (carriedCountForHotbarItem(itemId) <= 0) return undefined;
+      const display = getHarthmereItemDisplay(itemId);
+      return display && ["weapon", "tool"].includes(display.category)
+        ? itemId
+        : undefined;
+    };
+    const selectVisibleHotbarIndex = (index: number) => {
+      const slotIndex = clampHotbarIndex(index, 9);
+      selectHotbarIndex(slotIndex);
+      dispatchHarthmereHotbarHeldItemSelection(
+        heldCompatibilityItemIdForSlot(slotIndex)
+      );
+      return slotIndex;
+    };
+    const nativeBackpackArrowCount = Number(
+      harthmereBackpackArrowCount(inventory)
+    );
+    const localBackpackArrowCount = localInventoryState.backpack.items
+      .filter((item) => item.itemId === HARTHMERE_ARROW_ITEM_ID)
+      .reduce((sum, item) => sum + Math.max(1, Number(item.quantity) || 1), 0);
+    const bowArrowCount = nativeBiomesEcsAuthorityEnabled()
+      ? nativeBackpackArrowCount
+      : Math.max(nativeBackpackArrowCount, localBackpackArrowCount);
     const slots = Array.from({ length: 9 }, (_unused, index) => {
       // A populated ECS hotbar slot is the authoritative stack. A Harthmere
       // quick-slot may only fill an empty native slot and only when the item is
@@ -3237,7 +3321,15 @@ export function useBiomesUILiveAdapters({
         hotbarSlots[index],
         `hotbar_${index + 1}`
       );
-      if (nativeSlot) return nativeSlot;
+      if (nativeSlot) {
+        return isHarthmereBowWeapon(hotbarSlots[index]?.item)
+          ? {
+              ...nativeSlot,
+              count: bowArrowCount,
+              showZeroCount: true,
+            }
+          : nativeSlot;
+      }
       const localItemId = localHotbarItemIds[index];
       if (localItemId) {
         if (
@@ -3254,7 +3346,14 @@ export function useBiomesUILiveAdapters({
           carriedCount
         );
         if (localItem) {
-          return localItem as unknown as HotbarSlotItem;
+          const uiItem = localItem as unknown as HotbarSlotItem;
+          return getHarthmerePremiumWeapon(localItemId)?.family === "bow"
+            ? {
+                ...uiItem,
+                count: bowArrowCount,
+                showZeroCount: true,
+              }
+            : uiItem;
         }
       }
       return null;
@@ -3333,7 +3432,7 @@ export function useBiomesUILiveAdapters({
     return {
       slots,
       selectedIndex,
-      onSelect: selectHotbarIndex,
+      onSelect: selectVisibleHotbarIndex,
       /**
        * Activate the selected item's authored primary action. Native items are
        * driven through Input -> InteractScript -> ECS event handlers, exactly
@@ -3342,19 +3441,13 @@ export function useBiomesUILiveAdapters({
        * identity, but never replace the native path for mapped items.
        */
       onUse: async (index: number) => {
-        const slotIndex = clampHotbarIndex(index, 9);
-        selectHotbarIndex(slotIndex);
+        const slotIndex = selectVisibleHotbarIndex(index);
         const nativeSlot = hotbarSlots[slotIndex];
         const localItemId = nativeSlot
           ? undefined
           : localHotbarItemIds[slotIndex];
 
         if (localItemId) {
-          window.dispatchEvent(
-            new CustomEvent(HARTHMERE_HOTBAR_HELD_ITEM_EVENT, {
-              detail: { itemId: undefined },
-            })
-          );
           const localBackpackItem =
             readHarthmereInventoryState().backpack.items.find(
               (item) => item.itemId === localItemId
@@ -3442,11 +3535,6 @@ export function useBiomesUILiveAdapters({
         if (!item) {
           throw new Error("That hotbar slot is empty.");
         }
-        window.dispatchEvent(
-          new CustomEvent(HARTHMERE_HOTBAR_HELD_ITEM_EVENT, {
-            detail: { itemId: undefined },
-          })
-        );
         await activateNativeHotbarPrimaryAction({
           gameInput: clientContext.input,
           item,
@@ -3466,6 +3554,9 @@ export function useBiomesUILiveAdapters({
         if (removedLocalItemId) {
           rememberHarthmereHotbarAutoAssignOptOut(removedLocalItemId);
           performHarthmereHotbarClearForBiomesUI(idx);
+          if (idx === selectedIndex) {
+            dispatchHarthmereHotbarHeldItemSelection(undefined);
+          }
           return;
         }
         const slot = hotbarSlots[idx];
@@ -3535,6 +3626,27 @@ export function useBiomesUILiveAdapters({
     selectHotbarIndex,
     selectedIndex,
     useLocalHarthmereFoodItem,
+  ]);
+
+  React.useEffect(() => {
+    const hotbarSlots = normalizeContainer(inventory?.hotbar).slice(0, 9);
+    if (hotbarSlots[selectedIndex] || !hotbar.slots[selectedIndex]) {
+      dispatchHarthmereHotbarHeldItemSelection(undefined);
+      return;
+    }
+    const itemId =
+      readHarthmereInventoryState().hotbar[`slot_${selectedIndex + 1}`];
+    const display = itemId ? getHarthmereItemDisplay(itemId) : undefined;
+    dispatchHarthmereHotbarHeldItemSelection(
+      display && ["weapon", "tool"].includes(display.category)
+        ? itemId
+        : undefined
+    );
+  }, [
+    harthmereInventoryRevision,
+    hotbar.slots,
+    inventory?.hotbar,
+    selectedIndex,
   ]);
 
   const adapters = React.useMemo<BiomesUIAdapters>(() => {
@@ -3612,10 +3724,23 @@ export function useBiomesUILiveAdapters({
       "item",
       {
         canMove: true,
+        canDrop: true,
+        canDestroy: true,
         protectedReason: undefined,
         indexOffset: liveBackpackIndexOffset,
       }
-    ).filter((item) => !isRetiredRoadAheadClothingAlias(item.id));
+    )
+      .map((item) =>
+        item.category === "quest"
+          ? {
+              ...item,
+              canDrop: false,
+              canDestroy: false,
+              protectedReason: "Quest items stay with your quest pouch.",
+            }
+          : item
+      )
+      .filter((item) => !isRetiredRoadAheadClothingAlias(item.id));
     const liveBackpackInstanceItems = instanceRecordToInventoryUiItems(
       backendActor?.instanceIds,
       inventoryLootState?.itemInstances,
@@ -3684,10 +3809,10 @@ export function useBiomesUILiveAdapters({
       typeof materialStorageSnapshot.items === "object"
         ? materialStorageSnapshot.items
         : materialStorageSnapshot &&
-          typeof materialStorageSnapshot === "object" &&
-          !("maxSlots" in materialStorageSnapshot)
-        ? materialStorageSnapshot
-        : undefined;
+            typeof materialStorageSnapshot === "object" &&
+            !("maxSlots" in materialStorageSnapshot)
+          ? materialStorageSnapshot
+          : undefined;
     // Same server-authoritative gate as the backpack: when live, material storage
     // is the server's alone; offline we still merge the local sim's materials.
     const combinedMaterialStorageItems =
@@ -3884,7 +4009,7 @@ export function useBiomesUILiveAdapters({
           });
         const uiItems = allBackpackUiItems;
         const itemWeightForUiItem = (item: InventoryUiItem | null) =>
-          item ? item.weight?.total ?? 0 : 0;
+          item ? (item.weight?.total ?? 0) : 0;
         const currentWeight =
           uiItems.reduce(
             (sum: number, item: InventoryUiItem | null) =>
@@ -4509,8 +4634,7 @@ export function useBiomesUILiveAdapters({
       },
       moveItem: (src: InventoryUiRef, dst: InventoryUiRef) => {
         let nativeHotbarEquipEvent:
-          | { itemId: string; itemName: string }
-          | undefined;
+          { itemId: string; itemName: string } | undefined;
         // Dragging a harthmere quick-slot OFF the hotbar (onto the backpack)
         // clears the shortcut assignment — publishSwap below only understands
         // real ECS slots and would silently no-op for these refs.
@@ -4575,8 +4699,8 @@ export function useBiomesUILiveAdapters({
               src.kind === "item"
                 ? backpackItems[Number(src.idx ?? -1)]
                 : src.kind === "hotbar"
-                ? hotbarItems[Number(src.idx ?? -1)]
-                : undefined;
+                  ? hotbarItems[Number(src.idx ?? -1)]
+                  : undefined;
             const nativeItemId = nativeSlot?.item?.id;
             // Native hotbar cells hold the actual stack, so enforce the same
             // block/tool/consumable eligibility as the replacement UI before
@@ -4748,6 +4872,23 @@ export function useBiomesUILiveAdapters({
           }
           return;
         }
+        const liveItemId = liveItemIdForRef(ref);
+        if (liveItemId && !liveInstanceIdForRef(ref)) {
+          const requested = liveInventoryMutationCountForTest(
+            liveItemForRef(ref)?.count,
+            count
+          );
+          fireAndForget(
+            submitInventoryItemLiveModeAction("drop_item", {
+              itemId: liveItemId,
+              count: requested,
+              position: harthmereThrowDropPosition(clientContext),
+            })
+              .then(applyLiveModeInventoryResponse)
+              .catch(() => refreshInventoryLootState())
+          );
+          return;
+        }
         const materialItemId = materialItemIdForRef(ref);
         if (materialItemId) {
           const requested = Math.max(1, Math.trunc(Number(count ?? 1) || 1));
@@ -4786,6 +4927,22 @@ export function useBiomesUILiveAdapters({
         } catch {}
       },
       destroyItem: (ref: InventoryUiRef, count?: number) => {
+        const liveItemId = liveItemIdForRef(ref);
+        if (liveItemId && !liveInstanceIdForRef(ref)) {
+          const requested = liveInventoryMutationCountForTest(
+            liveItemForRef(ref)?.count,
+            count
+          );
+          fireAndForget(
+            submitInventoryItemLiveModeAction("destroy_item", {
+              itemId: liveItemId,
+              count: requested,
+            })
+              .then(applyLiveModeInventoryResponse)
+              .catch(() => refreshInventoryLootState())
+          );
+          return;
+        }
         const materialItemId = materialItemIdForRef(ref);
         if (materialItemId) {
           const requested = Math.max(1, Math.trunc(Number(count ?? 1) || 1));
@@ -5128,7 +5285,7 @@ export function useBiomesUILiveAdapters({
           Array.from({ length: 8 }, (_unused, index) => {
             const abilityId = progressionState?.equipped?.[index];
             return abilityId
-              ? abilityById.get(String(abilityId)) ?? null
+              ? (abilityById.get(String(abilityId)) ?? null)
               : null;
           }),
         getLibrary: () =>
@@ -5167,8 +5324,8 @@ export function useBiomesUILiveAdapters({
                 typeof entry.source === "string"
                   ? entry.source
                   : typeof entry.sourceKind === "string"
-                  ? humanizeRealItemId(entry.sourceKind, entry.sourceKind)
-                  : undefined,
+                    ? humanizeRealItemId(entry.sourceKind, entry.sourceKind)
+                    : undefined,
             });
             grouped.set(id, current);
           }
@@ -5181,7 +5338,7 @@ export function useBiomesUILiveAdapters({
       map: buildBiomesUIMapAdapter(
         snapshotRevision,
         playerWorldPos,
-        jobsBoardState,
+        jobsBoardStateWithLiveInventory,
         liveQuestState,
         buildingState,
         roadAheadChallengeStepHints,
@@ -5231,8 +5388,8 @@ export function useBiomesUILiveAdapters({
             kind === "account"
               ? bankingState?.accountVault
               : kind === "materials"
-              ? bankingState?.materialStorage
-              : bankingState?.personalVault;
+                ? bankingState?.materialStorage
+                : bankingState?.personalVault;
           return {
             items: dictionaryToVaultItems(source?.items),
             maxSlots: Number(source?.maxSlots ?? 0),
@@ -5362,7 +5519,7 @@ export function useBiomesUILiveAdapters({
     inventory?.hotbar,
     inventory?.items,
     inventory?.selected,
-    jobsBoardState,
+    jobsBoardStateWithLiveInventory,
     nativeQuestBundles,
     nativeTriggerState,
     progressionHydrated,

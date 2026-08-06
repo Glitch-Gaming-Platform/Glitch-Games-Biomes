@@ -401,6 +401,55 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
     );
   });
 
+  it("shows only the three authored Grove jobs while Chapter 1 owns the board", () => {
+    const snapshot = sampleSnapshot();
+    const templateByTitle: Record<string, string> = {
+      "Stock the Road Rations Crate": "town_gather_road_rations",
+      "Patch the Safe-Zone Fence": "town_repair_fence",
+      "Clear the Muckwad Patch": "town_cleanup_muck_patch",
+    };
+    snapshot.openJobs = snapshot.openJobs.map((entry) => ({
+      ...entry,
+      templateId: templateByTitle[entry.title],
+      autoPosted: Boolean(templateByTitle[entry.title]),
+    }));
+    snapshot.myAcceptedJobs = snapshot.myAcceptedJobs.map((entry) => ({
+      ...entry,
+      templateId:
+        entry.title === "Patch the Safe-Zone Fence"
+          ? "town_repair_fence"
+          : undefined,
+      autoPosted: entry.title === "Patch the Safe-Zone Fence",
+    }));
+    const html = renderToStaticMarkup(
+      <HarthmereJobsBoardPanel snapshot={snapshot} chapter1Mode />
+    );
+    assert.ok(html.includes('data-chapter1-jobs-board="take_jobs"'));
+    assert.ok(html.includes("Chapter 1 Grove Jobs"));
+    assert.ok(html.includes("Stock the Road Rations Crate"));
+    assert.ok(html.includes("Patch the Safe-Zone Fence"));
+    assert.ok(html.includes("Clear the Muckwad Patch"));
+    assert.equal(html.includes("Bounty: Elite Mucker"), false);
+    assert.equal(html.includes("Escort a Newcomer"), false);
+    assert.equal(html.includes(">Posted<"), false);
+    assert.equal(html.includes(">Post Job<"), false);
+    assert.equal(html.includes(">Safety<"), false);
+  });
+
+  it("derives Chapter 1 mode from the active objective projection in the live container", async () => {
+    const source = await readFile(
+      path.join(
+        process.cwd(),
+        "src/client/components/harthmere_jobs_board/HarthmereJobsBoardLiveContainer.tsx"
+      ),
+      "utf8"
+    );
+    assert.match(source, /readChapter1ObjectiveWorldProjection/);
+    assert.match(source, /chapter1Projection\?\.authoredStepId === CH1_JOBS_BOARD_STEP_ID/);
+    assert.match(source, /activeBoardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID/);
+    assert.match(source, /chapter1Mode=\{chapter1Mode\}/);
+  });
+
   it("supports arrow traversal, accept, turn-in, cancel, post, empty-tab, and close flows in a browser", async () => {
     const tempDir = await mkdtemp(
       path.join(tmpdir(), "biomes-jobs-board-keyboard-")

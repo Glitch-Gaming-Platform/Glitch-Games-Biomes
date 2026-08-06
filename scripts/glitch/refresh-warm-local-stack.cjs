@@ -42,6 +42,8 @@ Options:
                              compiler/buildx children have exited
   --build MODE               none, next, server, or all (default: none)
   --build-id ID              Shared Next/server build id for --build
+  --inherit-env KEY          Override KEY from this process environment;
+                             repeat for multiple keys (values are never logged)
   --ready-timeout-seconds N  Complete lifecycle timeout (default: 900)
   --min-dbsize N             Minimum retained-world Redis size (default: 1000)
   --keep-previous            Keep the stopped previous app after a green swap
@@ -61,6 +63,7 @@ function parseArgs(argv) {
     allowPostPushDeploy: false,
     build: "none",
     buildId: undefined,
+    inheritEnv: [],
     readyTimeoutSeconds: 900,
     minDbsize: 1000,
     keepPrevious: false,
@@ -88,6 +91,9 @@ function parseArgs(argv) {
       case "--build-id":
         options.buildId = argv[++i];
         break;
+      case "--inherit-env":
+        options.inheritEnv.push(argv[++i]);
+        break;
       case "--ready-timeout-seconds":
         options.readyTimeoutSeconds = Number(argv[++i]);
         break;
@@ -113,6 +119,11 @@ function parseArgs(argv) {
   }
   if (!new Set(["none", "next", "server", "all"]).has(options.build)) {
     throw new Error("--build must be one of: none, next, server, all");
+  }
+  for (const key of options.inheritEnv) {
+    if (!key || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+      throw new Error("--inherit-env requires a valid environment key");
+    }
   }
   if (
     !Number.isFinite(options.readyTimeoutSeconds) ||
@@ -185,8 +196,19 @@ function envMap(values = []) {
   return map;
 }
 
-function replacementEnvironment(sourceValues, redisName, buildId) {
+function replacementEnvironment(
+  sourceValues,
+  redisName,
+  buildId,
+  overrideValues = []
+) {
   const map = envMap(sourceValues);
+  for (const [key, value] of envMap(overrideValues)) {
+    if (/\r|\n/.test(value)) {
+      throw new Error(`Cannot inherit multiline Docker environment value: ${key}`);
+    }
+    map.set(key, value);
+  }
   const redisPort =
     map.get("GLITCH_REDIS_PORT") || map.get("REDIS_PORT") || "6379";
   const forced = {
@@ -756,10 +778,17 @@ async function refresh(options) {
     titleId,
     options.minDbsize
   );
+  const inheritedEnvironment = options.inheritEnv.map((key) => {
+    if (process.env[key] === undefined) {
+      throw new Error(`--inherit-env ${key} is not set in this process`);
+    }
+    return `${key}=${process.env[key]}`;
+  });
   const replacementEnv = replacementEnvironment(
     source.Config.Env,
     options.redis,
-    artifacts.buildId
+    artifacts.buildId,
+    inheritedEnvironment
   );
   replacementCreateArgs({
     source,

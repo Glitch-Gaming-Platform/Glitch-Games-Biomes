@@ -1,5 +1,13 @@
 # Chapter 1 — Final Production Readiness Audit
 
+> **August 5, 2026 update:** the Core Cell/map-marker, staged Jackie Talk,
+> cutscene cleanup/regional music, and fifteen Chapter 1 plot-item presentation
+> hotfixes are documented in
+> `CHAPTER_1_HOTFIX_AUDIT_2026-08-05.md`. Focused product evidence is green,
+> but the complete quest progression and front-facing held-item visual review
+> have not passed on the final combined artifact. The production-ready verdict
+> in this historical audit therefore remains open.
+
 **Date:** 2026-08-03
 **Scope:** the complete Chapter 1 “Identity” line: prologue handoff, 31 quests,
 80 objectives, two Elsewhen dungeons, all six acts, all endings, production

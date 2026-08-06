@@ -33,9 +33,17 @@ describe("Harthmere mobile runtime placement streaming", () => {
         "makeHarthmereRuntimeAssetsRenderer(resources, clientConfig.mobileDevice)"
       )
     );
+    const constructorStreaming = renderer.slice(
+      renderer.indexOf("constructor("),
+      renderer.indexOf("draw(scenes: Scenes, dt: number)")
+    );
+    assert.doesNotMatch(
+      constructorStreaming,
+      /this\.harthmereProjectileVisuals\.preloadAll\(/
+    );
     assert.match(
-      renderer,
-      /if \(!this\.mobileDevice\) \{\s*this\.harthmereProjectileVisuals\.preloadAll\(\);\s*\}\s*if \(shouldRenderHarthmereRuntimeAssets\(\)\) \{[\s\S]{0,1600}this\.prepareMobileRuntimePlacements\(\)[\s\S]{0,300}this\.ready = true/
+      constructorStreaming,
+      /if \(shouldRenderHarthmereRuntimeAssets\(\)\) \{[\s\S]{0,1600}this\.prepareMobileRuntimePlacements\(\)[\s\S]{0,300}this\.ready = true/
     );
     assert.doesNotMatch(
       renderer.slice(

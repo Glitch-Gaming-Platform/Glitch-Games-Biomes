@@ -1,4 +1,22 @@
+import { expandRgbToRgba } from "@/client/game/util/rgb_to_rgba";
 import * as THREE from "three";
+
+function assertPackedTextureByteLength(
+  data: Uint8Array,
+  dimensions: readonly number[],
+  channels: 3 | 4
+) {
+  const expected =
+    dimensions.reduce((product, dimension) => product * dimension, 1) *
+    channels;
+  if (data.length !== expected) {
+    throw new Error(
+      `Packed texture byte length mismatch: expected ${expected} (${dimensions.join(
+        "x"
+      )}x${channels}), received ${data.length}`
+    );
+  }
+}
 
 export function makeColorMap(
   data: Uint8Array,
@@ -7,18 +25,13 @@ export function makeColorMap(
   c: 3 | 4,
   flip = false
 ) {
+  // Keep the channel declaration honest. The old byte loop silently accepted
+  // RGBA placeholders declared as RGB and uploaded truncated/corrupt data.
+  assertPackedTextureByteLength(data, [w, h], c);
   if (c === 3) {
-    const mappedData = new Uint8Array((data.length * 4) / 3);
-    // remap RGB to RGBA with alpha as 255
-    let i = 0;
-    let j = 0;
-    for (let idx = 0; idx < data.length / 3; idx += 1) {
-      mappedData[j++] = data[i++];
-      mappedData[j++] = data[i++];
-      mappedData[j++] = data[i++];
-      mappedData[j++] = 255;
-    }
-    data = mappedData;
+    // HARTHMERE_ATLAS_RGBA_EXPANSION: one 32-bit store per pixel instead of
+    // four byte stores. See rgb_to_rgba.ts.
+    data = expandRgbToRgba(data);
   }
   const ret = new THREE.DataTexture(data, w, h);
   ret.flipY = flip;
@@ -41,18 +54,11 @@ export function makeColorMapArray(
   c: 3 | 4,
   srgb: boolean = true
 ) {
+  assertPackedTextureByteLength(data, [w, h, d], c);
   if (c === 3) {
-    const mappedData = new Uint8Array((data.length * 4) / 3);
-    // remap RGB to RGBA with alpha as 255
-    let i = 0;
-    let j = 0;
-    for (let idx = 0; idx < data.length / 3; idx += 1) {
-      mappedData[j++] = data[i++];
-      mappedData[j++] = data[i++];
-      mappedData[j++] = data[i++];
-      mappedData[j++] = 255;
-    }
-    data = mappedData;
+    // HARTHMERE_ATLAS_RGBA_EXPANSION: this is the hot one -- blocks.json alone
+    // is 1.43 MB of atlas expanded during boot. See rgb_to_rgba.ts.
+    data = expandRgbToRgba(data);
   }
   const ret = new THREE.DataArrayTexture(data, w, h, d);
   ret.format = THREE.RGBAFormat;

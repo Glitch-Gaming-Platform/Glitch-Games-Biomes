@@ -338,6 +338,7 @@ export const TalkToNpc: React.FunctionComponent<{
   buttonLayout?: ButtonLayout;
   additionalActions?: TalkDialogStepAction[];
   voiceInput?: TalkDialogVoiceInput;
+  revealActionsImmediately?: boolean;
 }> = ({
   id,
   talkingToNpcId,
@@ -348,6 +349,7 @@ export const TalkToNpc: React.FunctionComponent<{
   buttonLayout,
   additionalActions,
   voiceInput,
+  revealActionsImmediately,
 }) => {
   const clientContext = useClientContext();
   return (
@@ -357,6 +359,7 @@ export const TalkToNpc: React.FunctionComponent<{
         entityId={talkingToNpcId}
         buttonLayout={buttonLayout}
         voiceInput={voiceInput}
+        revealActionsImmediately={revealActionsImmediately}
         dialog={textAndFinalStepToDialog({
           clientContext,
           text: dialogText,

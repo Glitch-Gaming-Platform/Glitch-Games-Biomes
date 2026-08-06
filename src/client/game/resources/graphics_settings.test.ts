@@ -69,21 +69,21 @@ describe("graphics settings draw distance floors", () => {
   it("applies the Harthmere dynamic baseline only to dynamic draw distance", () => {
     assert.equal(
       applyDrawDistanceFloors(64, {
-        dynamicMinDrawDistance: 192,
+        dynamicMinDrawDistance: 128,
         isDynamicDrawDistance: true,
       }),
-      192
+      128
     );
     assert.equal(
       applyDrawDistanceFloors(256, {
-        dynamicMinDrawDistance: 192,
+        dynamicMinDrawDistance: 128,
         isDynamicDrawDistance: true,
       }),
       256
     );
     assert.equal(
       applyDrawDistanceFloors(96, {
-        dynamicMinDrawDistance: 192,
+        dynamicMinDrawDistance: 128,
         isDynamicDrawDistance: false,
       }),
       96

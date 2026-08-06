@@ -1,6 +1,7 @@
 /// <reference types="mocha" />
 import {
   bottleneck,
+  dynamicPerformanceSampleMode,
   type PerformanceStats,
   type PerformanceTargets,
 } from "@/client/game/resources/dynamic_settings_updater";
@@ -24,6 +25,46 @@ function stats(partial: Partial<PerformanceStats>): PerformanceStats {
 }
 
 describe("dynamic settings: bottleneck attribution", () => {
+  it("enters reduction-only emergency mode quickly after battle collapses FPS", () => {
+    assert.equal(
+      dynamicPerformanceSampleMode({
+        cpuCount: 24,
+        gpuCount: 24,
+        renderCount: 24,
+        renderIntervalMs: 72,
+      }),
+      "emergency-reduce"
+    );
+    assert.equal(
+      dynamicPerformanceSampleMode({
+        cpuCount: 23,
+        gpuCount: 23,
+        renderCount: 23,
+        renderIntervalMs: 500,
+      }),
+      "wait"
+    );
+  });
+
+  it("never uses the short sample window to increase quality", () => {
+    assert.equal(
+      dynamicPerformanceSampleMode({
+        cpuCount: 40,
+        renderCount: 40,
+        renderIntervalMs: 16.7,
+      }),
+      "wait"
+    );
+    assert.equal(
+      dynamicPerformanceSampleMode({
+        cpuCount: 110,
+        renderCount: 110,
+        renderIntervalMs: 16.7,
+      }),
+      "normal"
+    );
+  });
+
   it("prefers the measured GPU timer whenever it is available", () => {
     assert.equal(
       bottleneck(

@@ -16,11 +16,33 @@ describe("Chapter1NativeObjectivePrompt input ownership", () => {
     path.join(process.cwd(), "src/client/game/resources/npcs.ts"),
     "utf8"
   );
+  const talkScreenSource = fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "src/client/components/challenges/TalkToNPCScreen.tsx"
+    ),
+    "utf8"
+  );
 
   it("registers one highest-priority story action with the central dispatcher", () => {
     assert.match(source, /useWorldInteractionCandidate\(worldCandidate\)/);
     assert.match(source, /WORLD_INTERACTION_PRIORITY\.chapter1Story/);
     assert.doesNotMatch(source, /window\.addEventListener\("keydown"/);
+  });
+
+  it("routes alternate NPC Talk entry points back to the active Chapter 1 objective", () => {
+    assert.match(source, /CHAPTER1_OBJECTIVE_INTERACT_EVENT/);
+    assert.match(source, /interactWithObjective/);
+    assert.match(talkScreenSource, /readChapter1ObjectiveWorldProjection/);
+    assert.match(talkScreenSource, /ch1ObjectiveOwnsNpcInteraction/);
+    assert.match(
+      talkScreenSource,
+      /new CustomEvent\(CHAPTER1_OBJECTIVE_INTERACT_EVENT\)/
+    );
+    assert.match(
+      talkScreenSource,
+      /if \(chapter1OwnsThisNpc\)[\s\S]*onClose\(\)[\s\S]*return/
+    );
   });
 
   it("registers only active, in-range, non-proximity objectives", () => {
@@ -30,6 +52,19 @@ describe("Chapter1NativeObjectivePrompt input ownership", () => {
     assert.match(source, /!state\.requirement\?\.blocksChapterInteraction/);
     assert.match(source, /disabled:\s*busy/);
     assert.match(source, /blocksChapterInteraction/);
+    assert.match(
+      source,
+      /ch1InteractionSurfaceForStep\(state\.authoredStepId\) === "world"/
+    );
+  });
+
+  it("routes the Recovered objective through highlighted BiomesUI controls", () => {
+    assert.match(source, /UI_IDS\.HUD_PROMPT_OPEN_MENU/);
+    assert.match(source, /UI_IDS\.TAB_RECOVERED/);
+    assert.match(source, /Press J to open BiomesUI/);
+    assert.match(source, /Select MEM — Recovered/);
+    assert.match(source, /readChapter1RecoveredTabVisibility/);
+    assert.match(source, /CHAPTER1_RECOVERED_TAB_VISIBILITY_EVENT/);
   });
 
   it("publishes the authenticated dynamic target through the standard map manager", () => {

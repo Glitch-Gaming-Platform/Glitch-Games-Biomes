@@ -7313,7 +7313,7 @@ export const HarthmereCombatMenuPanel: React.FunctionComponent<{}> = () => {
         <div className="text-emerald-100 mb-1 text-xs font-bold">
           Action → GLTF clip map
         </div>
-        <div>B / Basic Attack → Attack, Attack2, SideSwing, Thrusting</div>
+        <div>Mouse 1 / Basic Attack → Attack, Attack2, SideSwing, Thrusting</div>
         <div>H / Heavy Attack → HeavyAttack, Attack2, SideSwing</div>
         <div>L / Spark → BasicMagic, HeavyMagic</div>
         <div>
