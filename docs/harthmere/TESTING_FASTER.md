@@ -509,6 +509,20 @@ as an operational checklist, not background history:
 - **When an interrupted tool session becomes unknown, inspect OS/container
   state before restarting anything.** The process may still own Redis or game
   ports even though the tool session id is gone.
+- **Retain the session id for long-running child processes and keep draining
+  it.** Galois exports, Blender jobs, TypeScript checks, and broad Mocha slices
+  can outlive an orchestration call's first output window. Dropping the returned
+  session and launching another copy leaves duplicate CPU-heavy children and
+  can fill an unread output pipe. Poll the original session to exit; if it was
+  lost, inspect and terminate only the orphaned process tree before one clean
+  rerun.
+- **Raw ESLint is not currently a valid focused gate in this checkout.** ESLint
+  9 does not auto-load the legacy `.eslintrc.js`, and forcing legacy mode then
+  rejects the installed Next.js recommended config before any source file is
+  checked. Do not report that startup error as a code lint failure or claim a
+  green lint run. Until the repository migrates its config, use the affected
+  scoped TypeScript configuration, Prettier, and focused tests, and explicitly
+  record lint as unavailable.
 
 July 29 robot-story follow-up added four more concrete traps:
 
@@ -4155,6 +4169,24 @@ Creature animation acceptance has three layers:
 - use Blender contact-frame renders only as authoring QA. The final evidence is
   the exact-current-source game renderer performing a real receipt-backed melee
   exchange with before/contact/after screenshots and authoritative health.
+
+Player bow and energy-gun animation work crosses the same source/runtime
+boundary. Update the tracked `character-animations.blend` and merged GLTF,
+export the exact `wearables/animations` logical asset through Galois, copy the
+byte-exact GLB into the runtime path and immutable local bucket object, update
+`asset_versions.json`, and bump `ASSET_EXPORTS_SERVER_VERSION`. Validate the
+hash-addressed object selected by the index rather than an unindexed working
+copy. Keep the focused Galois export attached until its Node/Python process tree
+exits; quiet worker periods are not completion.
+
+When a Blender generator emits several energy weapons into one source file,
+remember that empty/object names are file-global. Without an explicit
+export-then-retire step, only the first weapon receives `MuzzleSocket` and later
+GLBs receive `MuzzleSocket.001`, `.002`, and so on. Runtime exact-name lookup
+then fails despite valid meshes and animation tracks. Parse every generated GLB
+and require exact `MuzzleSocket`, `IdleAim_24`, and `Fire_24` names. Bow socket
+bones are armature-scoped, but still require the same export-level contract
+test.
 
 Do not run a Bikkie/ECS-importing combat file under the bootstrap-free
 `t.sh file` lane and interpret missing item hardness, unknown NPC types, or

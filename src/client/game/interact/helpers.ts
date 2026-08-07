@@ -248,8 +248,14 @@ export function emitHarthmereNativeNpcAttackContact({
   const arrowSocket = (
     window as typeof window & {
       __harthmereHeldBowArrowSocket?: readonly [number, number, number];
+      __harthmereHeldGunMuzzleSocket?: readonly [number, number, number];
     }
   ).__harthmereHeldBowArrowSocket;
+  const gunMuzzleSocket = (
+    window as typeof window & {
+      __harthmereHeldGunMuzzleSocket?: readonly [number, number, number];
+    }
+  ).__harthmereHeldGunMuzzleSocket;
   const at = Date.now();
   const detail =
     hits.length > 0
@@ -289,7 +295,9 @@ export function emitHarthmereNativeNpcAttackContact({
           origin:
             premiumWeapon?.family === "bow" && arrowSocket
               ? [...arrowSocket]
-              : undefined,
+              : premiumWeapon?.family === "energy_weapon" && gunMuzzleSocket
+                ? [...gunMuzzleSocket]
+                : undefined,
           targetPoint: hits[0]?.position
             ? [
                 hits[0].position[0],

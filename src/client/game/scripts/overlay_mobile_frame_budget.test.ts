@@ -18,6 +18,29 @@ describe("mobile overlay frame budget", () => {
     );
   });
 
+  it("can sample desktop overlays while combat presentation is reduced", () => {
+    assert.equal(
+      shouldRefreshOverlayFrame({
+        mobileDevice: false,
+        forceThrottle: true,
+        nowMs: 1_049,
+        lastRefreshAtMs: 1_000,
+        refreshIntervalMs: 50,
+      }),
+      false
+    );
+    assert.equal(
+      shouldRefreshOverlayFrame({
+        mobileDevice: false,
+        forceThrottle: true,
+        nowMs: 1_050,
+        lastRefreshAtMs: 1_000,
+        refreshIntervalMs: 50,
+      }),
+      true
+    );
+  });
+
   it("bounds complete mobile overlay rebuilds to the documented cadence", () => {
     assert.equal(
       shouldRefreshOverlayFrame({

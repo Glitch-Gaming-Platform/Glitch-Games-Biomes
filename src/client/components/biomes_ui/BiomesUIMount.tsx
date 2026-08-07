@@ -27,6 +27,7 @@ import { BIOMES_UI_LOCATE_ON_MAP_EVENT } from "./adapters/mapPinnedDestination";
 import { useBiomesHUDVisibilitySnapshot } from "./hudVisibilitySettings";
 import type { TabKey } from "./BiomesUITypes";
 import { useBiomesUINonGameplayScreenVisible } from "./BiomesUIOpenPrompt";
+import { setHarthmereBiomesUiOpen } from "@/client/game/util/harthmere_combat_presentation";
 
 function truthy(value: string | undefined | null): boolean {
   return ["1", "true", "yes", "on"].includes(String(value ?? "").toLowerCase());
@@ -84,6 +85,12 @@ export const BiomesUIMount: React.FunctionComponent<{
   useEffect(() => {
     setEnabled(forceEnabled || isEnabled());
   }, [forceEnabled]);
+
+  useEffect(() => {
+    setHarthmereBiomesUiOpen(activeTab !== null);
+  }, [activeTab]);
+
+  useEffect(() => () => setHarthmereBiomesUiOpen(false), []);
 
   // "Locate on map": when any panel fires the locate request, open the Map tab.
   // The Map tab itself centers on the pin (it reads the recent active pin on

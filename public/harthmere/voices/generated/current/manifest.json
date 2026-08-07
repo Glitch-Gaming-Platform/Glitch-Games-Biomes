@@ -1,7 +1,7 @@
 {
   "version": "npc-voice-audio-cache-v1",
   "catalogVersion": "harthmere-npc-voice-catalog",
-  "generatedAt": "2026-08-03T17:36:12.785Z",
+  "generatedAt": "2026-08-07T21:35:01.045Z",
   "provider": "elevenlabs",
   "synthesisIdentity": "elevenlabs-natural-v3-speed-102-v1|eleven_v3|mp3_44100_128||||",
   "modelId": "eleven_v3",
@@ -4003,10 +4003,10 @@
       "mobileBytes": 55280
     },
     {
-      "cacheKey": "78df8155b65799b89675f9084cb964d37ccb1753f2f53a966fe7fb73ceca5615",
+      "cacheKey": "8130667468fd07a10ef38c1e15a54197e14c5024e1e86e0684134e51befd98fa",
       "cacheKeys": [
-        "78df8155b65799b89675f9084cb964d37ccb1753f2f53a966fe7fb73ceca5615",
-        "c67046edf250a720f76f8914d6892414fe66143034dde07523eeca8fc0fb24dc"
+        "8130667468fd07a10ef38c1e15a54197e14c5024e1e86e0684134e51befd98fa",
+        "17007b00785b57d52ba521ec68eed17ad2a52855b0cc5531eef9e6800b686b60"
       ],
       "actorKey": "snapshot_grove:doc:8810000000019309:doc:doc",
       "actorId": "chapter1-objective:returning_doc",
@@ -4014,10 +4014,10 @@
       "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-doc-doc/line-04.mp3",
       "voice": "azure-speech|voice=en-US-DerekMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.90|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Adoc%3A8810000000019309%3Adoc%3Adoc",
       "voiceId": "pNInz6obpgDQGcFmaJgB",
-      "textHash": "a4608853285d98692133b4808fb30178941fb4c13fa195895ca154be32318d48",
-      "bytes": 121252,
+      "textHash": "d248dc611f7bb5b3289b4c21a10f3e199c649cc7f90ca7a51185bec23c99382f",
+      "bytes": 242878,
       "mobilePath": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-doc-doc/line-04.m4a",
-      "mobileBytes": 63680
+      "mobileBytes": 193768
     },
     {
       "cacheKey": "692e09037b9fbbfe85921a5172d3a69daee8adccca6f53b1c018e1bef9ea89a3",
@@ -29110,6 +29110,516 @@
       ],
       "mobilePath": "harthmere/voices/generated/current/live-entity-seed-bandit-wilds-ambusher-wilds-bandit-ambusher/line-01.m4a",
       "mobileBytes": 25647
+    },
+    {
+      "cacheKey": "42c915e6a2ec6d92646bc973e539fd234ba55d171f5faad67d23f632a0d54e88",
+      "cacheKeys": [
+        "42c915e6a2ec6d92646bc973e539fd234ba55d171f5faad67d23f632a0d54e88",
+        "f51b65bb69ab27e53ae460c55091be001a9cedd3e4789d0e4c1eb70bcaa35f7f"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-angry_goose-9889:8810000000019889:angry goose:angry goose",
+      "actorId": "compendium-animal-angry_goose-9889",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-angry-goose-9889-angry-goose/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=animal|rate=-4%25|pitch=%2B2%25|volume=default|break=156|actor=live_entity_seed%3Acompendium-animal-angry_goose-9889%3A8810000000019889%3Aangry%20goose%3Aangry%20goose",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "34729391a28fdba167c3a850200fe9fa2bc03ac9e9da82ded5a42b89e7d388e9",
+      "bytes": 38078,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-angry-goose-9889-angry-goose/line-01.m4a",
+      "mobileBytes": 20298
+    },
+    {
+      "cacheKey": "81517a12118e1ca8329a59e6824d894ae3aa77a3495f1e7736d764fc7ea2acf2",
+      "cacheKeys": [
+        "81517a12118e1ca8329a59e6824d894ae3aa77a3495f1e7736d764fc7ea2acf2",
+        "da111d57c5012a2de7d073193f1ada56f231dffecea1844ce2b3fb836fa56c79"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-bell_mad_hound-9902:8810000000019902:bell-mad hound:bell-mad hound",
+      "actorId": "compendium-animal-bell_mad_hound-9902",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-bell-mad-hound-9902-bell-mad-hound/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=1.05|rate=-4%25|pitch=%2B2%25|volume=default|break=192|actor=live_entity_seed%3Acompendium-animal-bell_mad_hound-9902%3A8810000000019902%3Abell-mad%20hound%3Abell-mad%20hound",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "a5bfbe09b78423b85d5c834e8e418f02c4ee071d00bc8b0db90404a53f6ffb71",
+      "bytes": 30555,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-bell-mad-hound-9902-bell-mad-hound/line-01.m4a",
+      "mobileBytes": 16286
+    },
+    {
+      "cacheKey": "367b2a9697bf5a8136949ec5b8bfcc91f02c11e0f000e72bc45a7ca3a3a81726",
+      "cacheKeys": [
+        "367b2a9697bf5a8136949ec5b8bfcc91f02c11e0f000e72bc45a7ca3a3a81726",
+        "a55418d228609b1074a84fb3a4d4583159e8048994f626d2bc32781dd2bbf240"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-black_bear-9884:8810000000019884:black bear:black bear",
+      "actorId": "compendium-animal-black_bear-9884",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-black-bear-9884-black-bear/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.85|rate=-4%25|pitch=%2B1%25|volume=default|break=228|actor=live_entity_seed%3Acompendium-animal-black_bear-9884%3A8810000000019884%3Ablack%20bear%3Ablack%20bear",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "bb19d139d27b0fbad9d774ded589b33f102f24fe7e497e4e3fede77b64712218",
+      "bytes": 30555,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-black-bear-9884-black-bear/line-01.m4a",
+      "mobileBytes": 16265
+    },
+    {
+      "cacheKey": "8507acbb27a38ab768ff9fb2b2d02d9141274b17585211075c769ca873db1e32",
+      "cacheKeys": [
+        "8507acbb27a38ab768ff9fb2b2d02d9141274b17585211075c769ca873db1e32",
+        "ca9267eab0d6f291ea1291f4aaf952018e7abc69833d14a3acdedd5e780da407"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-black_eyed_crow-9899:8810000000019899:black-eyed crow:black-eyed crow",
+      "actorId": "compendium-animal-black_eyed_crow-9899",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-black-eyed-crow-9899-black-eyed-crow/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B1%25|pitch=%2B4%25|volume=default|break=246|actor=live_entity_seed%3Acompendium-animal-black_eyed_crow-9899%3A8810000000019899%3Ablack-eyed%20crow%3Ablack-eyed%20crow",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "7e16fa282cc0eaec9169369f789a00ceeb0b3307ceaa6839d84ce4ed59067d26",
+      "bytes": 34316,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-black-eyed-crow-9899-black-eyed-crow/line-01.m4a",
+      "mobileBytes": 18465
+    },
+    {
+      "cacheKey": "f9e816f4c003bb01f5a3ac9d27ce59d4b145a33e1fb97e19bb94cc4d4d2a22d6",
+      "cacheKeys": [
+        "f9e816f4c003bb01f5a3ac9d27ce59d4b145a33e1fb97e19bb94cc4d4d2a22d6",
+        "8f6a6d98b60ce4a9efe361a6f0445b3e5c38529f692cdede7df8546c6dc52778"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-briarfen_frog-9878:8810000000019878:briarfen frog:briarfen frog",
+      "actorId": "compendium-animal-briarfen_frog-9878",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-briarfen-frog-9878-briarfen-frog/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=0.95|rate=-6%25|pitch=%2B0%25|volume=default|break=210|actor=live_entity_seed%3Acompendium-animal-briarfen_frog-9878%3A8810000000019878%3Abriarfen%20frog%3Abriarfen%20frog",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "9dd8239b49606c3f36200be0950acd5561eaa6028446d4ca5114c065c9e4a496",
+      "bytes": 40586,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-briarfen-frog-9878-briarfen-frog/line-01.m4a",
+      "mobileBytes": 21594
+    },
+    {
+      "cacheKey": "829d714f33cab02deee124000467907edd1a9254c3e276f1be157bb776034adf",
+      "cacheKeys": [
+        "829d714f33cab02deee124000467907edd1a9254c3e276f1be157bb776034adf",
+        "72350fb82c5d206f0477c516bf0245bf8cf7d74f330e8c22d643ec499f4807cd"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-carrion_crow-9895:8810000000019895:carrion crow:carrion crow",
+      "actorId": "compendium-animal-carrion_crow-9895",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-carrion-crow-9895-carrion-crow/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.85|rate=-1%25|pitch=%2B2%25|volume=default|break=210|actor=live_entity_seed%3Acompendium-animal-carrion_crow-9895%3A8810000000019895%3Acarrion%20crow%3Acarrion%20crow",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "5552e839febf5733da55773215b49634aa788f7cada364289d2ce9976cdc97ee",
+      "bytes": 43511,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-carrion-crow-9895-carrion-crow/line-01.m4a",
+      "mobileBytes": 22971
+    },
+    {
+      "cacheKey": "1af3c64e853a73f88dcb6a82b2a10e6a0304b8c424427332b71bfcb6a2e48371",
+      "cacheKeys": [
+        "1af3c64e853a73f88dcb6a82b2a10e6a0304b8c424427332b71bfcb6a2e48371",
+        "e5517d9d930a62e0155c9d5a5a26ba796564d8657997df8377747bf0310bc4d3"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-dire_wolf-9891:8810000000019891:dire wolf:dire wolf",
+      "actorId": "compendium-animal-dire_wolf-9891",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-dire-wolf-9891-dire-wolf/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.90|rate=-3%25|pitch=%2B0%25|volume=default|break=210|actor=live_entity_seed%3Acompendium-animal-dire_wolf-9891%3A8810000000019891%3Adire%20wolf%3Adire%20wolf",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "6e8207f6bfe95261ee5297ff5c8eeb627743fddaf5247560a15ea5e0ef710e25",
+      "bytes": 33062,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-dire-wolf-9891-dire-wolf/line-01.m4a",
+      "mobileBytes": 17584
+    },
+    {
+      "cacheKey": "98709ef3e331f7fcf7bfc297ef4ec68490ac02aab5b1e4594b06d0b26a1679df",
+      "cacheKeys": [
+        "98709ef3e331f7fcf7bfc297ef4ec68490ac02aab5b1e4594b06d0b26a1679df",
+        "5eabf6a0025aa877408c9f89431830fc9f6deba9b5b48fb5923974c19ddca4f8"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-farm_dog-9888:8810000000019888:farm dog:farm dog",
+      "actorId": "compendium-animal-farm_dog-9888",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-farm-dog-9888-farm-dog/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-5%25|pitch=%2B3%25|volume=default|break=246|actor=live_entity_seed%3Acompendium-animal-farm_dog-9888%3A8810000000019888%3Afarm%20dog%3Afarm%20dog",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "103a0d721f719a621ca2f1ca4f15d5aa7093a1e98f17d995c03975533cb597b5",
+      "bytes": 30555,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-farm-dog-9888-farm-dog/line-01.m4a",
+      "mobileBytes": 16363
+    },
+    {
+      "cacheKey": "d91a4e6f39c7d8dc1939243d30b2ffec9e83213af23eb447ad95f0cb1c6c6d05",
+      "cacheKeys": [
+        "d91a4e6f39c7d8dc1939243d30b2ffec9e83213af23eb447ad95f0cb1c6c6d05",
+        "ac31e9d0340df05ed7bfc492209d535a5c3c0fd37e230aa030e679bff4948c74"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-field_mouse-9882:8810000000019882:field mouse:field mouse",
+      "actorId": "compendium-animal-field_mouse-9882",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-field-mouse-9882-field-mouse/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=1.05|rate=-3%25|pitch=-1%25|volume=default|break=192|actor=live_entity_seed%3Acompendium-animal-field_mouse-9882%3A8810000000019882%3Afield%20mouse%3Afield%20mouse",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "3a2a9a96cdf586acfdf35dca17f2252502d2b438675464259c62b21cb17d89b8",
+      "bytes": 31808,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-field-mouse-9882-field-mouse/line-01.m4a",
+      "mobileBytes": 16945
+    },
+    {
+      "cacheKey": "c9ac02371bf898ffdbd6d770f83c6f69392c1f2ded4d3cf14988ad13ef765194",
+      "cacheKeys": [
+        "c9ac02371bf898ffdbd6d770f83c6f69392c1f2ded4d3cf14988ad13ef765194",
+        "57769de4e4568d2cb8d04bb1acebb8e389284259f948370222152033a1fbec5f"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-gate_chicken-9903:8810000000019903:gate chicken:gate chicken",
+      "actorId": "compendium-animal-gate_chicken-9903",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-gate-chicken-9903-gate-chicken/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=animal|rate=-2%25|pitch=%2B2%25|volume=default|break=246|actor=live_entity_seed%3Acompendium-animal-gate_chicken-9903%3A8810000000019903%3Agate%20chicken%3Agate%20chicken",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "6e94c1c1c1bc7732008ce97a35a171d045fb3b68c43b68a32326705f82add806",
+      "bytes": 33062,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-gate-chicken-9903-gate-chicken/line-01.m4a",
+      "mobileBytes": 17554
+    },
+    {
+      "cacheKey": "c98331beb95ded0adaf89505e39df491c9f8f8a9a808f58faaad5abbfee674ad",
+      "cacheKeys": [
+        "c98331beb95ded0adaf89505e39df491c9f8f8a9a808f58faaad5abbfee674ad",
+        "03117295ff92ef0b896b3f601aad3eca4191ff59bb97b6e9dcf45fa8c0dfc0a6"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-gray_wolf-9890:8810000000019890:gray wolf:gray wolf",
+      "actorId": "compendium-animal-gray_wolf-9890",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-gray-wolf-9890-gray-wolf/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.80|rate=%2B0%25|pitch=-3%25|volume=default|break=174|actor=live_entity_seed%3Acompendium-animal-gray_wolf-9890%3A8810000000019890%3Agray%20wolf%3Agray%20wolf",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "9c95d70f441b48c75909568cc8032c0ec1a1b1c7387cc738d83bdf1e949723d9",
+      "bytes": 29301,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-gray-wolf-9890-gray-wolf/line-01.m4a",
+      "mobileBytes": 15735
+    },
+    {
+      "cacheKey": "daacb023c05e007c92d8d1b7e5a4aab09a368f34c1d606be20d317de34b05185",
+      "cacheKeys": [
+        "daacb023c05e007c92d8d1b7e5a4aab09a368f34c1d606be20d317de34b05185",
+        "8e9ba4d36d576532d18f07d2f46a772bbace94e5c348c48adbdc1c03212e658d"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-greenmere_deer-9875:8810000000019875:greenmere deer:greenmere deer",
+      "actorId": "compendium-animal-greenmere_deer-9875",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-greenmere-deer-9875-greenmere-deer/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=1.00|rate=-1%25|pitch=-1%25|volume=default|break=156|actor=live_entity_seed%3Acompendium-animal-greenmere_deer-9875%3A8810000000019875%3Agreenmere%20deer%3Agreenmere%20deer",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "738a375c73f071541ff598623c175eef8faf1e8d5050b87a4dee9923da5e8b14",
+      "bytes": 34316,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-greenmere-deer-9875-greenmere-deer/line-01.m4a",
+      "mobileBytes": 18418
+    },
+    {
+      "cacheKey": "3099f67beb071ae575f7d5a5ced0bca8aad35e721df9b351e0fdbeb7d2ceb99d",
+      "cacheKeys": [
+        "3099f67beb071ae575f7d5a5ced0bca8aad35e721df9b351e0fdbeb7d2ceb99d",
+        "d7ff99eb057affb9e6e84a9c20b496fe9fd7657a9ad5d0af134d60ad3f114426"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-hedge_songbird-9877:8810000000019877:hedge songbird:hedge songbird",
+      "actorId": "compendium-animal-hedge_songbird-9877",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-hedge-songbird-9877-hedge-songbird/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=1.00|rate=-2%25|pitch=%2B2%25|volume=default|break=120|actor=live_entity_seed%3Acompendium-animal-hedge_songbird-9877%3A8810000000019877%3Ahedge%20songbird%3Ahedge%20songbird",
+      "voiceId": "ErXwobaYiN019PkySvjV",
+      "textHash": "a2352f640cf5648c130b517b317f98f28420de6bdf43158f88943ad7f37e9073",
+      "bytes": 51035,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-hedge-songbird-9877-hedge-songbird/line-01.m4a",
+      "mobileBytes": 26925
+    },
+    {
+      "cacheKey": "a661d774620225d2b60c11a68a5d4f48c81b0610f7ac15cff8f10dc3e56d5357",
+      "cacheKeys": [
+        "a661d774620225d2b60c11a68a5d4f48c81b0610f7ac15cff8f10dc3e56d5357",
+        "d16fc2e54b6cdf739e14a17a987839c4e0839d65fe02afd9bee977d460859dd0"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-moss_boar-9898:8810000000019898:moss-covered boar:moss-covered boar",
+      "actorId": "compendium-animal-moss_boar-9898",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-moss-boar-9898-moss-covered-boar/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B1%25|pitch=%2B4%25|volume=default|break=156|actor=live_entity_seed%3Acompendium-animal-moss_boar-9898%3A8810000000019898%3Amoss-covered%20boar%3Amoss-covered%20boar",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "5b89e8efd7b094a926ee1e3a6399156c506aba5751ee6731858ff3aabcbc7696",
+      "bytes": 38078,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-moss-boar-9898-moss-covered-boar/line-01.m4a",
+      "mobileBytes": 20261
+    },
+    {
+      "cacheKey": "7a226bfea2700063448ca742e673c8aece7bf749942eac3e6d944ed97f3e2c7a",
+      "cacheKeys": [
+        "7a226bfea2700063448ca742e673c8aece7bf749942eac3e6d944ed97f3e2c7a",
+        "a793d5817b055b018cc85300211329031d599d1b3951d46ece2d7b389f15bca3"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-old_badger-9886:8810000000019886:old badger:old badger",
+      "actorId": "compendium-animal-old_badger-9886",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-old-badger-9886-old-badger/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=animal|rate=-4%25|pitch=-1%25|volume=default|break=174|actor=live_entity_seed%3Acompendium-animal-old_badger-9886%3A8810000000019886%3Aold%20badger%3Aold%20badger",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "f37bcd4cc7da657d3df93d4ed3db1c7df781f414a8448d9d204e199bb32500db",
+      "bytes": 29301,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-old-badger-9886-old-badger/line-01.m4a",
+      "mobileBytes": 15602
+    },
+    {
+      "cacheKey": "b9feb85be84ae91136dff011eedc59a480cbd33af56fdc267ebc0696a5688104",
+      "cacheKeys": [
+        "b9feb85be84ae91136dff011eedc59a480cbd33af56fdc267ebc0696a5688104",
+        "677cb3b91e1f5c11ecd108943e7fca668e545fbc7668d6c24e45bbea1b6a007f"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-pale_wolf-9897:8810000000019897:pale wolf:pale wolf",
+      "actorId": "compendium-animal-pale_wolf-9897",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-pale-wolf-9897-pale-wolf/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-6%25|pitch=-1%25|volume=default|break=228|actor=live_entity_seed%3Acompendium-animal-pale_wolf-9897%3A8810000000019897%3Apale%20wolf%3Apale%20wolf",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "8afd3579d06864efa29fc4ec127a38136f3f7cbd0e7e9ee97109f357e0011127",
+      "bytes": 34316,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-pale-wolf-9897-pale-wolf/line-01.m4a",
+      "mobileBytes": 18317
+    },
+    {
+      "cacheKey": "dbf53c2b314fd65ea758941357be5e364bce3c96ed7deebc241792d47cfbf6ad",
+      "cacheKeys": [
+        "dbf53c2b314fd65ea758941357be5e364bce3c96ed7deebc241792d47cfbf6ad",
+        "c408d747db003e98ba1c9b738c3157bcd84ed1b325d31355778d26f1e6b9f929"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-red_fox-9880:8810000000019880:red fox:red fox",
+      "actorId": "compendium-animal-red_fox-9880",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-red-fox-9880-red-fox/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.90|rate=%2B0%25|pitch=%2B0%25|volume=default|break=246|actor=live_entity_seed%3Acompendium-animal-red_fox-9880%3A8810000000019880%3Ared%20fox%3Ared%20fox",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "7c4f823a900d8af7d82a52f2bd78a0bf60634b2f3bb8b1e21494237b03a48225",
+      "bytes": 30555,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-red-fox-9880-red-fox/line-01.m4a",
+      "mobileBytes": 16311
+    },
+    {
+      "cacheKey": "b139e9a2a60e0c059a29b788769f8cbf5093f07cdafd6b6eddcbc5e2ecc31a32",
+      "cacheKeys": [
+        "b139e9a2a60e0c059a29b788769f8cbf5093f07cdafd6b6eddcbc5e2ecc31a32",
+        "828116caf5c2145b99a41889c867364a0816e20a9c5ccc8729344a510afca3d9"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-red_squirrel-9876:8810000000019876:red squirrel:red squirrel",
+      "actorId": "compendium-animal-red_squirrel-9876",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-red-squirrel-9876-red-squirrel/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-6%25|pitch=%2B4%25|volume=default|break=210|actor=live_entity_seed%3Acompendium-animal-red_squirrel-9876%3A8810000000019876%3Ared%20squirrel%3Ared%20squirrel",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "5e08f087281235e34b2fa72ee8f4fc7e893785ad883ee99d52cd6a890f4ac37b",
+      "bytes": 31808,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-red-squirrel-9876-red-squirrel/line-01.m4a",
+      "mobileBytes": 16966
+    },
+    {
+      "cacheKey": "7e087894a03e101caa746099553b2c2ba02293fa784ec967e4975700c3bec1d0",
+      "cacheKeys": [
+        "7e087894a03e101caa746099553b2c2ba02293fa784ec967e4975700c3bec1d0",
+        "b1251d459fc8a082a302455b1c8f1ead5a2fcdf8498c1a5c1ce3147d0e562d9c"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-reed_cat-9892:8810000000019892:reed cat:reed cat",
+      "actorId": "compendium-animal-reed_cat-9892",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-reed-cat-9892-reed-cat/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=0.90|rate=-7%25|pitch=%2B2%25|volume=default|break=138|actor=live_entity_seed%3Acompendium-animal-reed_cat-9892%3A8810000000019892%3Areed%20cat%3Areed%20cat",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "af0f3d1c4cd5788898e3beba597cd51e537acb101768d964485082efdbc4ef52",
+      "bytes": 29301,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-reed-cat-9892-reed-cat/line-01.m4a",
+      "mobileBytes": 15744
+    },
+    {
+      "cacheKey": "55f08f58ceebc6efcfb60bf73ef45af11fa8e80796e6b79d0b5c540bbe7db1f0",
+      "cacheKeys": [
+        "55f08f58ceebc6efcfb60bf73ef45af11fa8e80796e6b79d0b5c540bbe7db1f0",
+        "bb11c21ed1f2a86018a3c5c9260a4cf57176028d737654f0fb21d6286cbcacdc"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-river_duck-9879:8810000000019879:river duck:river duck",
+      "actorId": "compendium-animal-river_duck-9879",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-river-duck-9879-river-duck/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.80|rate=-7%25|pitch=%2B4%25|volume=default|break=174|actor=live_entity_seed%3Acompendium-animal-river_duck-9879%3A8810000000019879%3Ariver%20duck%3Ariver%20duck",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "a6bf2ae5bb4118f13295610a4321c40bea800e15a0fa4c7e9bed2cfa3b8809ce",
+      "bytes": 35570,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-river-duck-9879-river-duck/line-01.m4a",
+      "mobileBytes": 18942
+    },
+    {
+      "cacheKey": "ab7cd0435d13ad1f7c8fc1e9765c38a69b3c89261f01160f770b9672210c2a0c",
+      "cacheKeys": [
+        "ab7cd0435d13ad1f7c8fc1e9765c38a69b3c89261f01160f770b9672210c2a0c",
+        "c8c53605e3466e88cb5dd7fde30b7eb6425462223f9bad25e1f65fda7d5d5aaa"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-river_lurker-9893:8810000000019893:river lurker:river lurker",
+      "actorId": "compendium-animal-river_lurker-9893",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-river-lurker-9893-river-lurker/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=-6%25|pitch=%2B0%25|volume=default|break=210|actor=live_entity_seed%3Acompendium-animal-river_lurker-9893%3A8810000000019893%3Ariver%20lurker%3Ariver%20lurker",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "3af8c35d007b0f68148b753cf6f2b110d2f23e9180ddf278633fe6cba2a75012",
+      "bytes": 34316,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-river-lurker-9893-river-lurker/line-01.m4a",
+      "mobileBytes": 18346
+    },
+    {
+      "cacheKey": "e88a9a397dd699551241ab98e087b6d077bbae1b90508f4a8bb04fc66298d420",
+      "cacheKeys": [
+        "e88a9a397dd699551241ab98e087b6d077bbae1b90508f4a8bb04fc66298d420",
+        "5c04442789937d380ed433a35185842b4904c1dce14e63a91ea38351cc750b31"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-river_otter-9881:8810000000019881:river otter:river otter",
+      "actorId": "compendium-animal-river_otter-9881",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-river-otter-9881-river-otter/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=0.90|rate=%2B1%25|pitch=-3%25|volume=default|break=138|actor=live_entity_seed%3Acompendium-animal-river_otter-9881%3A8810000000019881%3Ariver%20otter%3Ariver%20otter",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "db1c52271c5bfd474fbdd2cf9990f5c78c8c79cedf771594076c21cdb84f6af5",
+      "bytes": 30555,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-river-otter-9881-river-otter/line-01.m4a",
+      "mobileBytes": 16394
+    },
+    {
+      "cacheKey": "fe3e53f2f4217c0a250eb3334060e6d621d6f17c172de72d9c1cf8ea01a7ec5f",
+      "cacheKeys": [
+        "fe3e53f2f4217c0a250eb3334060e6d621d6f17c172de72d9c1cf8ea01a7ec5f",
+        "3318eee7ca29598e5c3c22ebe98abdcc5dda9839a4fa721617ad89b6b3a1c840"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-root_bound_bear-9901:8810000000019901:root-bound bear:root-bound bear",
+      "actorId": "compendium-animal-root_bound_bear-9901",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-root-bound-bear-9901-root-bound-bear/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=0.95|rate=-7%25|pitch=-4%25|volume=default|break=138|actor=live_entity_seed%3Acompendium-animal-root_bound_bear-9901%3A8810000000019901%3Aroot-bound%20bear%3Aroot-bound%20bear",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "ae78f458543c53a1e12594cf03648158d551239c3ae5fee27e0155f39023b1e6",
+      "bytes": 38078,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-root-bound-bear-9901-root-bound-bear/line-01.m4a",
+      "mobileBytes": 20341
+    },
+    {
+      "cacheKey": "15997a44e491d0aff0381b682d78a2d06dafb2c76388c30cab8461eb83a57f37",
+      "cacheKeys": [
+        "15997a44e491d0aff0381b682d78a2d06dafb2c76388c30cab8461eb83a57f37",
+        "55cd368116a0b87b35a0f0ddf6b780a49e8cb67c54039170b8663643561faef7"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-rot_sick_deer-9896:8810000000019896:rot-sick deer:rot-sick deer",
+      "actorId": "compendium-animal-rot_sick_deer-9896",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-rot-sick-deer-9896-rot-sick-deer/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-8%25|pitch=-1%25|volume=default|break=228|actor=live_entity_seed%3Acompendium-animal-rot_sick_deer-9896%3A8810000000019896%3Arot-sick%20deer%3Arot-sick%20deer",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "ae65ea5c8f01abcd4f5803eaa10deb28632ce64c2d7af04bd1ea3a1ec30c2109",
+      "bytes": 33062,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-rot-sick-deer-9896-rot-sick-deer/line-01.m4a",
+      "mobileBytes": 17642
+    },
+    {
+      "cacheKey": "b6f3bdd6aa165f4ac86d82a22abe74df76e609096bcd8e12c6fa995df1d470e6",
+      "cacheKeys": [
+        "b6f3bdd6aa165f4ac86d82a22abe74df76e609096bcd8e12c6fa995df1d470e6",
+        "736a173777fc2dab5b43257c57eb0b2d0a9f5d2b281a163d1370ee42587f16e3"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-rutting_stag-9887:8810000000019887:rutting stag:rutting stag",
+      "actorId": "compendium-animal-rutting_stag-9887",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-rutting-stag-9887-rutting-stag/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=animal|rate=-2%25|pitch=%2B1%25|volume=default|break=192|actor=live_entity_seed%3Acompendium-animal-rutting_stag-9887%3A8810000000019887%3Arutting%20stag%3Arutting%20stag",
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "textHash": "1e13043cd731da728d9ab4d4d6591918037b640c33d1c3f0b629997b44e2a240",
+      "bytes": 44765,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-rutting-stag-9887-rutting-stag/line-01.m4a",
+      "mobileBytes": 23661
+    },
+    {
+      "cacheKey": "0dc0d1d4a74adf1cbc8fa93340435f35ae997a8e9b98900a468dd1b28f8e6eae",
+      "cacheKeys": [
+        "0dc0d1d4a74adf1cbc8fa93340435f35ae997a8e9b98900a468dd1b28f8e6eae",
+        "057e244c07beb085048a12514eed62b98cd3cb467f66f7d01dcb9bcc5925a680"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-stable_horse-9906:8810000000019906:stable horse:stable horse",
+      "actorId": "compendium-animal-stable_horse-9906",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-stable-horse-9906-stable-horse/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-4%25|pitch=-3%25|volume=default|break=210|actor=live_entity_seed%3Acompendium-animal-stable_horse-9906%3A8810000000019906%3Astable%20horse%3Astable%20horse",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "5bb1d44073b09828f3607390df0b7d27ac8308a53aeb19925675ce1a86c12f11",
+      "bytes": 31808,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-stable-horse-9906-stable-horse/line-01.m4a",
+      "mobileBytes": 16795
+    },
+    {
+      "cacheKey": "1ab3494e34ae81fb347167832f087ca94a91f5b925cc1a6a0e48e1e33694d3d0",
+      "cacheKeys": [
+        "1ab3494e34ae81fb347167832f087ca94a91f5b925cc1a6a0e48e1e33694d3d0",
+        "10386812da150901998a04995e0d4004d9d844638db831f6c76f3191a3401f33"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-thornback_spider-9900:8810000000019900:thornback spider:thornback spider",
+      "actorId": "compendium-animal-thornback_spider-9900",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-thornback-spider-9900-thornback-spider/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=1.05|rate=%2B0%25|pitch=%2B4%25|volume=default|break=138|actor=live_entity_seed%3Acompendium-animal-thornback_spider-9900%3A8810000000019900%3Athornback%20spider%3Athornback%20spider",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "4fc4db6423d43999355eee5e80954eb687bd66b9fab03b0e8c24bbe9bfe5d571",
+      "bytes": 38078,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-thornback-spider-9900-thornback-spider/line-01.m4a",
+      "mobileBytes": 20347
+    },
+    {
+      "cacheKey": "c18e8bec95eab4ac50c1451d86456efc46e7d7279c0cd2e79afe70b15bf21fb2",
+      "cacheKeys": [
+        "c18e8bec95eab4ac50c1451d86456efc46e7d7279c0cd2e79afe70b15bf21fb2",
+        "90b7fbfb6e86180ac2b00960f068f28495e377f15a6df6469bbb6a815de37c11"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-water_snake-9885:8810000000019885:water snake:water snake",
+      "actorId": "compendium-animal-water_snake-9885",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-water-snake-9885-water-snake/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=1.00|rate=-4%25|pitch=%2B0%25|volume=default|break=210|actor=live_entity_seed%3Acompendium-animal-water_snake-9885%3A8810000000019885%3Awater%20snake%3Awater%20snake",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "14a4e2cbb7efe0a738e4b16e947f7d14aef758b6bd420b91530140b56378ed2c",
+      "bytes": 34316,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-water-snake-9885-water-snake/line-01.m4a",
+      "mobileBytes": 18446
+    },
+    {
+      "cacheKey": "81b339628abaee18a8206cdf863e378d14c9eb1407e9aa94167c2077b51af11d",
+      "cacheKeys": [
+        "81b339628abaee18a8206cdf863e378d14c9eb1407e9aa94167c2077b51af11d",
+        "e47fe913f7ec3076c116205ed5899db8a38fe1f50f30d962bf5b05fc20889ade"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-web_spider-9894:8810000000019894:giant spider:giant spider",
+      "actorId": "compendium-animal-web_spider-9894",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-web-spider-9894-giant-spider/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=-6%25|pitch=-4%25|volume=default|break=192|actor=live_entity_seed%3Acompendium-animal-web_spider-9894%3A8810000000019894%3Agiant%20spider%3Agiant%20spider",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "76aa6e3d9a913064073d1629e2a84dd7424dc79786cf00a418184aedb17bcd27",
+      "bytes": 33062,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-web-spider-9894-giant-spider/line-01.m4a",
+      "mobileBytes": 17626
+    },
+    {
+      "cacheKey": "cd3acd443e4b8eb23f9aa56c882f9ec96a804e1af061278b91df74b591695636",
+      "cacheKeys": [
+        "cd3acd443e4b8eb23f9aa56c882f9ec96a804e1af061278b91df74b591695636",
+        "7c0c709c11184798d23ff63578c704b30108f3d3e43112b675e9d96de9c4827c"
+      ],
+      "actorKey": "live_entity_seed:compendium-animal-wild_boar-9883:8810000000019883:wild boar:wild boar",
+      "actorId": "compendium-animal-wild_boar-9883",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-wild-boar-9883-wild-boar/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=0.95|rate=-5%25|pitch=-3%25|volume=default|break=210|actor=live_entity_seed%3Acompendium-animal-wild_boar-9883%3A8810000000019883%3Awild%20boar%3Awild%20boar",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "a91f19738d1fd312c1c839019ada83b62a1591a2a3714335dc687e4c0f3cac56",
+      "bytes": 33062,
+      "mobilePath": "harthmere/voices/generated/current/live-entity-seed-compendium-animal-wild-boar-9883-wild-boar/line-01.m4a",
+      "mobileBytes": 17633
     },
     {
       "cacheKey": "674be52ae9c9fb528e443cec3f6cd87347a0e14eded719cc813bcdad2d815df4",

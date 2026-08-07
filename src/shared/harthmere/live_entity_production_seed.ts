@@ -64,6 +64,12 @@ import {
 import { isPointInsideHarthmereBusinessSafeSite } from "./business_customer_simulator";
 import { BUILDING_SYSTEM_PLOTS } from "./building_system";
 import { harthmereBossVisualForEntity } from "./boss_visual_assets";
+import {
+  HARTHMERE_ANIMAL_ASSET_SPECS,
+  harthmereAnimalAssetSpec,
+  harthmereAnimalAssetSpeciesForLabel,
+} from "./harthmere_animal_assets";
+import { HARTHMERE_REMAINING_NPCS } from "./npc_compendium";
 import type { HarthmereExoticMatterCaveId } from "./exotic_matter_caves";
 import {
   HARTHMERE_INDISWORM_PRODUCTION_COUNT,
@@ -184,8 +190,7 @@ export interface HarthmereLiveEntityGroundingOptions {
 }
 
 type HarthmereLiveEntityProductionPlacementSource =
-  | "live_muck_monster"
-  | "live_livestock";
+  "live_muck_monster" | "live_livestock";
 
 const entityIdFromOffset = harthmereLiveEntityIdFromOffset;
 
@@ -459,10 +464,13 @@ export function harthmereLiveEntitySizeForSeed(
     return [...bossSize];
   }
   const text = `${seed.displayName} ${seed.species ?? ""}`.toLowerCase();
-  if (
-    seed.kind === "ambient_livestock" ||
-    /\b(cow|sheep|rabbit)\b/.test(text)
-  ) {
+  if (seed.kind === "ambient_livestock") {
+    const animalSpec = harthmereAnimalAssetSpec(seed.species, seed.displayName);
+    if (animalSpec) {
+      return [...animalSpec.size] as Vec3;
+    }
+  }
+  if (/\b(cow|sheep|rabbit)\b/.test(text)) {
     if (/cow/.test(text) || seed.sizeTier === "large") {
       return [1.3, 1.5, 2.0];
     }
@@ -1198,18 +1206,18 @@ const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_LAYOUTS: readonly HarthmereMuckMonsterS
           index === 0
             ? "West Breach Muckling"
             : index === 1
-            ? "Watchtower Clearing Mucker"
-            : index === 2
-            ? "Old Wood Copse Mucker"
-            : "Gravewood Pale Muckling",
+              ? "Watchtower Clearing Mucker"
+              : index === 2
+                ? "Old Wood Copse Mucker"
+                : "Gravewood Pale Muckling",
         hexerName:
           index === 0
             ? "West Breach Lesser Hexer"
             : index === 1
-            ? "Watchtower Clearing Hexer"
-            : index === 2
-            ? "Old Wood Copse Hexer"
-            : "Gravewood Pale Hexer",
+              ? "Watchtower Clearing Hexer"
+              : index === 2
+                ? "Old Wood Copse Hexer"
+                : "Gravewood Pale Hexer",
         // Exactly three Muckers and one Hex guard every added herd.
         hexEvery: 4,
         displayIndexBase: index === 0 ? 15 : 14,
@@ -1292,10 +1300,10 @@ const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SOURCE_SEEDS =
       const bountyTier = !bountyEligible
         ? undefined
         : isHexer || index === 0
-        ? ("boss" as const)
-        : index === 1
-        ? ("elite" as const)
-        : undefined;
+          ? ("boss" as const)
+          : index === 1
+            ? ("elite" as const)
+            : undefined;
       return {
         areaId: layout.areaId,
         areaLabel: layout.areaLabel,
@@ -1338,8 +1346,8 @@ export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS: HarthmereLiveEntityProduc
           seed.bountyTier === "boss"
             ? 8
             : seed.bountyTier === "elite"
-            ? 5
-            : undefined,
+              ? 5
+              : undefined,
         ...combat,
       } satisfies HarthmereLiveEntityProductionSeed;
     }),
@@ -1875,6 +1883,69 @@ export const HARTHMERE_LIVE_ENTITY_FOREST_WILDLIFE_SEEDS: HarthmereLiveEntityPro
     } satisfies HarthmereLiveEntityProductionSeed;
   });
 
+// HARTHMERE_COMPENDIUM_ANIMAL_ECS
+//
+// The animal rows in npc_compendium used to exist only as renderer placements.
+// The native-avatar-only renderer correctly stopped drawing those duplicate
+// client actors, but no ECS seeder replaced them. Worse, any ad-hoc chicken or
+// wildlife seed that did reach the generic livestock path inherited the sheep
+// size and could inherit dMucker's presentation. Materialize every authored
+// non-cow/sheep/rabbit animal as the same ECS + Bikkie + Anima creature used by
+// the proven livestock pipeline. Cow, sheep, and rabbit retain their existing
+// dedicated production herds and are intentionally omitted here.
+export const HARTHMERE_COMPENDIUM_ANIMAL_SEEDS: HarthmereLiveEntityProductionSeed[] =
+  HARTHMERE_REMAINING_NPCS.flatMap((npc) => {
+    if (npc.category !== "animal") {
+      return [];
+    }
+    const species = harthmereAnimalAssetSpeciesForLabel(npc.name);
+    if (
+      !species ||
+      species === "cow" ||
+      species === "sheep" ||
+      species === "rabbit"
+    ) {
+      return [];
+    }
+    const spec = HARTHMERE_ANIMAL_ASSET_SPECS[species];
+    const idOffset = npc.combatOffset;
+    const districtKey = npc.district
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return [
+      {
+        seedId: `compendium-animal-${npc.id}-${idOffset}`,
+        kind: "ambient_livestock" as const,
+        entityId: entityIdFromOffset(idOffset),
+        idOffset,
+        displayName: npc.name,
+        areaId: `harthmere_town_compendium_${npc.id}`,
+        areaLabel: npc.district,
+        position: normalizeHarthmereExtensionOutdoorFeetPosition(
+          shiftHarthmereAuthoredPositionToWorld([
+            npc.spawn.x,
+            HARTHMERE_EXTENSION_FEET_Y,
+            npc.spawn.z,
+          ]),
+          2
+        ),
+        orientation: [0, npc.spawn.rot] as Vec2,
+        dialog: `<text>${npc.name} watches the road.</text>`,
+        description: `${npc.name} roams the ${npc.district} and reacts naturally to nearby travelers and danger.`,
+        combatKind: "mux" as const,
+        combatLevel: Math.max(1, Math.trunc(npc.stats.level)),
+        combatHp: Math.max(spec.combatHp, Math.trunc(npc.stats.health)),
+        species,
+        sizeTier: spec.sizeTier,
+        meatUnits: spec.meatUnits,
+        attackDamage: spec.attackDamage,
+        killXp: spec.killXp,
+        groupId: `compendium-wildlife-${districtKey}`,
+      } satisfies HarthmereLiveEntityProductionSeed,
+    ];
+  });
+
 export const HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS: HarthmereLiveEntityProductionSeed[] =
   [
     ...HARTHMERE_LIVE_ENTITY_MUCK_WILDLIFE_SEEDS,
@@ -1882,6 +1953,7 @@ export const HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS: HarthmereLiveEntityProductio
     ...HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_ANIMAL_SEEDS,
     ...HARTHMERE_LIVE_ENTITY_FOREST_WILDLIFE_SEEDS,
     ...HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_SEEDS,
+    ...HARTHMERE_COMPENDIUM_ANIMAL_SEEDS,
     // HARTHMERE_ROAD_TO_HARTHMERE_GROUPS: the animal half of the four road packs.
     ...HARTHMERE_ROAD_GROUP_ANIMAL_SEEDS,
   ];
@@ -2005,10 +2077,10 @@ export function harthmereGroundedLivestockSeedsInTerritory(
         harthmereOpenWildsMixedGroupPositionIsValid(productionPosition)
         ? productionPosition
         : authoredFallback
-      : productionPosition ??
+      : (productionPosition ??
         (harthmereLiveEntityIsGuardedWildlife(seed)
           ? ([...seed.position] as Vec3)
-          : authoredFallback);
+          : authoredFallback));
     if (isOpenWildsGroup) {
       return harthmereOpenWildsMixedGroupPositionIsValid(grounded)
         ? [{ ...seed, position: grounded }]
@@ -2205,8 +2277,7 @@ function harthmereMeasuredMuckColumnPools(): ReadonlyMap<
 }
 
 let MEASURED_MUCK_COLUMN_POOLS:
-  | ReadonlyMap<string, readonly Vec3[]>
-  | undefined;
+  ReadonlyMap<string, readonly Vec3[]> | undefined;
 
 function measuredMuckColumnPool(areaId: string): readonly Vec3[] {
   MEASURED_MUCK_COLUMN_POOLS ??= harthmereMeasuredMuckColumnPools();

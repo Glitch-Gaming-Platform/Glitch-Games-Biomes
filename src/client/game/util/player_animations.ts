@@ -17,6 +17,7 @@ import type { MixedMesh } from "@/client/game/util/animations";
 import { getVelocityBasedWeights } from "@/client/game/util/animations";
 import { gltfToThree } from "@/client/game/util/gltf_helpers";
 import { findPlayerHeldItemAttachmentParent } from "@/client/game/util/player_attachment";
+import type { HarthmereRangedBodyAction } from "@/client/game/util/held_item_animation";
 import { TimelineMatcher } from "@/client/game/util/timeline_matcher";
 import type { CharacterAnimationTiming } from "@/server/shared/minigames/ruleset/tweaks";
 import { HARTHMERE_CINEMATIC_ANIMATION_DEFINITIONS } from "@/shared/cutscene/cinematic_expressions";
@@ -172,6 +173,10 @@ export const HARTHMERE_FULL_BODY_POSE_LAYER_RULES = {
   rangedAim: { arms: "apply", notArms: "noApply" },
   rangedRelease: { arms: "apply", notArms: "noApply" },
   rangedReload: { arms: "apply", notArms: "noApply" },
+  bowAim: { arms: "apply", notArms: "noApply" },
+  bowRelease: { arms: "apply", notArms: "noApply" },
+  gunAim: { arms: "apply", notArms: "noApply" },
+  gunFire: { arms: "apply", notArms: "noApply" },
   magicCast: { arms: "apply", notArms: "noApply" },
   magicChannel: { arms: "apply", notArms: "noApply" },
   shieldBlock: { arms: "apply", notArms: "noApply" },
@@ -300,6 +305,41 @@ export const playerSystem = new AnimationSystem(
     rangedReload: {
       fileAnimationName: "HarthmereBodyRangedReload_Aligned_30",
       backupFileAnimationNames: ["CrossbowReload", "ItemPutBack", "Attack"],
+    },
+    bowAim: {
+      fileAnimationName: "HarthmereBodyBowAim_Aligned_30",
+      backupFileAnimationNames: [
+        "HarthmereBodyRangedDraw_Aligned_30",
+        "BowDraw",
+        "BowShooting",
+        "Idle",
+      ],
+    },
+    bowRelease: {
+      fileAnimationName: "HarthmereBodyBowRelease_Aligned_30",
+      backupFileAnimationNames: [
+        "HarthmereBodyRangedRelease_Aligned_30",
+        "BowRelease",
+        "BowShoot",
+        "BowShooting",
+        "Attack",
+      ],
+    },
+    gunAim: {
+      fileAnimationName: "HarthmereBodyGunAim_Aligned_30",
+      backupFileAnimationNames: [
+        "HarthmereBodyRangedDraw_Aligned_30",
+        "Thrusting",
+        "Idle",
+      ],
+    },
+    gunFire: {
+      fileAnimationName: "HarthmereBodyGunFire_Aligned_30",
+      backupFileAnimationNames: [
+        "HarthmereBodyRangedRelease_Aligned_30",
+        "Thrusting",
+        "Attack",
+      ],
     },
     magicCast: {
       fileAnimationName: "HarthmereBodyMagicCast_Aligned_30",
@@ -817,8 +857,31 @@ function getHarthmereStableAnimationVelocity(
 function getEmoteBasedWeights(
   animationState: AnimationSystemState<typeof playerSystem>,
   player: Player,
-  toAnimationTime: ToAnimationTimeFunction
+  toAnimationTime: ToAnimationTimeFunction,
+  rangedBodyAction?: HarthmereRangedBodyAction
 ): PlayerAnimationAction | undefined {
+  if (rangedBodyAction) {
+    const releasing =
+      rangedBodyAction === "bowRelease" || rangedBodyAction === "gunFire";
+    return {
+      weights: playerSystem.singleAnimationWeight(rangedBodyAction, 1),
+      state: {
+        repeat: releasing ? { kind: "once" } : { kind: "repeat" },
+        startTime: releasing
+          ? toAnimationTime(
+              `harthmereRanged:${rangedBodyAction}`,
+              player.emoteInfo?.emoteStartTime ?? 0
+            )
+          : 0,
+        easeInTime: releasing ? 0.025 : 0.055,
+        easeOutTime: 0.06,
+      },
+      layers: {
+        arms: "apply",
+        notArms: "noApply",
+      },
+    };
+  }
   if (!player.emoteInfo) {
     return;
   }
@@ -912,7 +975,8 @@ export function syncAnimationsToPlayerState(
   player: Player,
   dt: number,
   toAnimationTime: ToAnimationTimeFunction,
-  resources: ClientResources
+  resources: ClientResources,
+  rangedBodyAction?: HarthmereRangedBodyAction
 ) {
   const accum = playerSystem.newAccumulatedActions(
     animationState.mixer.time,
@@ -937,7 +1001,12 @@ export function syncAnimationsToPlayerState(
     accum
   );
   playerSystem.accumulateAction(
-    getEmoteBasedWeights(animationState, player, toAnimationTime),
+    getEmoteBasedWeights(
+      animationState,
+      player,
+      toAnimationTime,
+      rangedBodyAction
+    ),
     accum
   );
   playerSystem.accumulateAction(getCameraModeWeights(player), accum);

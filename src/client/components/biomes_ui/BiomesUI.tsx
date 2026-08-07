@@ -31,6 +31,7 @@ import {
   openSnapshotGroveTutorChatPanel,
 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import { SnapshotGroveTutorPrompt } from "./SnapshotGroveTutorPrompt";
+import { useHarthmereCombatPresentation } from "@/client/components/challenges/useHarthmereCombatPresentation";
 import {
   type BiomesHUDVisibilitySnapshot,
   useBiomesHUDVisibilitySnapshot,
@@ -117,6 +118,7 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
   });
   const shortcuts = shortcutOverrides ?? DEFAULT_TAB_SHORTCUTS;
   const hudVisibility = useBiomesHUDVisibilitySnapshot(hudVisibilityOverride);
+  const combatPresentation = useHarthmereCombatPresentation();
   const [playerInviteOpen, setPlayerInviteOpen] = React.useState(false);
   const [snapshotGroveTutorLabels, setSnapshotGroveTutorLabels] =
     React.useState<Set<string>>(
@@ -124,11 +126,11 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
         new Set(
           typeof window === "undefined"
             ? []
-            : (
+            : ((
                 window as typeof window & {
                   __snapshotGroveTutorHighlights?: { labels?: string[] };
                 }
-              ).__snapshotGroveTutorHighlights?.labels ?? []
+              ).__snapshotGroveTutorHighlights?.labels ?? [])
         )
     );
 
@@ -138,9 +140,8 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
 
   useEffect(() => {
     const onTutorHighlights = (event: Event) => {
-      const labels = (
-        event as CustomEvent<{ labels?: string[] }>
-      ).detail?.labels;
+      const labels = (event as CustomEvent<{ labels?: string[] }>).detail
+        ?.labels;
       setSnapshotGroveTutorLabels(new Set(labels ?? []));
     };
     window.addEventListener(
@@ -243,19 +244,21 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
           onOpenInvite={() => setPlayerInviteOpen(true)}
         />
       )}
-      {hudVisibility.objectives && (
+      {hudVisibility.objectives && !combatPresentation.suspended && (
         <CurrentQuestObjectiveHUD
           adapter={adapters?.map}
           isOpen={activeTab !== null}
         />
       )}
-      <QuestInviteHUD adapter={adapters?.questInvites} />
+      {!combatPresentation.suspended && (
+        <QuestInviteHUD adapter={adapters?.questInvites} />
+      )}
       <PlayerInviteModal
         open={playerInviteOpen}
         mobile={phoneLayout}
         onClose={() => setPlayerInviteOpen(false)}
       />
-      {activeTab === null && (
+      {activeTab === null && !combatPresentation.suspended && (
         <SnapshotGroveTutorPrompt
           labels={snapshotGroveTutorLabels}
           onOpenTab={onActiveTabChange}

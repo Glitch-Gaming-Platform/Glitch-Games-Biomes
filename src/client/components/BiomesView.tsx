@@ -54,11 +54,8 @@ function BiomesCanvas({}: {}) {
       // iOS rejects HTMLMediaElement.play() until a trusted touch. Starting
       // mobile audio here runs during mount and previously forced the full
       // decoded-PCM fallback (~190 MB for the Grove track). A capture-phase
-      // document touch listener below resumes it from the first real phone
-      // gesture instead. Desktop pointerless browsers keep the existing path.
-      if (!clientConfig.mobileDevice) {
-        void audioManager.resumeAudio();
-      }
+      // document gesture listener below resumes it from the first trusted
+      // pointer, touch, or keyboard input on every browser/embed.
     };
 
     if (pointerlessGameplay()) {
@@ -187,15 +184,31 @@ function BiomesCanvas({}: {}) {
       capture: true,
       passive: false,
     };
-    const resumeMobileAudio = () => {
-      void audioManager.resumeAudio();
+    const resumeAudioFromTrustedGesture = () => {
+      if (!audioManager.isRunning()) {
+        void audioManager.resumeAudio();
+      }
     };
+    const audioUnlockListenerOptions: AddEventListenerOptions = {
+      capture: true,
+      passive: true,
+    };
+    document.addEventListener(
+      "pointerdown",
+      resumeAudioFromTrustedGesture,
+      audioUnlockListenerOptions
+    );
+    document.addEventListener(
+      "touchstart",
+      resumeAudioFromTrustedGesture,
+      audioUnlockListenerOptions
+    );
+    document.addEventListener(
+      "keydown",
+      resumeAudioFromTrustedGesture,
+      audioUnlockListenerOptions
+    );
     if (clientConfig.mobileDevice) {
-      document.addEventListener(
-        "touchstart",
-        resumeMobileAudio,
-        mobileLookListenerOptions
-      );
       document.addEventListener(
         "touchstart",
         beginMobileLookTouch,
@@ -219,14 +232,24 @@ function BiomesCanvas({}: {}) {
     }
 
     const cleanupMobileLookListeners = () => {
+      document.removeEventListener(
+        "pointerdown",
+        resumeAudioFromTrustedGesture,
+        audioUnlockListenerOptions
+      );
+      document.removeEventListener(
+        "touchstart",
+        resumeAudioFromTrustedGesture,
+        audioUnlockListenerOptions
+      );
+      document.removeEventListener(
+        "keydown",
+        resumeAudioFromTrustedGesture,
+        audioUnlockListenerOptions
+      );
       if (!clientConfig.mobileDevice) {
         return;
       }
-      document.removeEventListener(
-        "touchstart",
-        resumeMobileAudio,
-        mobileLookListenerOptions
-      );
       document.removeEventListener(
         "touchstart",
         beginMobileLookTouch,

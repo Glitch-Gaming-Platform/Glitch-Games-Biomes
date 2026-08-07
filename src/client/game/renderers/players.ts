@@ -1,3 +1,4 @@
+import { readHarthmereCombatLockState } from "@/client/components/challenges/harthmere_combat_lock_on";
 import type { ClientConfig } from "@/client/game/client_config";
 import { cutscenePlayerAttackVisualPose } from "@/client/game/cutscene/player_attack_visual";
 import type { AudioManager } from "@/client/game/context_managers/audio_manager";
@@ -43,8 +44,10 @@ import {
 } from "@/client/game/util/camera";
 import { physicsHookPosition } from "@/client/game/util/fishing/helpers";
 import {
+  type HarthmereRangedBodyAction,
   harthmereHeldBowClipForEmote,
   harthmereHeldItemClipForEmote,
+  harthmereRangedBodyActionForState,
 } from "@/client/game/util/held_item_animation";
 import { remotePlayerMeshLoadLimitForDevice } from "@/client/game/util/mobile_player_mesh_budget";
 import { syncAnimationsToPlayerState } from "@/client/game/util/player_animations";
@@ -90,6 +93,53 @@ interface RenderablePlayer {
 }
 
 export { harthmereHeldBowClipForEmote } from "@/client/game/util/held_item_animation";
+
+type HarthmereRangedBodyAnimationDebugState = {
+  itemId: string | undefined;
+  family: string | undefined;
+  targetActive: boolean;
+  action: HarthmereRangedBodyAction | undefined;
+  emoteType: string | undefined;
+};
+
+function publishHarthmereRangedBodyAnimationDebug(
+  state: HarthmereRangedBodyAnimationDebugState
+) {
+  if (typeof window === "undefined") return;
+  (
+    window as typeof window & {
+      __harthmereRangedBodyAnimationState?: HarthmereRangedBodyAnimationDebugState;
+    }
+  ).__harthmereRangedBodyAnimationState = state;
+
+  const localHost =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname === "::1";
+  if (
+    !localHost ||
+    new URLSearchParams(window.location.search).get(
+      "harthmere_ranged_animation_audit"
+    ) !== "1"
+  ) {
+    return;
+  }
+  let audit = document.querySelector<HTMLElement>(
+    '[data-testid="harthmere-ranged-animation-audit"]'
+  );
+  if (!audit) {
+    audit = document.createElement("aside");
+    audit.dataset.testid = "harthmere-ranged-animation-audit";
+    audit.style.cssText =
+      "position:fixed;right:12px;bottom:12px;z-index:2147483647;padding:8px 10px;background:rgba(4,10,18,.88);color:#bdf7ff;border:1px solid #49cde8;border-radius:6px;font:12px/1.35 monospace;pointer-events:none";
+    document.body.appendChild(audit);
+  }
+  audit.textContent = `ranged-body item=${state.itemId ?? "none"} family=${
+    state.family ?? "none"
+  } target=${state.targetActive ? "active" : "inactive"} action=${
+    state.action ?? "none"
+  } emote=${state.emoteType ?? "none"}`;
+}
 
 const numPlayersCval = new Cval({
   path: ["renderer", "players", "numPlayers"],
@@ -346,13 +396,43 @@ export class PlayersRenderer implements Renderer {
       timelineMatcher,
     } = playerMesh;
     player.updateEmoteState(animationSystem, clock.time);
+    const selectedItem = renderablePlayer.localPlayer
+      ? harthmereHotbarHeldItemForAttachment(
+          this.resources.get("/hotbar/selection").item
+        )
+      : renderablePlayer.ecsPlayer.selected_item?.item?.item;
+    const semanticItemId = selectedItem
+      ? harthmereNativeItemIdForBiomesId(Number(selectedItem.id))
+      : undefined;
+    const premiumWeapon = semanticItemId
+      ? getHarthmerePremiumWeapon(semanticItemId)
+      : undefined;
+    const targetActive = renderablePlayer.localPlayer
+      ? readHarthmereCombatLockState().active ||
+        renderablePlayer.localPlayer.attackInfo?.targetActive === true
+      : player.emoteInfo?.emoteType === "rangedRelease";
+    const rangedBodyAction = harthmereRangedBodyActionForState({
+      weapon: premiumWeapon,
+      emoteType: player.emoteInfo?.emoteType,
+      targetActive,
+    });
+    if (renderablePlayer.localPlayer) {
+      publishHarthmereRangedBodyAnimationDebug({
+        itemId: semanticItemId,
+        family: premiumWeapon?.family,
+        targetActive,
+        action: rangedBodyAction,
+        emoteType: player.emoteInfo?.emoteType,
+      });
+    }
     syncAnimationsToPlayerState(
       animationSystem,
       player,
       dt,
       (label: string, worldTime: number) =>
         timelineMatcher.match(label, worldTime, clock.time),
-      this.resources
+      this.resources,
+      rangedBodyAction
     );
 
     animationMixer.update(dt);
@@ -1057,8 +1137,16 @@ export class PlayersRenderer implements Renderer {
         ? getHarthmerePremiumWeapon(semanticItemId)
         : undefined;
       const emoteType = player.emoteInfo?.emoteType;
+      const targetActive = localPlayer
+        ? readHarthmereCombatLockState().active ||
+          localPlayer.attackInfo?.targetActive === true
+        : emoteType === "rangedRelease";
+      const heldItemEmoteType =
+        targetActive && !emoteType && premium?.profile === "ranged"
+          ? "rangedAim"
+          : emoteType;
       const animationClip = premium
-        ? harthmereHeldItemClipForEmote(premium, emoteType)
+        ? harthmereHeldItemClipForEmote(premium, heldItemEmoteType)
         : undefined;
       const animationIsIdle = animationClip === premium?.idleClip;
       playerMesh.itemAttachment.updateAttachedItem(
@@ -1083,12 +1171,20 @@ export class PlayersRenderer implements Renderer {
       if (localPlayer && typeof window !== "undefined") {
         const bridgeWindow = window as typeof window & {
           __harthmereHeldBowArrowSocket?: readonly [number, number, number];
+          __harthmereHeldGunMuzzleSocket?: readonly [number, number, number];
         };
         const socket = isHarthmereBowWeapon(attachedItem)
           ? playerMesh.itemAttachment.socketWorldPosition("ArrowSocket")
           : undefined;
         bridgeWindow.__harthmereHeldBowArrowSocket = socket
           ? [socket.x, socket.y, socket.z]
+          : undefined;
+        const muzzleSocket =
+          premium?.family === "energy_weapon"
+            ? playerMesh.itemAttachment.socketWorldPosition("MuzzleSocket")
+            : undefined;
+        bridgeWindow.__harthmereHeldGunMuzzleSocket = muzzleSocket
+          ? [muzzleSocket.x, muzzleSocket.y, muzzleSocket.z]
           : undefined;
       }
     }

@@ -179,6 +179,10 @@ const requiredPlayerCombatClips = [
   "HarthmereBodyRangedDraw_Aligned_30",
   "HarthmereBodyRangedRelease_Aligned_30",
   "HarthmereBodyRangedReload_Aligned_30",
+  "HarthmereBodyBowAim_Aligned_30",
+  "HarthmereBodyBowRelease_Aligned_30",
+  "HarthmereBodyGunAim_Aligned_30",
+  "HarthmereBodyGunFire_Aligned_30",
 ];
 const missingCanonicalClips = requiredPlayerCombatClips.filter(
   (name) => !canonical.animations.includes(name)

@@ -1,0 +1,377 @@
+{
+  "version": 1,
+  "quality": "production-stylized-pbr",
+  "fps": 24,
+  "animals": {
+    "chicken": {
+      "url": "/assets/harthmere/glb/creatures/animals/chicken.glb",
+      "family": "bird",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death",
+        "Fly"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 208704
+    },
+    "deer": {
+      "url": "/assets/harthmere/glb/creatures/animals/deer.glb",
+      "family": "hoofed",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 223456
+    },
+    "stag": {
+      "url": "/assets/harthmere/glb/creatures/animals/stag.glb",
+      "family": "hoofed",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 223036
+    },
+    "squirrel": {
+      "url": "/assets/harthmere/glb/creatures/animals/squirrel.glb",
+      "family": "rodent",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 185464
+    },
+    "songbird": {
+      "url": "/assets/harthmere/glb/creatures/animals/songbird.glb",
+      "family": "bird",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death",
+        "Fly"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 191944
+    },
+    "pigeon": {
+      "url": "/assets/harthmere/glb/creatures/animals/pigeon.glb",
+      "family": "bird",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death",
+        "Fly"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 193948
+    },
+    "crow": {
+      "url": "/assets/harthmere/glb/creatures/animals/crow.glb",
+      "family": "bird",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death",
+        "Fly"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 189624
+    },
+    "duck": {
+      "url": "/assets/harthmere/glb/creatures/animals/duck.glb",
+      "family": "bird",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death",
+        "Fly"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 189280
+    },
+    "goose": {
+      "url": "/assets/harthmere/glb/creatures/animals/goose.glb",
+      "family": "bird",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death",
+        "Fly"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 198420
+    },
+    "frog": {
+      "url": "/assets/harthmere/glb/creatures/animals/frog.glb",
+      "family": "frog",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 179536
+    },
+    "fox": {
+      "url": "/assets/harthmere/glb/creatures/animals/fox.glb",
+      "family": "canine",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 194960
+    },
+    "otter": {
+      "url": "/assets/harthmere/glb/creatures/animals/otter.glb",
+      "family": "mustelid",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 197844
+    },
+    "cat": {
+      "url": "/assets/harthmere/glb/creatures/animals/cat.glb",
+      "family": "feline",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 194772
+    },
+    "mouse": {
+      "url": "/assets/harthmere/glb/creatures/animals/mouse.glb",
+      "family": "rodent",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 190192
+    },
+    "rat": {
+      "url": "/assets/harthmere/glb/creatures/animals/rat.glb",
+      "family": "rodent",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 188168
+    },
+    "boar": {
+      "url": "/assets/harthmere/glb/creatures/animals/boar.glb",
+      "family": "boar",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 193460
+    },
+    "badger": {
+      "url": "/assets/harthmere/glb/creatures/animals/badger.glb",
+      "family": "mustelid",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 184220
+    },
+    "pig": {
+      "url": "/assets/harthmere/glb/creatures/animals/pig.glb",
+      "family": "boar",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 189940
+    },
+    "dog": {
+      "url": "/assets/harthmere/glb/creatures/animals/dog.glb",
+      "family": "canine",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 191744
+    },
+    "hound": {
+      "url": "/assets/harthmere/glb/creatures/animals/hound.glb",
+      "family": "canine",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 193108
+    },
+    "wolf": {
+      "url": "/assets/harthmere/glb/creatures/animals/wolf.glb",
+      "family": "canine",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 193688
+    },
+    "snake": {
+      "url": "/assets/harthmere/glb/creatures/animals/snake.glb",
+      "family": "snake",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 122908
+    },
+    "bear": {
+      "url": "/assets/harthmere/glb/creatures/animals/bear.glb",
+      "family": "bear",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 179480
+    },
+    "horse": {
+      "url": "/assets/harthmere/glb/creatures/animals/horse.glb",
+      "family": "hoofed",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 193324
+    },
+    "spider": {
+      "url": "/assets/harthmere/glb/creatures/animals/spider.glb",
+      "family": "spider",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 142128
+    },
+    "river_lurker": {
+      "url": "/assets/harthmere/glb/creatures/animals/river_lurker.glb",
+      "family": "reptile",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "HitReact",
+        "Death"
+      ],
+      "source": "src/galois/data/npcs/harthmere_aaa_animals.blend",
+      "bytes": 218796
+    }
+  }
+}

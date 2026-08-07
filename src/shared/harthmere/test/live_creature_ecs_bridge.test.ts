@@ -154,7 +154,11 @@ describe("harthmereLiveCreatureAssetFor", () => {
     );
     assert.equal(
       harthmereLiveCreatureAssetFor("animal", undefined, "Grey Wolf"),
-      "npcs/dog_1"
+      "/assets/harthmere/glb/creatures/animals/wolf.glb"
+    );
+    assert.equal(
+      harthmereLiveCreatureAssetFor("animal", "chicken", "Gate Chicken"),
+      "/assets/harthmere/glb/creatures/animals/chicken.glb"
     );
     assert.equal(
       harthmereLiveCreatureAssetFor("animal", undefined, "mystery"),
@@ -292,7 +296,10 @@ describe("harthmereLiveCreatureBridgeRecord", () => {
       direction: [1, 0, 0],
       nonce: 4,
     });
-    assert.equal(record?.asset, "npcs/dog_1");
+    assert.equal(
+      record?.asset,
+      "/assets/harthmere/glb/creatures/animals/wolf.glb"
+    );
     assert.equal(record?.nativeNpcRenderer, true);
   });
 

@@ -1,6 +1,8 @@
 import {
   harthmereHeldBowClipForEmote,
+  harthmereHeldGunClipForEmote,
   harthmereHeldItemClipForEmote,
+  harthmereRangedBodyActionForState,
   resolveAvailableHeldItemAnimation,
 } from "@/client/game/util/held_item_animation";
 import type { HarthmerePremiumWeaponDefinition } from "@/shared/harthmere/premium_weapon_catalog";
@@ -8,9 +10,10 @@ import assert from "assert";
 
 function weapon(
   profile: HarthmerePremiumWeaponDefinition["profile"],
-  idleClip: string
+  idleClip: string,
+  family = "sword"
 ) {
-  return { profile, idleClip } as HarthmerePremiumWeaponDefinition;
+  return { profile, idleClip, family } as HarthmerePremiumWeaponDefinition;
 }
 
 describe("held-item animation sync", () => {
@@ -21,6 +24,54 @@ describe("held-item animation sync", () => {
       "Release_24"
     );
     assert.equal(harthmereHeldBowClipForEmote("rangedReload"), "Reload_24");
+    assert.equal(harthmereHeldGunClipForEmote("rangedAim"), "IdleAim_24");
+    assert.equal(harthmereHeldGunClipForEmote("rangedRelease"), "Fire_24");
+  });
+
+  it("activates distinct bow and gun body actions only with a combat target", () => {
+    const bow = weapon("ranged", "IdleAim_24", "bow");
+    const gun = weapon("ranged", "IdleAim_24", "energy_weapon");
+
+    assert.equal(
+      harthmereRangedBodyActionForState({
+        weapon: bow,
+        emoteType: undefined,
+        targetActive: false,
+      }),
+      undefined
+    );
+    assert.equal(
+      harthmereRangedBodyActionForState({
+        weapon: bow,
+        emoteType: undefined,
+        targetActive: true,
+      }),
+      "bowAim"
+    );
+    assert.equal(
+      harthmereRangedBodyActionForState({
+        weapon: bow,
+        emoteType: "rangedRelease",
+        targetActive: true,
+      }),
+      "bowRelease"
+    );
+    assert.equal(
+      harthmereRangedBodyActionForState({
+        weapon: gun,
+        emoteType: undefined,
+        targetActive: true,
+      }),
+      "gunAim"
+    );
+    assert.equal(
+      harthmereRangedBodyActionForState({
+        weapon: gun,
+        emoteType: "rangedRelease",
+        targetActive: true,
+      }),
+      "gunFire"
+    );
   });
 
   it("maps body attack families to profile-specific held-item clips", () => {
@@ -48,6 +99,20 @@ describe("held-item animation sync", () => {
         "shieldBashVar1"
       ),
       "ShieldBash_24"
+    );
+    assert.equal(
+      harthmereHeldItemClipForEmote(
+        weapon("ranged", "IdleAim_24", "bow"),
+        "rangedRelease"
+      ),
+      "Release_24"
+    );
+    assert.equal(
+      harthmereHeldItemClipForEmote(
+        weapon("ranged", "IdleAim_24", "energy_weapon"),
+        "rangedRelease"
+      ),
+      "Fire_24"
     );
   });
 

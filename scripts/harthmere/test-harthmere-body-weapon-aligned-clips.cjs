@@ -20,7 +20,7 @@ const contractPath = path.join(
   "src/shared/harthmere/body_weapon_animation_sync_manifest.ts"
 );
 
-const VERSION = "harthmere-body-weapon-aligned-clips";
+const VERSION = "harthmere-body-weapon-aligned-clips-v2-ranged-stances";
 const REQUIRED = [
   "HarthmereBodyWeaponIdleDrawn_Aligned_30",
   "HarthmereBodyWeaponBasic_Aligned_30",
@@ -32,6 +32,10 @@ const REQUIRED = [
   "HarthmereBodyRangedDraw_Aligned_30",
   "HarthmereBodyRangedRelease_Aligned_30",
   "HarthmereBodyRangedReload_Aligned_30",
+  "HarthmereBodyBowAim_Aligned_30",
+  "HarthmereBodyBowRelease_Aligned_30",
+  "HarthmereBodyGunAim_Aligned_30",
+  "HarthmereBodyGunFire_Aligned_30",
   "HarthmereBodyMagicCast_Aligned_30",
   "HarthmereBodyMagicChannel_Aligned_30",
   "HarthmereBodyToolUse_Aligned_30",
@@ -232,9 +236,22 @@ ok(
 );
 ok(
   "shared manifest covers melee/ranged/magic/shield/tool/item profiles",
-  ["melee", "ranged", "magic", "shield", "tool", "item"].every((x) =>
-    manifestText.includes(x)
+  ["melee", "ranged", "bow", "gun", "magic", "shield", "tool", "item"].every(
+    (x) => manifestText.includes(x)
   )
+);
+ok(
+  "shared manifest routes every bow and energy gun to its specialized stance",
+  ["bow", "hunter_bow", "golden_bow", "strung_bow"].every((id) =>
+    new RegExp(`${id}:\\s*"bow"`).test(manifestText)
+  ) &&
+    [
+      "photon_sidearm",
+      "pulse_carbine",
+      "helix_projector",
+      "nova_cannon",
+      "singularity_lance",
+    ].every((id) => new RegExp(`${id}:\\s*"gun"`).test(manifestText))
 );
 
 const pa = readText(playerAnimationsPath);
@@ -255,6 +272,13 @@ ok(
   "ranged body actions prefer aligned ranged clips",
   /rangedAim:\s*\{[^}]*HarthmereBodyRangedDraw_Aligned_30/s.test(pa) &&
     /rangedRelease:\s*\{[^}]*HarthmereBodyRangedRelease_Aligned_30/s.test(pa)
+);
+ok(
+  "bow and gun body actions select distinct target-gated clips",
+  /bowAim:\s*\{[^}]*HarthmereBodyBowAim_Aligned_30/s.test(pa) &&
+    /bowRelease:\s*\{[^}]*HarthmereBodyBowRelease_Aligned_30/s.test(pa) &&
+    /gunAim:\s*\{[^}]*HarthmereBodyGunAim_Aligned_30/s.test(pa) &&
+    /gunFire:\s*\{[^}]*HarthmereBodyGunFire_Aligned_30/s.test(pa)
 );
 ok(
   "magic body actions prefer aligned magic clips",

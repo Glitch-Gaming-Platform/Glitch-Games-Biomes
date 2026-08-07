@@ -344,6 +344,32 @@ def add_rivets(collection, root, positions: List[Vec3], golden=False):
         ico(collection, root, f"Rivet_{i}", position, (0.035, 0.035, 0.035), material, 1)
 
 
+def add_socket(collection, root, name: str, location: Vec3):
+    socket = bpy.data.objects.new(name, None)
+    socket.empty_display_type = "PLAIN_AXES"
+    socket.empty_display_size = 0.08
+    socket.location = location
+    collection.objects.link(socket)
+    socket.parent = root
+    socket["harthmereExportSocketName"] = name
+    return socket
+
+
+def retire_export_socket_names(root, specification):
+    """Free shared socket names after each GLB export.
+
+    Blender object names are file-global, so keeping all generated weapons in
+    the source .blend would otherwise rename the second MuzzleSocket to
+    MuzzleSocket.001. The exported GLBs need the stable unsuffixed runtime
+    name; after export the source object can safely take a weapon-qualified
+    name before the next weapon is authored.
+    """
+    for obj in [root, *root.children_recursive]:
+        socket_name = obj.get("harthmereExportSocketName")
+        if socket_name:
+            obj.name = f"{socket_name}_{specification.id}"
+
+
 def build_axe(specification, collection, root):
     text = specification.id
     golden = "golden" in text
@@ -693,6 +719,18 @@ def build_energy_weapon(specification, collection, root):
     shell = MATERIALS["dark_iron"]
     frame = MATERIALS["steel"]
     trim = MATERIALS["brass"]
+    add_socket(
+        collection,
+        root,
+        "MuzzleSocket",
+        {
+            "photon_sidearm": (0, 0, 0.78),
+            "pulse_carbine": (0, 0, 1.08),
+            "helix_projector": (0, 0, 1.18),
+            "nova_cannon": (0, 0, 1.38),
+            "singularity_lance": (0, 0, 1.54),
+        }[item_id],
+    )
 
     if item_id == "photon_sidearm":
         glow = MATERIALS["energy_blue"]
@@ -966,9 +1004,78 @@ def animate_bow(root, specification):
     reset_bow_pose(armature)
 
 
+def reset_energy_weapon_pose(root):
+    root.rotation_mode = "XYZ"
+    root.location = (0, 0, 0)
+    root.rotation_euler = (0, 0, 0)
+    root.scale = (1, 1, 1)
+
+
+def key_energy_weapon_pose(root, frame, recoil=0.0, pitch=0.0, sway=0.0, pulse=0.0):
+    reset_energy_weapon_pose(root)
+    root.location.z = -0.085 * recoil
+    root.rotation_euler.x = math.radians(-4.5 * recoil + pitch)
+    root.rotation_euler.y = math.radians(sway)
+    scale = 1.0 + 0.012 * pulse
+    root.scale = (scale, scale, scale)
+    root.keyframe_insert("location", frame=frame)
+    root.keyframe_insert("rotation_euler", frame=frame)
+    root.keyframe_insert("scale", frame=frame)
+
+
+def animate_energy_weapon(root, specification):
+    root.animation_data_create()
+    clip_poses = {
+        "IdleAim_24": [
+            (1, 0.0, 0.0, -0.45, 0.0),
+            (13, 0.0, 0.35, 0.45, 0.3),
+            (25, 0.0, 0.0, -0.45, 0.0),
+        ],
+        # Frame 13 from a frame-1 origin is exactly 0.500 seconds at 24 fps,
+        # visually matching the 0.520-second ranged contact clock after blend.
+        "Fire_24": [
+            (1, 0.0, 0.0, 0.0, 0.0),
+            (11, 0.0, 0.0, 0.0, 0.2),
+            (13, 1.0, 0.0, 0.0, 1.0),
+            (14, 0.72, 0.8, 0.0, 0.75),
+            (16, -0.12, -0.35, 0.0, 0.2),
+            (19, 0.0, 0.0, 0.0, 0.0),
+        ],
+    }
+    for clip_name, poses in clip_poses.items():
+        action = bpy.data.actions.new(f"{specification.id}__{clip_name}")
+        action["harthmereExportClip"] = clip_name
+        action["harthmereCombatProfile"] = "aaa-voxel-energy-gun-v1"
+        if clip_name == "Fire_24":
+            action["impactSeconds"] = 0.520
+            action["recoilAuthored"] = True
+        root.animation_data.action = action
+        for frame, recoil, pitch, sway, pulse in poses:
+            key_energy_weapon_pose(
+                root,
+                frame,
+                recoil=recoil,
+                pitch=pitch,
+                sway=sway,
+                pulse=pulse,
+            )
+        action.frame_start = min(pose[0] for pose in poses)
+        action.frame_end = max(pose[0] for pose in poses)
+        polish_action_curves(action)
+        track = root.animation_data.nla_tracks.new()
+        track.name = clip_name
+        strip = track.strips.new(clip_name, 1, action)
+        strip.name = clip_name
+        root.animation_data.action = None
+    reset_energy_weapon_pose(root)
+
+
 def animate(root, specification):
     if specification.builder == "bow":
         animate_bow(root, specification)
+        return
+    if specification.builder == "energy_weapon":
+        animate_energy_weapon(root, specification)
         return
     root.animation_data_create()
     action = bpy.data.actions.new(
@@ -1041,7 +1148,9 @@ def export_glb(root, path, specification):
             use_selection=True,
             export_animations=True,
             export_animation_mode=(
-                "NLA_TRACKS" if specification.builder == "bow" else "ACTIONS"
+                "NLA_TRACKS"
+                if specification.builder in ("bow", "energy_weapon")
+                else "ACTIONS"
             ),
             export_merge_animation="NLA_TRACK",
             export_frame_range=True,
@@ -1197,7 +1306,15 @@ def main():
     icons = repo / "public/assets/harthmere/weapon_icons"
     blend_path = repo / "src/galois/data/weapons/harthmere_premium_weapons.blend"
     if args.only:
-        blend_path = repo / "src/galois/data/weapons/harthmere_premium_bows.blend"
+        selected_builders = {
+            entry.builder for entry in WEAPONS if entry.id in args.only
+        }
+        if selected_builders == {"bow"}:
+            blend_path = repo / "src/galois/data/weapons/harthmere_premium_bows.blend"
+        elif selected_builders == {"energy_weapon"}:
+            blend_path = repo / "src/galois/data/weapons/harthmere_premium_energy_weapons.blend"
+        else:
+            blend_path = repo / "src/galois/data/weapons/harthmere_premium_weapon_selection.blend"
     output.mkdir(parents=True, exist_ok=True)
     previews.mkdir(parents=True, exist_ok=True)
     icons.mkdir(parents=True, exist_ok=True)
@@ -1245,6 +1362,7 @@ def main():
                 "bytes": path.stat().st_size,
             }
         )
+        retire_export_socket_names(root, specification)
         root.location = ((index % columns) * 2.8, (index // columns) * 2.8, 0)
         collection["harthmereWeaponLabel"] = specification.label
 
@@ -1261,7 +1379,7 @@ def main():
             if entry.id in previous_by_id
         ]
     manifest = {
-        "version": "harthmere-premium-voxel-weapons-v2-animated-bows",
+        "version": "harthmere-premium-voxel-weapons-v3-ranged-actions",
         "blenderVersion": bpy.app.version_string,
         "count": len(generated),
         "weapons": generated,

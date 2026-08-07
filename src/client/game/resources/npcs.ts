@@ -168,6 +168,7 @@ import {
   harthmereMagicChargeId,
 } from "@/client/game/util/harthmere_magic_charge";
 import {
+  emitHarthmereSoundEffect,
   getHarthmereSoundEffect,
   HARTHMERE_GIANT_BOSS_STOMP_SOUND_ID,
   harthmereNpcSoundIdForIdentity,
@@ -203,6 +204,11 @@ import {
   harthmereMuckCreatureAssetKeyForLabel,
   harthmereMuckCreatureRuntimeAssetUrl,
 } from "@/shared/harthmere/muck_creature_assets";
+import {
+  HARTHMERE_AAA_ANIMAL_ASSET_VERSION,
+  harthmereAnimalAssetSpeciesForLabel,
+  harthmereAnimalAssetUrl,
+} from "@/shared/harthmere/harthmere_animal_assets";
 import {
   HARTHMERE_BOSS_VISUAL_ASSETS_VERSION,
   harthmereBossAttackClipForEntityEvent,
@@ -3379,19 +3385,18 @@ export class NpcRenderState {
     ) {
       return;
     }
-    const sound = getHarthmereSoundEffect(HARTHMERE_GIANT_BOSS_STOMP_SOUND_ID);
-    if (!sound) return;
-    this.playSound(
-      "npcVoice",
-      sound.path as AudioPath,
-      [centerPosition[0], aabb[0][1] + 0.15, centerPosition[2]],
-      {
-        volumeMultiplier: profile.soundVolumeMultiplier,
-        refDistance: profile.soundRefDistance,
-        maxDistance: profile.soundMaxDistance,
-        rolloffFactor: profile.soundRolloffFactor,
-      }
-    );
+    // Route giant footsteps through the shared Harthmere sound runtime. Its
+    // short bounded pending queue preserves one stomp if Web Audio is still
+    // waiting for the player's trusted gesture; direct playPathAt() used to
+    // discard that stride permanently while boss music/audio was suspended.
+    emitHarthmereSoundEffect(HARTHMERE_GIANT_BOSS_STOMP_SOUND_ID, {
+      position: [centerPosition[0], aabb[0][1] + 0.15, centerPosition[2]],
+      idempotent: true,
+      volumeMultiplier: profile.soundVolumeMultiplier,
+      refDistance: profile.soundRefDistance,
+      maxDistance: profile.soundMaxDistance,
+      rolloffFactor: profile.soundRolloffFactor,
+    });
   }
 
   private tickOnAttackEffects(
@@ -6963,6 +6968,45 @@ async function makeHarthmereMuckCreatureNpcAssetMesh(
   }
 }
 
+async function makeHarthmereAnimalNpcAssetMesh(
+  label: string | undefined,
+  id: BiomesId
+): Promise<GLTF | undefined> {
+  const species = harthmereAnimalAssetSpeciesForLabel(label);
+  const url = harthmereAnimalAssetUrl(species, label);
+  if (!species || !url) {
+    return undefined;
+  }
+  try {
+    const gltf = await loadSharedGltf(url, {
+      variant: `harthmere-aaa-animal:${species}`,
+      prepare: (loaded) => {
+        // Preserve the authored PBR materials. The stock npc-type loader swaps
+        // every material for the player shader, which is correct for old voxel
+        // Galois bodies but would erase this pack's species palette.
+        setFrustumCulling(loaded, false);
+        loaded.scene.userData.harthmereAaaAnimalAssetVersion =
+          HARTHMERE_AAA_ANIMAL_ASSET_VERSION;
+        loaded.scene.userData.harthmereAaaAnimalSpecies = species;
+      },
+    });
+    return gltf;
+  } catch (error) {
+    log.warn(
+      "HARTHMERE_AAA_ANIMAL_ASSET failed to load; falling back to the exact native animal type",
+      {
+        entityId: id,
+        label,
+        species,
+        url,
+        version: HARTHMERE_AAA_ANIMAL_ASSET_VERSION,
+        error,
+      }
+    );
+    return undefined;
+  }
+}
+
 async function makeHarthmereBossNpcAssetMesh(
   label: string | undefined,
   id: BiomesId
@@ -7065,6 +7109,17 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
       npcType,
       bossAssetMesh,
       "boss-visual-asset-empty"
+    );
+  }
+
+  const animalAssetMesh = await makeHarthmereAnimalNpcAssetMesh(label, id);
+  if (animalAssetMesh) {
+    return ensureVisibleNpcGltf(
+      deps,
+      id,
+      npcType,
+      animalAssetMesh,
+      "aaa-animal-asset-empty"
     );
   }
 

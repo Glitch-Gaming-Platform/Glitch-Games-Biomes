@@ -2,6 +2,7 @@ import { getClientRenderPosition } from "@/client/components/map/helpers";
 import {
   harthmereCombatLockCameraFrame,
   harthmereCombatLockCameraTarget,
+  readHarthmereCombatLockState,
   smoothHarthmereCombatLockTarget,
 } from "@/client/components/challenges/harthmere_combat_lock_on";
 import type { ClientConfig } from "@/client/game/client_config";
@@ -748,15 +749,19 @@ export class CameraScript implements Script {
   ) {
     const player = this.resources.get("/scene/local_player");
     const scenePlayer = this.resources.get("/scene/player", player.id);
-    const combatLock =
-      trackedObject.kind === "player" && camTweaks.kind !== "tracking_selfie"
-        ? harthmereCombatLockCameraTarget(player.player.position)
-        : undefined;
+    const combatLockState = readHarthmereCombatLockState();
+    const combatLockActive =
+      trackedObject.kind === "player" &&
+      camTweaks.kind !== "tracking_selfie" &&
+      combatLockState.active;
+    const combatLock = combatLockActive
+      ? harthmereCombatLockCameraTarget(player.player.position)
+      : undefined;
     // Lock-on is the orientation authority while active. Applying free-look
     // input first and then correcting toward the target made the two controls
     // fight every frame, producing the visible left/right camera shake while
     // strafing. Free look resumes immediately when the lock releases.
-    if (!combatLock) {
+    if (!combatLockActive) {
       this.tickCameraOrientation(camTweaks);
       this.combatLockTargetOffset = undefined;
       this.smoothedCombatLockTarget = undefined;

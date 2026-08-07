@@ -177,6 +177,22 @@ describe("Harthmere combat lock-on", () => {
     assert.equal(readHarthmereCombatLockState().active, false);
   });
 
+  it("keeps the last camera target throughout missing-target grace", () => {
+    const visible = candidate(4, { world: [4, 1, 0] });
+    setHarthmereCombatLockCandidates([visible]);
+    toggleHarthmereCombatLock({
+      viewportWidth: 1280,
+      viewportHeight: 720,
+      now: 1_000,
+    });
+    refreshHarthmereCombatLock([], 1_100);
+    assert.equal(readHarthmereCombatLockState().reason, "missing_grace");
+    assert.ok(
+      harthmereCombatLockCameraTarget([100, 0, 0]),
+      "active lock grace must preserve the last trustworthy camera target"
+    );
+  });
+
   it("frames the locked target and never bypasses weapon reach", () => {
     setHarthmereCombatLockCandidates([candidate(6, { world: [6, 1, 0] })]);
     toggleHarthmereCombatLock({
@@ -256,8 +272,9 @@ describe("Harthmere combat lock-on", () => {
     );
     assert.match(
       cameraSource,
-      /if \(!combatLock\) \{\s*this\.tickCameraOrientation/
+      /if \(!combatLockActive\) \{\s*this\.tickCameraOrientation/
     );
+    assert.match(cameraSource, /readHarthmereCombatLockState/);
     assert.match(cameraSource, /smoothHarthmereCombatLockTarget/);
   });
 

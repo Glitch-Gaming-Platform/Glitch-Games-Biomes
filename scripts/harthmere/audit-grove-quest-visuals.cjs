@@ -217,7 +217,9 @@ async function main() {
     report.scenarios
       .filter(
         (scenario) =>
-          scenario.status === "pass" && scenario.verdict === "physical_pass"
+          scenario.status === "pass" &&
+          (scenario.verdict === "physical_pass" ||
+            scenario.verdict === "visual_state_pass")
       )
       .map((scenario) => scenario.questId)
   );

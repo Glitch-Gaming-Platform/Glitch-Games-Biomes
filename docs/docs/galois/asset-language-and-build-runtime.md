@@ -78,6 +78,29 @@ The runtime resolves its Python interpreter in this order:
 
 Container and packaged-app upgrades must preserve Python dependencies, the Voxeloo extension, source data, and `build.py` at the paths expected by the Node launcher.
 
+## Blender and GLTF node-name stability
+
+Runtime sockets are often resolved by exact GLTF node name. Blender object
+names are file-global, so a generator that keeps several weapons in one `.blend`
+can silently export the second shared empty as `MuzzleSocket.001`, the third as
+`MuzzleSocket.002`, and so on. The mesh and animation export can otherwise look
+healthy while exact-name runtime lookup fails for every asset after the first.
+
+For shared runtime socket names:
+
+- export each selected object while its socket has the canonical unsuffixed
+  name;
+- after that GLB is written, rename or retire the source object before creating
+  the next weapon, or isolate each export in a clean Blender data set;
+- keep weapon-qualified names in the multi-asset source `.blend` when needed,
+  but never rely on Blender's automatic numeric suffix as a runtime contract;
+- parse every generated GLB and assert the exact socket name, not merely a
+  prefix match.
+
+Armature bone names are scoped to their armature and do not have the same
+file-global object-name collision, but they still require export-level tests if
+the runtime addresses them by name.
+
 ## Native boundary
 
 Python imports `voxeloo.galois` for CSG, transforms, sampling, indexes, geometry, groups, lighting, water, and storage buffers. Native changes need both direct C++ tests and pybind boundary tests. A successful Galois Python unit test with a previously installed extension does not prove that the current C++ source builds or exports the expected API.

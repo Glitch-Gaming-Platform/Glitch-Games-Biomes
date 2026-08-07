@@ -2,7 +2,7 @@
 import base64, json, math, os, struct, sys
 from pathlib import Path
 
-VERSION = "harthmere-body-weapon-aligned-clips"
+VERSION = "harthmere-body-weapon-aligned-clips-v2-ranged-stances"
 FRAME_COUNT = 30
 FPS = 30
 
@@ -49,6 +49,22 @@ CLIPS = {
     "HarthmereBodyRangedReload_Aligned_30": {
         "duration": 0.50, "category": "ranged_reload", "timing": {"windupMs": 140, "impactMs": 260, "recoveryMs": 240},
         "keys": [(0.00, {"RightArm": (-26,0,-20), "RightHand": (4,12,20), "LeftArm": (-36,0,16), "LeftHand": (-6,0,-10), "Chest": (0,0,0), "HipsT": (0,0,0)}), (0.44, {"RightArm": (-42,-8,-28), "RightHand": (-8,18,26), "LeftArm": (-46,0,22), "LeftHand": (-10,-4,-14), "Chest": (0,0,-1), "HipsT": (0,0,0)}), (1.00, {"RightArm": (-34,0,-8), "RightHand": (-6,0,4), "LeftArm": (-36,0,12), "LeftHand": (-6,-4,-8), "Chest": (0,0,0), "HipsT": (0,0,0)})],
+    },
+    "HarthmereBodyBowAim_Aligned_30": {
+        "duration": 0.50, "category": "bow_aim", "timing": {"windupMs": 0, "impactMs": 0, "recoveryMs": 0},
+        "keys": [(0.00, {"RightArm": (-82,-4,10), "RightHand": (-18,-6,-12), "LeftArm": (-46,-10,-58), "LeftHand": (-12,22,34), "Chest": (0,0,-2), "HipsT": (0,0,0)}), (0.50, {"RightArm": (-83,-4,10), "RightHand": (-18,-6,-12), "LeftArm": (-47,-10,-59), "LeftHand": (-13,22,35), "Chest": (-0.5,0,-2), "HipsT": (0,0,0)}), (1.00, {"RightArm": (-82,-4,10), "RightHand": (-18,-6,-12), "LeftArm": (-46,-10,-58), "LeftHand": (-12,22,34), "Chest": (0,0,-2), "HipsT": (0,0,0)})],
+    },
+    "HarthmereBodyBowRelease_Aligned_30": {
+        "duration": 0.50, "category": "bow_release", "timing": {"windupMs": 180, "impactMs": 280, "recoveryMs": 220},
+        "keys": [(0.00, {"RightArm": (-82,-4,10), "RightHand": (-18,-6,-12), "LeftArm": (-46,-10,-58), "LeftHand": (-12,22,34), "Chest": (0,0,-2), "HipsT": (0,0,0)}), (0.52, {"RightArm": (-82,-4,10), "RightHand": (-18,-6,-12), "LeftArm": (-46,-10,-58), "LeftHand": (-12,22,34), "Chest": (0,0,-2), "HipsT": (0,0,0)}), (0.56, {"RightArm": (-80,-2,8), "RightHand": (-16,-4,-10), "LeftArm": (-34,-4,-18), "LeftHand": (-7,2,8), "Chest": (0,0,-1), "HipsT": (0,0,0)}), (0.72, {"RightArm": (-78,-2,8), "RightHand": (-15,-4,-10), "LeftArm": (-28,0,-6), "LeftHand": (-5,0,4), "Chest": (0,0,0), "HipsT": (0,0,0)}), (1.00, {"RightArm": (-80,-3,9), "RightHand": (-17,-5,-11), "LeftArm": (-42,-8,-46), "LeftHand": (-10,17,27), "Chest": (0,0,-1), "HipsT": (0,0,0)})],
+    },
+    "HarthmereBodyGunAim_Aligned_30": {
+        "duration": 0.50, "category": "gun_aim", "timing": {"windupMs": 0, "impactMs": 0, "recoveryMs": 0},
+        "keys": [(0.00, {"RightArm": (-86,0,5), "RightHand": (-8,-2,-3), "LeftArm": (-60,0,-16), "LeftHand": (-14,8,12), "Chest": (0,0,-1.5), "HipsT": (0,0,0)}), (0.50, {"RightArm": (-87,0,5), "RightHand": (-8,-2,-3), "LeftArm": (-61,0,-16), "LeftHand": (-14,8,12), "Chest": (-0.4,0,-1.5), "HipsT": (0,0,0)}), (1.00, {"RightArm": (-86,0,5), "RightHand": (-8,-2,-3), "LeftArm": (-60,0,-16), "LeftHand": (-14,8,12), "Chest": (0,0,-1.5), "HipsT": (0,0,0)})],
+    },
+    "HarthmereBodyGunFire_Aligned_30": {
+        "duration": 0.75, "category": "gun_fire", "timing": {"windupMs": 340, "impactMs": 520, "recoveryMs": 680},
+        "keys": [(0.00, {"RightArm": (-86,0,5), "RightHand": (-8,-2,-3), "LeftArm": (-60,0,-16), "LeftHand": (-14,8,12), "Chest": (0,0,-1.5), "HipsT": (0,0,0)}), (0.66, {"RightArm": (-86,0,5), "RightHand": (-8,-2,-3), "LeftArm": (-60,0,-16), "LeftHand": (-14,8,12), "Chest": (0,0,-1.5), "HipsT": (0,0,0)}), (0.70, {"RightArm": (-74,0,3), "RightHand": (-4,-1,-2), "LeftArm": (-54,0,-12), "LeftHand": (-12,6,10), "Chest": (2,0,-0.5), "HipsT": (0,0,0)}), (0.82, {"RightArm": (-79,0,4), "RightHand": (-6,-1,-2), "LeftArm": (-57,0,-14), "LeftHand": (-13,7,11), "Chest": (-1,0,-2), "HipsT": (0,0,0)}), (1.00, {"RightArm": (-86,0,5), "RightHand": (-8,-2,-3), "LeftArm": (-60,0,-16), "LeftHand": (-14,8,12), "Chest": (0,0,-1.5), "HipsT": (0,0,0)})],
     },
     "HarthmereBodyMagicCast_Aligned_30": {
         "duration": 1.12, "category": "magic_cast", "timing": {"windupMs": 220, "impactMs": 380, "recoveryMs": 520},

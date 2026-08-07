@@ -1169,6 +1169,8 @@ export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
           harthmereRangedResourceKind(itemInfo.item) !== undefined
             ? attackStart
             : undefined,
+        targetActive:
+          attackedEntities.length > 0 || readHarthmereCombatLockState().active,
         duration: bow
           ? (HARTHMERE_BOW_ATTACK_TIMING.impactMs +
               HARTHMERE_BOW_ATTACK_TIMING.recoveryMs) /

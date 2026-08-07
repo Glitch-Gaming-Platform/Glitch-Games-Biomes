@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Author production player bow actions on the canonical Biomes armature.
+"""Author production player bow and energy-gun actions.
 
-The release clip shares the bow gameplay clock: the string/arrow and body reach
-their release pose at 0.280 seconds, and the complete action returns in 0.500
-seconds. Gameplay translation remains engine-owned so the upper-body action can
-layer over walking, running, jumping, evading, and dodging.
+Bow release shares the 0.280-second paid-arrow clock. Energy-gun recoil shares
+the ordinary 0.520-second ranged contact clock. Both families keep hips/root
+locked so their AAA upper-body silhouettes can layer over locomotion.
 """
 
 from __future__ import annotations
@@ -29,12 +28,18 @@ from add_native_movement_actions import (  # noqa: E402
 
 
 FPS = 24
-END_FRAME = 12.0
-IMPACT_FRAME = 0.280 * FPS
+BOW_END_FRAME = 12.0
+BOW_IMPACT_FRAME = 0.280 * FPS
+GUN_END_FRAME = 18.0
+GUN_IMPACT_FRAME = 0.520 * FPS
 ACTION_NAMES = (
     "HarthmereBodyRangedDraw_Aligned_30",
     "HarthmereBodyRangedRelease_Aligned_30",
     "HarthmereBodyRangedReload_Aligned_30",
+    "HarthmereBodyBowAim_Aligned_30",
+    "HarthmereBodyBowRelease_Aligned_30",
+    "HarthmereBodyGunAim_Aligned_30",
+    "HarthmereBodyGunFire_Aligned_30",
 )
 
 
@@ -118,6 +123,35 @@ def released_pose():
     }
 
 
+def gun_pose(amount=1.0):
+    """Extend the Tool hand toward the target and brace with the off hand."""
+    return {
+        "Waist": (0.025 * amount, 0.0, -0.055 * amount),
+        "Chest": (-0.045 * amount, 0.015 * amount, -0.115 * amount),
+        "Head": (0.015 * amount, 0.0, 0.085 * amount),
+        "R_Arm": (-1.34 * amount, -0.09 * amount, -0.035 * amount),
+        "R_Forearm": (-0.13 * amount, 0.025 * amount, -0.025 * amount),
+        "R_Hand": (-0.035 * amount, 0.015 * amount, 0.025 * amount),
+        "Tool": (0.0, -0.015 * amount, 0.015 * amount),
+        "L_Arm": (-0.58 * amount, 0.12 * amount, 0.34 * amount),
+        "L_Forearm": (-0.82 * amount, -0.08 * amount, 0.20 * amount),
+        "L_Hand": (-0.10 * amount, 0.08 * amount, 0.10 * amount),
+    }
+
+
+def gun_recoil_pose():
+    return {
+        **gun_pose(1.0),
+        "Chest": (-0.015, 0.02, -0.075),
+        "Head": (-0.015, 0.0, 0.065),
+        "R_Arm": (-1.20, -0.07, -0.02),
+        "R_Forearm": (-0.05, 0.02, -0.015),
+        "R_Hand": (-0.02, 0.01, 0.01),
+        "Tool": (-0.08, -0.01, 0.025),
+        "L_Arm": (-0.52, 0.10, 0.28),
+    }
+
+
 def create_draw(rig, neutral):
     action = create_action(
         rig,
@@ -127,7 +161,7 @@ def create_draw(rig, neutral):
             (2.0, merged(neutral, bow_pose(0.25))),
             (5.0, merged(neutral, bow_pose(0.68))),
             (8.0, merged(neutral, bow_pose(1.0))),
-            (END_FRAME, merged(neutral, bow_pose(1.0))),
+            (BOW_END_FRAME, merged(neutral, bow_pose(1.0))),
         ],
     )
     action["harthmereCombatProfile"] = "aaa-voxel-bow-v2"
@@ -146,12 +180,12 @@ def create_release(rig, neutral):
             (0.0, neutral),
             (2.0, merged(neutral, bow_pose(0.28))),
             (5.2, merged(neutral, bow_pose(0.82))),
-            (IMPACT_FRAME - 0.5, merged(neutral, full_draw)),
-            (IMPACT_FRAME, merged(neutral, release)),
-            (IMPACT_FRAME + 0.8, merged(neutral, release)),
+            (BOW_IMPACT_FRAME - 0.5, merged(neutral, full_draw)),
+            (BOW_IMPACT_FRAME, merged(neutral, release)),
+            (BOW_IMPACT_FRAME + 0.8, merged(neutral, release)),
             (9.0, merged(neutral, bow_pose(0.48))),
             (11.0, merged(neutral, bow_pose(0.12))),
-            (END_FRAME, neutral),
+            (BOW_END_FRAME, neutral),
         ],
     )
     action["harthmereCombatProfile"] = "aaa-voxel-bow-v2"
@@ -184,12 +218,118 @@ def create_reload(rig, neutral):
             (3.0, merged(neutral, reload_low)),
             (7.0, merged(neutral, nock)),
             (10.0, merged(neutral, bow_pose(0.18))),
-            (END_FRAME, neutral),
+            (BOW_END_FRAME, neutral),
         ],
     )
     action["harthmereCombatProfile"] = "aaa-voxel-bow-v2"
     action["durationSeconds"] = 0.500
     action["upperBodyAdditive"] = True
+    return action
+
+
+def create_bow_aim(rig, neutral):
+    full_draw = bow_pose(1.0)
+    breathe = {
+        **full_draw,
+        "Chest": (-0.075, 0.028, -0.175),
+        "Head": (0.028, 0.0, 0.115),
+        "L_Hand": (-0.13, 0.115, 0.19),
+    }
+    action = create_action(
+        rig,
+        ACTION_NAMES[3],
+        [
+            (0.0, merged(neutral, full_draw)),
+            (6.0, merged(neutral, breathe)),
+            (BOW_END_FRAME, merged(neutral, full_draw)),
+        ],
+    )
+    action["harthmereCombatProfile"] = "aaa-voxel-bow-v3-target-stance"
+    action["durationSeconds"] = 0.500
+    action["upperBodyAdditive"] = True
+    action["targetRequired"] = True
+    return action
+
+
+def create_bow_release(rig, neutral):
+    full_draw = bow_pose(1.0)
+    release = released_pose()
+    quick_redraw = bow_pose(0.72)
+    action = create_action(
+        rig,
+        ACTION_NAMES[4],
+        [
+            (0.0, merged(neutral, full_draw)),
+            (BOW_IMPACT_FRAME - 0.65, merged(neutral, full_draw)),
+            (BOW_IMPACT_FRAME, merged(neutral, release)),
+            (BOW_IMPACT_FRAME + 0.8, merged(neutral, release)),
+            (9.2, merged(neutral, bow_pose(0.38))),
+            (BOW_END_FRAME, merged(neutral, quick_redraw)),
+        ],
+    )
+    action["harthmereCombatProfile"] = "aaa-voxel-bow-v3-target-stance"
+    action["impactSeconds"] = 0.280
+    action["durationSeconds"] = 0.500
+    action["upperBodyAdditive"] = True
+    action["targetRequired"] = True
+    action["bowHandLocked"] = True
+    action["drawHandRelease"] = True
+    return action
+
+
+def create_gun_aim(rig, neutral):
+    aim = gun_pose(1.0)
+    breathe = {
+        **aim,
+        "Chest": (-0.04, 0.018, -0.108),
+        "Head": (0.012, 0.0, 0.08),
+        "L_Hand": (-0.095, 0.075, 0.105),
+    }
+    action = create_action(
+        rig,
+        ACTION_NAMES[5],
+        [
+            (0.0, merged(neutral, aim)),
+            (6.0, merged(neutral, breathe)),
+            (BOW_END_FRAME, merged(neutral, aim)),
+        ],
+    )
+    action["harthmereCombatProfile"] = "aaa-voxel-energy-gun-v1"
+    action["durationSeconds"] = 0.500
+    action["upperBodyAdditive"] = True
+    action["targetRequired"] = True
+    action["straightToolArm"] = True
+    return action
+
+
+def create_gun_fire(rig, neutral):
+    aim = gun_pose(1.0)
+    recoil = gun_recoil_pose()
+    overshoot = {
+        **gun_pose(0.94),
+        "Chest": (-0.055, 0.012, -0.125),
+        "R_Arm": (-1.27, -0.08, -0.025),
+        "Tool": (0.035, -0.01, 0.005),
+    }
+    action = create_action(
+        rig,
+        ACTION_NAMES[6],
+        [
+            (0.0, merged(neutral, aim)),
+            (GUN_IMPACT_FRAME - 0.75, merged(neutral, aim)),
+            (GUN_IMPACT_FRAME, merged(neutral, recoil)),
+            (GUN_IMPACT_FRAME + 1.0, merged(neutral, recoil)),
+            (15.0, merged(neutral, overshoot)),
+            (GUN_END_FRAME, merged(neutral, aim)),
+        ],
+    )
+    action["harthmereCombatProfile"] = "aaa-voxel-energy-gun-v1"
+    action["impactSeconds"] = 0.520
+    action["durationSeconds"] = 0.750
+    action["upperBodyAdditive"] = True
+    action["targetRequired"] = True
+    action["straightToolArm"] = True
+    action["recoilAuthored"] = True
     return action
 
 
@@ -200,6 +340,14 @@ def metadata():
         "fps": FPS,
         "upperBodyAdditive": True,
         "locomotionCompatible": True,
+    }
+    gun_common = {
+        "harthmereCombatProfile": "aaa-voxel-energy-gun-v1",
+        "fps": FPS,
+        "upperBodyAdditive": True,
+        "locomotionCompatible": True,
+        "targetRequired": True,
+        "straightToolArm": True,
     }
     return {
         ACTION_NAMES[0]: {**common, "family": "ranged_draw"},
@@ -215,6 +363,31 @@ def metadata():
             ],
         },
         ACTION_NAMES[2]: {**common, "family": "ranged_reload"},
+        ACTION_NAMES[3]: {
+            **common,
+            "harthmereCombatProfile": "aaa-voxel-bow-v3-target-stance",
+            "family": "bow_aim",
+            "targetRequired": True,
+        },
+        ACTION_NAMES[4]: {
+            **common,
+            "harthmereCombatProfile": "aaa-voxel-bow-v3-target-stance",
+            "family": "bow_release",
+            "impactSeconds": 0.280,
+            "targetRequired": True,
+        },
+        ACTION_NAMES[5]: {
+            **gun_common,
+            "family": "gun_aim",
+            "durationSeconds": 0.500,
+        },
+        ACTION_NAMES[6]: {
+            **gun_common,
+            "family": "gun_fire",
+            "impactSeconds": 0.520,
+            "durationSeconds": 0.750,
+            "recoilAuthored": True,
+        },
     }
 
 
@@ -224,12 +397,16 @@ def main() -> None:
     neutral = neutral_rotations(rig)
     bpy.context.scene.render.fps = FPS
     bpy.context.scene.frame_start = 0
-    bpy.context.scene.frame_end = int(END_FRAME)
+    bpy.context.scene.frame_end = int(GUN_END_FRAME)
 
     actions = [
         create_draw(rig, neutral),
         create_release(rig, neutral),
         create_reload(rig, neutral),
+        create_bow_aim(rig, neutral),
+        create_bow_release(rig, neutral),
+        create_gun_aim(rig, neutral),
+        create_gun_fire(rig, neutral),
     ]
     for action in actions:
         polish(action)

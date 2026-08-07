@@ -15,6 +15,7 @@ import {
   harthmereNativeBiomesIdForNpcType,
 } from "@/shared/harthmere/harthmere_native_item_ids";
 import type { BiomesId } from "@/shared/ids";
+import type { Vec3 } from "@/shared/math/types";
 import {
   getHarthmereProjectileVisual,
   harthmereNativeNpcProjectileVisualId,
@@ -29,6 +30,7 @@ import {
 } from "@/shared/harthmere/energy_weapon_catalog";
 import { harthmereBossAttacksForLabel } from "@/shared/harthmere/boss_attack_catalog";
 import { harthmereMuckCreatureAssetKeyForLabel } from "@/shared/harthmere/muck_creature_assets";
+import { harthmereAnimalAssetSpec } from "@/shared/harthmere/harthmere_animal_assets";
 import { getHarthmerePremiumWeapon } from "@/shared/harthmere/premium_weapon_catalog";
 import {
   harthmereMagicChargeDurationSecs,
@@ -144,6 +146,8 @@ export interface HarthmereNativeNpcCombatProfile {
   isBoss: boolean;
   /** Original snapshot renderer route for this native NPC type. */
   galoisPath?: string;
+  /** Authored body dimensions for custom GLB animals. */
+  boxSize?: Vec3;
   /** Human NPCs use the same generated wearable mesh as real players. */
   isPlayerLikeAppearance?: true;
   projectileVisualId?: string;
@@ -366,12 +370,16 @@ export function harthmereNativeNpcCombatProfileForSeed(
   const indisworm = /indisworm/i.test(seed.displayName);
   const thaedryn = key === "boss_thaedryn_bellbound";
   const isPlayerLikeAppearance = bandit ? true : undefined;
+  const animalAsset = livestock
+    ? harthmereAnimalAssetSpec(seed.species, seed.displayName)
+    : undefined;
   const galoisPath = sentinel
     ? "npcs/helping_robot"
     : livestock
-      ? harthmereMuckCreatureAssetKeyForLabel(
+      ? (animalAsset?.galoisFallback ??
+        harthmereMuckCreatureAssetKeyForLabel(
           `${seed.species ?? ""} ${seed.displayName}`
-        )
+        ))
       : bandit
         ? undefined
         : (harthmereMuckCreatureAssetKeyForLabel(seed.displayName) ??
@@ -667,6 +675,10 @@ export function harthmereNativeNpcCombatProfileForSeed(
     ),
     isBoss: boss,
     galoisPath,
+    boxSize:
+      livestock && animalAsset?.assetUrl
+        ? ([...animalAsset.size] as Vec3)
+        : undefined,
     isPlayerLikeAppearance,
     projectileVisualId: harthmereNativeNpcProjectileVisualId({
       key,
@@ -720,6 +732,7 @@ export function harthmereNativeNpcBiscuit(
     name: `harthmere_npc_${profile.key}`,
     displayName: profile.displayName,
     boxSize:
+      profile.boxSize ??
       presentation?.boxSize ??
       (profile.key === "monster_indisworm" ? [1.05, 1.9, 1.05] : [1, 1.2, 1]),
     rotateSpeed: profile.rotateSpeed,

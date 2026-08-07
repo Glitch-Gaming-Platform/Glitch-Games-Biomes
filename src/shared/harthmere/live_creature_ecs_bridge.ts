@@ -24,6 +24,12 @@ import {
   npcEvadeFamilyForDescriptor,
   type NpcEvadeFamily,
 } from "@/shared/game/movement_actions";
+import {
+  HARTHMERE_ANIMAL_ASSET_SPECS,
+  harthmereAnimalAssetSpec,
+  harthmereAnimalAssetSpeciesForLabel,
+  normalizeHarthmereAnimalAssetSpecies,
+} from "@/shared/harthmere/harthmere_animal_assets";
 
 export type HarthmereBridgedMovementAction = {
   action: "dodge" | "evade";
@@ -168,32 +174,20 @@ export function harthmereLiveCreatureEvadeVisual(
   }
 }
 
-const NATIVE_ANIMAL_ASSET_BY_SPECIES: Record<string, string> = {
-  bear: "npcs/cow",
-  bird: "npcs/bird",
-  boar: "npcs/cow",
-  bunny: "npcs/rabbit",
-  cat: "npcs/cat",
-  chicken: "npcs/chicken",
-  cow: "npcs/cow",
-  crow: "npcs/bird",
-  deer: "npcs/cow",
-  dog: "npcs/dog_1",
-  fish: "npcs/fish",
-  fox: "npcs/dog_1",
-  frog: "npcs/mouse",
-  goat: "npcs/sheep",
-  horse: "npcs/cow",
-  mouse: "npcs/mouse",
-  pigeon: "npcs/bird",
-  pig: "npcs/cow",
-  rabbit: "npcs/rabbit",
-  rat: "npcs/mouse",
-  sheep: "npcs/sheep",
-  snake: "npcs/mouse",
-  turtle: "npcs/turtle",
-  wolf: "npcs/dog_1",
-};
+const NATIVE_ANIMAL_ASSET_BY_SPECIES: Record<string, string> =
+  Object.fromEntries(
+    Object.entries(HARTHMERE_ANIMAL_ASSET_SPECS).map(([species, spec]) => [
+      species,
+      spec.assetUrl ?? spec.galoisFallback,
+    ])
+  );
+NATIVE_ANIMAL_ASSET_BY_SPECIES.bird =
+  HARTHMERE_ANIMAL_ASSET_SPECS.songbird.assetUrl ??
+  HARTHMERE_ANIMAL_ASSET_SPECS.songbird.galoisFallback;
+NATIVE_ANIMAL_ASSET_BY_SPECIES.bunny = "npcs/rabbit";
+NATIVE_ANIMAL_ASSET_BY_SPECIES.fish = "npcs/fish";
+NATIVE_ANIMAL_ASSET_BY_SPECIES.goat = "npcs/sheep";
+NATIVE_ANIMAL_ASSET_BY_SPECIES.turtle = "npcs/turtle";
 
 // Map common species names onto the nearest supported procedural mesh.
 const ANIMAL_SPECIES_ALIASES: Record<string, string> = {
@@ -220,6 +214,10 @@ const ANIMAL_SPECIES_ALIASES: Record<string, string> = {
 };
 
 function normalizeAnimalSpecies(raw: string): string | undefined {
+  const canonical = normalizeHarthmereAnimalAssetSpecies(raw);
+  if (canonical) {
+    return canonical;
+  }
   const s = raw.toLowerCase().trim();
   if (NATIVE_ANIMAL_ASSET_BY_SPECIES[s]) {
     return s;
@@ -293,13 +291,17 @@ export function harthmereLiveCreatureAssetFor(
     return bossVisual.assetUrl;
   }
   if (family === "animal") {
+    const exactSpec = harthmereAnimalAssetSpec(species, label);
+    if (exactSpec) {
+      return exactSpec.assetUrl ?? exactSpec.galoisFallback;
+    }
     const rawSpecies = (species ?? "").toLowerCase().trim();
     if (NATIVE_ANIMAL_ASSET_BY_SPECIES[rawSpecies]) {
       return NATIVE_ANIMAL_ASSET_BY_SPECIES[rawSpecies];
     }
-    const labelSpecies = (label ?? "")
-      .toLowerCase()
-      .match(ANIMAL_SPECIES_FROM_LABEL_RE)?.[1];
+    const labelSpecies =
+      harthmereAnimalAssetSpeciesForLabel(label) ??
+      (label ?? "").toLowerCase().match(ANIMAL_SPECIES_FROM_LABEL_RE)?.[1];
     if (labelSpecies && NATIVE_ANIMAL_ASSET_BY_SPECIES[labelSpecies]) {
       return NATIVE_ANIMAL_ASSET_BY_SPECIES[labelSpecies];
     }

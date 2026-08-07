@@ -88,6 +88,8 @@ export interface AttackInfo {
   start: number;
   /** Exact release timestamp joining a paid projectile to its later hit. */
   attackTime?: number;
+  /** Presentation-only evidence that a lock or attackable target was active. */
+  targetActive?: boolean;
   duration: number;
   movementScale?: number;
   timingClass?: HarthmerePlayerAttackTimingClass;

@@ -3,6 +3,7 @@ import { useError } from "@/client/components/system/MaybeError";
 import type { ClientCache } from "@/client/game/context_managers/client_cache";
 import type { SocialManager } from "@/client/game/context_managers/social_manager";
 import { cleanEmitterCallback } from "@/client/util/helpers";
+import { subscribeUserInfoInvalidation } from "@/client/util/user_info_invalidation_broker";
 import { useEffectAsync, useInvalidate } from "@/client/util/hooks";
 import { useInterval } from "@/client/util/intervals";
 import type {
@@ -292,20 +293,20 @@ export function useCachedUserInfo(
 
   useEffect(
     () =>
-      cleanEmitterCallback(socialManager.emitter, {
-        invalidateUserInfo: (invalidateUserId, invalidatedBundle) => {
-          if (userId === invalidateUserId) {
-            setUserInfoBundle(invalidatedBundle);
-            forceInvalidate();
-          }
-        },
-      }),
-    [userId]
+      subscribeUserInfoInvalidation(
+        socialManager,
+        userId,
+        (invalidatedBundle) => {
+          setUserInfoBundle(invalidatedBundle);
+          forceInvalidate();
+        }
+      ),
+    [socialManager, userId, forceInvalidate]
   );
 
   useEffectAsync(async () => {
     setUserInfoBundle(await socialManager.userInfoBundle(userId));
-  }, [userId]);
+  }, [socialManager, userId]);
 
   return userInfoBundle;
 }

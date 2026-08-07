@@ -68,6 +68,24 @@ Exercise a representative cross-language export without uploading:
 ./b galois assets publish --dryRun -r '(moss|fishing|tuna|camera)'
 ```
 
+For a focused local export, anchor the filter to the complete logical asset
+name:
+
+```shell
+./b galois assets export --filter '^wearables/animations$'
+```
+
+The export command owns a Node `BatchAssetServer` and a long-lived Python
+`build.py batch` child. It can be quiet for several minutes while the worker
+materializes or optimizes a large GLTF/GLB. Keep the command attached and drain
+its output until the parent exits; if an orchestration tool yields a session
+identifier, retain and poll that same session. Do not start a duplicate export
+merely because there is no new log line. If the session is lost, inspect the
+Node/Python process tree before restarting. A successful focused export must
+also update the expected file under `src/galois/data/exports` and the result
+must be parsed or contract-tested; process existence or a startup banner is not
+completion evidence.
+
 Verify remote publication only when credentials and network access are available:
 
 ```shell

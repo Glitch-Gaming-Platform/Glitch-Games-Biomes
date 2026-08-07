@@ -11,7 +11,7 @@ import { dictToQueryString } from "@/shared/util/helpers";
 
 // Bumping this number implies that all assets previously generated and
 // saved/cached are now invalid.
-export const ASSET_EXPORTS_SERVER_VERSION = 57;
+export const ASSET_EXPORTS_SERVER_VERSION = 58;
 
 const ASSET_EXPORT_VERSION_QUERY_KEY = "aev";
 

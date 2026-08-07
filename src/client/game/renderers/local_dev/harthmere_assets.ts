@@ -2234,18 +2234,8 @@ const ASSETS: RuntimeAsset[] = [
     0.72
   ),
 
-  // Animated fallbacks for wildlife keys that do not have dedicated snake/frog action GLTFs yet.
-  // These keep combat events on the GLTF animation system instead of clipCount: 0 procedural actors.
-  gltf(
-    "animal_snake",
-    "gltf/creatures/animal_action_variants/harthmere_animal_rat_gray.gltf",
-    0.68
-  ),
-  gltf(
-    "animal_frog",
-    "gltf/creatures/animal_action_variants/harthmere_animal_rabbit_brown.gltf",
-    0.55
-  ),
+  gltf("animal_snake", "glb/creatures/animals/snake.glb", 1),
+  gltf("animal_frog", "glb/creatures/animals/frog.glb", 1),
 
   // Action-ready living GLTFs. These mirror the procedural life keys used by
   // Harthmere placements, so combat can drive real humanoid/animal actors
@@ -2253,8 +2243,8 @@ const ASSETS: RuntimeAsset[] = [
   // safely fall back to the existing procedural models below.
   gltf(
     "animal_chicken",
-    "gltf/creatures/animal_action_variants/harthmere_animal_chicken_brown.gltf",
-    0.9
+    "glb/creatures/animals/chicken.glb",
+    1
   ),
   gltf(
     "animal_bunny",
@@ -2263,23 +2253,23 @@ const ASSETS: RuntimeAsset[] = [
   ),
   gltf(
     "animal_pigeon",
-    "gltf/creatures/animal_action_variants/harthmere_animal_pigeon_gray.gltf",
-    0.75
+    "glb/creatures/animals/pigeon.glb",
+    1
   ),
   gltf(
     "animal_cat",
-    "gltf/creatures/animal_action_variants/harthmere_animal_cat_tabby.gltf",
-    0.85
+    "glb/creatures/animals/cat.glb",
+    1
   ),
   gltf(
     "animal_dog",
-    "gltf/creatures/animal_action_variants/harthmere_animal_dog_tan.gltf",
-    0.95
+    "glb/creatures/animals/dog.glb",
+    1
   ),
   gltf(
     "animal_pig",
-    "gltf/creatures/animal_action_variants/harthmere_animal_pig_muddy.gltf",
-    0.95
+    "glb/creatures/animals/pig.glb",
+    1
   ),
   gltf(
     "animal_sheep",
@@ -2293,43 +2283,58 @@ const ASSETS: RuntimeAsset[] = [
   ),
   gltf(
     "animal_horse",
-    "gltf/creatures/animal_action_variants/harthmere_animal_horse_bay.gltf",
-    1.1
+    "glb/creatures/animals/horse.glb",
+    1
   ),
   gltf(
     "animal_deer",
-    "gltf/creatures/animal_action_variants/harthmere_animal_deer_doe.gltf",
-    1.0
+    "glb/creatures/animals/deer.glb",
+    1
   ),
   gltf(
     "animal_wolf",
-    "gltf/creatures/animal_action_variants/harthmere_animal_wolf_gray.gltf",
-    1.0
+    "glb/creatures/animals/wolf.glb",
+    1
   ),
   gltf(
     "animal_boar",
-    "gltf/creatures/animal_action_variants/harthmere_animal_boar_brown.gltf",
-    0.98
+    "glb/creatures/animals/boar.glb",
+    1
   ),
   gltf(
     "animal_bear",
-    "gltf/creatures/animal_action_variants/harthmere_animal_bear_black.gltf",
-    1.18
+    "glb/creatures/animals/bear.glb",
+    1
   ),
   gltf(
     "animal_fox",
-    "gltf/creatures/animal_action_variants/harthmere_animal_fox_red.gltf",
-    0.85
+    "glb/creatures/animals/fox.glb",
+    1
   ),
   gltf(
     "animal_crow",
-    "gltf/creatures/animal_action_variants/harthmere_animal_pigeon_blue.gltf",
-    0.72
+    "glb/creatures/animals/crow.glb",
+    1
   ),
   gltf(
     "animal_rat",
-    "gltf/creatures/animal_action_variants/harthmere_animal_rat_gray.gltf",
-    0.65
+    "glb/creatures/animals/rat.glb",
+    1
+  ),
+  gltf("animal_squirrel", "glb/creatures/animals/squirrel.glb", 1),
+  gltf("animal_songbird", "glb/creatures/animals/songbird.glb", 1),
+  gltf("animal_duck", "glb/creatures/animals/duck.glb", 1),
+  gltf("animal_goose", "glb/creatures/animals/goose.glb", 1),
+  gltf("animal_otter", "glb/creatures/animals/otter.glb", 1),
+  gltf("animal_mouse", "glb/creatures/animals/mouse.glb", 1),
+  gltf("animal_badger", "glb/creatures/animals/badger.glb", 1),
+  gltf("animal_stag", "glb/creatures/animals/stag.glb", 1),
+  gltf("animal_hound", "glb/creatures/animals/hound.glb", 1),
+  gltf("animal_spider", "glb/creatures/animals/spider.glb", 1),
+  gltf(
+    "animal_river_lurker",
+    "glb/creatures/animals/river_lurker.glb",
+    1
   ),
   gltf(
     "townsperson_guard",
@@ -23717,7 +23722,18 @@ function isProceduralAnimalKey(key: string) {
     key === "animal_fox" ||
     key === "animal_crow" ||
     key === "animal_frog" ||
-    key === "animal_snake"
+    key === "animal_snake" ||
+    key === "animal_squirrel" ||
+    key === "animal_songbird" ||
+    key === "animal_duck" ||
+    key === "animal_goose" ||
+    key === "animal_otter" ||
+    key === "animal_mouse" ||
+    key === "animal_badger" ||
+    key === "animal_stag" ||
+    key === "animal_hound" ||
+    key === "animal_spider" ||
+    key === "animal_river_lurker"
   );
 }
 

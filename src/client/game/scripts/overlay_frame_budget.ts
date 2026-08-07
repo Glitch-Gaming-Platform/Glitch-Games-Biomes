@@ -24,11 +24,12 @@ export function mobileOverlayRefreshIntervalForFrameGap(frameGapMs?: number) {
 
 export function shouldRefreshOverlayFrame(input: {
   mobileDevice: boolean;
+  forceThrottle?: boolean;
   nowMs: number;
   lastRefreshAtMs: number | undefined;
   refreshIntervalMs?: number;
 }) {
-  if (!input.mobileDevice) {
+  if (!input.mobileDevice && !input.forceThrottle) {
     return true;
   }
   if (

@@ -4,6 +4,8 @@ import {
   harthmereBossStompProfileForEntity,
 } from "@/shared/harthmere/boss_footsteps";
 import assert from "assert";
+import fs from "fs";
+import path from "path";
 
 describe("Harthmere giant boss footsteps", () => {
   it("stomps from grounded Alpha Mucker travel, not from idle animation time", () => {
@@ -97,5 +99,20 @@ describe("Harthmere giant boss footsteps", () => {
     assert.ok(profile.soundMaxDistance >= 96);
     assert.ok(profile.soundRolloffFactor > 0);
     assert.ok(profile.soundRolloffFactor <= 1);
+  });
+
+  it("routes assigned boss stomps through the gesture-safe sound queue", () => {
+    const source = fs.readFileSync(
+      path.join(process.cwd(), "src/client/game/resources/npcs.ts"),
+      "utf8"
+    );
+    assert.match(
+      source,
+      /emitHarthmereSoundEffect\(HARTHMERE_GIANT_BOSS_STOMP_SOUND_ID/
+    );
+    assert.match(source, /idempotent: true/);
+    assert.match(source, /volumeMultiplier: profile\.soundVolumeMultiplier/);
+    assert.match(source, /refDistance: profile\.soundRefDistance/);
+    assert.match(source, /maxDistance: profile\.soundMaxDistance/);
   });
 });

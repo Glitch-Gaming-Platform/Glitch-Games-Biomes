@@ -18041,7 +18041,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       "z": -356.7,
       "rot": 0,
       "scale": 0.72,
-      "asset": "animal_bunny"
+      "asset": "animal_squirrel"
     },
     "combatOffset": 9876
   },
@@ -18176,7 +18176,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       "z": -363.3,
       "rot": 0,
       "scale": 0.72,
-      "asset": "animal_pigeon"
+      "asset": "animal_songbird"
     },
     "combatOffset": 9877
   },
@@ -18446,7 +18446,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       "z": -363.3,
       "rot": 0,
       "scale": 0.72,
-      "asset": "animal_pigeon"
+      "asset": "animal_duck"
     },
     "combatOffset": 9879
   },
@@ -18716,7 +18716,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       "z": -363.3,
       "rot": 0,
       "scale": 0.72,
-      "asset": "animal_cat"
+      "asset": "animal_otter"
     },
     "combatOffset": 9881
   },
@@ -18851,7 +18851,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       "z": -363.3,
       "rot": 0,
       "scale": 0.72,
-      "asset": "animal_rat"
+      "asset": "animal_mouse"
     },
     "combatOffset": 9882
   },
@@ -19121,7 +19121,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       "z": -391.3,
       "rot": 1.57,
       "scale": 0.72,
-      "asset": "animal_bunny"
+      "asset": "animal_bear"
     },
     "combatOffset": 9884
   },
@@ -19256,7 +19256,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       "z": -391.3,
       "rot": 1.57,
       "scale": 0.72,
-      "asset": "animal_bunny"
+      "asset": "animal_snake"
     },
     "combatOffset": 9885
   },
@@ -19391,7 +19391,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       "z": -391.3,
       "rot": 1.57,
       "scale": 0.72,
-      "asset": "animal_boar"
+      "asset": "animal_badger"
     },
     "combatOffset": 9886
   },
@@ -19526,7 +19526,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       "z": -391.3,
       "rot": 1.57,
       "scale": 0.72,
-      "asset": "animal_deer"
+      "asset": "animal_stag"
     },
     "combatOffset": 9887
   },
@@ -19796,7 +19796,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       "z": -390.2,
       "rot": 1.57,
       "scale": 0.72,
-      "asset": "animal_bunny"
+      "asset": "animal_goose"
     },
     "combatOffset": 9889
   },
@@ -20201,7 +20201,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       "z": -390.2,
       "rot": 1.57,
       "scale": 0.72,
-      "asset": "animal_bunny"
+      "asset": "animal_cat"
     },
     "combatOffset": 9892
   },
@@ -20336,7 +20336,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       "z": -390.2,
       "rot": 1.57,
       "scale": 0.72,
-      "asset": "animal_bunny"
+      "asset": "animal_river_lurker"
     },
     "combatOffset": 9893
   },
@@ -20471,7 +20471,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       "z": -390.2,
       "rot": 1.57,
       "scale": 0.72,
-      "asset": "animal_bunny"
+      "asset": "animal_spider"
     },
     "combatOffset": 9894
   },
@@ -21281,7 +21281,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       "z": -120.1,
       "rot": 3.14,
       "scale": 0.72,
-      "asset": "animal_snake"
+      "asset": "animal_spider"
     },
     "combatOffset": 9900
   },

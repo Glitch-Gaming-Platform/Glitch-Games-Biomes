@@ -127,8 +127,10 @@ import {
 import { ok } from "assert";
 import { isEqual } from "lodash";
 import { Vector3 } from "three";
+import { readHarthmereCombatPresentation } from "@/client/game/util/harthmere_combat_presentation";
 
 const PLAYER_PROJECTION_OFFSET: Vec3 = [0, 0.35, 0];
+const HARTHMERE_COMBAT_OVERLAY_REFRESH_INTERVAL_MS = 50;
 
 // SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION
 // Legacy snapshot quest-giver / NPC-like entities can have a position and label
@@ -2506,6 +2508,8 @@ export class OverlayScript implements Script {
         ? undefined
         : nowMs - this.lastOverlayTickAtMs;
     this.lastOverlayTickAtMs = nowMs;
+    const combatPresentationSuspended =
+      readHarthmereCombatPresentation().suspended;
     this.occlusionRefreshes.sweep(nowMs);
     const curTime = Date.now();
     const lootTimeout = 5 * 1000;
@@ -2535,16 +2539,20 @@ export class OverlayScript implements Script {
     // HARTHMERE_MOBILE_OVERLAY_FRAME_BUDGET (2026-08-07 physical iPhone
     // fight audit). Rebuilding the complete overlay/nameplate/projection map
     // was the largest measured client-owned frame cost on the phone. Keep
-    // desktop byte-for-byte on its existing every-frame path, while phones
-    // refresh the complete map at a bounded near-10 Hz cadence. Input,
-    // simulation, cursor authority and rendering continue at their existing
-    // rates; only derived overlay presentation is sampled.
+    // desktop on its existing every-frame path outside combat, while phones
+    // refresh at a bounded near-10 Hz cadence. During the deliberately reduced
+    // combat presentation, desktop derived overlays sample at 20 Hz. NPC world
+    // rendering, combat simulation, cursor authority and React overlay drawing
+    // remain active; only the expensive full ECS/projection rebuild is sampled.
     if (
       !shouldRefreshOverlayFrame({
         mobileDevice: this.clientConfig.mobileDevice,
+        forceThrottle: combatPresentationSuspended,
         nowMs,
         lastRefreshAtMs: this.lastFullOverlayRefreshAtMs,
-        refreshIntervalMs: mobileOverlayRefreshIntervalForFrameGap(frameGapMs),
+        refreshIntervalMs: this.clientConfig.mobileDevice
+          ? mobileOverlayRefreshIntervalForFrameGap(frameGapMs)
+          : HARTHMERE_COMBAT_OVERLAY_REFRESH_INTERVAL_MS,
       })
     ) {
       return;

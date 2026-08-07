@@ -54,6 +54,7 @@ import { groveLandmarkWorldPosition } from "@/shared/harthmere/grove/grove_waypo
 import { isHarthmereContainerObjectLabel } from "@/shared/harthmere/object_interaction_semantics";
 import { snapshotGroveObjectiveMarkerIdForProgress } from "@/shared/harthmere/snapshot_grove_trigger_contract";
 import { HARTHMERE_GROVE_QUEST_OBJECT_ASSET_URLS } from "@/shared/harthmere/grove_quest_visual_assets";
+import { readHarthmereCombatPresentation } from "@/client/game/util/harthmere_combat_presentation";
 import * as THREE from "three";
 
 export { HARTHMERE_GROVE_QUEST_OBJECT_ASSET_URLS } from "@/shared/harthmere/grove_quest_visual_assets";
@@ -124,6 +125,8 @@ export const HARTHMERE_ACTIVE_QUEST_MARKER_CAP = 0xffffff;
 const ACTIVE_QUEST_BEACON_REFRESH_SECONDS = 0.25;
 export const HARTHMERE_MOBILE_QUEST_MARKER_LOAD_DISTANCE_METERS = 80;
 export const HARTHMERE_MOBILE_QUEST_MARKER_MAX_NEARBY = 24;
+export const HARTHMERE_DESKTOP_QUEST_MARKER_LOAD_DISTANCE_METERS = 128;
+export const HARTHMERE_DESKTOP_QUEST_MARKER_MAX_NEARBY = 72;
 
 // HARTHMERE_JOBS_BOARD_FIELD_TARGET_PROPS
 // Business job-template targets and outpost starter work stations are permanent
@@ -357,6 +360,33 @@ export function harthmereMobileQuestObjectMarkerIds(
     .filter(({ distanceSquared }) => distanceSquared <= maxDistanceSquared)
     .sort((a, b) => a.distanceSquared - b.distanceSquared)
     .slice(0, HARTHMERE_MOBILE_QUEST_MARKER_MAX_NEARBY);
+  for (const { marker } of nearby) ids.add(marker.id);
+  return [...ids];
+}
+
+export function harthmereDesktopQuestObjectMarkerIds(
+  position: THREE.Vector3,
+  requiredMarkerIds: ReadonlySet<string> = new Set()
+): readonly string[] {
+  const ids = new Set(
+    [...requiredMarkerIds].filter((id) =>
+      HARTHMERE_QUEST_OBJECT_MARKER_BY_ID.has(id)
+    )
+  );
+  const maxDistanceSquared =
+    HARTHMERE_DESKTOP_QUEST_MARKER_LOAD_DISTANCE_METERS ** 2;
+  const nearby = HARTHMERE_QUEST_OBJECT_MARKERS.filter(
+    isVisibleHarthmereWorldObjectMarker
+  )
+    .map((marker) => ({
+      marker,
+      distanceSquared:
+        (marker.position[0] - position.x) ** 2 +
+        (marker.position[2] - position.z) ** 2,
+    }))
+    .filter(({ distanceSquared }) => distanceSquared <= maxDistanceSquared)
+    .sort((a, b) => a.distanceSquared - b.distanceSquared)
+    .slice(0, HARTHMERE_DESKTOP_QUEST_MARKER_MAX_NEARBY);
   for (const { marker } of nearby) ids.add(marker.id);
   return [...ids];
 }
@@ -946,7 +976,8 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
   private chapter1ObjectiveProjectionSignature: string | undefined;
   private activeQuestStateRefreshSeconds = 0;
   private groundRefreshSeconds = 0;
-  private mobileProximityRefreshSeconds = 0;
+  private proximityRefreshSeconds = 0;
+  private assetLoadRefreshSeconds = 0;
   private elapsedSeconds = 0;
   private repairCartPrototype: THREE.Object3D | undefined;
   private repairCartAssetLoading: Promise<void> | undefined;
@@ -967,7 +998,10 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
     private readonly mobileDevice = false
   ) {
     this.root.name = `harthmere-quest-object-markers root ${HARTHMERE_QUEST_OBJECT_MARKER_VERSION}`;
-    if (!mobileDevice) {
+    // Production receives resources and uses the bounded proximity set below.
+    // Resource-free test/dev construction keeps the historical complete
+    // registry so deterministic marker-art tests can inspect every prop.
+    if (!mobileDevice && !resources) {
       for (const marker of HARTHMERE_QUEST_OBJECT_MARKERS) {
         this.ensureMarker(marker);
       }
@@ -1026,8 +1060,8 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
     this.groundedFeetYByColumn.clear();
   }
 
-  private syncMobileMarkers() {
-    if (!this.mobileDevice || !this.resources) return;
+  private syncProximityMarkers() {
+    if (!this.resources) return;
     const requiredMarkerIds = new Set<string>();
     if (this.activeMarkerId) requiredMarkerIds.add(this.activeMarkerId);
     for (const id of this.visibleSnapshotGroveMarkerIds) {
@@ -1038,11 +1072,16 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
         readActiveBiomesUIMapPin()
       );
     if (activePinMarkerId) requiredMarkerIds.add(activePinMarkerId);
+    const playerPosition = new THREE.Vector3(
+      ...this.resources.get("/scene/local_player").player.position
+    );
     const desiredMarkerIds = new Set(
-      harthmereMobileQuestObjectMarkerIds(
-        this.resources.get("/scene/camera").three.position,
-        requiredMarkerIds
-      )
+      this.mobileDevice
+        ? harthmereMobileQuestObjectMarkerIds(playerPosition, requiredMarkerIds)
+        : harthmereDesktopQuestObjectMarkerIds(
+            playerPosition,
+            requiredMarkerIds
+          )
     );
     if (this.chapter1ObjectiveMarkerId) {
       desiredMarkerIds.add(this.chapter1ObjectiveMarkerId);
@@ -1432,6 +1471,14 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
   }
 
   draw(scenes: Scenes, dt: number): void {
+    // During active combat the quest/navigation presentation layer is hidden
+    // unless the player explicitly opens BiomesUI. Detach the whole marker
+    // hierarchy and skip state polling, asset scans, terrain grounding and
+    // beacon animation; NPCs and all non-quest renderers continue normally.
+    if (readHarthmereCombatPresentation().suspended) {
+      this.root.removeFromParent();
+      return;
+    }
     // Like the jobs-board renderer, reattach every frame so reconnects and
     // scene recreation do not strand the props in a stale scene.
     // Quest markers use only stock Three.js materials. Their hierarchy can be
@@ -1443,15 +1490,19 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
       this.activeQuestStateRefreshSeconds = ACTIVE_QUEST_BEACON_REFRESH_SECONDS;
       this.refreshActiveQuestMarkerFromLocalState();
     }
-    if (this.mobileDevice) {
-      this.mobileProximityRefreshSeconds -= Math.min(dt, 0.5);
-      if (this.mobileProximityRefreshSeconds <= 0) {
-        this.mobileProximityRefreshSeconds = 0.25;
-        this.syncMobileMarkers();
+    if (this.resources) {
+      this.proximityRefreshSeconds -= Math.min(dt, 0.5);
+      if (this.proximityRefreshSeconds <= 0) {
+        this.proximityRefreshSeconds = this.mobileDevice ? 0.25 : 0.5;
+        this.syncProximityMarkers();
       }
     }
-    this.queueRepairCartAssetLoad();
-    this.queueGroveQuestObjectAssetLoads();
+    this.assetLoadRefreshSeconds -= Math.min(dt, 0.5);
+    if (this.assetLoadRefreshSeconds <= 0) {
+      this.assetLoadRefreshSeconds = 1;
+      this.queueRepairCartAssetLoad();
+      this.queueGroveQuestObjectAssetLoads();
+    }
     this.animateActiveBeacons(dt);
     // Terrain/WASM grounding is static world-placement work, not animation.
     // Running it for every visible marker on every frame cost roughly 5 ms in

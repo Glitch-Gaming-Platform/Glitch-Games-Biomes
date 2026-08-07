@@ -1,7 +1,7 @@
 {
-  "version": "harthmere-body-weapon-aligned-clips",
+  "version": "harthmere-body-weapon-aligned-clips-v2-ranged-stances",
   "variantCount": 36,
-  "clipCount": 73,
+  "clipCount": 77,
   "bodyTypes": [
     "average",
     "slim",
@@ -91,7 +91,11 @@
     "HarthmereBodyMagicChannel_Aligned_30",
     "HarthmereBodyToolUse_Aligned_30",
     "HarthmereBodyToolHeavyUse_Aligned_30",
-    "HarthmereBodyItemUse_Aligned_30"
+    "HarthmereBodyItemUse_Aligned_30",
+    "HarthmereBodyBowAim_Aligned_30",
+    "HarthmereBodyBowRelease_Aligned_30",
+    "HarthmereBodyGunAim_Aligned_30",
+    "HarthmereBodyGunFire_Aligned_30"
   ],
   "files": [
     "harthmere_player_average_earth.gltf",
@@ -160,6 +164,10 @@
     "HarthmereBodyRangedDraw_Aligned_30",
     "HarthmereBodyRangedRelease_Aligned_30",
     "HarthmereBodyRangedReload_Aligned_30",
+    "HarthmereBodyBowAim_Aligned_30",
+    "HarthmereBodyBowRelease_Aligned_30",
+    "HarthmereBodyGunAim_Aligned_30",
+    "HarthmereBodyGunFire_Aligned_30",
     "HarthmereBodyMagicCast_Aligned_30",
     "HarthmereBodyMagicChannel_Aligned_30",
     "HarthmereBodyToolUse_Aligned_30",

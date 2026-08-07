@@ -416,7 +416,15 @@ export function harthmereCombatLockCameraTarget(playerPosition: ReadonlyVec3) {
     target.world[0] - playerPosition[0],
     target.world[2] - playerPosition[2]
   );
-  if (distance > HARTHMERE_COMBAT_LOCK_HOLD_RANGE + target.radius) {
+  // Candidate refresh owns unlock timing. During its brief missing/occlusion
+  // grace, keep feeding the last trustworthy world sample to the camera even
+  // if the player or stale sample momentarily crosses the hold radius. Returning
+  // undefined here while state remained active made camera.ts enable free-look
+  // for a frame, visibly spin away, then snap back when the candidate returned.
+  if (
+    target.lostAt === undefined &&
+    distance > HARTHMERE_COMBAT_LOCK_HOLD_RANGE + target.radius
+  ) {
     return undefined;
   }
   return {

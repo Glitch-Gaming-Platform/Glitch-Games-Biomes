@@ -91,7 +91,7 @@ const manifestPath = path.join(glbRoot, "manifest.json");
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 assert.equal(
   manifest.version,
-  "harthmere-premium-voxel-weapons-v2-animated-bows"
+  "harthmere-premium-voxel-weapons-v3-ranged-actions"
 );
 assert.equal(manifest.count, expectedIds.length);
 assert.deepEqual(
@@ -175,6 +175,24 @@ for (const weapon of manifest.weapons) {
       assert.ok(animationNames.has(clip), `${weapon.id} exports ${clip}`);
     }
   }
+  if (weapon.builder === "energy_weapon") {
+    const nodeNames = new Set(gltf.nodes?.map(({ name }) => name));
+    assert.ok(
+      nodeNames.has("MuzzleSocket"),
+      `${weapon.id} exports a shared MuzzleSocket`
+    );
+    const animationNames = new Set(
+      gltf.animations?.map(({ name }) => name) ?? []
+    );
+    assert.ok(
+      animationNames.has("IdleAim_24"),
+      `${weapon.id} exports its aimed idle`
+    );
+    assert.ok(
+      animationNames.has("Fire_24"),
+      `${weapon.id} exports authored recoil`
+    );
+  }
 }
 
 const contactSheet = path.join(previewRoot, "contact_sheet.png");
@@ -196,6 +214,14 @@ const bowBlend = path.join(
 assert.ok(
   fs.statSync(bowBlend).size >= 200000,
   "animated bow Blender project saved"
+);
+const energyBlend = path.join(
+  root,
+  "src/galois/data/weapons/harthmere_premium_energy_weapons.blend"
+);
+assert.ok(
+  fs.statSync(energyBlend).size >= 150000,
+  "animated energy-weapon Blender project saved"
 );
 
 const catalogSource = read("src/shared/harthmere/premium_weapon_catalog.ts");

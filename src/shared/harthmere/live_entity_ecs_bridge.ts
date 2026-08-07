@@ -4,6 +4,7 @@ import type {
   HarthmereLiveModeBackendState,
 } from "./live_mode_backend";
 import { isHarthmereNonLivingObjectLabel } from "./object_interaction_semantics";
+import { harthmereAnimalAssetSpeciesForLabel } from "./harthmere_animal_assets";
 
 export const HARTHMERE_LIVE_ENTITY_ECS_BRIDGE_VERSION =
   "harthmere-live-entity-ecs-bridge";
@@ -74,7 +75,8 @@ function inferLiveEntityKindFromEcsRecord(
       record.protected_species === true ||
       record.isLivestock === true ||
       typeof record.species === "string") &&
-    ANIMAL_LIKE_LABEL_REGEX.test(text)
+    (ANIMAL_LIKE_LABEL_REGEX.test(text) ||
+      Boolean(harthmereAnimalAssetSpeciesForLabel(text)))
   ) {
     return "animal";
   }
@@ -86,7 +88,10 @@ function inferLiveEntityKindFromEcsRecord(
   if (/mux|muck|muckling|mucker/.test(text)) return "mux";
   if (/hex|hexer/.test(text)) return "hex";
   if (/undead|zombie|corpse|drowned|grave|dead/.test(text)) return "undead";
-  if (ANIMAL_LIKE_LABEL_REGEX.test(text)) {
+  if (
+    ANIMAL_LIKE_LABEL_REGEX.test(text) ||
+    harthmereAnimalAssetSpeciesForLabel(text)
+  ) {
     return "animal";
   }
   if (/construct|golem|training dummy/.test(text)) return "construct";
@@ -178,8 +183,8 @@ export function createHarthmereLiveEntityCombatSnapshotFromEcsRecord(
     typeof record.ownerId === "string"
       ? record.ownerId
       : typeof record.owner_id === "string"
-      ? record.owner_id
-      : undefined;
+        ? record.owner_id
+        : undefined;
   const health = asRecord(record.health);
   const maxHp = Math.max(
     1,
@@ -195,8 +200,8 @@ export function createHarthmereLiveEntityCombatSnapshotFromEcsRecord(
     typeof record.isAttackable === "boolean"
       ? record.isAttackable
       : typeof record.attackable === "boolean"
-      ? record.attackable
-      : undefined;
+        ? record.attackable
+        : undefined;
   const hasCombatComponent =
     Boolean(record.npc_metadata) ||
     Boolean(record.robot_component) ||
@@ -217,10 +222,10 @@ export function createHarthmereLiveEntityCombatSnapshotFromEcsRecord(
       typeof record.isHostile === "boolean"
         ? record.isHostile
         : typeof record.hostile === "boolean"
-        ? record.hostile
-        : kind === "robot"
-        ? false
-        : isHostileByEcsText(text),
+          ? record.hostile
+          : kind === "robot"
+            ? false
+            : isHostileByEcsText(text),
     isAlive: hp > 0,
     isAttackable,
     isPlayer: Boolean(record.player_status),
@@ -231,8 +236,8 @@ export function createHarthmereLiveEntityCombatSnapshotFromEcsRecord(
       typeof record.species === "string"
         ? record.species
         : kind === "animal"
-        ? "animal"
-        : undefined,
+          ? (harthmereAnimalAssetSpeciesForLabel(text) ?? "animal")
+          : undefined,
     level: Math.max(1, Math.trunc(number(record.level) ?? 1)),
     entityKind: kind,
     movementSpeed,

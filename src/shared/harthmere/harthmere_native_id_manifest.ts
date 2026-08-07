@@ -1284,6 +1284,37 @@ export const HARTHMERE_NATIVE_NPC_ID_MANIFEST = {
   // without changing the quest-gated Helix or the existing bounty Alpha.
   boss_muck_scarred_helix_apex: id(8722087466111640),
   boss_alpha_mucker_apex: id(8722087466111641),
+  // HARTHMERE_AAA_ANIMAL_ASSETS (2026-08-07): exact native type identities
+  // for every replacement animal species. The three proven stock species
+  // above (cow, sheep, rabbit) keep their original ids. These checked-in ids
+  // let the new ECS seeds publish frontend-decodable Bikkie biscuits instead
+  // of inheriting an undefined generic livestock identity.
+  livestock_chicken: id(8722087466111642),
+  livestock_deer: id(8722087466111643),
+  livestock_stag: id(8722087466111644),
+  livestock_squirrel: id(8722087466111645),
+  livestock_songbird: id(8722087466111646),
+  livestock_pigeon: id(8722087466111647),
+  livestock_crow: id(8722087466111648),
+  livestock_duck: id(8722087466111649),
+  livestock_goose: id(8722087466111650),
+  livestock_frog: id(8722087466111651),
+  livestock_fox: id(8722087466111652),
+  livestock_otter: id(8722087466111653),
+  livestock_cat: id(8722087466111654),
+  livestock_mouse: id(8722087466111655),
+  livestock_rat: id(8722087466111656),
+  livestock_boar: id(8722087466111657),
+  livestock_badger: id(8722087466111658),
+  livestock_pig: id(8722087466111659),
+  livestock_dog: id(8722087466111660),
+  livestock_hound: id(8722087466111661),
+  livestock_wolf: id(8722087466111662),
+  livestock_snake: id(8722087466111663),
+  livestock_bear: id(8722087466111664),
+  livestock_horse: id(8722087466111665),
+  livestock_spider: id(8722087466111666),
+  livestock_river_lurker: id(8722087466111667),
 } as const satisfies Readonly<Record<string, BiomesId>>;
 
 /**

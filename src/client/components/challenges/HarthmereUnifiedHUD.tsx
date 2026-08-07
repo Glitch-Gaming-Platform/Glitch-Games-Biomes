@@ -66,6 +66,7 @@ import {
 } from "@/client/components/challenges/harthmereEvents";
 import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { useHarthmereNativeVitalsProjection } from "@/client/components/challenges/useHarthmereNativeVitalsProjection";
+import { setHarthmereCombatPresentationActive } from "@/client/game/util/harthmere_combat_presentation";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { HARTHMERE_HOTBAR_HELD_ITEM_EVENT } from "@/shared/harthmere/premium_weapon_catalog";
 import { readHarthmereNativeVitals } from "@/shared/harthmere/harthmere_native_vitals";
@@ -3189,6 +3190,19 @@ const HarthmereNativeCombatFeedback: React.FunctionComponent = () => {
   );
 };
 
+function HarthmereCombatPresentationRuntimeController() {
+  const combat = useHarthmereCombatState();
+  const activeCombat = combat.player.combatState === "in_combat";
+
+  useEffect(() => {
+    setHarthmereCombatPresentationActive(activeCombat);
+  }, [activeCombat]);
+
+  useEffect(() => () => setHarthmereCombatPresentationActive(false), []);
+
+  return null;
+}
+
 export const HarthmereUnifiedHUD: React.FunctionComponent<{
   hideLegacyVisuals?: boolean;
 }> = ({ hideLegacyVisuals = true }) => {
@@ -3353,6 +3367,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
 
   const runtimeControllers = (
     <>
+      <HarthmereCombatPresentationRuntimeController />
       <HarthmereQuestNavAidController />
       <Chapter1NativeObjectivePrompt />
       <Chapter1FractureGatePrompt />

@@ -29,6 +29,7 @@ import { NUXHUD } from "@/client/components/NUXHUD";
 import { LocationNameOverlayComponent } from "@/client/components/overlays/LocationNameOverlayComponent";
 import { OverlayView } from "@/client/components/overlays/OverlayView";
 import { QuestsAndMiniMapHUD } from "@/client/components/QuestAndMinimapHUD";
+import { useHarthmereCombatPresentation } from "@/client/components/challenges/useHarthmereCombatPresentation";
 import { QuestSideEffects } from "@/client/components/QuestSideEffects";
 import { RulesetToggleable } from "@/client/components/RulsetToggleable";
 import { inInputElement, ShortcutsHUD } from "@/client/components/ShortcutsHUD";
@@ -245,6 +246,7 @@ export const BiomesChrome: React.FunctionComponent<{}> = React.memo(({}) => {
   );
   const [showHotbar] = useBiomesHUDVisibilitySetting("hotbar");
   const replaceLegacyBiomesUI = useBiomesUIReplaceLegacyFlag();
+  const combatPresentation = useHarthmereCombatPresentation();
 
   return (
     <>
@@ -266,9 +268,11 @@ export const BiomesChrome: React.FunctionComponent<{}> = React.memo(({}) => {
       <HidesForChromeHidden>
         <HideWhenUnlocked>
           <Crosshair />
-          <RulesetToggleable name="challenges">
-            <NavigationAidCircle />
-          </RulesetToggleable>
+          {!combatPresentation.suspended && (
+            <RulesetToggleable name="challenges">
+              <NavigationAidCircle />
+            </RulesetToggleable>
+          )}
         </HideWhenUnlocked>
 
         <NonObserverOnly>

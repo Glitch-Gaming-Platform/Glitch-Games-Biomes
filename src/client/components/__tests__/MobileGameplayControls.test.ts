@@ -91,18 +91,28 @@ describe("mobile gameplay control wiring", () => {
     );
   });
 
-  it("defers mobile music until a real document touch without changing desktop unlock", () => {
+  it("unlocks audio from the first trusted document gesture on every platform", () => {
     const view = read("src/client/components/BiomesView.tsx");
-    assert.ok(view.includes("if (!clientConfig.mobileDevice)"));
-    assert.ok(view.includes("const resumeMobileAudio = () =>"));
+    assert.ok(view.includes("const resumeAudioFromTrustedGesture = () =>"));
+    assert.ok(view.includes("if (!audioManager.isRunning())"));
     assert.ok(
       view.includes(
-        'document.addEventListener(\n        "touchstart",\n        resumeMobileAudio'
+        'document.addEventListener(\n      "pointerdown",\n      resumeAudioFromTrustedGesture'
       )
     );
     assert.ok(
       view.includes(
-        'document.removeEventListener(\n        "touchstart",\n        resumeMobileAudio'
+        'document.addEventListener(\n      "touchstart",\n      resumeAudioFromTrustedGesture'
+      )
+    );
+    assert.ok(
+      view.includes(
+        'document.addEventListener(\n      "keydown",\n      resumeAudioFromTrustedGesture'
+      )
+    );
+    assert.ok(
+      view.includes(
+        'document.removeEventListener(\n        "pointerdown",\n        resumeAudioFromTrustedGesture'
       )
     );
   });
@@ -279,15 +289,11 @@ describe("mobile gameplay control wiring", () => {
       "src/client/components/biomes_ui/BiomesUIOpenPrompt.tsx"
     );
     const ui = read("src/client/components/biomes_ui/BiomesUI.tsx");
-    const shop = read(
-      "src/client/components/inventory/BiomesUIShopChrome.tsx"
-    );
+    const shop = read("src/client/components/inventory/BiomesUIShopChrome.tsx");
     const crafting = read(
       "src/client/components/inventory/crafting/GeneralCraftingStationScreen.tsx"
     );
-    const invite = read(
-      "src/client/components/system/PlayerInviteModal.tsx"
-    );
+    const invite = read("src/client/components/system/PlayerInviteModal.tsx");
     const textSign = read("src/client/components/TextSignConfigureModal.tsx");
 
     assert.ok(prompt.includes("clientConfig.showVirtualJoystick"));
@@ -448,19 +454,13 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(
       theme.includes("@media (max-height: 500px) and (orientation: landscape)")
     );
-    assert.ok(
-      theme.includes("left: max(8px, env(safe-area-inset-left));")
-    );
+    assert.ok(theme.includes("left: max(8px, env(safe-area-inset-left));"));
     assert.ok(theme.includes("width: 186px;"));
     assert.ok(
-      theme.includes(
-        "left: calc(max(8px, env(safe-area-inset-left)) + 232px);"
-      )
+      theme.includes("left: calc(max(8px, env(safe-area-inset-left)) + 232px);")
     );
     assert.ok(theme.includes("width: min(34vw, 280px);"));
-    assert.ok(
-      theme.includes("right: max(8px, env(safe-area-inset-right));")
-    );
+    assert.ok(theme.includes("right: max(8px, env(safe-area-inset-right));"));
     assert.ok(hud.includes("MOBILE_PHONE_LANDSCAPE_CONTROLS"));
     assert.ok(
       hud.includes(

@@ -23,7 +23,7 @@ export const CAVE_OVERBURDEN_MIN_SOLID_BLOCKS = 4;
 // there. The broader world intentionally uses the more generous Y<20 product
 // rule even though the production scan includes some low open-sky terrain.
 export const HARTHMERE_CAVE_MUSIC_FALLBACK_BELOW_Y = 25;
-export const WORLD_CAVE_MUSIC_FALLBACK_BELOW_Y = 20;
+export const WORLD_CAVE_MUSIC_FALLBACK_BELOW_Y = 15;
 export const MOUNTAIN_WIND_MAX_SKY_OCCLUSION = 1;
 export const MOUNTAIN_WIND_SNOW_MIN_Y = 100;
 export const MOUNTAIN_WIND_HIGH_ALTITUDE_MIN_Y = 118;

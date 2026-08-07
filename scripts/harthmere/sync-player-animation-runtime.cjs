@@ -13,6 +13,10 @@ const destination = path.join(
   root,
   "public/assets/harthmere/glb/animations/player_animations.glb"
 );
+const assetVersionsPath = path.join(
+  root,
+  "src/galois/js/interface/gen/asset_versions.json"
+);
 
 function parseGlb(filePath) {
   const bytes = fs.readFileSync(filePath);
@@ -46,12 +50,56 @@ for (const family of ["Basic", "Heavy"]) {
     );
   }
 }
+for (const name of [
+  "HarthmereBodyBowAim_Aligned_30",
+  "HarthmereBodyBowRelease_Aligned_30",
+  "HarthmereBodyGunAim_Aligned_30",
+  "HarthmereBodyGunFire_Aligned_30",
+]) {
+  const clip = clips.get(name);
+  assert.ok(clip, `${name} is missing from the materialized animation set`);
+  assert.equal(clip.extras?.targetRequired, true, `${name} target gate`);
+  assert.equal(
+    clip.extras?.upperBodyAdditive,
+    true,
+    `${name} upper-body layering`
+  );
+}
+assert.equal(
+  clips.get("HarthmereBodyBowRelease_Aligned_30")?.extras?.impactSeconds,
+  0.28,
+  "bow release timing"
+);
+assert.equal(
+  clips.get("HarthmereBodyGunFire_Aligned_30")?.extras?.impactSeconds,
+  0.52,
+  "gun fire timing"
+);
 
 fs.mkdirSync(path.dirname(destination), { recursive: true });
 fs.writeFileSync(destination, parsed.bytes);
+const contentHash = require("node:crypto")
+  .createHash("md5")
+  .update(parsed.bytes)
+  .digest("hex");
+const contentRelativePath = `asset_data/wearables/animations.${contentHash}.glb`;
+const contentDestination = path.join(
+  root,
+  "public/buckets/biomes-static",
+  contentRelativePath
+);
+fs.mkdirSync(path.dirname(contentDestination), { recursive: true });
+fs.writeFileSync(contentDestination, parsed.bytes);
+
+const assetVersions = JSON.parse(fs.readFileSync(assetVersionsPath, "utf8"));
+assetVersions.paths["wearables/animations"] = contentRelativePath;
+fs.writeFileSync(
+  assetVersionsPath,
+  `${JSON.stringify(assetVersions, null, 2)}\n`
+);
 console.log(
   `Synced ${parsed.json.animations?.length ?? 0} player animations to ${path.relative(
     root,
     destination
-  )}.`
+  )} and indexed ${contentRelativePath}.`
 );

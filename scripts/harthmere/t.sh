@@ -269,6 +269,9 @@ PERF=(
   # without a GPU timer. Both are source/behaviour contracts, not benchmarks,
   # so they belong in the fast lane.
   'src/client/game/scripts/overlaysFrameBudget.test.ts'
+  'src/client/game/scripts/overlay_mobile_frame_budget.test.ts'
+  'src/client/components/__tests__/MobileGameplayControls.test.ts'
+  'src/client/util/user_info_invalidation_broker.test.ts'
   'src/client/game/resources/dynamic_settings_updater.test.ts'
   'src/client/game/resources/graphics_settings.test.ts'
 )
@@ -279,6 +282,8 @@ PERF=(
 # stayed green. These are the contracts that would have caught it.
 COMBAT=(
   'src/client/components/challenges/harthmere_combat_lock_on.test.ts'
+  'src/client/game/util/harthmere_combat_presentation.test.ts'
+  'src/client/game/scripts/harthmere_sound_effects.test.ts'
   'src/client/components/challenges/useHarthmereNativeVitalsProjection.test.ts'
   'src/client/game/util/harthmere_movement_stamina_fallback.test.ts'
   'src/client/game/renderers/local_dev/harthmere_combat_vfx_always_on.test.ts'
@@ -286,6 +291,9 @@ COMBAT=(
   'src/client/game/resources/melee_attack_region.test.ts'
   'src/client/game/renderers/local_dev/harthmere_projectiles.test.ts'
   'src/shared/harthmere/test/future_stagger_animation_assets.test.ts'
+  'src/shared/harthmere/test/boss_footsteps.test.ts'
+  'src/shared/harthmere/test/projectile_sound_lifecycle.test.ts'
+  'src/shared/harthmere/test/sound_effect_manifest.test.ts'
   'src/shared/harthmere/test/native_chase_live_browser_runner_contract.test.ts'
   'src/shared/harthmere/test/native_player_attack_live_browser_runner_contract.test.ts'
   'src/shared/harthmere/test/premium_projectile_wiring.test.ts'

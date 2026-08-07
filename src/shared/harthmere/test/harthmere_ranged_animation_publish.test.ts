@@ -23,7 +23,7 @@ function readGlbJson(buffer: Buffer): AnimationDocument {
 }
 
 describe("published Harthmere ranged body animations", () => {
-  it("keeps melee and expression clips while publishing the 0.280s bow release", () => {
+  it("keeps melee and expression clips while publishing distinct bow and gun releases", () => {
     const versions = JSON.parse(
       readFileSync(
         path.join(
@@ -51,6 +51,10 @@ describe("published Harthmere ranged body animations", () => {
 
     const byName = new Map(glb.animations.map((clip) => [clip.name, clip]));
     const release = byName.get("HarthmereBodyRangedRelease_Aligned_30");
+    const bowAim = byName.get("HarthmereBodyBowAim_Aligned_30");
+    const bowRelease = byName.get("HarthmereBodyBowRelease_Aligned_30");
+    const gunAim = byName.get("HarthmereBodyGunAim_Aligned_30");
+    const gunFire = byName.get("HarthmereBodyGunFire_Aligned_30");
 
     assert.equal(release?.extras?.impactSeconds, 0.28);
     assert.equal(release?.extras?.durationSeconds, 0.5);
@@ -58,6 +62,14 @@ describe("published Harthmere ranged body animations", () => {
     assert.equal(release?.extras?.locomotionCompatible, true);
     assert.ok(byName.has("HarthmereBodyRangedDraw_Aligned_30"));
     assert.ok(byName.has("HarthmereBodyRangedReload_Aligned_30"));
+    assert.equal(bowAim?.extras?.targetRequired, true);
+    assert.equal(bowRelease?.extras?.impactSeconds, 0.28);
+    assert.equal(bowRelease?.extras?.targetRequired, true);
+    assert.equal(gunAim?.extras?.straightToolArm, true);
+    assert.equal(gunFire?.extras?.impactSeconds, 0.52);
+    assert.equal(gunFire?.extras?.durationSeconds, 0.75);
+    assert.equal(gunFire?.extras?.recoilAuthored, true);
+    assert.equal(gunFire?.extras?.targetRequired, true);
     assert.ok(byName.has("HarthmereBodyWeaponBasic_Variation1_24"));
     assert.ok(byName.has("HarthmereBodyWeaponHeavy_Variation4_24"));
     assert.ok(
@@ -86,7 +98,16 @@ describe("published Harthmere ranged body animations", () => {
     const release = sample.animations.find(
       ({ name }) => name === "HarthmereBodyRangedRelease_Aligned_30"
     );
+    const bowRelease = sample.animations.find(
+      ({ name }) => name === "HarthmereBodyBowRelease_Aligned_30"
+    );
+    const gunFire = sample.animations.find(
+      ({ name }) => name === "HarthmereBodyGunFire_Aligned_30"
+    );
     assert.equal(release?.extras?.durationSeconds, 0.5);
     assert.equal(release?.extras?.timing?.impactMs, 280);
+    assert.equal(bowRelease?.extras?.timing?.impactMs, 280);
+    assert.equal(gunFire?.extras?.durationSeconds, 0.75);
+    assert.equal(gunFire?.extras?.timing?.impactMs, 520);
   });
 });
