@@ -3,6 +3,9 @@ import assert from "assert";
 import {
   automaticQuestDestinationMarkerForTest,
   biomesUIActiveMapPinNavigationAidKindForTest,
+  shouldBlockNativeQuestPinDuringGroveQuestForTest,
+  shouldPreserveExactChapter1RoutePinForTest,
+  shouldPreserveExactGroveRoutePinForTest,
   shouldClearOwnedQuestMapPinForTest,
 } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import { biomesUIActiveMiniMapPinDistanceLabelForTest } from "@/client/components/map/markers/biomes_ui_active_minimap_pin";
@@ -15,6 +18,7 @@ import {
 } from "@/client/game/helpers/navigation_aids";
 import { ch1NativeQuestId } from "@/shared/harthmere/ch1_native_quests";
 import { ch1ObjectiveUsesDynamicRouteDestination } from "@/shared/harthmere/ch1_interaction_surfaces";
+import { groveNativeQuestId } from "@/shared/harthmere/grove/grove_quest_ids";
 
 // HARTHMERE active-pin directional indicator
 // Locks the P0 fix: a user-set destination pin must show its directional
@@ -81,6 +85,85 @@ describe("active map pin navigation aid", () => {
         ],
       }),
       undefined
+    );
+  });
+
+  it("guards the stored exact Chapter 1 route pin from a late generic-anchor write", () => {
+    const questId = String(ch1NativeQuestId("ch1_a2_q02_work_the_board"));
+    const stepId = "8762100000000602";
+    assert.equal(
+      shouldPreserveExactChapter1RoutePinForTest({
+        current: {
+          markerId: `chapter1_route:${questId}:${stepId}:rin`,
+          ownerQuestId: questId,
+          ownerStepId: stepId,
+        },
+        next: {
+          markerId: `native_quest:${questId}:${stepId}`,
+          ownerQuestId: questId,
+          ownerStepId: stepId,
+        },
+      }),
+      true
+    );
+  });
+
+  it("preserves an exact Grove landmark pin over the same quest's generic native fallback", () => {
+    const authoredQuestId = "painted_path_language";
+    const nativeQuestId = String(groveNativeQuestId(authoredQuestId));
+    const current = {
+      markerId: "grove_painted_route_flags",
+      label: "Painted Route Flags",
+      ownerQuestId: authoredQuestId,
+      ownerStepId: "painted_path_language_obj_03",
+      worldPosition: [516, 71, -131] as [number, number, number],
+    };
+    assert.equal(
+      shouldBlockNativeQuestPinDuringGroveQuestForTest({
+        nextMarkerId: "native_quest:6193612340426932:6193612340426932",
+        activeGroveQuestId: authoredQuestId,
+      }),
+      true
+    );
+    assert.equal(
+      shouldPreserveExactGroveRoutePinForTest({
+        current,
+        nextQuestId: "6193612340426932",
+      }),
+      true
+    );
+    assert.equal(
+      automaticQuestDestinationMarkerForTest({
+        existingPin: current,
+        quest: {
+          questId: "6193612340426932",
+          status: "active",
+          currentStepId: "6193612340426932",
+          firstMarkerId: "native_quest:6193612340426932:6193612340426932",
+        },
+        markers: [
+          {
+            id: "native_quest:6193612340426932:6193612340426932",
+            label: "Talk to Jackie",
+            kind: "npc",
+            worldPosition: [496, 71, -126],
+          },
+        ],
+      }),
+      undefined
+    );
+    assert.equal(
+      shouldClearOwnedQuestMapPinForTest({
+        pin: current,
+        quests: [
+          {
+            questId: nativeQuestId,
+            status: "active",
+            currentStepId: nativeQuestId,
+          },
+        ],
+      }),
+      false
     );
   });
 

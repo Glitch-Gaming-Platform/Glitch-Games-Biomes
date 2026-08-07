@@ -209,6 +209,11 @@ export type DeserializedNpcState = {
     rangedSelectionCursor?: number;
     rangedMana?: number;
     rangedManaUpdatedAt?: number;
+    projectileRetaliation?: {
+      attackerId: BiomesId;
+      leashDistance: number;
+      expiresAt: number;
+    };
     pathfinding?: PathfindingComponent;
     pathfindingRetryTime?: number;
     /**

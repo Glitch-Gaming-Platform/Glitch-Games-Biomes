@@ -34,6 +34,10 @@ import {
 } from "@/shared/harthmere/grove_economy_starter";
 import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
 import { HARTHMERE_EXTENSION_ROAD } from "@/shared/harthmere/world_extension";
+import {
+  HARTHMERE_GROVE_SPARRING_RING_WORLD_XZ,
+  HARTHMERE_GROVE_TRAINING_DUMMY_WORLD_XZ,
+} from "@/shared/harthmere/grove_quest_visual_assets";
 
 export const SNAPSHOT_GROVE_BIBLE_CONTENT_VERSION =
   "snapshot-grove-bible-grounded";
@@ -1048,18 +1052,30 @@ export const SNAPSHOT_GROVE_LANDMARKS: SnapshotGroveLandmark[] = [
   {
     id: "grove_combat_practice_dummy",
     label: "Softwood Practice Dummy",
-    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(8, 4)),
+    // Real weapon swings are blocked inside the protected fountain. Keep the
+    // consent lesson close to the boundary, but place its actual target beyond
+    // the safe-zone stones so Mouse0/weapon combat can produce authoritative
+    // damage evidence instead of an inert protected-area hit.
+    position: snapshotGroveMarkerPosition([
+      HARTHMERE_GROVE_TRAINING_DUMMY_WORLD_XZ[0],
+      SNAPSHOT_GROVE_MARKER_Y,
+      HARTHMERE_GROVE_TRAINING_DUMMY_WORLD_XZ[1],
+    ]),
     kind: "interactable",
-    area: "the_grove",
+    area: "old_grove_road",
     questIds: ["safe_sparring_not_pvp"],
     visibleOnWorldMap: true,
   },
   {
     id: "grove_sparring_boundary",
     label: "Consent Sparring Ring",
-    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(10, 5)),
-    kind: "safe_zone",
-    area: "the_grove",
+    position: snapshotGroveMarkerPosition([
+      HARTHMERE_GROVE_SPARRING_RING_WORLD_XZ[0],
+      SNAPSHOT_GROVE_MARKER_Y,
+      HARTHMERE_GROVE_SPARRING_RING_WORLD_XZ[1],
+    ]),
+    kind: "interactable",
+    area: "old_grove_road",
     questIds: ["safe_sparring_not_pvp"],
     visibleOnWorldMap: true,
   },
@@ -1138,6 +1154,43 @@ export const SNAPSHOT_GROVE_LANDMARKS: SnapshotGroveLandmark[] = [
     kind: "resource",
     area: "muck_edges",
     visibleOnWorldMap: true,
+  },
+  {
+    id: "doc_clean_root_sample",
+    label: "Clean Root Sample",
+    // Safe-side muck-edge root: close enough to read as Doc's fieldwork, but
+    // far enough away that accepting the quest does not put the item at his
+    // feet or complete it accidentally while closing dialogue.
+    position: snapshotGroveMarkerPosition([503, SNAPSHOT_GROVE_MARKER_Y, -148]),
+    kind: "resource",
+    area: "muck_edges",
+    questIds: ["sticky_medicine"],
+    visibleOnWorldMap: true,
+    activeQuestOnly: true,
+  },
+  {
+    id: "doc_mucked_root_sample",
+    label: "Mucked Root Sample",
+    // Deeper, opposite-side sample so "further in" is real travel and the two
+    // roots cannot overlap into one ambiguous pickup graphic.
+    position: snapshotGroveMarkerPosition([522, SNAPSHOT_GROVE_MARKER_Y, -162]),
+    kind: "resource",
+    area: "muck_edges",
+    questIds: ["sticky_medicine"],
+    visibleOnWorldMap: true,
+    activeQuestOnly: true,
+  },
+  {
+    id: "doc_sealed_muck_sample",
+    label: "Sealed Muck Sample",
+    // A third distinct muck-edge station for the chapel connector quest. It is
+    // neither Doc's exact position nor either Sticky Medicine root sample.
+    position: snapshotGroveMarkerPosition([505, SNAPSHOT_GROVE_MARKER_Y, -160]),
+    kind: "resource",
+    area: "muck_edges",
+    questIds: ["samples_for_the_chapel"],
+    visibleOnWorldMap: true,
+    activeQuestOnly: true,
   },
   {
     id: "muckwad_pigment_clump_west",
@@ -1241,7 +1294,12 @@ export const SNAPSHOT_GROVE_LANDMARKS: SnapshotGroveLandmark[] = [
     position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(6, -4)),
     kind: "interactable",
     area: "the_grove",
-    questIds: ["guilds_are_promises"],
+    questIds: [
+      "safe_sparring_not_pvp",
+      "ready_check_at_fountain",
+      "guilds_are_promises",
+      "fountain_trade_table_promises",
+    ],
     visibleOnWorldMap: true,
   },
   {
@@ -1485,6 +1543,10 @@ export const SNAPSHOT_GROVE_LANDMARKS: SnapshotGroveLandmark[] = [
     ]),
     kind: "interactable",
     area: "harthmere",
+    // The connector's first chapel step is a conversation with the keeper,
+    // while the following step uses this same physical listening stone. Keep
+    // one map destination but name the NPC who owns the talk trigger.
+    npcId: "father_aldren_mell",
     visibleOnWorldMap: true,
   },
   {
@@ -1794,13 +1856,13 @@ const SNAPSHOT_GROVE_QUESTS_WITHOUT_REQUIRED_TURN_INS: SnapshotGroveQuest[] = [
     id: "safe_sparring_not_pvp",
     title: "Sparring Is a Promise",
     giverNpcId: "guild_clerk_nia",
-    area: "The Grove Fountain / Charter Table",
-    hook: "Nia teaches combat safety, duel consent, safe-zone rules, PvP opt-in language, and the difference between a practice dummy and another player.",
+    area: "The Grove Fountain -> Old Grove Road Boundary",
+    hook: "Nia teaches combat safety, duel consent, safe-zone rules, PvP opt-in language, and then sends the player just beyond the protected boundary to strike a real practice target.",
     objectives: [
       "Talk to Nia at the charter table.",
       "Read the charter board before drawing a weapon near anyone.",
-      "Step into the consent sparring ring and check that it is clearly marked.",
-      "Strike the softwood practice dummy or complete the safe combat prompt.",
+      "Follow the marker beyond the safe-zone stones and step into the consent sparring ring.",
+      "Strike the softwood practice dummy with a real weapon swing or use its safe practice prompt.",
       "Open the group or combat panel and find where duel consent belongs.",
       "Choose the PvP rule Nia should stamp first: consent, safe zones, or no farming.",
       "Return to Nia before leaving the ring.",
@@ -2133,9 +2195,9 @@ const SNAPSHOT_GROVE_QUESTS_WITHOUT_REQUIRED_TURN_INS: SnapshotGroveQuest[] = [
     ],
     triggers: ["collect", "collect", "near_location", "interact"],
     markerIds: [
+      "doc_clean_root_sample",
+      "doc_mucked_root_sample",
       "doc_field_table",
-      "muckwad_patch",
-      "muckwad_patch",
       "doc_field_table",
     ],
     reward: "55 XP, anti-muck poultice, Doc sample flag.",
@@ -2305,7 +2367,7 @@ const SNAPSHOT_GROVE_QUESTS_WITHOUT_REQUIRED_TURN_INS: SnapshotGroveQuest[] = [
     ],
     triggers: ["collect", "talk_npc", "interact", "choice"],
     markerIds: [
-      "muckwad_patch",
+      "doc_sealed_muck_sample",
       "harthmere_chapel_stone",
       "harthmere_chapel_stone",
       "npc_doc",

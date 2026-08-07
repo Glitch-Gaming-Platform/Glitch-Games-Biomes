@@ -8,6 +8,8 @@ import {
   TalkToNpcQuestView,
 } from "@/client/components/challenges/TalkDialogModal";
 import { TalkToNpcDefaultDialog } from "@/client/components/challenges/TalkToNPCDefaultDialog";
+import { useSnapshotGroveNpcDialog } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
+import { shouldSnapshotGroveDialogPreemptNativeQuestStepsForTest } from "@/client/components/challenges/snapshotGroveNpcDialogPriority";
 
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { DialogButton } from "@/client/components/system/DialogButton";
@@ -177,6 +179,10 @@ export const TalkToNPCScreen: React.FunctionComponent<{
     Number(talkingToNPCId)
   );
   const trueRelevantSteps = useRelevantStepsForEntity(talkingToNPCId);
+  const snapshotGroveNpcDialog = useSnapshotGroveNpcDialog(
+    talkingToNPCId,
+    ""
+  );
   const [queryingStep, setQueryingStep] = useState(false);
   const [trackedQuest] = clientContext.mapManager.react.useTrackedQuestId();
   const [currentStep, setCurrentStep] = useState<QuestStepBundle | undefined>();
@@ -311,6 +317,26 @@ export const TalkToNPCScreen: React.FunctionComponent<{
         stepBundle={currentStep}
         onClose={onClose}
         onStepComplete={onStepComplete}
+      />
+    );
+  } else if (
+    shouldSnapshotGroveDialogPreemptNativeQuestStepsForTest({
+      hasSnapshotGroveDialog: Boolean(snapshotGroveNpcDialog),
+      nativeRelevantStepCount: relevantSteps.length,
+      chapter1OwnsThisNpc,
+      chapter1SupplierTrade,
+    })
+  ) {
+    // Grove onboarding and Road Ahead can both belong to Jackie. The native
+    // quest selector used to intercept first, making every Grove Start action
+    // unreachable even though TalkToNpcDefaultDialog explicitly gives Grove
+    // prose/actions precedence. Route through that composed dialog before the
+    // native single/multi-step branches; Road Ahead compatibility actions are
+    // still merged by the default dialog.
+    dialogContent = (
+      <TalkToNpcDefaultDialog
+        talkingToNPCId={talkingToNPCId}
+        onClose={onClose}
       />
     );
   } else if (relevantSteps.length === 1) {

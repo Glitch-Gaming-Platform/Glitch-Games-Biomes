@@ -150,8 +150,8 @@ describe("Observer tests", () => {
           typeof change === "number"
             ? [change]
             : change.kind === "update"
-            ? [change.entity.id]
-            : []
+              ? [change.entity.id]
+              : []
         )
     );
   };
@@ -239,8 +239,8 @@ describe("Observer tests", () => {
         typeof change === "number"
           ? [change]
           : change.kind === "update"
-          ? [change.entity.id]
-          : []
+            ? [change.entity.id]
+            : []
       ),
     ]);
 
@@ -285,7 +285,7 @@ describe("Observer tests", () => {
             v: [(index % 20) - 10, 0, Math.floor(index / 20) - 7] as [
               number,
               number,
-              number
+              number,
             ],
           },
         },
@@ -684,6 +684,60 @@ describe("Observer tests", () => {
         },
       },
     ]);
+  });
+
+  it("keeps the movement bubble attached across a transient self delete", async () => {
+    createLocalObserver();
+
+    world.applyChanges([
+      {
+        kind: "create",
+        entity: {
+          id: ID_A,
+          position: { v: [0, 1, 0] },
+          label: { text: "Near the original position" },
+        },
+      },
+      {
+        kind: "create",
+        entity: {
+          id: ID_B,
+          position: { v: [0, 1000, 0] },
+          label: { text: "Near the restored position" },
+        },
+      },
+    ]);
+    await yieldToOthers();
+    await observer.start();
+    assert.deepEqual(pull(100), []);
+
+    world.applyChanges([{ kind: "delete", id: USER_ID }]);
+    await yieldToOthers();
+    world.applyChanges([
+      {
+        kind: "create",
+        entity: {
+          ...newPlayer(USER_ID, "TestPlayer"),
+          position: { v: [0, 1000, 0] },
+        },
+      },
+    ]);
+    await yieldToOthers();
+
+    const changes = pull(100);
+    assert.ok(
+      changes.some((change) => change === ID_B),
+      "the scanner must follow the recreated player to the new terrain bubble"
+    );
+    assert.ok(
+      changes.some(
+        (change) =>
+          typeof change !== "number" &&
+          change.kind !== "delete" &&
+          change.entity.id === USER_ID
+      ),
+      "the required player should still be updated after recreation"
+    );
   });
 
   it("eager local-dev bootstrap tracks every seeded Grove NPC", () => {

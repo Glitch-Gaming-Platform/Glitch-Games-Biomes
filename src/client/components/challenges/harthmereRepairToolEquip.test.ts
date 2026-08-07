@@ -26,6 +26,11 @@ describe("HARTHMERE_REPAIR_TOOL_EQUIP — equipped repair tool detection", () =>
     resetHarthmereLiveSnapshotForTest();
   });
 
+  afterEach(() => {
+    resetHarthmereLiveInventoryItemsSnapshotForTest();
+    resetHarthmereLiveSnapshotForTest();
+  });
+
   it("recognizes the repair mallet item as a repair tool", () => {
     assert.equal(isHarthmereRepairToolItemId("repair_mallet"), true);
   });

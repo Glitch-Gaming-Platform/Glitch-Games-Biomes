@@ -95,6 +95,31 @@ export const HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MARKER_PREFIX =
   "jobs_board_marker:" as const;
 export const HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MATCH_RADIUS = 1.75;
 
+export function harthmereWorldObjectCandidateAtActivePinPosition(input: {
+  candidate: HarthmereWorldObjectCandidate;
+  activePinMarkerId?: string;
+  activePinPosition?: HarthmereWorldObjectVec3;
+}): HarthmereWorldObjectCandidate {
+  const pinId = input.activePinMarkerId;
+  const pinPosition = input.activePinPosition;
+  if (
+    !pinPosition ||
+    !pinId ||
+    (pinId !== input.candidate.id &&
+      pinId !==
+        `${HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MARKER_PREFIX}${input.candidate.id}`)
+  ) {
+    return input.candidate;
+  }
+  // The map adapter resolves a quest prop onto the same production terrain
+  // surface used by the renderer. Keep the interaction candidate at that exact
+  // grounded pose too. Otherwise a legacy authored Y (Run the Coop's supply
+  // box is 71) can sit twelve metres above the rendered/pinned object (Y=59),
+  // causing the vertical-distance gate to suppress F while the player stands
+  // directly beside the visible objective.
+  return { ...input.candidate, position: pinPosition };
+}
+
 export function harthmereWorldObjectCandidateIsVisibleForInteraction(
   input: HarthmereWorldObjectVisibilityInput
 ): boolean {

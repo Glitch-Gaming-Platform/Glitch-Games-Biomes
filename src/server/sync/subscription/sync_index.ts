@@ -421,10 +421,29 @@ export class SyncIndex {
 
   private delete(id: BiomesId) {
     const knowledge = this.knowledge.get(id);
+    // A filtered world subscription can transiently surface a player/entity as
+    // deleted (for example while an iced component changes) and then recreate
+    // it. Active Scanners are attached to the entity's knowledge entry. Losing
+    // those buffers here leaves the watch centered at the last pre-delete
+    // bucket forever, even after the entity resumes moving. The observer keeps
+    // the required player resident, so retain the knowledge object while it has
+    // active spatial watches; their stop handlers also close over this object.
+    // The next create/update will repopulate it and move the watches to the
+    // restored position.
+    const retainForActiveWatches = knowledge.buffers.length > 0;
     if (knowledge?.bucket !== undefined) {
       this.buckets.get(knowledge?.bucket).removeEntity(id);
     }
-    this.knowledge.delete(id);
+    if (retainForActiveWatches) {
+      knowledge.version = undefined;
+      knowledge.entityClass = undefined;
+      knowledge.position = undefined;
+      knowledge.bucket = undefined;
+      knowledge.team = undefined;
+      knowledge.iced = undefined;
+    } else {
+      this.knowledge.delete(id);
+    }
     this.players.delete(id);
     this.terrain.delete(id);
   }

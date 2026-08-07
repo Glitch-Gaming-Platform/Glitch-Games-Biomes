@@ -2,6 +2,7 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { tryExitPointerLock } from "@/client/components/contexts/PointerLockContext";
 import { DialogButton } from "@/client/components/system/DialogButton";
 import { reportClientError } from "@/client/util/request_helpers";
+import { reloadPreservingHarthmereInstallIdentity } from "@/shared/util/harthmere_auth_session";
 import React, { useEffect, useState } from "react";
 
 export const GameOutOfDateOverlay: React.FunctionComponent<{}> = ({}) => {
@@ -11,7 +12,7 @@ export const GameOutOfDateOverlay: React.FunctionComponent<{}> = ({}) => {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    const forceReload = () => window.location.reload();
+    const forceReload = () => reloadPreservingHarthmereInstallIdentity();
     io.on("forceReload", forceReload);
     return () => {
       io.off("forceReload", forceReload);
@@ -22,10 +23,13 @@ export const GameOutOfDateOverlay: React.FunctionComponent<{}> = ({}) => {
     if (!outOfDate || triggered) {
       return;
     }
-    const handle = setTimeout(() => {
-      reportClientError("OutOfDate", "OutOfDate JS showing");
-      setTriggered(true);
-    }, 3 * 60 * 60 * 1000);
+    const handle = setTimeout(
+      () => {
+        reportClientError("OutOfDate", "OutOfDate JS showing");
+        setTriggered(true);
+      },
+      3 * 60 * 60 * 1000
+    );
     return () => clearTimeout(handle);
   }, [outOfDate, triggered]);
 
@@ -53,7 +57,10 @@ export const GameOutOfDateOverlay: React.FunctionComponent<{}> = ({}) => {
         <div className="centered-text">
           Your game is out of date, please reload to see the latest in Biomes!
         </div>
-        <DialogButton type="primary" onClick={() => window.location.reload()}>
+        <DialogButton
+          type="primary"
+          onClick={() => reloadPreservingHarthmereInstallIdentity()}
+        >
           Reload Now
         </DialogButton>
         <DialogButton onClick={() => setDismissed(true)}>

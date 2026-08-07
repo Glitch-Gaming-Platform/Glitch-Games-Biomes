@@ -2,22 +2,22 @@ import {
   HARTHMERE_EXOTIC_MATTER_CAVES,
   type HarthmereExoticMatterCaveId,
 } from "@/shared/harthmere/exotic_matter_caves";
+import {
+  HARTHMERE_INDISWORM_CAVE_IDS,
+  HARTHMERE_INDISWORM_CAVE_LAYOUTS,
+  type HarthmereIndiswormCaveId,
+} from "@/shared/harthmere/indisworm_cave_layout";
 import { harthmereLiveEntityIdFromOffset } from "@/shared/harthmere/live_entity_seed_ids";
 import type { BiomesId } from "@/shared/ids";
 import type { Vec2, Vec3 } from "@/shared/math/types";
 
 export const HARTHMERE_INDISWORM_SPAWNS_VERSION =
-  "harthmere-indisworm-spawns-v1" as const;
+  "harthmere-indisworm-spawns-v2-guarded-deposits" as const;
 export const HARTHMERE_INDISWORM_PACKS_PER_CAVERN = 3;
 export const HARTHMERE_INDISWORMS_PER_PACK = 5;
 export const HARTHMERE_INDISWORM_FIRST_ID_OFFSET = 11_001;
 
-export const HARTHMERE_INDISWORM_CAVE_IDS = [
-  "deep_spindle_massive_cave",
-  "harthmere_core_massive_cave",
-  "harthmere_far_hollow_massive_cave",
-  "harthmere_high_vault_massive_cave",
-] as const satisfies readonly HarthmereExoticMatterCaveId[];
+export { HARTHMERE_INDISWORM_CAVE_IDS };
 
 const MEMBER_OFFSETS = [
   [-3, 0, -2],
@@ -27,56 +27,11 @@ const MEMBER_OFFSETS = [
   [2, 0, 2],
 ] as const satisfies readonly Vec3[];
 
-const CAVE_LAYOUTS = {
-  deep_spindle_massive_cave: {
-    progressionLevel: 4,
-    packCenters: [
-      [714, -379],
-      [724, -369],
-      [734, -359],
-    ],
-  },
-  harthmere_core_massive_cave: {
-    progressionLevel: 5,
-    packCenters: [
-      [924, -315],
-      [956, -315],
-      [939, -281],
-    ],
-  },
-  harthmere_far_hollow_massive_cave: {
-    progressionLevel: 6,
-    packCenters: [
-      [956, -690],
-      [988, -690],
-      [971, -656],
-    ],
-  },
-  harthmere_high_vault_massive_cave: {
-    progressionLevel: 7,
-    packCenters: [
-      [178, 293],
-      [210, 293],
-      [193, 327],
-    ],
-  },
-} as const satisfies Record<
-  (typeof HARTHMERE_INDISWORM_CAVE_IDS)[number],
-  {
-    progressionLevel: number;
-    packCenters: readonly [
-      readonly [number, number],
-      readonly [number, number],
-      readonly [number, number],
-    ];
-  }
->;
-
 export interface HarthmereIndiswormSpawnDescriptor {
   seedId: string;
   entityId: BiomesId;
   idOffset: number;
-  caveId: (typeof HARTHMERE_INDISWORM_CAVE_IDS)[number];
+  caveId: HarthmereIndiswormCaveId;
   caveLabel: string;
   position: Vec3;
   orientation: Vec2;
@@ -113,7 +68,7 @@ export const HARTHMERE_INDISWORM_SPAWNS: readonly HarthmereIndiswormSpawnDescrip
     if (!cave) {
       throw new Error(`Missing massive cavern definition ${caveId}`);
     }
-    const layout = CAVE_LAYOUTS[caveId];
+    const layout = HARTHMERE_INDISWORM_CAVE_LAYOUTS[caveId];
     return layout.packCenters.flatMap((center, packIndex) =>
       MEMBER_OFFSETS.map((offset, memberIndex) => {
         const ordinal =

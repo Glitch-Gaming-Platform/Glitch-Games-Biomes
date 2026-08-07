@@ -33,7 +33,10 @@
 // Grove pin repair.
 
 import assert from "assert";
-import { groveLandmarkWorldPosition } from "../grove/grove_waypoints";
+import {
+  groveLandmarkWorldPosition,
+  groveMarkerWorldPosition,
+} from "../grove/grove_waypoints";
 import {
   SNAPSHOT_GROVE_LANDMARKS,
   type SnapshotGroveLandmark,
@@ -49,11 +52,17 @@ describe("Grove waypoint grounding", () => {
     let worstDelta = 0;
     for (const landmark of landmarks) {
       const plane = groveLandmarkWorldPosition(landmark);
-      const grounded = resolveHarthmereProductionMarkerPosition({
+      const expected = resolveHarthmereProductionMarkerPosition({
         markerId: landmark.id,
         fallback: plane,
       });
-      if (grounded === plane) continue; // no scanned record; fallback is correct
+      const grounded = groveMarkerWorldPosition(landmark.id)!;
+      assert.deepEqual(
+        grounded,
+        expected,
+        `${landmark.id} bypassed the production terrain resolver`
+      );
+      if (expected === plane) continue; // no scanned record; fallback is correct
       scanned += 1;
       if (grounded[1] !== plane[1]) {
         disagreesWithPlane += 1;
@@ -93,11 +102,7 @@ describe("Grove waypoint grounding", () => {
     const landmarks =
       SNAPSHOT_GROVE_LANDMARKS as readonly SnapshotGroveLandmark[];
     for (const landmark of landmarks) {
-      const plane = groveLandmarkWorldPosition(landmark);
-      const grounded = resolveHarthmereProductionMarkerPosition({
-        markerId: landmark.id,
-        fallback: plane,
-      });
+      const grounded = groveMarkerWorldPosition(landmark.id)!;
       assert(
         Number.isFinite(grounded[0]) &&
           Number.isFinite(grounded[1]) &&
@@ -108,6 +113,53 @@ describe("Grove waypoint grounding", () => {
         grounded[1] !== 0,
         `${landmark.id} resolved to Y=0 — the retired authored-datum bug`
       );
+    }
+  });
+
+  it("keeps Doc's three muck samples distinct and away from his feet", () => {
+    const doc = groveMarkerWorldPosition("npc_doc")!;
+    const ids = [
+      "doc_clean_root_sample",
+      "doc_mucked_root_sample",
+      "doc_sealed_muck_sample",
+    ];
+    const positions = ids.map((id) => groveMarkerWorldPosition(id)!);
+    for (const [index, position] of positions.entries()) {
+      const distanceFromDoc = Math.hypot(
+        position[0] - doc[0],
+        position[2] - doc[2]
+      );
+      assert(
+        distanceFromDoc >= 8,
+        `${ids[index]} is only ${distanceFromDoc.toFixed(1)}m from Doc`
+      );
+    }
+    for (let left = 0; left < positions.length; left += 1) {
+      for (let right = left + 1; right < positions.length; right += 1) {
+        const separation = Math.hypot(
+          positions[left][0] - positions[right][0],
+          positions[left][2] - positions[right][2]
+        );
+        assert(
+          separation >= 8,
+          `${ids[left]} and ${ids[right]} are only ${separation.toFixed(1)}m apart`
+        );
+      }
+    }
+  });
+
+  it("gives every authored resource landmark a unique world position", () => {
+    const occupied = new Map<string, string>();
+    for (const landmark of SNAPSHOT_GROVE_LANDMARKS) {
+      if (landmark.kind !== "resource") continue;
+      const position = groveMarkerWorldPosition(landmark.id)!;
+      const key = `${position[0].toFixed(2)},${position[1].toFixed(2)},${position[2].toFixed(2)}`;
+      assert.equal(
+        occupied.get(key),
+        undefined,
+        `${landmark.id} overlaps ${occupied.get(key)} at ${key}`
+      );
+      occupied.set(key, landmark.id);
     }
   });
 });

@@ -1,6 +1,7 @@
 import type { Item } from "@/shared/game/item";
 import { anItem } from "@/shared/game/item";
 import { getCh1ItemVisualAsset } from "@/shared/harthmere/ch1_item_visual_assets";
+import { getGroveItemVisualAsset } from "@/shared/harthmere/grove_item_visual_assets";
 import {
   harthmereNativeBiomesIdForItemId,
   harthmereNativeItemIdForBiomesId,
@@ -95,6 +96,7 @@ export function isHarthmereProtectedRegionVisibleHeldItem(
     harthmereNativeItemIdForBiomesId(Number(item.id)) ?? String(item.id);
   return (
     Boolean(getCh1ItemVisualAsset(semanticItemId)) ||
+    Boolean(getGroveItemVisualAsset(semanticItemId)) ||
     HARTHMERE_PROTECTED_REGION_VISIBLE_JOB_TOOLS.has(semanticItemId)
   );
 }

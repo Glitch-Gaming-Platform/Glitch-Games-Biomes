@@ -164,8 +164,10 @@ import {
   jobsBoardAcceptedJobLandmarksForBiomesUI,
   jobsBoardItemSourceLandmarksForBiomesUI,
   jobsBoardLandmarkForActivePinHandoffForTest,
+  jobsBoardTrackableQuestsForBiomesUI,
   jobsBoardTodoIdFromMarkerIdForTest,
   jobsBoardToolSourceLandmarksForBiomesUI,
+  newlyAcceptedJobsBoardTodoIdForTest,
   shouldClearStaleJobsBoardPin,
 } from "./jobsBoardQuestMapAdapter";
 import {
@@ -227,6 +229,7 @@ import {
   automaticMainQuestSelectionForTest,
   mainQuestFromTrackableQuestsForTest,
   readBiomesUIMainQuestSelection,
+  setBiomesUIMainQuestFromTrackableQuest,
   writeBiomesUIMainQuestSelection,
 } from "./mainQuestSelection";
 import type { QuestBundle } from "@/client/game/resources/challenges";
@@ -2431,6 +2434,7 @@ export function useBiomesUILiveAdapters({
   const [questStateHydrated, setQuestStateHydrated] = React.useState(false);
   const shouldReturnPointerLockRef = React.useRef(false);
   const questStateRefreshInFlightRef = React.useRef(false);
+  const previousJobsBoardStateRef = React.useRef<any | undefined>(undefined);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2821,18 +2825,52 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
+    const newlyAcceptedTodoId = newlyAcceptedJobsBoardTodoIdForTest({
+      previous: previousJobsBoardStateRef.current,
+      next: jobsBoardStateWithLiveInventory,
+    });
+    previousJobsBoardStateRef.current = jobsBoardStateWithLiveInventory;
+    const toolOwned = harthmereJobToolOwnedState();
     const landmarks = [
-      ...jobsBoardAcceptedJobLandmarksForBiomesUI(
-        jobsBoardStateWithLiveInventory
+      ...jobsBoardToolSourceLandmarksForBiomesUI(
+        jobsBoardStateWithLiveInventory,
+        toolOwned
       ),
       ...jobsBoardItemSourceLandmarksForBiomesUI(
         jobsBoardStateWithLiveInventory
       ),
-      ...jobsBoardToolSourceLandmarksForBiomesUI(
-        jobsBoardStateWithLiveInventory,
-        harthmereJobToolOwnedState()
+      ...jobsBoardAcceptedJobLandmarksForBiomesUI(
+        jobsBoardStateWithLiveInventory
       ),
     ];
+    if (newlyAcceptedTodoId) {
+      const acceptedQuest = jobsBoardTrackableQuestsForBiomesUI(
+        jobsBoardStateWithLiveInventory,
+        Date.now(),
+        toolOwned
+      ).find(
+        (quest) => quest.questId === `jobs_board:${newlyAcceptedTodoId}`
+      );
+      if (acceptedQuest) {
+        setBiomesUIMainQuestFromTrackableQuest(acceptedQuest);
+      }
+      const destination = landmarks.find(
+        (landmark) => landmark.jobsBoardTodoId === newlyAcceptedTodoId
+      );
+      if (destination) {
+        const pin = activeBiomesUIMapPinFromMarkerForTest({
+          id: destination.id,
+          label: destination.label,
+          kind: destination.kind,
+          worldPosition: destination.position,
+          description: destination.description,
+          worldObjectId: destination.mapMarkerId,
+          interactionTargetId: destination.targetId,
+        });
+        if (pin) writeActiveBiomesUIMapPin(pin);
+      }
+      return;
+    }
     let existing = readActiveBiomesUIMapPin();
     const existingJobsBoardTodoId = jobsBoardTodoIdFromMarkerIdForTest(
       existing?.markerId

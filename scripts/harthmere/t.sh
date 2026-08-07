@@ -118,8 +118,19 @@ QUESTS=(
   'src/shared/harthmere/test/snapshot_grove_trigger_contract.test.ts'
   'src/shared/harthmere/test/snapshot_grove_live_mode_backend.test.ts'
   'src/client/components/challenges/LocalDevSnapshotGroveBibleRuntime.validation.test.ts'
+  'src/client/components/challenges/snapshotGroveNpcDialogPriority.test.ts'
   'src/client/game/renderers/local_dev/test/harthmere_quest_object_markers.test.ts'
   'src/client/components/biomes_ui/adapters/__tests__/mapAdapter.test.ts'
+  'src/client/components/biomes_ui/adapters/__tests__/activeMapPinNavAid.test.ts'
+  'src/client/components/biomes_ui/__tests__/currentQuestObjectiveHUD.test.ts'
+  'src/client/components/biomes_ui/__tests__/snapshotGroveTutorPrompt.test.tsx'
+  'src/client/components/biomes_ui/__tests__/mapQuestMainQuest.test.tsx'
+  'src/client/components/biomes_ui/__tests__/tutorialMissionMap.test.ts'
+  'src/client/components/harthmere_cooking/__tests__/cookingStationLiveAdapter.test.ts'
+  'src/client/game/resources/harthmere_held_item.test.ts'
+  'src/shared/harthmere/test/grove_item_visual_assets.test.ts'
+  'src/shared/harthmere/test/grove_quest_audit_manifest.test.ts'
+  'src/shared/harthmere/test/harthmere_cooking_backend.test.ts'
   'src/client/components/biomes_ui/__tests__/MapQuestsTab.activeOnly.test.ts'
 )
 # Bible catalog. Every module under src/shared/harthmere/bible/ is pure data or
@@ -151,6 +162,9 @@ BIBLE_MAIN=(
 # grove_engine_contracts.test.ts over the real import graph.
 GROVE=(
   'src/shared/harthmere/test/grove_quest_catalog.test.ts'
+  'src/shared/harthmere/test/grove_quest_per_state.test.ts'
+  'src/shared/harthmere/test/grove_quest_audit_manifest.test.ts'
+  'src/shared/harthmere/test/grove_client_hotfix_contract.test.ts'
   'src/shared/harthmere/test/grove_engine_contracts.test.ts'
   'src/shared/harthmere/test/grove_giver_reassignment.test.ts'
   'src/shared/harthmere/test/grove_gate_enforcement.test.ts'

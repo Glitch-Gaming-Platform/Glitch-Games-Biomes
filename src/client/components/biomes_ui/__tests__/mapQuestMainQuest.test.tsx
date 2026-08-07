@@ -100,6 +100,29 @@ describe("MapQuestsTab main quest controls", () => {
     assert.equal(html.includes("Wrong contextual quest"), false);
   });
 
+  it("can keep Grove contextual actions visible beside the native active quest", () => {
+    const quest: MapTrackableQuest = {
+      questId: "road_ahead",
+      title: "The Road Ahead",
+      area: "Biomes",
+      status: "active",
+      objective: "Talk to Jackie",
+    };
+    const html = renderToStaticMarkup(
+      <MapQuestsTab
+        adapter={{ getTrackableQuests: () => [quest] }}
+        contextualQuestPanel={<div>Pick practice answer</div>}
+        showContextualQuestPanelWithActiveQuest
+      />
+    );
+    assert.ok(html.includes('aria-label="Active quest: The Road Ahead"'));
+    assert.ok(html.includes("Pick practice answer"));
+    assert.ok(
+      html.indexOf("Pick practice answer") <
+        html.indexOf('aria-label="Active quest: The Road Ahead"')
+    );
+  });
+
   it("shows time limits for timed quests without adding one to untimed quests", () => {
     const timedQuest: MapTrackableQuest = {
       questId: "patch_fence",

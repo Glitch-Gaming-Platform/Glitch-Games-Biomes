@@ -262,8 +262,8 @@ const QUESTS: GroveQuestDef[] = [
     "title": "Sparring Is a Promise",
     "arc": "fountain",
     "category": "fountain_lesson",
-    "area": "The Grove Fountain / Charter Table",
-    "hook": "Nia teaches combat safety, duel consent, safe-zone rules, PvP opt-in language, and the difference between a practice dummy and another player.",
+    "area": "The Grove Fountain -> Old Grove Road Boundary",
+    "hook": "Nia teaches combat safety, duel consent, safe-zone rules, PvP opt-in language, and then sends the player just beyond the protected boundary to strike a real practice target.",
     "start": {
       "kind": "giver",
       "giverNpcId": "guild_clerk_nia"
@@ -286,14 +286,14 @@ const QUESTS: GroveQuestDef[] = [
       {
         "id": "safe_sparring_not_pvp_obj_03",
         "index": 2,
-        "label": "Step into the consent sparring ring and check that it is clearly marked.",
+        "label": "Follow the marker beyond the safe-zone stones and step into the consent sparring ring.",
         "trigger": "near_location",
         "markerId": "grove_sparring_boundary"
       },
       {
         "id": "safe_sparring_not_pvp_obj_04",
         "index": 3,
-        "label": "Strike the softwood practice dummy or complete the safe combat prompt.",
+        "label": "Strike the softwood practice dummy with a real weapon swing or use its safe practice prompt.",
         "trigger": "combat",
         "markerId": "grove_combat_practice_dummy"
       },

@@ -249,7 +249,7 @@ export function cuesForAuthoredTutorialStep(
     trigger === "near_location" ||
     trigger === "place_voxel" ||
     trigger === "destroy" ||
-    textMatches(text, /\b(open|read|pin|confirm|find)\b.*\b(map|marker|journal|objective|panel|hud|menu|inventory|bag|backpack|hotbar|guild|party|group|combat|duel|mail|inbox|storage|bank|vault|recipe|craft|chat|channel|whisper|settings|options)\b/)
+    textMatches(text, /\b(open|pin|confirm|find)\b.*\b(map|marker|journal|objective|panel|hud|menu|inventory|bag|backpack|hotbar|guild|party|group|combat|duel|mail|inbox|storage|bank|vault|recipe|craft|chat|channel|whisper|settings|options)\b/)
   ) {
     if (textMatches(text, /\b(map|marker|pin|compass|journal|quest log|objective)\b/)) {
       addMenuTabCue(cues, UI_IDS.TAB_MAP, "Open map");
@@ -277,10 +277,18 @@ export function cuesForAuthoredTutorialStep(
     if (textMatches(text, /\b(combat|duel|sparring|pvp|ability|weapon)\b/)) {
       addMenuTabCue(cues, UI_IDS.TAB_ABILITIES, "Open abilities");
     }
-    if (textMatches(text, /\b(mail|inbox|message|letter|parcel)\b/)) {
+    if (
+      textMatches(text, /\b(mail|inbox|message|letter|parcel)\b/) &&
+      (trigger !== "interact" ||
+        textMatches(text, /\b(open|send|drop|deliver)\b/))
+    ) {
       addMenuTabCue(cues, UI_IDS.TAB_INBOX, "Open inbox");
     }
-    if (textMatches(text, /\b(storage|bank|vault|deposit|withdraw|recovery|lost.?and.?found|lost|found)\b/)) {
+    if (
+      textMatches(text, /\b(storage|bank|vault|deposit|withdraw|recovery|lost.?and.?found|lost|found)\b/) &&
+      (trigger !== "interact" ||
+        textMatches(text, /\b(open|deposit|withdraw|store|organize|recover)\b/))
+    ) {
       addMenuTabCue(cues, UI_IDS.TAB_BANKING, "Open bank");
       if (textMatches(text, /\b(deposit|bank|crate)\b/)) {
         addCue(cues, {

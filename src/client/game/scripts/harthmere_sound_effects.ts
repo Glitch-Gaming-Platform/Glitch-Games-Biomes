@@ -9,6 +9,12 @@ import type { AudioPath } from "@/client/game/resources/audio";
 import type { Script } from "@/client/game/scripts/script_controller";
 import { changedBiomesId, type ReadonlyChanges } from "@/shared/ecs/change";
 import {
+  HARTHMERE_MELEE_HIT_SOUND_DURATION_SECONDS,
+  harthmereMeleeHitItem,
+  harthmereMeleeHitSoundIdForItem,
+  isHarthmereMeleeHitSoundItem,
+} from "@/shared/harthmere/melee_hit_sound";
+import {
   getHarthmereSoundEffect,
   HARTHMERE_OBJECT_INTERACTION_SOUND_MAP,
   HARTHMERE_SOUND_EFFECT_EVENT,
@@ -21,11 +27,45 @@ const HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT =
 const HARTHMERE_COMBAT_EFFECT_EVENT = "biomes:harthmere-combat-effect" as const;
 const HARTHMERE_PLAYER_STATUS_EVENT =
   "biomes:live-mode-player-status-updated" as const;
+const HARTHMERE_CONFIRMED_MELEE_SOUND_FRESHNESS_SECONDS = 8;
+const HARTHMERE_PENDING_SOUND_MAX_AGE_MS = 5_000;
+const HARTHMERE_PENDING_SOUND_LIMIT = 64;
+const HARTHMERE_SOUND_EFFECT_RUNTIME_VERSION =
+  "harthmere-sound-effects-replicated-hit-runtime-v3" as const;
 
 interface HarthmereWorldObjectInteractionEventDetail {
   label?: string | null;
   kind: string;
 }
+
+interface HarthmereSoundEffectsDebugState {
+  version: typeof HARTHMERE_SOUND_EFFECT_RUNTIME_VERSION;
+  receivedEventCount: number;
+  requestedPlayCount: number;
+  requestedPositionalPlayCount: number;
+  requestedPreloadCount: number;
+  confirmedMeleeHitCount: number;
+  missingDefinitionCount: number;
+  pendingRequestCount: number;
+  droppedPendingRequestCount: number;
+  lastRequestedId?: string;
+  lastConfirmedMeleeTargetId?: number;
+}
+
+type PendingHarthmereSoundRequest =
+  | {
+      kind: "play";
+      id: string | undefined;
+      position?: readonly number[];
+      idempotent: boolean;
+      spatialOptions: PathSpatialAudioOptions;
+      queuedAtMs: number;
+    }
+  | {
+      kind: "preload";
+      id: string | undefined;
+      queuedAtMs: number;
+    };
 
 function combatEffectSoundId(detail: Record<string, unknown>) {
   const text = `${String(detail.ability ?? "")} ${String(
@@ -81,10 +121,24 @@ export class HarthmereSoundEffectsScript implements Script {
   private lastHp: number | undefined;
   private readonly plantStatuses = new Map<number, string>();
   private readonly energyEffectMarkers = new Map<number, string>();
+  private readonly lastMeleeDamageTimes = new Map<number, number>();
+  private readonly pendingRequests: PendingHarthmereSoundRequest[] = [];
+  private readonly debugState: HarthmereSoundEffectsDebugState = {
+    version: HARTHMERE_SOUND_EFFECT_RUNTIME_VERSION,
+    receivedEventCount: 0,
+    requestedPlayCount: 0,
+    requestedPositionalPlayCount: 0,
+    requestedPreloadCount: 0,
+    confirmedMeleeHitCount: 0,
+    missingDefinitionCount: 0,
+    pendingRequestCount: 0,
+    droppedPendingRequestCount: 0,
+  };
 
   private readonly onSoundEffect = (event: Event) => {
     const detail = (event as CustomEvent<HarthmereSoundEffectEventDetail>)
       .detail;
+    this.debugState.receivedEventCount += 1;
     if (detail?.preloadOnly) {
       this.preload(detail.id);
       return;
@@ -165,6 +219,45 @@ export class HarthmereSoundEffectsScript implements Script {
     for (const change of changes) {
       const id = changedBiomesId(change);
       const entity = this.table.get(id);
+      const damageTime = entity?.health?.lastDamageTime;
+      const previousDamageTime = this.lastMeleeDamageTimes.get(id);
+      if (damageTime === undefined) {
+        this.lastMeleeDamageTimes.delete(id);
+      } else if (damageTime !== previousDamageTime) {
+        this.lastMeleeDamageTimes.set(id, damageTime);
+        const damageSource = entity?.health?.lastDamageSource;
+        const attackerId =
+          damageSource?.kind === "attack" ? damageSource.attacker : undefined;
+        const attacker =
+          attackerId === undefined ? undefined : this.table.get(attackerId);
+        const attackItem = harthmereMeleeHitItem(
+          attacker?.emote,
+          attacker?.selected_item?.item?.item
+        );
+        const recentEnough =
+          Math.abs(Date.now() / 1000 - damageTime) <=
+          HARTHMERE_CONFIRMED_MELEE_SOUND_FRESHNESS_SECONDS;
+        if (
+          recentEnough &&
+          damageSource?.kind === "attack" &&
+          Boolean(attacker?.player_status) &&
+          isHarthmereMeleeHitSoundItem(attackItem)
+        ) {
+          this.debugState.confirmedMeleeHitCount += 1;
+          this.debugState.lastConfirmedMeleeTargetId = Number(id);
+          this.play(
+            harthmereMeleeHitSoundIdForItem(attackItem),
+            entity?.position?.v,
+            false,
+            {
+              durationSeconds: HARTHMERE_MELEE_HIT_SOUND_DURATION_SECONDS,
+              refDistance: 3,
+              maxDistance: 48,
+              rolloffFactor: 0.85,
+            }
+          );
+        }
+      }
       const npcStateData = entity?.npc_state?.data;
       if (npcStateData?.length) {
         const effect =
@@ -206,6 +299,10 @@ export class HarthmereSoundEffectsScript implements Script {
     for (const entity of table.contents()) {
       const status = entity.farming_plant_component?.status;
       if (status) this.plantStatuses.set(entity.id, status);
+      const damageTime = entity.health?.lastDamageTime;
+      if (damageTime !== undefined) {
+        this.lastMeleeDamageTimes.set(entity.id, damageTime);
+      }
       const npcStateData = entity.npc_state?.data;
       if (npcStateData?.length) {
         const effect =
@@ -232,6 +329,7 @@ export class HarthmereSoundEffectsScript implements Script {
     window.addEventListener(HARTHMERE_COMBAT_EFFECT_EVENT, this.onCombatEffect);
     window.addEventListener(HARTHMERE_PLAYER_STATUS_EVENT, this.onPlayerStatus);
     this.gardenHose.on("equip", this.onEquip);
+    this.publishDebug();
   }
 
   private play(
@@ -240,28 +338,133 @@ export class HarthmereSoundEffectsScript implements Script {
     idempotent = false,
     spatialOptions: PathSpatialAudioOptions = {}
   ) {
+    if (!this.audioIsRunning()) {
+      this.queuePendingRequest({
+        kind: "play",
+        id,
+        position,
+        idempotent,
+        spatialOptions,
+        queuedAtMs: Date.now(),
+      });
+      return;
+    }
     const definition = getHarthmereSoundEffect(id);
-    if (!definition) return;
+    if (!definition) {
+      this.debugState.missingDefinitionCount += 1;
+      this.publishDebug();
+      return;
+    }
+    this.debugState.requestedPlayCount += 1;
+    this.debugState.lastRequestedId = definition.id;
     if (position && position.length >= 3) {
+      this.debugState.requestedPositionalPlayCount += 1;
       this.audioManager.playPathAt(
         definition.path as AudioPath,
         position,
         spatialOptions
       );
+      this.publishDebug();
       return;
     }
     this.audioManager.playPath(definition.path as AudioPath, { idempotent });
+    this.publishDebug();
   }
 
   private preload(id: string | undefined) {
+    if (!this.audioIsRunning()) {
+      this.queuePendingRequest({
+        kind: "preload",
+        id,
+        queuedAtMs: Date.now(),
+      });
+      return;
+    }
     const definition = getHarthmereSoundEffect(id);
-    if (!definition) return;
+    if (!definition) {
+      this.debugState.missingDefinitionCount += 1;
+      this.publishDebug();
+      return;
+    }
+    this.debugState.requestedPreloadCount += 1;
+    this.debugState.lastRequestedId = definition.id;
     this.audioManager.preloadPath(definition.path as AudioPath);
+    this.publishDebug();
   }
 
-  tick() {}
+  private audioIsRunning() {
+    const isRunning = (
+      this.audioManager as AudioManager & {
+        isRunning?: () => unknown;
+      }
+    ).isRunning;
+    // Lightweight test doubles predate AudioManager.isRunning(). Treat them as
+    // ready so focused routing tests keep exercising the actual play call.
+    return (
+      typeof isRunning !== "function" ||
+      Boolean(isRunning.call(this.audioManager))
+    );
+  }
+
+  private queuePendingRequest(request: PendingHarthmereSoundRequest) {
+    if (
+      request.kind === "play" &&
+      request.idempotent &&
+      this.pendingRequests.some(
+        (pending) => pending.kind === "play" && pending.id === request.id
+      )
+    ) {
+      return;
+    }
+    if (this.pendingRequests.length >= HARTHMERE_PENDING_SOUND_LIMIT) {
+      this.pendingRequests.shift();
+      this.debugState.droppedPendingRequestCount += 1;
+    }
+    this.pendingRequests.push(request);
+    this.debugState.pendingRequestCount = this.pendingRequests.length;
+    this.publishDebug();
+  }
+
+  private flushPendingRequests() {
+    if (!this.audioIsRunning() || this.pendingRequests.length === 0) return;
+    const now = Date.now();
+    const requests = this.pendingRequests.splice(0);
+    this.debugState.pendingRequestCount = 0;
+    for (const request of requests) {
+      if (now - request.queuedAtMs > HARTHMERE_PENDING_SOUND_MAX_AGE_MS) {
+        this.debugState.droppedPendingRequestCount += 1;
+        continue;
+      }
+      if (request.kind === "preload") {
+        this.preload(request.id);
+      } else {
+        this.play(
+          request.id,
+          request.position,
+          request.idempotent,
+          request.spatialOptions
+        );
+      }
+    }
+    this.publishDebug();
+  }
+
+  private publishDebug() {
+    if (typeof window === "undefined") return;
+    (
+      window as typeof window & {
+        __harthmereSoundEffectsDebug?: HarthmereSoundEffectsDebugState;
+      }
+    ).__harthmereSoundEffectsDebug = { ...this.debugState };
+  }
+
+  tick() {
+    this.flushPendingRequests();
+  }
 
   clear() {
+    this.pendingRequests.length = 0;
+    this.debugState.pendingRequestCount = 0;
     this.table.events.off("postApply", this.onTableChanges);
     if (typeof window === "undefined") return;
     window.removeEventListener(
@@ -285,5 +488,10 @@ export class HarthmereSoundEffectsScript implements Script {
       this.onPlayerStatus
     );
     this.gardenHose.off("equip", this.onEquip);
+    delete (
+      window as typeof window & {
+        __harthmereSoundEffectsDebug?: HarthmereSoundEffectsDebugState;
+      }
+    ).__harthmereSoundEffectsDebug;
   }
 }

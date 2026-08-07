@@ -204,6 +204,7 @@ import {
 } from "./jobs_board_quest_marker_positions";
 import { harthmereJobsBoardMuckBountyTargetForId } from "./jobs_board_muck_bounty_targets";
 import {
+  harthmereDeliveryParcelPickupRecorded,
   harthmereJobMarkerPlan,
   type HarthmereJobProgress,
 } from "./harthmere_job_objective";
@@ -212,6 +213,7 @@ import {
   defaultHarthmereExoticMatterDepositState,
   harthmereExoticMatterAcceptedJobDepositMarkers,
   harthmereExoticMatterDepositById,
+  harthmereExoticMatterDepositRuntimePositions,
   isHarthmereExoticMatterMaterialItemId,
   mineHarthmereExoticMatterDeposit,
   replenishHarthmereExoticMatterDeposits,
@@ -1870,7 +1872,10 @@ function harthmereJobsBoardTodoProgress(
     progress.gatheredCount = itemCount;
   }
   if (kind === "delivery" && itemCount !== undefined) {
-    progress.hasParcel = itemCount > 0;
+    progress.hasParcel =
+      itemCount > 0 || harthmereDeliveryParcelPickupRecorded(job);
+  } else if (kind === "delivery") {
+    progress.hasParcel = harthmereDeliveryParcelPickupRecorded(job);
   }
   if (kind === "escort" && job?.escortCompanion?.status === "arrived") {
     progress.escortArrived = true;
@@ -8745,10 +8750,15 @@ export function createHarthmereCraftingStationClientSnapshotFromBackend(
 }
 
 export function createHarthmereLiveModeFarmingFoodClientSnapshot(
-  state: HarthmereLiveModeBackendState
+  state: HarthmereLiveModeBackendState,
+  currentTimeMs = Date.now()
 ) {
   const pools = ensureCombatResourcePools(state);
-  const nowMs = state.updatedAtMs;
+  // Read-only cooking polls must advance wall-clock presentation even when no
+  // mutation has updated the stored player record since enqueue. Using only
+  // state.updatedAtMs leaves every queued dish permanently "Cooking" until an
+  // unrelated write happens, so Collect never appears.
+  const nowMs = Math.max(state.updatedAtMs, currentTimeMs);
   const availableCookingStations = new Set(["campfire"]);
   for (const business of Object.values(state.economy.businesses)) {
     if (
@@ -8842,7 +8852,7 @@ export function createHarthmereLiveModeFarmingFoodClientSnapshot(
         };
       }),
     })),
-    updatedAtMs: state.updatedAtMs,
+    updatedAtMs: nowMs,
   };
 }
 
@@ -9449,6 +9459,19 @@ export function reduceHarthmereLiveModeBackendState(
           standing: normalizeReputationStanding(envelope.serverActorStanding),
         }
       : undefined;
+  const nativeBackpackFreeSlots =
+    nativePlayerInventoryBaseline &&
+    envelope.serverActorBackpackFreeSlots !== undefined
+      ? Math.max(
+          0,
+          Math.trunc(Number(envelope.serverActorBackpackFreeSlots) || 0)
+        )
+      : undefined;
+  const nativeInventorySlotLimit =
+    nativePlayerInventoryBaseline && nativeBackpackFreeSlots !== undefined
+      ? countInventorySlots(nativePlayerInventoryBaseline.items) +
+        nativeBackpackFreeSlots
+      : undefined;
   const nativeMaterialStorageBaseline =
     nativeBiomesEcsAuthorityEnabled() &&
     envelope.serverActorMaterialStorageItemCounts !== undefined
@@ -9605,6 +9628,9 @@ export function reduceHarthmereLiveModeBackendState(
     return {
       actorId: next.actorId,
       gold: next.inventory.gold,
+      maxInventorySlots:
+        nativeInventorySlotLimit ??
+        next.inventoryLoot.actors[next.actorId]?.maxInventorySlots,
       equipment: { ...next.inventory.equipment },
       items: { ...next.inventory.items },
       bank: { ...next.inventory.bank },
@@ -9625,6 +9651,7 @@ export function reduceHarthmereLiveModeBackendState(
       applyBankRecordDelta(projected, itemId, Math.trunc(Number(delta) || 0));
     }
     const maxSlots =
+      nativeInventorySlotLimit ??
       next.inventoryLoot.actors[next.actorId]?.maxInventorySlots ??
       HARTHMERE_DEFAULT_INVENTORY_SLOTS;
     const currentSlots = countInventorySlots(items);
@@ -10503,6 +10530,9 @@ export function reduceHarthmereLiveModeBackendState(
       existing.bank = { ...next.inventory.bank };
       existing.equipment = { ...next.inventory.equipment };
       existing.equipmentInstances = { ...next.inventory.equipmentInstances };
+      if (nativeInventorySlotLimit !== undefined) {
+        existing.maxInventorySlots = nativeInventorySlotLimit;
+      }
       return;
     }
     next.inventoryLoot.actors[next.actorId] = createHarthmereInventoryLootActor(
@@ -10513,6 +10543,9 @@ export function reduceHarthmereLiveModeBackendState(
         bank: { ...next.inventory.bank },
         equipment: { ...next.inventory.equipment },
         equipmentInstances: { ...next.inventory.equipmentInstances },
+        ...(nativeInventorySlotLimit === undefined
+          ? {}
+          : { maxInventorySlots: nativeInventorySlotLimit }),
       }
     );
   }
@@ -14363,11 +14396,7 @@ export function reduceHarthmereLiveModeBackendState(
                 markerId: `jobs_board_exotic_deposit:${todo.todoId}:${marker.depositId}`,
                 plotId: marker.markerId,
                 kind: "map_marker",
-                position: resolveHarthmereProductionMarkerPosition({
-                  source: "exotic_matter_deposit",
-                  markerId: marker.depositId,
-                  fallback: marker.position,
-                }),
+                position: [...marker.position],
                 label: `${todo.title}: ${marker.label}`,
                 createdAtMs: todo.createdAtMs,
               };
@@ -19208,21 +19237,16 @@ export function reduceHarthmereLiveModeBackendState(
             touchedModels.add("exotic_matter_rejection");
             break;
           }
-          // Deposits in shifted-world caves render their ore at `terrainPosition`
-          // (X - 512), not `deposit.position`. The player physically stands at the
-          // rendered ore, so proximity must accept either coordinate — otherwise every
-          // shifted-cave deposit (the bulk of the content) is ~512 blocks from
-          // `deposit.position` and can never be mined. Mirrors the dual-position logic in
-          // harthmereExoticMatterDepositAtBlock.
+          // Player-facing markers, visible ore and authority must share one
+          // coordinate. Town/Underways deposits receive the additive +1600
+          // transform; original-map cavern deposits stay beside their Indisworms.
+          // `terrainPosition` is only a legacy authored-space terrain-seeding
+          // coordinate and is never a valid current player-world position.
           const mineRadiusSq =
             HARTHMERE_EXOTIC_MATTER_MINE_INTERACTION_RADIUS *
             HARTHMERE_EXOTIC_MATTER_MINE_INTERACTION_RADIUS;
-          const minePositions = [
-            deposit.position,
-            deposit.terrainPosition,
-          ].filter((value): value is [number, number, number] =>
-            Array.isArray(value)
-          );
+          const minePositions =
+            harthmereExoticMatterDepositRuntimePositions(deposit);
           const withinMineRange = minePositions.some(
             (pos) =>
               distanceSq3(actorPosition, {
@@ -19256,7 +19280,7 @@ export function reduceHarthmereLiveModeBackendState(
                     y: pos[1],
                     z: pos[2],
                   }) <= mineRadiusSq
-              ) ?? deposit.position;
+              ) ?? minePositions[0];
             nativeEcsMaterializationPlans.push({
               kind: "drop",
               materializationKey: `exotic_matter:${deposit.depositId}:${envelope.requestId}`,
@@ -19597,6 +19621,36 @@ export function reduceHarthmereLiveModeBackendState(
             (recipe?.xp ?? 10) * cookCount
           );
           touchedModels.add("skill_xp");
+        }
+        if (operation === "cook_food" || operation === "cook_collect") {
+          const recipeId =
+            operation === "cook_collect"
+              ? cookingJobBeforeOperation?.recipeId
+              : (payloadString(envelope, "recipeId") ??
+                (payloadString(envelope, "rawItemId") === "raw_meat"
+                  ? "grilled_meat"
+                  : undefined));
+          const recipe = recipeId
+            ? HARTHMERE_COOKING_RECIPES[recipeId]
+            : undefined;
+          const count = Math.max(
+            1,
+            Math.trunc(
+              operation === "cook_collect"
+                ? (cookingJobBeforeOperation?.count ?? 1)
+                : (payloadNumber(envelope, "count") ?? 1)
+            )
+          );
+          const outputItemId = recipe
+            ? Object.keys(recipe.outputs)[0]
+            : undefined;
+          if (recipeId && outputItemId) {
+            advanceSnapshotGroveQuestsFromAuthoritativeEvent("craft", {
+              recipeId,
+              outputItemId,
+              count,
+            });
+          }
         }
         if (operation === "eat_food") {
           const itemId = payloadString(envelope, "itemId");

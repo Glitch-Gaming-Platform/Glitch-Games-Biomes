@@ -172,6 +172,13 @@ export interface HarthmereLiveModeAuthorityEnvelope {
    * evidence.
    */
   serverActorItemCounts?: Record<string, number>;
+  /**
+   * Exact number of empty native backpack slots. The server item-count map also
+   * includes hotbar stacks for spend/turn-in validation, so capacity checks
+   * must carry this separate backpack-only fact instead of comparing the
+   * flattened map with a hardcoded slot limit.
+   */
+  serverActorBackpackFreeSlots?: number;
   /** Exact native Bling balance used as the only spendable player wallet. */
   serverActorGold?: number;
   /** Native selected/worn projection used for validation, never persistence. */
@@ -1815,14 +1822,14 @@ export function buildHarthmereLiveModePersistenceMutationPlan(
     envelope.raidId
       ? "raid"
       : envelope.partyId
-      ? "party"
-      : envelope.pvpContextId
-      ? "pvp_match"
-      : envelope.encounterId
-      ? "encounter"
-      : envelope.targetId
-      ? "actor_target"
-      : "single_actor";
+        ? "party"
+        : envelope.pvpContextId
+          ? "pvp_match"
+          : envelope.encounterId
+            ? "encounter"
+            : envelope.targetId
+              ? "actor_target"
+              : "single_actor";
 
   return {
     planId: `live-plan:${envelope.actionKind}:${envelope.requestId}`,

@@ -285,7 +285,12 @@ export function harthmereJobsBoardQuestMarkerRuntimePosition(
   if (
     marker.source === "business_template_target" ||
     marker.source === "business_outpost_work_station" ||
-    marker.source === "legacy_protection_field"
+    marker.source === "legacy_protection_field" ||
+    // Exotic Matter markers are already canonical runtime coordinates. Town
+    // caves have received the shared +1600 transform, while original-map
+    // Indisworm caverns intentionally remain unshifted and underground. The
+    // retired +512 placement map must not move either class onto another floor.
+    marker.source === "exotic_matter_deposit"
   ) {
     return {
       ...marker,

@@ -34,6 +34,7 @@ import assert from "assert";
 import {
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
   HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED,
+  harthmereGroundedLivestockSeedsInTerritory,
   harthmereGroundedMuckMonsterSeedsInTerritory,
 } from "@/shared/harthmere/live_entity_production_seed";
 import { harthmereSharedLiveCreatureRespawnRegistry } from "@/shared/harthmere/live_creature_respawn_registry";
@@ -128,9 +129,11 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
       fixtures.set(biscuit.id, biscuit);
     }
     const monsterSeeds = harthmereGroundedMuckMonsterSeedsInTerritory();
+    const livestockSeeds = harthmereGroundedLivestockSeedsInTerritory();
     for (const seed of [
       monsterSeeds[0],
       monsterSeeds.find(({ combatKind }) => combatKind === "hex")!,
+      livestockSeeds[0],
       HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED,
     ]) {
       const profile = harthmereNativeNpcCombatProfileForSeed(seed);
@@ -1073,6 +1076,93 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
       readHarthmereNativeSkillTotalXp(attackerState, "ranged_combat") > 0
     );
     assert.ok(readHarthmereNativeSkillTotalXp(attackerState, "archery") > 0);
+  });
+
+  it("records a retaliation chase leash for arrows, magic, and energy hits beyond normal disengage", async () => {
+    const livestockSeed = harthmereGroundedLivestockSeedsInTerritory()[0];
+    const monsterSeed = harthmereGroundedMuckMonsterSeedsInTerritory()[0];
+    const cases = [
+      {
+        itemId: "hunter_bow",
+        level: 20,
+        distance: 20,
+        seed: livestockSeed,
+        needsResourceReceipt: true,
+        needsArrow: true,
+      },
+      {
+        itemId: "crystal_focus",
+        level: 5,
+        distance: 17,
+        seed: livestockSeed,
+        needsResourceReceipt: true,
+        needsArrow: false,
+      },
+      {
+        itemId: "singularity_lance",
+        level: 45,
+        distance: 60,
+        seed: monsterSeed,
+        needsResourceReceipt: false,
+        needsArrow: false,
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      const attacker = (
+        await addGameUser(logic.world, generateTestId(), {
+          position: [0, 0, 0],
+        })
+      ).id;
+      equipNativeItem(attacker, testCase.itemId, testCase.level);
+      if (testCase.needsArrow) {
+        giveBackpackArrows(attacker);
+      }
+      const target = spawnNativeNpc(
+        testCase.seed,
+        [testCase.distance, 0, 0],
+        500
+      );
+      const attackTime = testCase.needsResourceReceipt
+        ? await authorizeRangedResourceAttack(attacker, target.id)
+        : undefined;
+
+      await logic.publish(
+        new GameEvent(
+          attacker,
+          new UpdateNpcHealthEvent({
+            id: target.id,
+            hp: -999,
+            damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+            attackTime,
+          })
+        )
+      );
+
+      const targetEntity = logic.world.table.get(target.id)!;
+      assert.ok(targetEntity.health!.hp < 500, testCase.itemId);
+      const projectileRetaliation = deserializeNpcCustomState(
+        targetEntity.npc_state?.data
+      ).chaseAttack?.projectileRetaliation;
+      assert.equal(
+        projectileRetaliation?.attackerId,
+        attacker,
+        testCase.itemId
+      );
+      assert.ok(
+        (projectileRetaliation?.leashDistance ?? 0) >
+          target.profile.disengageDistance,
+        `${testCase.itemId}: projectile leash did not exceed authored disengage`
+      );
+      assert.ok(
+        (projectileRetaliation?.leashDistance ?? 0) > testCase.distance,
+        `${testCase.itemId}: no buffer for the first Anima chase tick`
+      );
+      assert.ok(
+        (projectileRetaliation?.expiresAt ?? 0) > secondsSinceEpoch(),
+        `${testCase.itemId}: retaliation leash already expired`
+      );
+    }
   });
 
   it("requires backpack arrows, ignores hotbar-only ammo, and spends one on a miss", async () => {

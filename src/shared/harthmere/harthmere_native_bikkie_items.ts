@@ -136,7 +136,6 @@ const HARTHMERE_NATIVE_PRESENTATION_SOURCE_IDS: Readonly<
   mana_essence: BikkieIds.powerCell,
   wild_berries: BikkieIds.fruit,
   raw_meat: BikkieIds.muckerMeat,
-  grove_festival_skewer: BikkieIds.muckerMeat,
   grove_festival_skewer_ingredients: BikkieIds.muckerMeat,
   grove_road_torch: BikkieIds.log,
   grove_warm_loaf_tray: 2_071_428_426_278_062 as BiomesId,
@@ -407,6 +406,28 @@ export function ensureHarthmereNativeItemCatalogue() {
       displayName: "Sealed Delivery Parcel",
       category: "quest_item",
       maxStackSize: 20,
+      isCraftingMaterial: false,
+      isQuestItem: true,
+      tradeable: false,
+    })
+  );
+  registerHarthmereItemDefinition(
+    defaultHarthmereItemDefinition({
+      itemId: "grove_festival_skewer_ingredients",
+      displayName: "Festival Skewer Ingredients",
+      category: "quest_item",
+      maxStackSize: 5,
+      isCraftingMaterial: true,
+      isQuestItem: true,
+      tradeable: false,
+    })
+  );
+  registerHarthmereItemDefinition(
+    defaultHarthmereItemDefinition({
+      itemId: "grove_festival_skewer",
+      displayName: "Carlo's Festival Skewer",
+      category: "quest_item",
+      maxStackSize: 5,
       isCraftingMaterial: false,
       isQuestItem: true,
       tradeable: false,

@@ -51,24 +51,11 @@ export const HARTHMERE_EQUIPMENT_SLOTS = [
 ] as const;
 export type HarthmereEquipmentSlot = (typeof HARTHMERE_EQUIPMENT_SLOTS)[number];
 export type HarthmereItemRarity =
-  | "common"
-  | "uncommon"
-  | "rare"
-  | "epic"
-  | "legendary";
+  "common" | "uncommon" | "rare" | "epic" | "legendary";
 export type HarthmereCraftingQualityTier =
-  | "rough"
-  | "standard"
-  | "fine"
-  | "excellent"
-  | "masterwork";
+  "rough" | "standard" | "fine" | "excellent" | "masterwork";
 export type HarthmereCraftingWorkflowKind =
-  | "craft"
-  | "repair"
-  | "salvage"
-  | "upgrade"
-  | "enchant"
-  | "quest_forge";
+  "craft" | "repair" | "salvage" | "upgrade" | "enchant" | "quest_forge";
 export type HarthmereCraftingPhase = "instant" | "start" | "complete";
 export type HarthmereItemPhysicalForm =
   | "block"
@@ -179,6 +166,12 @@ export interface HarthmereItemDefinition {
 export interface HarthmereInventorySnapshot {
   actorId: string;
   gold: number;
+  /**
+   * Effective slot ceiling for this server-read snapshot. In native mode the
+   * item map includes both backpack and hotbar stacks, so this is the current
+   * flattened slot pressure plus the exact number of empty backpack slots.
+   */
+  maxInventorySlots?: number;
   /** slot → itemId */
   equipment: Record<string, string>;
   /** itemId → count */
@@ -960,7 +953,13 @@ function validateVendorBuy(
     const slotsNeeded =
       Math.ceil(newCount / maxStackSize) -
       Math.ceil(existingCount / maxStackSize);
-    if (!inventoryHasCapacity(snapshot.items, slotsNeeded)) {
+    if (
+      !inventoryHasCapacity(
+        snapshot.items,
+        slotsNeeded,
+        snapshot.maxInventorySlots
+      )
+    ) {
       fail(errors, "inventory_full");
     }
   }
@@ -1498,7 +1497,10 @@ function validateCraftItem(
     if (newCount > outputDef.maxStackSize) {
       fail(errors, "output_stack_size_exceeded");
     }
-    if (existing === 0 && !inventoryHasCapacity(projectedItems, 1)) {
+    if (
+      existing === 0 &&
+      !inventoryHasCapacity(projectedItems, 1, snapshot.maxInventorySlots)
+    ) {
       fail(errors, "inventory_full");
     }
   }
@@ -1657,7 +1659,7 @@ function validateCraftItem(
       ? -Math.max(0, Math.trunc(recipe.goldCost ?? 0)) * craftCount
       : 0;
   const newRecipeIds =
-    phase !== "start" && success ? recipe.teachesRecipesOnSuccess ?? [] : [];
+    phase !== "start" && success ? (recipe.teachesRecipesOnSuccess ?? []) : [];
   const outputCount =
     phase === "start" || !success ? 0 : recipe.outputCount * craftCount;
   const outcome: HarthmereCraftingOutcome = {
@@ -1683,8 +1685,7 @@ function validateCraftItem(
             1,
             Math.round(
               (recipe.durabilityMax ?? outputDef?.durabilityMax ?? 1) *
-                (1 +
-                  HARTHMERE_SUBLEVEL_POTENCY_CAP * weightedSkillProgress)
+                (1 + HARTHMERE_SUBLEVEL_POTENCY_CAP * weightedSkillProgress)
             )
           )
         : undefined,
@@ -1774,7 +1775,10 @@ function validateBankTransfer(
     const invExisting = snapshot.items[bankItemId] ?? 0;
     if (invExisting + bankCount > def.maxStackSize)
       fail(errors, "inventory_stack_size_exceeded");
-    if (invExisting === 0 && !inventoryHasCapacity(snapshot.items, 1)) {
+    if (
+      invExisting === 0 &&
+      !inventoryHasCapacity(snapshot.items, 1, snapshot.maxInventorySlots)
+    ) {
       fail(errors, "inventory_full");
     }
   }
@@ -1818,7 +1822,10 @@ function validateGrantQuestItem(
   if (existing + count > def.maxStackSize) {
     return resultFail(requestId, kind, actorId, ["stack_size_exceeded"]);
   }
-  if (existing === 0 && !inventoryHasCapacity(snapshot.items, 1)) {
+  if (
+    existing === 0 &&
+    !inventoryHasCapacity(snapshot.items, 1, snapshot.maxInventorySlots)
+  ) {
     return resultFail(requestId, kind, actorId, ["inventory_full"]);
   }
 
@@ -1897,7 +1904,10 @@ function validatePickupItem(
   if (newCount > def.maxStackSize) {
     fail(errors, "stack_size_exceeded");
   }
-  if (existing === 0 && !inventoryHasCapacity(snapshot.items, 1)) {
+  if (
+    existing === 0 &&
+    !inventoryHasCapacity(snapshot.items, 1, snapshot.maxInventorySlots)
+  ) {
     fail(errors, "inventory_full");
   }
 
@@ -2000,7 +2010,10 @@ function validateEquipItem(
       applyProjectedDelta(projected, currentlyEquipped, 1);
     }
   }
-  if (countInventorySlots(projected) > HARTHMERE_DEFAULT_INVENTORY_SLOTS) {
+  if (
+    countInventorySlots(projected) >
+    (snapshot.maxInventorySlots ?? HARTHMERE_DEFAULT_INVENTORY_SLOTS)
+  ) {
     fail(errors, "inventory_full");
   }
 
@@ -2035,7 +2048,10 @@ function validateUnequipItem(
   const errors: string[] = [];
   if (existing + 1 > def.maxStackSize)
     fail(errors, "inventory_stack_size_exceeded");
-  if (existing === 0 && !inventoryHasCapacity(snapshot.items, 1))
+  if (
+    existing === 0 &&
+    !inventoryHasCapacity(snapshot.items, 1, snapshot.maxInventorySlots)
+  )
     fail(errors, "inventory_full");
   if (errors.length > 0) return resultFail(requestId, kind, actorId, errors);
 

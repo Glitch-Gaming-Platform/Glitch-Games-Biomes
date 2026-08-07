@@ -9,6 +9,8 @@ import {
 import {
   HARTHMERE_CRAFT_COMPLETED_EVENT,
   HARTHMERE_INVENTORY_EVENT,
+  HARTHMERE_LOCAL_COMBAT_NPC_DAMAGE_EVENT,
+  type HarthmereLocalCombatNpcDamageEventDetail,
 } from "@/client/components/challenges/harthmereEvents";
 import {
   HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT,
@@ -16,7 +18,9 @@ import {
 } from "@/client/components/challenges/harthmereObjectInteractions";
 import {
   activeBiomesUIMapPinFromMarkerForTest,
+  readActiveBiomesUIMapPin,
   requestBiomesUILocateOnMap,
+  writeActiveBiomesUIMapPin,
 } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
@@ -55,6 +59,8 @@ import {
 } from "@/shared/harthmere/grove/grove_quest_gate";
 import { groveLandmarkWorldPosition } from "@/shared/harthmere/grove/grove_waypoints";
 import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
+import { canonicalSnapshotGroveNpcEntityId } from "@/shared/harthmere/snapshot_grove_ids";
+import { HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST } from "@/shared/harthmere/harthmere_native_quest_manifest";
 import { snapshotGroveAmbientLineForNpc } from "@/shared/harthmere/snapshot_grove_ambient_dialogue";
 import {
   HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT,
@@ -770,6 +776,12 @@ export function isSnapshotGroveQuestUnlocked(
 
 function snapshotGroveQuestCategoryRank(quest: SnapshotGroveQuest): number {
   // Lower number = earlier in the offer list.
+  if (quest.id === "read-the-jobs-board") {
+    // The Jobs Board is the directory for public work and the rest of the
+    // Grove economy. Hiding it behind Jackie's fountain/graduation queue made
+    // the board appear absent to new players even though the quest existed.
+    return -1;
+  }
   if (SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET.has(quest.id)) {
     return 0;
   }
@@ -799,6 +811,18 @@ function availableQuestsForNpc(npcId: string, state: SnapshotGroveQuestState) {
   ).sort(
     (a, b) =>
       snapshotGroveQuestCategoryRank(a) - snapshotGroveQuestCategoryRank(b)
+  );
+}
+
+export const SNAPSHOT_GROVE_MAX_VISIBLE_QUEST_OFFERS = 2;
+
+export function visibleSnapshotGroveQuestOffersForNpcForTest(
+  npcId: string,
+  state: SnapshotGroveQuestState
+) {
+  return availableQuestsForNpc(npcId, state).slice(
+    0,
+    SNAPSHOT_GROVE_MAX_VISIBLE_QUEST_OFFERS
   );
 }
 
@@ -962,13 +986,36 @@ export function requestSnapshotGroveLandmarkOnMapForBiomesUI(
     // retired Y=54 while live terrain is Y=71; pinning the raw value drops the
     // map destination 17 blocks under the courtyard, which is the
     // "mission cast buried" incident in snapshot_grove_content.ts.
-    worldPosition: groveLandmarkWorldPosition(marker),
+    worldPosition: snapshotGroveLandmarkPinPosition(marker),
     description: `${marker.area} - ${marker.kind}`,
   });
   if (pin) {
     requestBiomesUILocateOnMap(pin);
   }
   return pin;
+}
+
+export function snapshotGroveActiveMapPinForQuestStepForTest(
+  quest: SnapshotGroveQuest,
+  activeObjectiveIndex: number,
+  completedCount = 0
+) {
+  const safeActiveIndex = Math.max(
+    0,
+    Math.min(quest.objectives.length - 1, activeObjectiveIndex)
+  );
+  const marker = currentMarkerForQuest(quest, safeActiveIndex, completedCount);
+  if (!marker) return undefined;
+  const authoredStep = groveQuest(quest.id)?.steps[safeActiveIndex];
+  return activeBiomesUIMapPinFromMarkerForTest({
+    id: marker.id,
+    label: marker.label,
+    kind: marker.kind,
+    worldPosition: snapshotGroveLandmarkPinPosition(marker),
+    description: `${marker.area} - ${marker.kind}`,
+    ownerQuestId: quest.id,
+    ownerStepId: authoredStep?.id ?? `${quest.id}:${safeActiveIndex}`,
+  });
 }
 
 // Keep one navigation aid for the selected quest's current objective. Other
@@ -1009,6 +1056,21 @@ function pinAllSnapshotGroveQuestMarkers(
       snapshotGroveStepNavAidId(0),
       true
     );
+    const activePin = snapshotGroveActiveMapPinForQuestStepForTest(
+      quest,
+      safeActiveIndex,
+      snapshotGroveObjectiveCompletedCountForQuest(
+        state,
+        quest.id,
+        safeActiveIndex
+      )
+    );
+    if (activePin) {
+      // Persist the current lesson destination for the minimap/HUD arrow. This
+      // runs only when acceptance/progress changes, so a player can still pick
+      // a different manual destination between objectives.
+      writeActiveBiomesUIMapPin(activePin);
+    }
   }
   return safeActiveIndex;
 }
@@ -1019,6 +1081,13 @@ function clearAllSnapshotGroveQuestMarkers(mapManager: {
   mapManager.removeNavigationAid?.(SNAPSHOT_GROVE_NAV_AID_LEGACY);
   for (const id of snapshotGroveAllStepNavAidIds()) {
     mapManager.removeNavigationAid?.(id);
+  }
+  const activePin = readActiveBiomesUIMapPin();
+  if (
+    activePin?.ownerQuestId &&
+    SNAPSHOT_GROVE_QUEST_ID_SET.has(activePin.ownerQuestId)
+  ) {
+    writeActiveBiomesUIMapPin(undefined);
   }
 }
 
@@ -1360,13 +1429,18 @@ function snapshotGroveNpcIdFromTalkEvent(event: GardenHoseEvent) {
   if (npcId === JACKIE_ID) {
     return "jackie";
   }
-  return npcId ? snapshotGroveNpcIdFromEntityId(npcId) : undefined;
+  if (!npcId) return undefined;
+  const groveNpcId = snapshotGroveNpcIdFromEntityId(npcId);
+  if (groveNpcId) return groveNpcId;
+  return Object.entries(HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST).find(
+    ([, giver]) => Number(giver.entityId) === Number(npcId)
+  )?.[0];
 }
 
-function expectedOpenTabForObjective(objective: string | undefined) {
+function expectedOpenTabsForObjective(objective: string | undefined) {
   const text = (objective ?? "").toLowerCase();
   if (text.includes("map") || text.includes("marker")) {
-    return "map";
+    return ["map"];
   }
   if (
     text.includes("inventory") ||
@@ -1374,17 +1448,20 @@ function expectedOpenTabForObjective(objective: string | undefined) {
     text.includes("clothing") ||
     text.includes("hotbar")
   ) {
-    return "inventory";
+    return ["inventory"];
   }
   if (text.includes("recipe") || text.includes("craft")) {
-    return "crafting";
+    return ["crafting"];
   }
   if (
     text.includes("mail") ||
     text.includes("storage") ||
     text.includes("recovery")
   ) {
-    return "inbox";
+    // The lesson says "storage, mail, or recovery" and highlights both Mail
+    // and Bank. Either real panel is valid evidence; accepting only Inbox made
+    // the Bank highlight a trap that could never complete the objective.
+    return ["inbox", "banking"];
   }
   // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS:
   // The "Words Find the Right Ear" lesson opens the chat panel from the HUD;
@@ -1395,22 +1472,26 @@ function expectedOpenTabForObjective(objective: string | undefined) {
     text.includes("channel") ||
     text.includes("whisper")
   ) {
-    return "chat";
+    return ["chat"];
   }
   if (text.includes("journal")) {
-    return "journal";
+    return ["journal"];
   }
   if (text.includes("quest")) {
-    return "quests";
+    return ["quests"];
   }
   if (
     text.includes("guild") ||
     text.includes("party") ||
     text.includes("combat")
   ) {
-    return "tasks";
+    return ["tasks"];
   }
-  return undefined;
+  return [];
+}
+
+function expectedOpenTabForObjective(objective: string | undefined) {
+  return expectedOpenTabsForObjective(objective)[0];
 }
 
 function snapshotGroveMarkerIdForWorldObject(
@@ -1556,6 +1637,20 @@ function snapshotGroveEventFromWorldObjectInteraction(
     case "craft":
       if (kind === "craft") {
         return { ...base, kind: "craft" } as any;
+      }
+      return undefined;
+    case "combat":
+      // Lightweight Grove props are not native NPC entities, so their explicit
+      // F-practice action is the accessible fallback for the same target. A
+      // real Mouse0/weapon strike still arrives as npc_damage from the forward
+      // arc combat system and follows the normal combat path.
+      if (kind === "practice") {
+        return {
+          ...base,
+          kind: "npc_damage",
+          targetId: marker?.id,
+          targetName: marker?.label,
+        } as any;
       }
       return undefined;
     case "open_jobs_board":
@@ -1772,12 +1867,46 @@ export function snapshotGroveTutorNavLabelsForHighlights(
   return [...labels];
 }
 
+export function snapshotGroveTutorNavLabelsForObjectiveForTest(
+  trigger: string | undefined,
+  objective: string | undefined
+): string[] {
+  const highlights = groveHudHighlightsForTrigger(trigger, objective);
+  switch (trigger) {
+    case "open_tab":
+      return snapshotGroveTutorNavLabelsForHighlights(highlights);
+    case "inventory_change":
+    case "item_use":
+    case "item_update":
+      return ["Bag"];
+    case "craft":
+      return ["Craft"];
+    default:
+      // World pickups, proximity checks, NPC conversations, and direct object
+      // interactions have no HUD tab to open. Pulsing Bag merely because the
+      // objective names a sample/item points the player away from the marked
+      // world object and leaves stale guidance covering the screen.
+      return [];
+  }
+}
+
 function broadcastSnapshotGroveTutorHudLabels(
   labels: string[],
   chips: string[] = []
 ) {
   if (typeof window === "undefined") return;
   try {
+    (
+      window as typeof window & {
+        __snapshotGroveTutorHighlights?: {
+          labels: string[];
+          chips: string[];
+        };
+      }
+    ).__snapshotGroveTutorHighlights = {
+      labels: [...labels],
+      chips: [...chips],
+    };
     window.dispatchEvent(
       new CustomEvent(SNAPSHOT_GROVE_TUTOR_HIGHLIGHT_EVENT, {
         detail: {
@@ -1961,17 +2090,15 @@ function doesEventMatchSnapshotGroveTrigger(
       if (kind !== "open_tab") {
         return false;
       }
-      const expectedTab = expectedOpenTabForObjective(objective);
-      return !expectedTab || (event as any).tab === expectedTab;
+      const expectedTabs = expectedOpenTabsForObjective(objective);
+      return !expectedTabs.length || expectedTabs.includes((event as any).tab);
     }
     case "interact":
       return (
         kind === "open_station" ||
         kind === "open_shop" ||
         kind === "inspect_frame" ||
-        kind === "place_placeable" ||
-        kind === "start_collide_placeable" ||
-        kind === "start_collide_entity"
+        kind === "place_placeable"
       );
     case "inventory_change":
       return snapshotGroveInventoryEventMatchesObjective(
@@ -2294,23 +2421,43 @@ function useSnapshotGroveQuestState() {
   return state;
 }
 
+export function snapshotGroveNpcIdForEntityForTest(input: {
+  entityId: BiomesId;
+  labelText?: string;
+  entityDescriptionText?: string;
+  defaultDialog?: string;
+}) {
+  const canonicalEntityId = canonicalSnapshotGroveNpcEntityId(input.entityId);
+  if (canonicalEntityId === JACKIE_ID) {
+    return "jackie";
+  }
+  const labelMappedId = snapshotGroveNpcIdForDialogLabel({
+    label: input.labelText,
+    entityDescriptionText: input.entityDescriptionText,
+    defaultDialog: input.defaultDialog,
+  });
+  const seededId = snapshotGroveNpcIdFromEntityId(canonicalEntityId);
+  // The visible label is the safest compatibility signal when a retained
+  // world still contains a legacy actor id. Prefer it over arithmetic id-band
+  // inference so a stale replacement cannot make Jackie's Grove offers fall
+  // through to the unrelated Road Ahead conversation.
+  return labelMappedId ?? seededId;
+}
+
 function npcForEntity(
   entityId: BiomesId,
   labelText?: string,
   entityDescriptionText?: string,
   defaultDialog?: string
 ): SnapshotGroveNpc | undefined {
-  if (entityId === JACKIE_ID) {
-    return SNAPSHOT_GROVE_NPCS.find((npc) => npc.id === "jackie");
-  }
-  const seededId = snapshotGroveNpcIdFromEntityId(entityId);
-  const labelMappedId = snapshotGroveNpcIdForDialogLabel({
-    label: labelText,
+  const npcId = snapshotGroveNpcIdForEntityForTest({
+    entityId,
+    labelText,
     entityDescriptionText,
     defaultDialog,
   });
   return SNAPSHOT_GROVE_NPCS.find(
-    (npc) => npc.id === (seededId ?? labelMappedId)
+    (npc) => npc.id === npcId
   );
 }
 
@@ -2467,6 +2614,10 @@ export function useSnapshotGroveNpcDialog(
           state.completedQuestIds
         );
     const availableQuests = availableQuestsForNpc(npc.id, state);
+    const visibleQuestOffers = visibleSnapshotGroveQuestOffersForNpcForTest(
+      npc.id,
+      state
+    );
     const availableQuest = availableQuests[0];
     const quest = activeQuest ?? completedQuest ?? availableQuest;
     const objectiveIndex = quest
@@ -2478,11 +2629,9 @@ export function useSnapshotGroveNpcDialog(
     const actions: TalkDialogStepAction[] = [];
 
     if (!activeQuest && availableQuests.length) {
-      // Do not truncate authored offers. Several Grove residents own more
-      // than three economy/tutorial quests; limiting this list made every
-      // later quest permanently unreachable on a fresh player. The talk
-      // dialog already provides its own scroll boundary for long action lists.
-      for (const option of availableQuests) {
+      // Keep the conversation readable. The sorted catalogue remains intact;
+      // accepting or completing one offer exposes the next queued lesson.
+      for (const option of visibleQuestOffers) {
         actions.push({
           name: `Start ${option.title}`,
           type: actions.length === 0 ? "primary" : "normal",
@@ -2557,7 +2706,7 @@ export function useSnapshotGroveNpcDialog(
     const questCopy = completedQuest
       ? npcQuestDialogueCopy(npc, completedQuest, state, objectiveIndex)
       : !activeQuest && availableQuests.length > 1
-        ? `<text>I have a few short lessons set aside if you have a quiet minute. Pick whichever feels useful first.</text>`
+        ? `<text>I keep two short lessons on the board at a time so the list stays readable. Finish or accept one and I will put the next one up.</text>`
         : quest
           ? npcQuestDialogueCopy(npc, quest, state, objectiveIndex)
           : `<text>${defaultDialog || npc.shortDescription}</text>`;
@@ -2671,6 +2820,36 @@ export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
       gardenHose.on("anyEvent", handler);
       return () => gardenHose.off("anyEvent", handler);
     }, [gardenHose, localPlayer.player.position, mapManager, resources]);
+
+    useEffect(() => {
+      if (typeof window === "undefined") {
+        return;
+      }
+      const handler = (browserEvent: Event) => {
+        const detail = (
+          browserEvent as CustomEvent<HarthmereLocalCombatNpcDamageEventDetail>
+        ).detail;
+        if (!detail || detail.damage <= 0) {
+          return;
+        }
+        // Local forward-arc combat owns its lightweight practice targets, while
+        // Grove objectives consume the same GardenHose npc_damage contract as
+        // native NPC combat. Bridge only a resolved damaging contact; misses,
+        // animation-only clicks, and blocked safe-zone swings cannot progress.
+        gardenHose.publish({
+          kind: "npc_damage",
+          targetId: detail.targetId,
+          targetName: detail.targetName,
+          damage: detail.damage,
+        } as unknown as GardenHoseEvent);
+      };
+      window.addEventListener(HARTHMERE_LOCAL_COMBAT_NPC_DAMAGE_EVENT, handler);
+      return () =>
+        window.removeEventListener(
+          HARTHMERE_LOCAL_COMBAT_NPC_DAMAGE_EVENT,
+          handler
+        );
+    }, [gardenHose]);
 
     useEffect(() => {
       if (typeof window === "undefined") {
@@ -2912,7 +3091,10 @@ export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
       const trigger = currentTriggerForQuest(quest, state.activeObjectiveIndex);
       const objective = quest.objectives[state.activeObjectiveIndex];
       const chips = groveHudHighlightsForTrigger(trigger, objective);
-      const labels = snapshotGroveTutorNavLabelsForHighlights(chips);
+      const labels = snapshotGroveTutorNavLabelsForObjectiveForTest(
+        trigger,
+        objective
+      );
       broadcastSnapshotGroveTutorHudLabels(labels, chips);
     }, [
       state.activeObjectiveIndex,

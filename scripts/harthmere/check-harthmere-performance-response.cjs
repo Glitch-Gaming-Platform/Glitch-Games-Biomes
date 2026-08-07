@@ -48,6 +48,13 @@ const questObjectRenderer = fs.readFileSync(
   ),
   "utf8"
 );
+const foodStaminaRuntime = fs.readFileSync(
+  path.join(
+    root,
+    "src/client/components/challenges/LocalDevHarthmereFoodStaminaSystem.tsx"
+  ),
+  "utf8"
+);
 function ok(cond, msg) {
   if (!cond) {
     console.error(`FAIL ${msg}`);
@@ -160,8 +167,19 @@ ok(
   "gathering nodes throttle terrain probes and cull out-of-range geometry/lights"
 );
 ok(
-  questObjectRenderer.includes("this.debugRefreshSeconds = 0.5"),
-  "quest marker debug snapshots are throttled to 2 Hz"
+  questObjectRenderer.includes("this.debugRefreshSeconds = 0.5") &&
+    questObjectRenderer.includes("this.groundRefreshSeconds = 0.25") &&
+    !questObjectRenderer.includes("frustumCulled = false"),
+  "quest markers throttle debug/terrain work and retain frustum culling"
+);
+ok(
+  foodStaminaRuntime.includes(
+    "keepHarthmereFoodStaminaClockCurrentInMemory(before, Date.now())"
+  ) &&
+    !/server_owns_keep_clock[\s\S]{0,220}writeHarthmereFoodStaminaState\(/.test(
+      foodStaminaRuntime
+    ),
+  "server-owned stamina ticks do not persist or dispatch a full save every five seconds"
 );
 if (process.exitCode) process.exit(process.exitCode);
 console.log("\nHarthmere current performance response checks passed.");

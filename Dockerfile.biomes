@@ -327,6 +327,12 @@ COPY --chown=nextjs:nodejs deploy/ deploy/
 COPY --chown=nextjs:nodejs scripts/ scripts/
 COPY --chown=nextjs:nodejs b ./b
 
+# Fail the immutable image build if generated code points at bucket bytes that
+# were hydrated in another Git worktree or omitted from the Docker context.
+# public/buckets is intentionally Git-ignored, so source-only checks cannot
+# prove that the final image contains the same asset boundary.
+RUN node scripts/harthmere/check-snapshot-asset-version-boundary.cjs /app
+
 RUN python3 scripts/assets/install_gltfpack.py --output "$BIOMES_GLTFPACK"
 
 RUN set -eux; \

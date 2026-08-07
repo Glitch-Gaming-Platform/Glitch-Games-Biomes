@@ -177,6 +177,51 @@ describe("HarthmereSoundEffectsScript", () => {
     script.clear();
   });
 
+  it("holds short combat cues until Web Audio is running instead of dropping them", () => {
+    const windowTarget = new EventTarget();
+    (globalThis as any).window = windowTarget;
+    (globalThis as any).CustomEvent = TestCustomEvent;
+    let running = false;
+    const played: string[] = [];
+    const audioManager = {
+      isRunning: () => running,
+      preloadPath() {},
+      playPath() {},
+      playPathAt(path: string) {
+        played.push(path);
+      },
+    } as unknown as AudioManager;
+    const script = new HarthmereSoundEffectsScript(
+      audioManager,
+      new GardenHose(),
+      emptyTable()
+    );
+
+    windowTarget.dispatchEvent(
+      new TestCustomEvent(HARTHMERE_SOUND_EFFECT_EVENT, {
+        id: "fireball_explosion",
+        position: [1, 2, 3],
+        durationSeconds: 1.2,
+      })
+    );
+    assert.deepEqual(played, []);
+    assert.equal(
+      (windowTarget as any).__harthmereSoundEffectsDebug.pendingRequestCount,
+      1
+    );
+
+    running = true;
+    script.tick();
+    assert.deepEqual(played, [
+      "/assets/harthmere/audio/sfx/fireball_explosion.webm",
+    ]);
+    assert.equal(
+      (windowTarget as any).__harthmereSoundEffectsDebug.pendingRequestCount,
+      0
+    );
+    script.clear();
+  });
+
   it("uses authoritative player status transitions for down, death, and revive", () => {
     const windowTarget = new EventTarget();
     (globalThis as any).window = windowTarget;
@@ -315,5 +360,97 @@ describe("HarthmereSoundEffectsScript", () => {
       },
     ]);
     script.clear();
+  });
+
+  it("plays a confirmed player melee hit from the replicated ECS health mutation exactly once", () => {
+    const windowTarget = new EventTarget();
+    (globalThis as any).window = windowTarget;
+    (globalThis as any).CustomEvent = TestCustomEvent;
+    const played: Array<{
+      path: string;
+      position: readonly number[];
+      options: Record<string, number | undefined>;
+    }> = [];
+    const audioManager = {
+      playPath() {},
+      playPathAt(
+        path: string,
+        position: readonly number[],
+        options: Record<string, number | undefined>
+      ) {
+        played.push({ path, position, options });
+      },
+    } as unknown as AudioManager;
+    const nowSeconds = Date.now() / 1000;
+    const attacker: any = {
+      id: 301,
+      player_status: {},
+      emote: {
+        emote_type: "attack1",
+        emote_start_time: nowSeconds - 0.2,
+        emote_expiry_time: nowSeconds + 0.4,
+      },
+    };
+    const target: any = {
+      id: 302,
+      position: { v: [11, 12, 13] },
+      health: {},
+    };
+    let postApply: ((changes: any[]) => void) | undefined;
+    const table = {
+      contents: () => [attacker, target],
+      get: (id: number) => (id === attacker.id ? attacker : target),
+      events: {
+        on(_name: string, listener: (changes: any[]) => void) {
+          postApply = listener;
+        },
+        off() {},
+      },
+    } as any;
+    const script = new HarthmereSoundEffectsScript(
+      audioManager,
+      new GardenHose(),
+      table
+    );
+
+    target.health = {
+      hp: 80,
+      lastDamageTime: nowSeconds,
+      lastDamageSource: {
+        kind: "attack",
+        attacker: attacker.id,
+        dir: [1, 0, 0],
+      },
+    };
+    const change = [{ kind: "update", tick: 1, entity: { id: target.id } }];
+    postApply?.(change);
+    postApply?.(change);
+
+    assert.deepEqual(played, [
+      {
+        path: "/assets/harthmere/audio/sfx/melee_hit_unarmed_slap.webm",
+        position: [11, 12, 13],
+        options: {
+          durationSeconds: 0.15,
+          refDistance: 3,
+          maxDistance: 48,
+          rolloffFactor: 0.85,
+        },
+      },
+    ]);
+    assert.equal(
+      (windowTarget as any).__harthmereSoundEffectsDebug
+        .confirmedMeleeHitCount,
+      1
+    );
+    assert.equal(
+      (windowTarget as any).__harthmereSoundEffectsDebug.requestedPlayCount,
+      1
+    );
+    script.clear();
+    assert.equal(
+      (windowTarget as any).__harthmereSoundEffectsDebug,
+      undefined
+    );
   });
 });

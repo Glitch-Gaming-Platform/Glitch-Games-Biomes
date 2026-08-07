@@ -44,6 +44,23 @@ export function shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttack(input
   );
 }
 
+export function shouldRouteHarthmereGrovePracticeDummyMouseAttack(input: {
+  practiceObjectiveActive: boolean;
+  playerPosition?: readonly [number, number, number];
+  dummyPosition: readonly [number, number];
+  attackReach: number;
+  targetRadius: number;
+}): boolean {
+  if (!input.practiceObjectiveActive || !input.playerPosition) {
+    return false;
+  }
+  const distance = Math.hypot(
+    input.playerPosition[0] - input.dummyPosition[0],
+    input.playerPosition[2] - input.dummyPosition[1]
+  );
+  return distance <= input.attackReach + input.targetRadius + 0.2;
+}
+
 export function harthmereLiveModeCombatTargetIdForSeed(input: {
   seedId: string;
   idOffset: number;

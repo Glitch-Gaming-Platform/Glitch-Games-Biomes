@@ -12,6 +12,7 @@ import {
   HARTHMERE_STAMINA_GAMEPLAY_TICK_MS,
   harthmereCampfireWarmthHealDecisionForTest,
   harthmereClientStaminaTickPlanForTest,
+  keepHarthmereFoodStaminaClockCurrentInMemory,
   normalizeFoodStaminaStateForTest,
 } from "./LocalDevHarthmereFoodStaminaSystem";
 
@@ -212,6 +213,23 @@ describe("LocalDevHarthmereFoodStaminaSystem", () => {
       }),
       "server_owns_frozen"
     );
+  });
+
+  it("keeps the server-owned compatibility clock current without changing gameplay state", () => {
+    const before = defaultHarthmereFoodStaminaState("local-player", NOW_MS);
+    const after = keepHarthmereFoodStaminaClockCurrentInMemory(
+      before,
+      NOW_MS + HARTHMERE_STAMINA_GAMEPLAY_TICK_MS
+    );
+
+    assert.notEqual(after, before);
+    assert.equal(
+      after.lastStaminaTickMs,
+      NOW_MS + HARTHMERE_STAMINA_GAMEPLAY_TICK_MS
+    );
+    assert.equal(after.stamina, before.stamina);
+    assert.deepEqual(after.inventory, before.inventory);
+    assert.deepEqual(after.plots, before.plots);
   });
 
   it("suppresses the client campfire heal while the server owns HP (live snapshot present)", () => {

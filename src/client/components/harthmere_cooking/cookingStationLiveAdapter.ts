@@ -8,6 +8,10 @@ import {
   type HarthmereCookingRecipe,
 } from "@/shared/harthmere/mmo_farming_food_stamina";
 import { harthmereSublevelYieldMultiplier } from "@/shared/harthmere/harthmere_sublevel_benefits";
+import {
+  harthmereNativeBiomesIdForItemId,
+  harthmereNativeItemIdForBiomesId,
+} from "@/shared/harthmere/harthmere_native_item_ids";
 
 // Client-side projection + submit adapter for the timer-based cooking station
 // panel. Mirrors craftingStationLiveAdapter.ts: pure helpers compute the visible
@@ -40,6 +44,57 @@ export interface HarthmereCookSnapshot {
   availableStationKinds: string[];
   cookingSkillLevel?: number;
   updatedAtMs: number;
+}
+
+type NativeCookingInventoryLike = {
+  items?: Array<
+    | { item: { id: number }; count: bigint | number }
+    | null
+    | undefined
+  >;
+  hotbar?: Array<
+    | { item: { id: number }; count: bigint | number }
+    | null
+    | undefined
+  >;
+};
+
+/**
+ * Native ECS owns cooking ingredients in production mode. The farming-food
+ * snapshot still carries a legacy Redis inventory for old saves, so project
+ * every native-backed recipe input over that mirror before deciding whether
+ * the Cook button is enabled. This prevents a real ingredient in the backpack
+ * from being rendered as "missing" (Carlo's Grove skewer regression).
+ */
+export function projectNativeHarthmereCookingInventory(
+  legacyInventory: Record<string, number>,
+  nativeInventory: NativeCookingInventoryLike | undefined
+): Record<string, number> {
+  if (!nativeInventory) return { ...legacyInventory };
+  const nativeCounts: Record<string, number> = {};
+  for (const stack of [
+    ...(nativeInventory.items ?? []),
+    ...(nativeInventory.hotbar ?? []),
+  ]) {
+    if (!stack) continue;
+    const itemId = harthmereNativeItemIdForBiomesId(stack.item.id);
+    if (!itemId) continue;
+    nativeCounts[itemId] =
+      (nativeCounts[itemId] ?? 0) + Math.max(0, Number(stack.count));
+  }
+  const next = { ...legacyInventory };
+  const nativeBackedRecipeInputs = new Set(
+    Object.values(HARTHMERE_COOKING_RECIPES).flatMap((recipe) =>
+      Object.keys(recipe.inputs)
+    )
+  );
+  for (const itemId of nativeBackedRecipeInputs) {
+    // Only overwrite ids represented by the curated native manifest. Unknown
+    // legacy-only ingredients remain readable from the Redis snapshot.
+    if (harthmereNativeBiomesIdForItemId(itemId) === undefined) continue;
+    next[itemId] = nativeCounts[itemId] ?? 0;
+  }
+  return next;
 }
 
 export interface HarthmereCookIngredientLine {

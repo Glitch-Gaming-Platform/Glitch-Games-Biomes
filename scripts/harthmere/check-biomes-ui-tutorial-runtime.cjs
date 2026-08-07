@@ -15,33 +15,36 @@ function compile(src) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText;
 }
-function loadFile(abs) {
-  const raw = fs.readFileSync(abs, "utf8");
-  const js = compile(raw);
-  const m = new Module(abs);
-  m.filename = abs.replace(/\.ts$/, ".js");
-  m.paths = Module._nodeModulePaths(path.dirname(m.filename));
-  m._compile(js, m.filename);
-  return m.exports;
-}
-
-// Compile uniqueIds first, then patch require resolution for the tutorial map.
-const uniqueIdsAbs = path.join(ROOT, "src/client/components/biomes_ui/uniqueIds.ts");
 const mapAbs = path.join(ROOT, "src/client/components/biomes_ui/tutorial/tutorialMissionMap.ts");
-const uniqueIdsExports = loadFile(uniqueIdsAbs);
 
-const mapRaw = fs.readFileSync(mapAbs, "utf8");
-const mapJs = compile(mapRaw);
-// Replace "../uniqueIds" require with a literal we control.
-const mapJsPatched = mapJs.replace(
-  /require\(["']\.\.\/uniqueIds["']\)/g,
-  "(globalThis.__UI_IDS__)"
-);
-globalThis.__UI_IDS__ = uniqueIdsExports;
-const m = new Module(mapAbs);
-m.filename = mapAbs.replace(/\.ts$/, ".js");
-m._compile(mapJsPatched, m.filename);
-const map = m.exports;
+// Install the same small alias-aware TypeScript require path that the runtime
+// uses. The old checker patched one ../uniqueIds import by string replacement;
+// as soon as tutorialMissionMap gained a real @/shared dependency, this harness
+// failed before running an assertion even though the product code was valid.
+// Resolve dependencies recursively so future authored cue helpers cannot make
+// the fast smoke lie for the same reason.
+for (const extension of [".ts", ".tsx"]) {
+  Module._extensions[extension] = (module, filename) => {
+    module._compile(compile(fs.readFileSync(filename, "utf8")), filename);
+  };
+}
+const originalResolveFilename = Module._resolveFilename;
+Module._resolveFilename = function (request, parent, isMain, options) {
+  if (typeof request === "string" && request.startsWith("@/")) {
+    const stem = path.join(ROOT, "src", request.slice(2));
+    for (const candidate of [
+      stem,
+      `${stem}.ts`,
+      `${stem}.tsx`,
+      path.join(stem, "index.ts"),
+      path.join(stem, "index.tsx"),
+    ]) {
+      if (fs.existsSync(candidate)) return candidate;
+    }
+  }
+  return originalResolveFilename.call(this, request, parent, isMain, options);
+};
+const map = require(mapAbs);
 
 let ok = true;
 function check(label, cond) {

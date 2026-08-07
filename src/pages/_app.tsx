@@ -14,6 +14,7 @@ import "@/client/styles/outfit-stand.css";
 import "@/client/styles/social.css";
 import "@/client/styles/splash.css";
 import "@/client/styles/static.css";
+import { HarthmereGlitchInstallBootstrap } from "@/client/game/glitch/harthmere_glitch_install_bootstrap";
 import { useInstallTrackers } from "@/client/util/ad_helpers";
 import { installHarthmereStorageHardening } from "@/client/util/harthmere_storage_hardening";
 import { installGlitchMutableHotfixClient } from "@/client/util/glitch_mutable_hotfix";
@@ -22,7 +23,6 @@ import "leaflet/dist/leaflet.css";
 import type { AppProps } from "next/app";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
-import { HarthmereGlitchInstallBootstrap } from "@/client/game/glitch/harthmere_glitch_install_bootstrap";
 
 // HARTHMERE_STORAGE_HARDENING: make localStorage/sessionStorage safe as early as
 // possible (module load, before any component renders or hydration reads storage)
@@ -51,7 +51,10 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   }
   return (
     <>
-      <HarthmereGlitchInstallBootstrap />
+      <HarthmereGlitchInstallBootstrap
+        serverRenderedUserId={pageProps.userId}
+        serverRenderedObserverMode={pageProps.observerMode}
+      />
       <Component {...pageProps} />
     </>
   );

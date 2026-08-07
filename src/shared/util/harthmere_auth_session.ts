@@ -8,6 +8,20 @@ export type HarthmereBiomesAuthSession = {
 
 const STORAGE_KEY = "harthmere.biomesAuth";
 const GLOBAL_KEY = "__HARTHMERE_BIOMES_AUTH_SESSION";
+const INSTALL_ID_QUERY_KEYS = ["install_id", "installId"] as const;
+const INSTALL_ID_STORAGE_KEYS = [
+  "glitch.install.id",
+  "biomes.localDev.harthmere.localInstallId",
+] as const;
+
+function nonEmptyString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function usableInstallId(value: unknown) {
+  const installId = nonEmptyString(value);
+  return installId && !installId.startsWith("local-") ? installId : undefined;
+}
 
 function browserWindow() {
   return typeof window === "undefined" ? undefined : (window as any);
@@ -68,8 +82,7 @@ export function rememberHarthmereBiomesAuthSession(
 }
 
 export function readHarthmereBiomesAuthSession():
-  | HarthmereBiomesAuthSession
-  | undefined {
+  HarthmereBiomesAuthSession | undefined {
   const win = browserWindow();
   if (!win) {
     return undefined;
@@ -79,6 +92,87 @@ export function readHarthmereBiomesAuthSession():
     normalizeSession(win[GLOBAL_KEY]) ??
     readStorage(win.sessionStorage) ??
     readStorage(win.localStorage)
+  );
+}
+
+export function harthmereInstallIdFromSearch(search: string) {
+  const params = new URLSearchParams(search);
+  for (const key of INSTALL_ID_QUERY_KEYS) {
+    const installId = usableInstallId(params.get(key));
+    if (installId) {
+      return installId;
+    }
+  }
+  return undefined;
+}
+
+export function readHarthmereInstallId(): string | undefined {
+  const win = browserWindow();
+  if (!win) {
+    return undefined;
+  }
+
+  const queryInstallId = harthmereInstallIdFromSearch(win.location.search);
+  if (queryInstallId) {
+    return queryInstallId;
+  }
+
+  const sessionInstallId = usableInstallId(
+    readHarthmereBiomesAuthSession()?.installId
+  );
+  if (sessionInstallId) {
+    return sessionInstallId;
+  }
+
+  for (const key of INSTALL_ID_STORAGE_KEYS) {
+    try {
+      const installId = usableInstallId(win.localStorage?.getItem(key));
+      if (installId) {
+        return installId;
+      }
+    } catch {
+      // Third-party iframe storage can be unavailable in private windows.
+    }
+  }
+  return undefined;
+}
+
+export function hasHarthmereInstallIdentity() {
+  return Boolean(readHarthmereInstallId());
+}
+
+export function buildHarthmereInstallRecoveryUrl(
+  href: string,
+  installId: string
+) {
+  const url = new URL(href);
+  if (url.pathname === "/" || url.pathname.startsWith("/at")) {
+    // Temporary install users can have labels such as "Guest User". That
+    // label is not a durable public slug, so recovery must return to the
+    // canonical install entrypoint rather than reloading /at/<label>.
+    url.pathname = "/at";
+  }
+  for (const key of INSTALL_ID_QUERY_KEYS) {
+    url.searchParams.delete(key);
+  }
+  url.searchParams.delete("anon");
+  url.searchParams.set("install_id", installId);
+  url.searchParams.set("glitch_auto_play", "1");
+  return url.toString();
+}
+
+export function reloadPreservingHarthmereInstallIdentity() {
+  const win = browserWindow();
+  if (!win) {
+    return;
+  }
+  const installId = readHarthmereInstallId();
+  if (!installId) {
+    win.location.reload();
+    return;
+  }
+  win.location.replace(
+    buildHarthmereInstallRecoveryUrl(win.location.href, installId)
   );
 }
 

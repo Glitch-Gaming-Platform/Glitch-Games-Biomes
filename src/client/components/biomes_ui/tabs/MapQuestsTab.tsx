@@ -844,7 +844,12 @@ function ensureMapTabStyles() {
 export const MapQuestsTab: React.FunctionComponent<{
   adapter?: MapAdapter;
   contextualQuestPanel?: React.ReactNode;
-}> = ({ adapter, contextualQuestPanel }) => {
+  showContextualQuestPanelWithActiveQuest?: boolean;
+}> = ({
+  adapter,
+  contextualQuestPanel,
+  showContextualQuestPanelWithActiveQuest = false,
+}) => {
   const [zoom, setZoom] = React.useState(1);
   const [pan, setPan] = React.useState({ x: 0, y: 0 });
   const [focusedMarkerId, setFocusedMarkerId] = React.useState<string | null>(
@@ -1812,7 +1817,12 @@ export const MapQuestsTab: React.FunctionComponent<{
       </section>
       <section aria-label="Map panels" style={sidePanelStyle}>
         {activePanelQuest ? (
-          <MapActiveQuestPanel quest={activePanelQuest} />
+          <>
+            {showContextualQuestPanelWithActiveQuest
+              ? contextualQuestPanel
+              : null}
+            <MapActiveQuestPanel quest={activePanelQuest} />
+          </>
         ) : (
           contextualQuestPanel
         )}

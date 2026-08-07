@@ -308,11 +308,11 @@ export const GROVE_ECONOMY_STARTER_LANDMARKS: SnapshotGroveLandmark[] = [
   },
   {
     id: "econ_kit_mailbag",
-    label: "Kit's Mailbag Stand",
+    label: "Kit's Parcel Stand",
     position: [
-      groveEconomyStarterFountainPosition(9, 9)[0],
-      groveEconomyStarterFountainPosition(9, 9)[1] + 1,
-      groveEconomyStarterFountainPosition(9, 9)[2],
+      groveEconomyStarterFountainPosition(12, 5)[0],
+      groveEconomyStarterFountainPosition(12, 5)[1] + 1,
+      groveEconomyStarterFountainPosition(12, 5)[2],
     ],
     kind: "interactable",
     area: "the_grove",
@@ -333,6 +333,20 @@ export const GROVE_ECONOMY_STARTER_LANDMARKS: SnapshotGroveLandmark[] = [
     kind: "resource",
     area: "muck_edges",
     visibleOnWorldMap: true,
+  },
+  {
+    id: "econ_carlo_campfire",
+    label: "Carlo's Campfire",
+    position: [
+      groveEconomyStarterFountainPosition(2, -8)[0],
+      groveEconomyStarterFountainPosition(2, -8)[1] + 1,
+      groveEconomyStarterFountainPosition(2, -8)[2],
+    ],
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["econ_carlo_festival_skewers"],
+    visibleOnWorldMap: true,
+    activeQuestOnly: true,
   },
   {
     id: "econ_carlo_cookpot",
@@ -665,7 +679,7 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     hook: "Kit has a heavy parcel for Luis that nobody wants to carry. Whoever does it gets the best wage on the board.",
     objectives: [
       "Hear Kit's parcel terms.",
-      "Pick up the parcel at Kit's mailbag stand.",
+      "Pick up the parcel from Kit's marked parcel stand.",
       "Carry the parcel down the Old Grove Road to Luis's cart.",
       "Hand the parcel to Luis at his cart.",
       "Return the receipt to Kit.",
@@ -770,11 +784,11 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     title: "Carlo's Festival Skewers",
     giverNpcId: "carlo_the_cook",
     area: "The Grove Fountain",
-    hook: "Carlo has a festival cook order and needs a runner-cook to grill skewers at the fountain workbench. Pays the best wage on the starter board.",
+    hook: "Carlo has a festival cook order and needs a runner-cook to grill skewers at the campfire inside his fountain house. Pays the best wage on the starter board.",
     objectives: [
       "Take Carlo's skewer recipe.",
       "Gather the ingredients at the marked materials basket.",
-      "Cook the skewers at the Fountain Workbench.",
+      "Cook the skewers at Carlo's Campfire inside the house.",
       "Deliver the cooked skewer to Carlo's cookpot.",
       "Settle the wage with Carlo.",
     ],
@@ -782,7 +796,7 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     markerIds: [
       "npc_carlo_the_cook",
       "grove_resource_basket",
-      "grove_fountain_workbench",
+      "econ_carlo_campfire",
       "econ_carlo_cookpot",
       "npc_carlo_the_cook",
     ],

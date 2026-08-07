@@ -9,6 +9,15 @@ For the August 6, 2026 no-load/capacity incident, Azure log signatures, node
 metrics, live repair, and the six-node workload-profile guardrail, read
 `docs/production/biomes-containerapp-workload-profile-capacity-20260806.md`.
 
+For the August 6, 2026 terrain-streaming failure that reloaded an install-backed
+player into the observer/login screen, read
+`docs/production/biomes-sync-watcher-install-recovery-20260806.md`. That incident
+was not an Azure rollout, replica restart, authentication rejection, or dead
+WebSocket. A transient self-delete detached Sync's spatial watcher from the
+recreated player, and the fallback reload then lost the Glitch install route.
+Do not respond to this signature by redeploying or changing traffic before
+checking the watcher/delete and install-route evidence described there.
+
 ## Automatic additive Harthmere world extension
 
 Harthmere is regular production world content and is enabled by default. The
@@ -86,6 +95,15 @@ when you need the full local container proof:
 scripts/glitch/deploy-production-local-redis-smoke.sh --local-smoke
 ```
 
+`public/buckets` is intentionally Git-ignored and therefore differs between
+worktrees unless each workspace hydrates or exports the same generated asset
+set. The guarded deploy now fails unless every path in
+`src/galois/js/interface/gen/asset_versions.json` exists in the
+current workspace, repeats the same check inside the final Docker image, and
+requests current versioned runtime canaries from the concrete zero-traffic
+Azure revision before promotion. Do not copy only source changes into a clean
+worktree and assume its local snapshot bucket is current.
+
 Before an expensive production rollout, run the complete local rehearsal. It
 boots the production web role against disposable Redis, completes the same
 terrain/outpost/ECS/connector/grounding reconciliation used by the in-VNet job,
@@ -148,10 +166,12 @@ The production phase is intentionally ordered as one transaction:
 4. Run forced terrain maintenance and require the complete 2,304-foundation /
    576-surface audit, including zero atmospheric Muck and zero retired terrain.
 5. Validate the concrete revision with replica readiness, zero restarts, game
-   HTML, runtime/map/shared-state APIs, sync reachability, and production asset
-   checks. Do not run browser E2E against production by default; rendered E2E
-   belongs in the exact-image local rehearsal, where WebGL support is known and
-   test failures cannot mutate or delay production.
+   HTML, runtime/map/shared-state APIs, sync reachability, and current
+   content-addressed asset canaries. These bucket checks must pass on the
+   candidate revision FQDN before traffic moves, then pass again on the public
+   production FQDN after promotion. Do not run browser E2E against production
+   by default; rendered E2E belongs in the exact-image local rehearsal, where
+   WebGL support is known and test failures cannot mutate or delay production.
 6. Run production reconciliation, with the connector last, and require the
    reconciliation readiness marker and persisted read-back before traffic.
 7. Move traffic only to the verified candidate, deploy the matching simulation
@@ -1371,6 +1391,27 @@ launch before closing the incident. See
 `docs/production/biomes-containerapp-workload-profile-capacity-20260806.md` for
 the full query and recovery runbook.
 
+### Problem: Versioned bucket asset returns `403 source=remote-miss`
+
+This means the running image's generated asset index points at bytes that are
+not packaged under `public/buckets/biomes-static`, and the public fallback could
+not supply them. Treat it as an invalid release artifact, not as a CORS issue.
+
+Confirm the exact failing path and the local boundary before rebuilding:
+
+```bash
+curl -sS -D - -o /dev/null \
+  https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/buckets/biomes-static/<asset-path>
+node scripts/harthmere/check-snapshot-asset-version-boundary.cjs .
+```
+
+The response header identifies `source=local`, `source=remote`, or
+`source=remote-miss`. Hydrate or export the missing generated assets in the
+same workspace that will run Docker, build a new immutable tag, and use the
+normal guarded rollout. Never resume the failing tag. See
+`docs/production/biomes-containerapp-static-asset-boundary-20260806.md` for the
+incident analysis and recovery details.
+
 ---
 
 ## 18. Deployment checklist
@@ -1379,6 +1420,7 @@ Before build:
 
 - [ ] `Dockerfile.biomes` starts `run-glitch-local-game-stack.sh`.
 - [ ] `Dockerfile.biomes.dockerignore` excludes host `node_modules` and `.next/cache`, but retains `.next` and `dist`.
+- [ ] `node scripts/harthmere/check-snapshot-asset-version-boundary.cjs .` passes in the exact worktree used for Docker.
 - [ ] Docker's Linux `npm ci --omit=dev` closure and Node 24 native-runtime audit pass.
 - [ ] `NEXT_PUBLIC_GLITCH_SYNC_BASE_URL` is set to the production web origin; no external `:4900`.
 - [ ] Build env includes `BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1`, `BIOMES_CREATE_LOCAL_DEV_TERRAIN=1`, server/client Harthmere X offsets of `1600`, `NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1`, `NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=0`, `NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=0`, `NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE=1`, and `NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE=1`.
@@ -1397,6 +1439,7 @@ Before deploy:
 - [ ] Redis persistence is `dir=/var/lib/redis`, `dbfilename=dump.rdb`, `save="900 1 300 10 60 10000"`, and `rdb_last_bgsave_status=ok`.
 - [ ] Production Redis snapshot hash matches `snapshot_backup.json`, and required seed keys are present (`required_seed_keys_present=3/3`).
 - [ ] Docker image builds locally.
+- [ ] The image build's internal asset-boundary check passes; no `--skip-build` rollout reuses an image that failed a versioned bucket canary.
 - [ ] Local Docker unified runtime starts or validates Redis, populates the installed snapshot only when explicitly requested, then starts the web stack, Anima, and Gaia.
 - [ ] Local `/api/glitch/harthmere` returns `valid:true`.
 - [ ] Image is pushed to ACR.
@@ -1405,6 +1448,7 @@ Before deploy:
 - [ ] Internal Container App `biomes-simulation-vnet` uses workload profile `d4-prod`, `4 CPU`, `16Gi`, internal target port `3000`, and `minReplicas=maxReplicas=1`.
 - [ ] Managed environment `glitch-prod-vnet-env` has `d4-prod` `minimumCount=6` and `maximumCount>=10`; four nodes serve steady workloads and two remain replacement headroom.
 - [ ] The new revision's own FQDN serves `200 text/html` before traffic is shifted.
+- [ ] The new revision's own FQDN serves every current versioned bucket canary with `200` and `X-Glitch-Bucket-Asset-Proxy: ... source=local` before traffic is shifted.
 - [ ] The one-replica terrain maintenance revision finishes before traffic is
       shifted, then is deactivated after the extension terrain audit passes.
 - [ ] `GLITCH_TITLE_TOKEN` secret exists.

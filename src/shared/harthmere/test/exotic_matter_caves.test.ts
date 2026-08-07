@@ -21,6 +21,7 @@ import {
   harthmereExoticMatterComponentForItemId,
   harthmereExoticMatterDepositAtBlock,
   harthmereExoticMatterDepositQuestMarkers,
+  harthmereExoticMatterDepositRuntimePosition,
   harthmereExoticMatterDepositsForCave,
   harthmereExoticMatterJobEligibleDeposits,
   isHarthmereExoticMatterMaterialItemId,
@@ -56,7 +57,7 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
   });
 
   it("places many deposits inside confirmed cave bounds without duplicate exact positions", () => {
-    assert.ok(HARTHMERE_EXOTIC_MATTER_DEPOSITS.length >= 310);
+    assert.ok(HARTHMERE_EXOTIC_MATTER_DEPOSITS.length >= 346);
     const positions = new Set<string>();
 
     for (const cave of HARTHMERE_EXOTIC_MATTER_CAVES) {
@@ -67,14 +68,14 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
         cave.caveId === "windowlight_little_cave"
           ? 4
           : cave.caveId === "deep_spindle_massive_cave"
-          ? 24
-          : cave.caveId === "harthmere_core_massive_cave"
-          ? 81
-          : cave.caveId === "harthmere_far_hollow_massive_cave"
-          ? 81
-          : cave.caveId === "harthmere_high_vault_massive_cave"
-          ? 81
-          : 5;
+            ? 24
+            : cave.caveId === "harthmere_core_massive_cave"
+              ? 81
+              : cave.caveId === "harthmere_far_hollow_massive_cave"
+                ? 81
+                : cave.caveId === "harthmere_high_vault_massive_cave"
+                  ? 81
+                  : 5;
       assert.ok(
         deposits.length >= minimumDeposits,
         `${cave.caveId} should have a visible spread of materials`
@@ -137,7 +138,7 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
     const massiveDeposits = harthmereExoticMatterDepositsForCave(
       "deep_spindle_massive_cave"
     );
-    assert.equal(massiveDeposits.length, 24);
+    assert.equal(massiveDeposits.length, 33);
     assert.equal(
       massiveDeposits.every((deposit) => deposit.jobEligible),
       true
@@ -217,7 +218,7 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
     const deposits = harthmereExoticMatterDepositsForCave(
       "harthmere_core_massive_cave"
     );
-    assert.equal(deposits.length, 81);
+    assert.equal(deposits.length, 90);
     assert.equal(
       deposits.every((deposit) => deposit.jobEligible),
       true
@@ -230,7 +231,7 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
             .length,
         ])
       ),
-      { antihydrogen: 27, antihelium: 27, antiboron: 27 }
+      { antihydrogen: 30, antihelium: 30, antiboron: 30 }
     );
 
     assert.equal(
@@ -264,7 +265,7 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
     const deposits = harthmereExoticMatterDepositsForCave(
       "harthmere_far_hollow_massive_cave"
     );
-    assert.equal(deposits.length, 81);
+    assert.equal(deposits.length, 90);
     assert.equal(
       deposits.every((deposit) => deposit.jobEligible),
       true
@@ -277,7 +278,7 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
             .length,
         ])
       ),
-      { antihydrogen: 27, antihelium: 27, antiboron: 27 }
+      { antihydrogen: 30, antihelium: 30, antiboron: 30 }
     );
 
     assert.equal(
@@ -311,7 +312,7 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
     const deposits = harthmereExoticMatterDepositsForCave(
       "harthmere_high_vault_massive_cave"
     );
-    assert.equal(deposits.length, 81);
+    assert.equal(deposits.length, 90);
     assert.equal(
       deposits.every((deposit) => deposit.jobEligible),
       true
@@ -324,7 +325,7 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
             .length,
         ])
       ),
-      { antihydrogen: 27, antihelium: 27, antiboron: 27 }
+      { antihydrogen: 30, antihelium: 30, antiboron: 30 }
     );
 
     assert.equal(
@@ -365,6 +366,40 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
     assert.equal(
       harthmereExoticMatterDepositAtBlock({ x: 999, y: 10, z: 999 }),
       undefined
+    );
+  });
+
+  it("shifts only additive-town cave markers and keeps original caverns underground", () => {
+    const oldWell = HARTHMERE_EXOTIC_MATTER_DEPOSITS.find(
+      (deposit) => deposit.depositId === "exotic_antihydrogen_old_well_01"
+    )!;
+    assert.deepEqual(
+      harthmereExoticMatterDepositRuntimePosition(oldWell),
+      [1996, 48, -240]
+    );
+
+    const deepSpindle = HARTHMERE_EXOTIC_MATTER_DEPOSITS.find(
+      (deposit) => deposit.depositId === "exotic_antihydrogen_deep_spindle_01"
+    )!;
+    assert.deepEqual(
+      harthmereExoticMatterDepositRuntimePosition(deepSpindle),
+      deepSpindle.position
+    );
+    assert.ok(
+      harthmereExoticMatterDepositRuntimePosition(deepSpindle)[1] < 0,
+      "the original-map cavern marker must remain underground"
+    );
+
+    const markers = harthmereExoticMatterDepositQuestMarkers();
+    assert.deepEqual(
+      markers.find((marker) => marker.depositId === oldWell.depositId)
+        ?.position,
+      [1996, 48, -240]
+    );
+    assert.deepEqual(
+      markers.find((marker) => marker.depositId === deepSpindle.depositId)
+        ?.position,
+      deepSpindle.position
     );
   });
 
@@ -490,7 +525,7 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
       targetCaveId: "deep_spindle_massive_cave",
       count: 99,
     });
-    assert.equal(deep.length, 8);
+    assert.equal(deep.length, 11);
     assert.equal(
       deep.every((marker) => marker.caveId === "deep_spindle_massive_cave"),
       true

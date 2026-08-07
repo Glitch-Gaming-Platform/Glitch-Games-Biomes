@@ -37,6 +37,7 @@ import {
   scaleHarthmereNpcCombatStats,
 } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { harthmereIncomingExternalAttack } from "@/client/components/challenges/harthmerePvpHitRules";
+import { dispatchHarthmereLocalCombatNpcDamage } from "@/client/components/challenges/harthmereEvents";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { isPlayer } from "@/shared/game/players";
 import { fallDamageForBlocks, FEET_PER_BLOCK } from "@/shared/game/fall_damage";
@@ -56,6 +57,10 @@ import {
   createHarthmereBiomesEcsHealth,
 } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import { LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET } from "@/shared/harthmere/live_entity_helper_quests";
+import {
+  HARTHMERE_GROVE_TRAINING_DUMMY_OFFSET,
+  HARTHMERE_GROVE_TRAINING_DUMMY_WORLD_XZ,
+} from "@/shared/harthmere/grove_quest_visual_assets";
 import { evaluateMuckMonsterAggression } from "@/shared/harthmere/muck_monster_aggression_ai";
 import { HARTHMERE_HALF_DAY_MS } from "@/shared/harthmere/mmo_farming_food_stamina";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -142,6 +147,7 @@ const HARTHMERE_FOREST_WOLF_OFFSET = 9010;
 const HARTHMERE_BRIARFEN_SNAKE_OFFSET = 9011;
 const HARTHMERE_GRAVEWOOD_PALE_WOLF_OFFSET = 9012;
 const HARTHMERE_BANDIT_TRAPPER_OFFSET = 9013;
+export { HARTHMERE_GROVE_TRAINING_DUMMY_OFFSET } from "@/shared/harthmere/grove_quest_visual_assets";
 export const HARTHMERE_LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET =
   LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET;
 
@@ -416,6 +422,7 @@ const NPC_NAMES: Record<number, string> = {
   [HARTHMERE_BRIARFEN_SNAKE_OFFSET]: "Briarfen Water Snake",
   [HARTHMERE_GRAVEWOOD_PALE_WOLF_OFFSET]: "Gravewood Pale Wolf",
   [HARTHMERE_BANDIT_TRAPPER_OFFSET]: "Bandit Trapper",
+  [HARTHMERE_GROVE_TRAINING_DUMMY_OFFSET]: "Softwood Practice Dummy",
   [HARTHMERE_LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET]: "Muck-Scarred Helix",
 };
 
@@ -1386,7 +1393,10 @@ function statsForOffset(offset: number): HarthmereCombatStats {
     return runtimeActorStats;
   }
 
-  if (offset === HARTHMERE_TRAINING_DUMMY_OFFSET) {
+  if (
+    offset === HARTHMERE_TRAINING_DUMMY_OFFSET ||
+    offset === HARTHMERE_GROVE_TRAINING_DUMMY_OFFSET
+  ) {
     return finalizeNpcStats(
       offset,
       {
@@ -4371,6 +4381,15 @@ const HARTHMERE_FORWARD_ARC_TARGET_POSITIONS: Record<
   9011: { pos: [655, -274], radius: 0.75, label: "Briarfen Water Snake" },
   9012: { pos: [735, 275], radius: 1.15, label: "Gravewood Pale Wolf" },
   9013: { pos: [118, -736], radius: 1.2, label: "Bandit Trapper" },
+  [HARTHMERE_GROVE_TRAINING_DUMMY_OFFSET]: {
+    pos: [...HARTHMERE_GROVE_TRAINING_DUMMY_WORLD_XZ],
+    radius: 1.35,
+    label: "Softwood Practice Dummy",
+    species: "construct",
+    behavior: "training_dummy",
+    socialRole: "training",
+    attackable: true,
+  },
 };
 
 // harthmere-full-combat-ai-animation
@@ -6288,6 +6307,16 @@ export function performHarthmereCombatAttack(
     finalDamage: playerAttack.finalDamage,
     targetDead: target.combatState === "dead",
   });
+  if (playerAttack.finalDamage > 0) {
+    dispatchHarthmereLocalCombatNpcDamage({
+      targetOffset,
+      targetId: targetOffset,
+      targetName: target.name,
+      damage: playerAttack.finalDamage,
+      ability,
+      targetDead: target.combatState === "dead",
+    });
+  }
 
   // harthmere-game-ai-state-machine
   // A damaging hit, or a blocked weapon contact, wakes the NPC brain. The
@@ -7313,7 +7342,9 @@ export const HarthmereCombatMenuPanel: React.FunctionComponent<{}> = () => {
         <div className="text-emerald-100 mb-1 text-xs font-bold">
           Action → GLTF clip map
         </div>
-        <div>Mouse 1 / Basic Attack → Attack, Attack2, SideSwing, Thrusting</div>
+        <div>
+          Mouse 1 / Basic Attack → Attack, Attack2, SideSwing, Thrusting
+        </div>
         <div>H / Heavy Attack → HeavyAttack, Attack2, SideSwing</div>
         <div>L / Spark → BasicMagic, HeavyMagic</div>
         <div>

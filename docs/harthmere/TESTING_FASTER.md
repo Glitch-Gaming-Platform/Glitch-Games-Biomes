@@ -238,6 +238,109 @@ scripts/harthmere/t.sh perf     # 38 tests, 0.03 s
 scripts/harthmere/t.sh combat   # 90 tests, 0.14 s
 ```
 
+### 3.2 Grove onboarding audits are a three-tier batch
+
+Do not call a Grove quest fixed because its marker id exists or its synthetic
+completion fixture passes. The August 6, 2026 onboarding audit found five
+player-facing failures while the original catalog, live-authority, quest, UI,
+and marker suites were green. Use all three tiers, serially:
+
+```sh
+# Collect every failure; do not stop at the first red lane.
+failures=""
+for scope in grove grove:live quests ui icons types; do
+  scripts/harthmere/t.sh "$scope" || failures="$failures $scope"
+done
+printf 'failed lanes:%s\n' "$failures"
+
+# Then run the all-onboarding browser batch on one warm stack.
+HARTHMERE_E2E_SNAPSHOT_GROVE_ONBOARDING_ONLY=1 \
+HARTHMERE_E2E_FAST_GROVE_CATALOG=0 \
+  node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+```
+
+Fix the collected report as one source batch, rerun only the failed focused
+lanes, then rerun the complete six-lane batch once. Never start these scoped
+Mocha/typecheck lanes in parallel; they compete for the same TypeScript startup
+and turn deterministic tests into timeout noise.
+
+The three Grove tiers prove different things:
+
+1. `grove` proves catalog topology, gates, giver assignment, and waypoint
+   resolution.
+2. `grove:live` proves all 51 authored rows can advance through the live
+   authority reducer.
+3. the browser batch proves the player can see, understand, and perform every
+   onboarding step. Capture an accepted-state frame, a current-step frame, and
+   an after-completion frame for every objective; a final quest-complete frame
+   alone is not sufficient.
+
+Apply systemic fixes at the shared seam and audit every quest against them:
+
+- `interact` means an explicit F/use/inspect action. Never accept
+  `start_collide_entity` or `start_collide_placeable` as proof. The captured
+  Taye HAR showed the paint objective completing from collision without a
+  deliberate inspection.
+- In Snapshot Grove Cloud Save records, `objectiveIndex` is completion evidence
+  for the objective just submitted. The current cursor is `stepId`, then
+  `progress - 1`; readers that prefer `objectiveIndex` make the journal and map
+  lag one step and can display the wrong crossed-off task.
+- Every active quest must persist an owned current-step destination for the
+  HUD/minimap, advance that destination with the objective, and clear it on
+  completion. A landmark row or optional “Show on map” action does not prove
+  automatic guidance.
+- A highlighted HUD target must be a valid completion path for that objective,
+  and `TutorialDirector` must clear it on the next `stepId`. Test the current
+  step and the immediately following step so controls do not keep glowing.
+- A cooking objective must use the cooking station catalogue and authoritative
+  `cook_collect` result. Enqueueing a timer or publishing a synthetic craft
+  event is not completion. Assert the exact station kind, inputs, output,
+  recipe id, and next quest cursor.
+- An exact inventory icon is not a world mesh. A custom Grove item needs a
+  semantic Bikkie definition, a Blender-authored held/drop GLB, a runtime asset
+  mapping, and a regression asserting it does not borrow an unrelated donor
+  mesh.
+- A procedural Grove prop is not an ECS container. If the overlay has only a
+  landmark `objectId` and no real container entity, exact authored semantics
+  must route it through the signed `world_object_interaction` receipt (`read`,
+  `inspect`, `gather`, `use`, or `practice`). Calling `/native_container` with
+  an invalid entity produces the misleading “move closer” loop seen at Kit's
+  parcel stand. Audit every Grove objective marker and require zero synthetic
+  props to resolve to `open_container`.
+- Collectibles with different story meaning need different marker ids,
+  positions, labels, and visible props even when they temporarily share one
+  inventory item id. In particular, clean, mucked, and sealed samples must not
+  reuse a generic muck patch or the same world column; test pairwise positions
+  and the current-step map pin.
+- Keep the ECS/Bikkie/Gaia boundary explicit during Grove repairs. Quest
+  progress and per-player inventory remain authoritative ECS/event state;
+  stable item identity, recipe defaults, and shared presentation belong in the
+  Bikkie overlay; static non-farming quest props must not acquire a Gaia
+  dependency. When a code-authored Bikkie item or recipe changes effective
+  output, bump `HARTHMERE_NATIVE_BIKKIE_OVERLAY_VERSION` so `/api/bikkie`
+  clients cannot reuse an immutable response from the prior overlay.
+- A combat tutorial may advance only from resolved damaging contact, never
+  from animation start, proximity, collision, or a generic click. Browser E2E
+  must use the real Mouse0 route, assert the exact target offset/name and
+  positive damage event, then prove native ECS, Cloud Save, and frontend quest
+  projections all advance. Keep any compatibility mouse bridge gated to the
+  exact active tutorial objective and melee reach so mining/building clicks do
+  not become attacks.
+- An NPC with many offers must expose a bounded window without making later
+  quests unreachable. Test both the maximum visible count and that accepting or
+  completing one offer reveals the next queued row.
+
+Keep `scripts/harthmere/check-biomes-ui-tutorial-runtime.cjs` alias-aware. Do
+not patch one compiled `require()` string: authored cue code imports shared
+Grove modules through `@/`, and a checker that crashes before its first
+assertion is harness failure, not product evidence.
+
+For application-code iterations, use the existing mutable hotfix/warm-stack
+path below. A new immutable GLB is an asset-boundary change: create and inspect
+it through Blender MCP, test it from `public`, and perform at most one final
+asset/package refresh after the complete source batch. Do not rebuild the image
+for each TypeScript/UI correction.
+
 ---
 
 ## 4. Browser testing
@@ -4107,6 +4210,15 @@ volume boost, arena-scale maximum distance, and gentler rolloff. Test the
 profile and the calling path; do not regenerate a louder clip to compensate for
 incorrect spatial attenuation.
 
+For sub-second visual effects, do not measure lifetime solely by counting
+`requestAnimationFrame` callbacks in a browser-control tab. A visible automation
+tab can still deliver rAF at roughly 1 Hz, which made the correct wall-clock
+0.2-second melee spark appear to measure 0.985 seconds in the first August 7
+boss-audio harness row. Drive the production effect's own wall-time `tick()`
+with a short timer for the duration assertion, preserve a rendered peak frame,
+and separately report the page's rAF cadence when frame delivery itself is the
+question. The corrected live row measured 0.209 seconds with no text.
+
 Finally, “the boss has five attacks” needs two different gates. Parse the real
 GLB and require the body clip for all five catalog entries, then run one
 selection encounter that opens authored range and health phases and observes
@@ -4872,6 +4984,66 @@ omits the static `/dev/harthmere-visual-auth` page, do not treat its 500 as a
 combat failure or rebuild the lane blindly; authenticate through the E2E API,
 preserve the browser cookie/storage session, and navigate directly to
 `/at/<username>` before repeating the acceptance action.
+
+On a retained production-sized world, do not wait for `.loading-wrapper` to
+disappear before placing the authenticated combat actor. A reused actor can be
+dead, warped, or standing in an unsubscribed/unloaded shard; the production
+client correctly keeps the loading gate visible there, so an overlay-first
+runner times out before it ever applies the fixture that would make the client
+ready. Use this order instead:
+
+1. authenticate, but do not create or navigate the page yet;
+2. use the authenticated request context and signed
+   `/api/admin/apply_ecs_changes` path to write the authoritative safe
+   position/orientation, live health, zero velocity, cleared death/icing/warp
+   state, and default movement state;
+3. navigate to the exact build and wait only for `clientContext` and the native
+   ECS E2E bridge;
+4. disable ordinary player-position publishing for the deterministic fixture;
+5. reconcile the same authoritative pose through the bridge and mirror it into
+   `/sim/player` and `/scene/local_player`;
+6. only then wait for the loading overlay to remain absent, the canvas to be
+   visible, and rendered frames to advance.
+
+The August 7, 2026 audio/FPS acceptance run first waited for the overlay and
+burned the full 120-second browser timeout even though authentication, Sync,
+the ECS bridge, WebGL, and client contexts were healthy. A later attempt moved
+the actor only after the bridge existed, but that was still too late: the
+initial terrain subscription had already been selected from the stale pose.
+Treat both reports as test-harness ordering failures, not game regressions.
+Keep the pre-navigation authoritative fixture plus bridge reconciliation in
+`test-harthmere-native-player-attack-live-browser.cjs` so future focused runs
+neither restart the warm stack nor repeat the false wait.
+Do not copy a coordinate from an older retained snapshot without checking the
+exact current world. In the August 7 r2 world, `[895, 62, -197]` rendered,
+remained outside protection, and produced the green melee/FPS row when written
+before page creation. The older exact-world gathering fixture at
+`[2103, 53, -270]` returned a terrain entity with an undefined shard payload in
+that same retained snapshot and correctly triggered `ClientInVoid`. Preserve
+the client-error terrain diagnostics when choosing a new fixture: a position is
+valid only when its supporting shard contains materialized terrain, the loading
+gate clears, and the HUD is not protected.
+
+Audio acceptance must inspect the sound runtime, not merely the projectile
+animation or an asset request. For melee, require an authoritative HP decrease,
+an incremented `confirmedMeleeHitCount`, the expected `lastRequestedId`, and a
+zero pending queue after Web Audio unlock. For projectile audit batches,
+require `requestedPlayCount` to advance and `pendingRequestCount` to return to
+zero after the visual lifecycle settles. A cancelled outgoing music fetch such
+as `audio/music-*` or `audio/muck-music-*` during region-track handoff is a
+transient request abort, not a failed combat sound effect; classify it as such
+instead of failing an otherwise green attack row.
+
+Keep terrain-dependent and terrain-independent browser gates separate. A real
+melee row still requires a cleared loading gate, visible canvas/crosshair, and
+authoritative target HP loss. The projectile lifecycle/audio catalog can run
+behind a terrain loading gate when all of the following are independently
+true: the native ECS bridge exists, render frames advance, the projectile audit
+panel is mounted, Web Audio reports running, and every visual batch settles.
+Use `HARTHMERE_E2E_ATTACK_PROJECTILE_AUDIO_ONLY=1` for that bounded gate. It
+must still require every batch's `requestedPlayCount` increment and zero
+pending sound queue; it merely prevents an undefined terrain-shard payload from
+being mislabeled as a projectile or sound regression.
 
 The August 4, 2026 rendered-input batch exposed two more failure modes that a
 green health-handler test cannot catch:
@@ -5814,6 +5986,76 @@ a memory result, record all of the following:
 5. device syslog contains no `killing_highwater_process`, memory-highwater
    jetsam, reload loop, or context-loss loop.
 
+The August 7 physical combat pass added these harness guardrails:
+
+- The native ECS browser bridge is intentionally localhost-only. A physical
+  phone on the required LAN origin must use the complete visual-auth cookie set
+  (`BDID`, `BUID`, and `BSID`) from the host for authenticated admin fixture
+  writes/readback. Keep gameplay input on trusted device touches; do not add the
+  localhost bridge query flag to make a LAN test wait for an impossible global.
+- Do not interpolate `await response.text()` into an assertion message whose
+  condition may pass. JavaScript evaluates the message eagerly and consumes the
+  successful response body before the harness reads its JSON. Read error text
+  only inside the failing branch.
+- Verify `globalThis.__NEXT_DATA__.buildId` in the phone document. Do not infer
+  the loaded client build from a retained container tag or an old mounted inode;
+  the August 7 phone loaded `warm-grove-quest-audit-20260807-r3` while the
+  retained-container note still identified r2.
+- A SafariDriver `invalid session id` after trusted page activity is an
+  automation-bridge failure. Replace only the Mac-side session, preserve the
+  warm app/Redis stack, and ensure fixture IDs are persisted as soon as they are
+  allocated so `finally` can delete them even if local ECS synchronization
+  fails.
+- Do not run FPS acceptance while an expired Instruments/xctrace recording is
+  still attached or while the device reports elevated thermal pressure. Stop
+  the stale trace, use a filtered device log, record thermal state, wait through
+  the post-load warmup, and then collect the required 20-second idle and
+  20-second multi-enemy samples. The first August 7 sample ran at 3-4 FPS while
+  a four-minute Activity Monitor trace had remained attached for more than
+  twenty minutes; that row is instrumentation-confounded, not a product
+  baseline.
+- When enabling the built-in Performance API timing scopes on a live page,
+  clear completed `measure` entries only. Do **not** call
+  `performance.clearMarks()` while the renderer is active: an in-flight
+  `PerformanceTimer` may already own `renderInterval-begin`, and deleting that
+  mark makes its next `stop()` throw `No mark named 'renderInterval-begin'
+exists`, replacing the game with the Unexpected Error overlay. The August 7
+  timing row before that exception remained useful, but its subsequent combat
+  row was harness-invalid.
+- Reuse one stable physical-device test username. Timestamped usernames leave
+  a persistent player ECS row after every run; the August 7 harness accumulated
+  eight player meshes at one arena, adding measured player-render and remote
+  animation cost to every later baseline. Before the next run, scan the admin
+  `players` filter, delete only stale `PhysicalIPhoneFight-*` rows, wait for
+  authoritative absence, and keep fixture cleanup in `finally`.
+- A filtered `idevicesyslog` shell can remain present after the USB stream has
+  emitted `[disconnected:<udid>]` and stopped appending. Before treating the
+  device log as acceptance evidence, require its modification time and
+  timestamps to advance through the exact sample window. Restart only the
+  logger if they do not. An empty time-window query is a telemetry gap, not
+  proof that WebContent avoided jetsam, high-water termination, GPU context
+  loss, or thermal pressure.
+- A physical runner result produced with `HARTHMERE_IOS_OBSERVE_ONLY=1` is a
+  functional/evidence pass only when trusted input still causes positive
+  server-authoritative damage. Observation mode may relax FPS and soak-duration
+  thresholds, but it must never skip input, HP, build, readiness, or page-error
+  assertions. The August 7 no-diagnostics row exposed the old mistake by
+  reporting `status: pass` after a trusted touch caused zero damage; preserve
+  that row only as performance evidence and keep authoritative damage mandatory
+  in the runner.
+- SafariDriver diagnostics have two switches: the session capability and the
+  server process's global `--diagnose` flag. Setting only
+  `safari:diagnose: false` does not undo a server launched with `--diagnose`.
+  FPS acceptance must run a plain `safaridriver -p <port>` process and keep
+  diagnostic collection opt-in. Bound `POST /session` independently (45 seconds
+  in the physical-fight runner); its native connection path can otherwise hang
+  beyond the general WebDriver command timeout.
+- Filter `idevicesyslog` by complete process/message patterns. A loose token such
+  as `connected:` also matches unrelated daemon payload fields and floods the
+  logger, which adds host/USB noise and hides the relevant WebContent lines.
+  Require an exact stream marker or the exact jetsam, context-loss, thermal, and
+  WebContent state messages needed for the acceptance question.
+
 For dialogue/expression memory work, also record the exact character action
 graph before and after the change. The August 5 iPhone regression had 119
 actions / 5,712 cloned tracks per NPC and 314 actions / 7,536 tracks per player
@@ -6575,6 +6817,68 @@ dialogue, show `Trade with <name>`, open the vendor panel, complete a real buy
 or sale, and then prove the active world-map and minimap pin advances to the
 next supplier.
 
+For a bounded Chapter 1 supplier rerun, `RESUME_AFTER` and `STOP_AFTER` do not
+by themselves suppress the runner's independent item, catalog, cutscene, gate,
+terrain, and cast matrices. Always set the feature filter as well:
+
+```bash
+HARTHMERE_E2E_CHAPTER_1_ONLY=1 \
+HARTHMERE_E2E_CHAPTER_1_FEATURES=quests \
+HARTHMERE_E2E_CHAPTER_1_SKIP_VIDEO=1 \
+HARTHMERE_E2E_CHAPTER_1_RESUME_AFTER=ch1_a2_q02_work_the_board/take_jobs \
+HARTHMERE_E2E_CHAPTER_1_STOP_AFTER=ch1_a2_q02_work_the_board/meet_the_suppliers \
+  node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+```
+
+If the first new artifact is named `chapter-1-held-item-*`, the supplier run is
+mis-scoped: interrupt it immediately, preserve the partial files as
+setup-invalid evidence, and restart only after adding
+`HARTHMERE_E2E_CHAPTER_1_FEATURES=quests`. Do not wait for the unrelated visual
+matrix to finish and do not count any partial captures as supplier acceptance.
+
+### Jobs Board parcel, gather, and business-input hotfix lessons (August 7)
+
+Keep these as one non-fail-fast acceptance batch because they share the same
+inventory -> quest projection -> map handoff boundary:
+
+- A successful physical pickup can update native inventory in the same response
+  as Jobs Board state. Normalize the Jobs snapshot, then merge the response's
+  `inventoryLootState` before caching it or dispatching the Jobs Board update.
+  Dispatching the stale snapshot first can immediately re-pin the parcel/tool
+  source even though the item is already visible in the native hotbar.
+- Do not let a test fixture overwrite an authored fixed pickup. Run the Coop
+  always starts at `coop_supply_box`; only its supplied drop-off destination is
+  randomized. Fixture defaults use nullish assignment so an authored pickup id
+  survives.
+- A gathering interaction may grant more than one unit. Record native inventory
+  before `F`, require a positive delta afterward, and stop interacting as soon
+  as authority reaches the requirement. Trying to approach a correctly hidden
+  depleted source again is a harness failure, not evidence that the prop is
+  missing.
+- Reused actors can retain the same item in backpack and hotbar. Exact inventory
+  reset must remove every matching stack, not return after the first match, or
+  a six-gather row can begin with hidden progress and produce a false count.
+- Gathering six berries does not complete Stock the Road at the source. Require
+  the visible thicket, native count, source removal, world-map and minimap
+  handoff to `harthmere_market_posting_board`, then move to that board, turn in,
+  verify item consumption and native wallet reward. This job has no forge
+  recipe.
+- A business board owns keyboard input only while its physical prompt is in the
+  player's view and within the bounded interaction radius. Keep the clickable
+  fallback for discovery, but test a patron and worker beside the board: faced
+  `F Talk` must win when the board is off-camera or outside `3.25m`.
+- Do not infer that a production screenshot contains the current source. Record
+  the page build id from the HAR. The August 7 capture used
+  `50b9f486f2201c5cee492c3c1184460f0814d7da`, which still contained the old
+  robot Muck Rake art. Source/unit proof is not deployed visual acceptance.
+
+Run `scripts/harthmere/t.sh jobs`, the business-interaction focused tests, the
+quest/world-object preset, runner syntax, and the all-jobs static browser
+contract as one batch. Allow all commands to finish and fix the complete list
+before rerunning. The live rows may run in separate Chromium groups, but tests
+that mutate the same app/sync/Redis fixture lane must retain the lane lease;
+different browser processes do not make shared actor/Redis mutations isolated.
+
 ### Business counter, stuck selection, and camera hotfix (August 6)
 
 The `www.glitch.fun-1786040259819.har` capture connected three apparently
@@ -6625,3 +6929,208 @@ for `businessInterfaceLiveAdapter.test.ts`; a `default-challenge-icon.png`
 module error means zero tests were collected and must be rerun under the normal
 bootstrapped config, not counted as a product failure or worked around by
 dropping that file.
+
+### All-Grove quest guidance and visual audit lane (August 7)
+
+Do not validate a Grove repair only on the quest named in a bug report. The 51
+quests share the same offer queue, objective reducer, map pin, contextual HUD,
+native challenge projection, and completion handoff, so one bad adapter can
+strand many unrelated rows. The fast `grove` preset must include the per-state
+catalog contract as well as topology/waypoint tests; the `quests`/`gate` lanes
+must include the active-pin and rendered Map-panel contracts. A new quest then
+inherits the same accept, monotonic progress, marker cleanup, reward
+idempotency, and exact-current-pin checks automatically.
+
+Before opening Chrome, regenerate
+`artifacts/grove-quest-audit-manifest-2026-08-07.json` with
+`node scripts/harthmere/write-grove-quest-audit-manifest.cjs`. It must contain
+exactly 51 quests, 255 objective rows, and every currently authored trigger
+family. Each row is the single source for the native quest/step ids, giver ECS
+identity, exact marker and grounded pose, target list, completion event, signed
+world-receipt requirement, item/recipe identities, Chapter 1 dialogue policy,
+structured reward, acknowledgement copy, and current/completed screenshots.
+The browser runner must refuse to start when this manifest is incomplete or
+drifts from the catalog.
+
+Run the executable retained-build hotfix contract before a browser batch. A
+string grep is insufficient: the test must press F against an exact native
+prompt and prove `collect`, `item_grant`, and `interact` cross the signed
+world-object endpoint, emit the authored local event shape, and publish native
+Grove evidence only after success. It must also prove ordered Cloud cursor
+repair, Chapter 1 precedence/release, completion acknowledgement, and cooking
+Ready promotion.
+
+Run tests and fixes in batches. Let every test in a batch report before editing,
+group failures by their shared boundary, fix the complete group, and rerun that
+group before expanding the catalog. Do not launch 51 slow visual rows after the
+first row already proves a shared pin or dialogue defect; keep the completed
+evidence, repair the common cause, then continue with fresh actors.
+
+The physical browser tier uses the production-shaped local stack, never the
+public site. A public HAR/screenshot is baseline evidence only. Record the local
+BUILD_ID, web/Sync readiness, and Redis world identity before the first row.
+Prefer the client mutable-hotfix/script lane for a browser-only repair on an
+already-built candidate; keep the BUILD_ID unchanged and back-port the exact
+change plus unit tests into source. Rebuild Next once only when the behavior
+cannot be represented safely by the hotfix layer.
+
+Every slow visual quest row gets a fresh actor/context. Reusing one actor lets
+death state, accepted quests, inventory, native `Challenges`, or a prior NPC
+projection leak into the next row. Focused setup may retire other quests from
+the same giver so the requested row is visible under the shipped two-offer cap,
+but it must not raise the cap or change product ordering. Each retired quest
+still needs its own independent browser row.
+
+The row verdicts are mutually exclusive: `physical_pass`, `functional_fail`,
+`visual_fail`, `setup_invalid`, and `not_run`. A timeout inside `openUser` or
+before the world-bootstrap checkpoint is `setup_invalid`, never a quest
+failure. Close the failed WebGL context, retry setup once with a new actor, and
+continue the non-fail-fast batch. Leaking failed contexts caused the fourth and
+fifth rows of the August 7 batch to time out before gameplay and made Kit and
+Carlo look broken without testing either quest.
+
+Freeze the candidate before the all-51 run: record the mounted BUILD_ID,
+hotfix SHA-256, runner SHA-256, audit-manifest SHA-256, active Bikkie/asset
+version, Web/Sync endpoints, and Redis world identity. No source or hotfix edit
+is allowed during that pass. An older quest pass becomes stale whenever a
+shared candidate hash changes.
+
+Treat quest geography as a product contract, not decoration. Resolve every
+Grove marker through the checked-in production terrain placement map; the
+fountain's flat Y=71 plane is not valid at Mosslawn, the muck edge, Luis's
+cart, or the chapel. Resource landmarks must have unique world positions. If
+the copy says "at the muck edge", "further in", "lost", or names a route, the
+pickup must require meaningful travel from the giver rather than spawning at
+their feet. Keep one spatial test for the whole resource catalog and focused
+distance/separation assertions for multi-sample quests such as Sticky Medicine
+and Samples for the Chapel.
+
+Chapter 1 dialogue ownership is time- and target-scoped. While the active
+Chapter 1 projection names an NPC with a `talk_npc`/`dialogue_choice` trigger,
+that story copy must preempt Grove offers, ambient chatter, and native quest
+text. During `meet_the_suppliers`, the Chapter 1 trade instruction also wins.
+As soon as the projection moves to another target or leaves that phase, normal
+Grove dialogue must return. Test both halves; an assertion that Chapter 1 can
+override without proving it releases the NPC merely trades one dialogue leak
+for another. Mutable hotfix bridges must wait for the normal Chapter 1 routing
+effect and must never advance Grove talk objectives while Chapter 1 owns the
+modal.
+
+For every objective, require all of the following before counting it:
+
+- the local Grove state names the requested quest and exact objective index;
+- the active map pin names the authored current marker, not a generic native
+  `Talk to Jackie` fallback;
+- a native quest writer cannot clear or overwrite that Grove-owned pin while
+  the Grove quest remains active;
+- the control needed for the current trigger is visible, highlighted, enabled
+  only in range, and stops highlighting after authoritative progress;
+- the action reaches native ECS, Cloud Save/live state, and the synchronized
+  frontend projection;
+- the `current` and `completed` screenshots are captured, and any authored GLB
+  marker reports `visible` plus `authoredAssetLoaded` before its visual frame;
+- the final giver acknowledgement removes the completed journal row and grants
+  each structured reward exactly once.
+
+HUD guidance must name an action the player can actually perform now. An
+`open_tab` mail step may pulse Mail, an equipment step may pulse Bag, and a
+recipe step may pulse Craft; a world `collect`/`item_grant`/`interact` step must
+not pulse Bag merely because its prose contains “sample”, “item”, or “root”.
+The next objective must replace or clear the prior pulse, and a hotfix must
+de-duplicate the source prompt rather than stacking a second copy over it.
+
+When a mutable hotfix moves a world quest object, move the complete interaction
+contract: map pin, rendered/authored group, proximity target, visible F prompt,
+and the action event. A screenshot of the relocated mesh is insufficient if
+the old invisible interaction anchor still owns F. The focused browser row must
+approach from a safe viewing ring, assert the exact marker's prompt, press F,
+and prove native ECS plus persisted progression before the move is accepted.
+The hotfix action must use the signed `world_object_interaction` receipt; a
+client-only `snapshot_grove_practice_action` can cross off the lesson without
+granting the native quest item and will strand the following recipe/handoff.
+After that receipt succeeds, publish the matching GardenHose Grove evidence so
+the local lesson and native Challenge consume the same authenticated action.
+Do not publish it before or after a rejected receipt.
+
+Cloud Save repair is a cursor repair, not only a completion repair. Compare the
+active local objective with the persisted `active[questId].progress`, then
+replay each missing authored objective in order with its exact trigger evidence
+before attempting completion. A one-step local lead such as Lost Mail must not
+remain crossed off locally while Cloud Save still points at the prior step, and
+a multi-step stale tab must not jump over the server's prior-objective guard.
+
+Cooking readiness is wall-clock state. Read-only farming/food snapshots must
+tick queued jobs with the current time rather than the last persisted mutation
+time; otherwise a finished campfire recipe remains `cooking` forever until an
+unrelated write occurs. Browser tests must poll through `Ready`, click
+`Collect`, and verify the output plus quest evidence. An immediate `Queued` or
+`Working` screenshot alone is not completion proof.
+
+Chapter 1 owning an NPC's visible dialogue does not erase compatible Grove
+talk evidence. Keep Chapter 1 copy on screen, but let the exact overlapping
+Grove connector step observe that same NPC conversation in the background.
+Blocking the Grove event to protect the text makes Luis/Father Aldren handoffs
+uncompletable; replacing the Chapter 1 text to advance Grove is equally wrong.
+
+When the native Road Ahead panel and a Grove contextual action coexist, render
+the Grove card first. Appending it below a long native objective list can make
+the action technically mounted but clipped below the viewport, which is still
+an uncompletable quest. The rendered Map test must assert both panels exist and
+that the Grove action precedes the native active-quest panel.
+
+The exhaustive acceptance is two complementary browser passes: a fast all-51
+authority catalog and slow visual groups with
+`HARTHMERE_E2E_FAST_GROVE_CATALOG=0`. Slow groups must continue after a failed
+quest and emit one report containing all failures. Unit/catalog/live-authority
+success is not a substitute for the slow physical rows; conversely,
+screenshots without native ECS and persistence checks are not completion
+evidence.
+
+Catalog warps can cross the Grove/muck music boundary while the prior track is
+still fetching. A same-origin GET for hashed `music-1` or `muck-music-1` ending
+in `net::ERR_ABORTED` is a normal audio handoff and belongs in browser
+transients for Grove/Bible catalog runs; it must not abort an authoritative
+quest wait. Other failed audio requests remain fatal unless their lane has an
+equally specific reviewed transition rule.
+
+### Delivery pickup handoff gate (August 7)
+
+A Jobs Board delivery is not green merely because F creates the parcel or an
+adapter returns the next marker. At every pickup transition, assert all of the
+following in one bounded row:
+
+- the rendered pickup and interaction candidate share the exact grounded
+  active-pin pose, including Y; a matching X/Z with a legacy authored Y can
+  silently fail the vertical interaction gate;
+- the visible F prompt owns the intended pickup object;
+- native inventory count and the transaction ledger both increase;
+- the world-map/minimap destination advances to the recipient;
+- the visible HUD objective changes from pickup copy to delivery copy;
+- delivery consumes the native parcel, then the marker returns to the board;
+- payout changes the native wallet and removes the completed job objective and
+  pin rather than leaving either one over the next main quest.
+
+Native inventory and the live-mode inventory mirror are separate clocks. Use
+the durable `delivery_parcel_picked_up` receipt as the phase fallback so a GET
+poll cannot move the player back to the source after a successful native
+exchange. When a no-build payload is under test, label the report as
+`mounted-build + injected hotfix`; a passing injected row does not prove that
+the immutable client contains the fix.
+
+### Grove visual evidence is a complete ledger
+
+The 51 Grove quests contain 255 objectives. A visual release claim requires a
+`current` and `completed` browser frame for every objective, plus a passing
+physical lifecycle scenario for every selected quest. After a physical batch,
+run:
+
+```sh
+node scripts/harthmere/audit-grove-quest-visuals.cjs \
+  --artifacts-dir artifacts/<physical-batch>
+```
+
+The visual auditor rejects missing, undersized, effectively black/white,
+implausibly blank, and unchanged current/completed frames. It also writes one
+contact sheet per quest. Automated image checks are a preflight only: review
+every contact sheet for camera placement, clipping, legibility, authored prop
+quality, marker clarity, and HUD state before recording a human visual pass.

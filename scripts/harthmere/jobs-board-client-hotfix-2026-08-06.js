@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "harthmere-jobs-board-client-hotfix-2026-08-06-v1";
+  const VERSION = "harthmere-jobs-board-client-hotfix-2026-08-06-v2";
   const priorCleanup = window.__harthmereJobsBoardClientHotfixCleanup;
   if (typeof priorCleanup === "function") {
     priorCleanup();
@@ -107,10 +107,29 @@
       position: [511, 71, -156],
       fieldTarget: false,
     },
+    {
+      objectId: "coop_supply_box",
+      markerId: "coop_supply_box",
+      label: "Old Supply Box",
+      kind: "inspect",
+      title: "Pick Up Sealed Package",
+      // The immutable landmark was authored at Y=71, but production terrain
+      // and the active map pin resolve this box to the real surface at Y=59.
+      // Keep the no-build prompt at the same grounded pose.
+      position: [384, 59, -198],
+      fieldTarget: false,
+      deliveryPickup: true,
+    },
   ];
   const TARGET_BY_LABEL = new Map(
     TARGETS.map((target) => [target.label.toLowerCase(), target])
   );
+  const DELIVERY_DROPOFFS = {
+    grove_mail_bank_satchel: {
+      label: "Mail and Bank Satchel",
+      position: [488, 71, -122],
+    },
+  };
   const cleanupCallbacks = [];
   let stopped = false;
   let busyTargetId;
@@ -120,6 +139,14 @@
   let originalItemActionAllowed;
   let patchedBikkieRuntime;
   let originalMuckRakeBiscuit;
+  const originalFetch = window.fetch.bind(window);
+  let rememberedInventoryItems = {};
+  let activeDeliveryTodoId;
+  let activeDeliveryJobId;
+  let activeDeliveryTitle;
+  let activeDeliveryObjective;
+  let patchedObjectiveElement;
+  let patchedObjectiveText;
   const PROTECTED_VISIBLE_JOB_TOOL_IDS = new Set([
     8668696029471666, // Muck Rake
     8664740698822359, // Repair Mallet
@@ -162,6 +189,215 @@
     if (id) headers["X-Glitch-Install-Id"] = id;
     return headers;
   }
+
+  function setActiveDeliveryObjective(objective) {
+    if (activeDeliveryObjective === objective) return;
+    activeDeliveryObjective = objective;
+    window.dispatchEvent(new Event("storage"));
+  }
+
+  function ensureDeliveryObjectiveText() {
+    const element = document.querySelector(
+      ".biomes-ui-current-objective-hud__text"
+    );
+    if (!activeDeliveryObjective) {
+      if (
+        patchedObjectiveElement &&
+        patchedObjectiveElement.isConnected &&
+        patchedObjectiveElement.textContent === patchedObjectiveText
+      ) {
+        window.dispatchEvent(new Event("storage"));
+      }
+      patchedObjectiveElement = undefined;
+      patchedObjectiveText = undefined;
+      return;
+    }
+    if (!element) return;
+    if (element.textContent !== activeDeliveryObjective) {
+      element.textContent = activeDeliveryObjective;
+    }
+    patchedObjectiveElement = element;
+    patchedObjectiveText = activeDeliveryObjective;
+  }
+
+  function writeDeliveryUiPin(input) {
+    if (!activeDeliveryTodoId || !activeDeliveryJobId) return;
+    const questId = `jobs_board:${activeDeliveryTodoId}`;
+    const pin = {
+      markerId: `jobs_board_marker:${activeDeliveryTodoId}`,
+      label: activeDeliveryTitle || "Run the Coop Food Parcel",
+      kind: "objective",
+      worldPosition: [...input.position],
+      description: input.objective,
+      ownerQuestId: questId,
+      worldObjectId: input.worldObjectId,
+      interactionTargetId: input.interactionTargetId,
+      setAtMs: Date.now(),
+    };
+    const mainQuest = {
+      questId,
+      title: activeDeliveryTitle || "Run the Coop Food Parcel",
+      firstMarkerId: pin.markerId,
+      objective: input.objective,
+      setAtMs: Date.now(),
+    };
+    try {
+      window.localStorage?.setItem(
+        "biomes_ui_active_map_pin",
+        JSON.stringify(pin)
+      );
+      window.localStorage?.setItem(
+        "biomes_ui_main_quest",
+        JSON.stringify(mainQuest)
+      );
+    } catch {
+      // Events still update the in-memory UI when storage is unavailable.
+    }
+    window.dispatchEvent(
+      new CustomEvent("biomes-ui-active-map-pin", { detail: pin })
+    );
+    window.dispatchEvent(
+      new CustomEvent("biomes-ui-main-quest", { detail: mainQuest })
+    );
+  }
+
+  function clearDeliveryUiHandoff() {
+    const todoId = activeDeliveryTodoId;
+    activeDeliveryTodoId = undefined;
+    activeDeliveryJobId = undefined;
+    activeDeliveryTitle = undefined;
+    setActiveDeliveryObjective(undefined);
+    if (!todoId) return;
+    try {
+      const rawPin = window.localStorage?.getItem("biomes_ui_active_map_pin");
+      const pin = rawPin ? JSON.parse(rawPin) : undefined;
+      if (pin?.markerId === `jobs_board_marker:${todoId}`) {
+        window.localStorage?.removeItem("biomes_ui_active_map_pin");
+        window.dispatchEvent(
+          new CustomEvent("biomes-ui-active-map-pin", { detail: undefined })
+        );
+      }
+      const rawQuest = window.localStorage?.getItem("biomes_ui_main_quest");
+      const quest = rawQuest ? JSON.parse(rawQuest) : undefined;
+      if (quest?.questId === `jobs_board:${todoId}`) {
+        window.localStorage?.removeItem("biomes_ui_main_quest");
+        window.dispatchEvent(
+          new CustomEvent("biomes-ui-main-quest", { detail: undefined })
+        );
+      }
+    } catch {
+      // The storage event below still asks mounted UI surfaces to refresh.
+    }
+    window.dispatchEvent(new Event("storage"));
+  }
+
+  function installDeliveryHandoff(todo, job, requirement) {
+    const markerId = requirement?.mapMarkerId;
+    const destination = markerId ? DELIVERY_DROPOFFS[markerId] : undefined;
+    if (!todo?.todoId || !job?.jobId || !markerId || !destination) return;
+    activeDeliveryTodoId = todo.todoId;
+    activeDeliveryJobId = job.jobId;
+    activeDeliveryTitle = job.title || todo.title || "Run the Coop Food Parcel";
+    const objective = `Deliver Sealed Package to ${destination.label}. Stand at the drop-off and press F.`;
+    setActiveDeliveryObjective(objective);
+    writeDeliveryUiPin({
+      position: destination.position,
+      objective,
+      worldObjectId: markerId,
+      interactionTargetId: requirement.targetId ?? markerId,
+    });
+  }
+
+  function refreshDeliveryHandoffPhase(snapshot) {
+    if (!activeDeliveryTodoId || !activeDeliveryJobId) return;
+    const todo = (snapshot?.myTodos ?? []).find(
+      (candidate) => candidate.todoId === activeDeliveryTodoId
+    );
+    const job = (snapshot?.myAcceptedJobs ?? []).find(
+      (candidate) => candidate.jobId === activeDeliveryJobId
+    );
+    if (!todo || !job || job.status === "completed") {
+      clearDeliveryUiHandoff();
+      return;
+    }
+    if (todo.status === "completed") {
+      const objective =
+        "Delivered. Return to the jobs board to collect your reward.";
+      setActiveDeliveryObjective(objective);
+      writeDeliveryUiPin({
+        position: [501.99486179104775, 70, -132.00350672753194],
+        objective,
+        worldObjectId: "harthmere_market_posting_board",
+        interactionTargetId: "harthmere_grove_market_jobs_board",
+      });
+    }
+  }
+
+  let deliveryPhaseRefreshBusy = false;
+  async function refreshActiveDeliveryPhaseFromServer() {
+    if (!activeDeliveryTodoId || deliveryPhaseRefreshBusy) return;
+    deliveryPhaseRefreshBusy = true;
+    try {
+      const response = await originalFetch(
+        liveModeUrl("/api/harthmere/live_mode_jobs_board_state"),
+        { credentials: "same-origin", cache: "no-store" }
+      );
+      if (!response.ok) return;
+      const body = await response.json();
+      refreshDeliveryHandoffPhase(body?.jobsBoardState);
+    } catch {
+      // Keep the last known handoff during a transient poll failure.
+    } finally {
+      deliveryPhaseRefreshBusy = false;
+    }
+  }
+
+  async function fetchWithDeliveryInventoryHandoff(input, init) {
+    const response = await originalFetch(input, init);
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input?.url;
+    const method = String(init?.method ?? input?.method ?? "GET").toUpperCase();
+    if (
+      method !== "GET" ||
+      !String(url ?? "").includes("/api/harthmere/live_mode_jobs_board_state") ||
+      !response.ok ||
+      Object.keys(rememberedInventoryItems).length === 0
+    ) {
+      return response;
+    }
+    try {
+      const body = await response.clone().json();
+      const snapshot = body?.jobsBoardState;
+      if (!snapshot || typeof snapshot !== "object") return response;
+      snapshot.inventoryItems = {
+        ...(snapshot.inventoryItems ?? {}),
+        ...rememberedInventoryItems,
+      };
+      refreshDeliveryHandoffPhase(snapshot);
+      const headers = new Headers(response.headers);
+      headers.delete("content-length");
+      headers.delete("content-encoding");
+      return new Response(JSON.stringify(body), {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+    } catch (error) {
+      console.error("Jobs Board delivery inventory handoff failed", error);
+      return response;
+    }
+  }
+
+  window.fetch = fetchWithDeliveryInventoryHandoff;
+  cleanupCallbacks.push(() => {
+    if (window.fetch === fetchWithDeliveryInventoryHandoff) {
+      window.fetch = originalFetch;
+    }
+  });
 
   function playerPosition() {
     return window.clientContext?.resources?.get("/scene/local_player")?.player
@@ -408,7 +644,7 @@
   }
 
   async function completeJobsBoardObjective(target) {
-    if (!target.fieldTarget) return;
+    if (!target.fieldTarget && !target.deliveryPickup) return;
     const stateResponse = await fetch(
       liveModeUrl("/api/harthmere/live_mode_jobs_board_state"),
       { credentials: "same-origin", cache: "no-store" }
@@ -444,6 +680,7 @@
     );
     const completedTargetId =
       matchedRequirement?.targetId ??
+      matchedRequirement?.pickupMarkerId ??
       matchedRequirement?.mapMarkerId ??
       todo.targetId ??
       todo.mapMarkerId ??
@@ -470,7 +707,9 @@
           questTodoId: todo.todoId,
           completedTargetId,
           interactionTargetId: todo.boardId,
-          operation: "complete_job_quest",
+          operation: target.deliveryPickup
+            ? "pickup_delivery_parcel"
+            : "complete_job_quest",
         },
       }),
     });
@@ -481,11 +720,44 @@
     const nextSnapshot =
       body.jobsBoardState ?? body.economyState?.jobsBoardState;
     if (nextSnapshot) {
+      const freshItems = body.inventoryLootState?.actor?.items;
+      if (freshItems && typeof freshItems === "object") {
+        rememberedInventoryItems = {
+          ...rememberedInventoryItems,
+          ...freshItems,
+        };
+      }
+      // Native inventory snapshots can be keyed by numeric Bikkie ids while
+      // the Jobs Board requirement uses its durable logical item id. Record
+      // that exact requirement too so every mounted-client map/HUD adapter
+      // observes the parcel immediately instead of retaining the pickup hint.
+      if (target.deliveryPickup && matchedRequirement?.itemId) {
+        const requiredCount = Math.max(
+          1,
+          Math.floor(Number(matchedRequirement.count ?? 1))
+        );
+        rememberedInventoryItems = {
+          ...rememberedInventoryItems,
+          [matchedRequirement.itemId]: Math.max(
+            requiredCount,
+            Number(
+              rememberedInventoryItems[matchedRequirement.itemId] ?? 0
+            )
+          ),
+        };
+      }
+      nextSnapshot.inventoryItems = {
+        ...(nextSnapshot.inventoryItems ?? {}),
+        ...rememberedInventoryItems,
+      };
       window.dispatchEvent(
         new CustomEvent("biomes:harthmere-jobs-board-state-updated", {
           detail: { jobsBoardState: nextSnapshot },
         })
       );
+      if (target.deliveryPickup) {
+        installDeliveryHandoff(todo, job, matchedRequirement);
+      }
     }
   }
 
@@ -528,6 +800,7 @@
     patchProtectedJobToolVisibility();
     patchMuckRakePresentation();
     ensureInspectableOverlay();
+    ensureDeliveryObjectiveText();
   }
 
   window.addEventListener("keydown", onKeyDown, true);
@@ -536,6 +809,11 @@
   );
   const interval = window.setInterval(installAgainstClientContext, 16);
   cleanupCallbacks.push(() => window.clearInterval(interval));
+  const deliveryPhaseInterval = window.setInterval(
+    () => void refreshActiveDeliveryPhaseFromServer(),
+    500
+  );
+  cleanupCallbacks.push(() => window.clearInterval(deliveryPhaseInterval));
 
   const cleanup = () => {
     if (stopped) return;
@@ -564,6 +842,13 @@
     originalItemActionAllowed = undefined;
     patchedBikkieRuntime = undefined;
     originalMuckRakeBiscuit = undefined;
+    rememberedInventoryItems = {};
+    activeDeliveryTodoId = undefined;
+    activeDeliveryJobId = undefined;
+    activeDeliveryTitle = undefined;
+    activeDeliveryObjective = undefined;
+    patchedObjectiveElement = undefined;
+    patchedObjectiveText = undefined;
     delete window.__harthmereMuckRakePresentationHotfix;
     if (window.__harthmereJobsBoardClientHotfixCleanup === cleanup) {
       delete window.__harthmereJobsBoardClientHotfixCleanup;

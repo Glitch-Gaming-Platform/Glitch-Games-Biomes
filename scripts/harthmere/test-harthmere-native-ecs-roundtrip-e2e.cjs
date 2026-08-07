@@ -31,6 +31,7 @@ require("ts-node/register/transpile-only");
 require("tsconfig-paths/register");
 
 const assert = require("assert");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
@@ -152,6 +153,7 @@ const {
   PLAYER_INVENTORY_SLOTS,
 } = require("../../src/shared/game/inventory");
 const {
+  HARTHMERE_NATIVE_BIKKIE_OVERLAY_VERSION,
   harthmereNativeBiomesIdForItemId,
   harthmereNativeItemIdForBiomesId,
   harthmereNativeBiomesIdForRecipeId,
@@ -326,9 +328,17 @@ const {
   snapshotGroveNpcEntityId,
 } = require("../../src/shared/harthmere/snapshot_grove_content");
 const {
+  HARTHMERE_GROVE_QUEST_OBJECT_ASSET_URLS,
+  HARTHMERE_GROVE_TRAINING_DUMMY_OFFSET,
+} = require("../../src/shared/harthmere/grove_quest_visual_assets");
+const {
   GROVE_FOUNTAIN_LESSON_IDS,
   GROVE_QUEST_CATALOG,
 } = require("../../src/shared/harthmere/grove/grove_quest_catalog");
+const {
+  GROVE_QUEST_AUDIT_MANIFEST,
+  groveQuestAuditTriggerKinds,
+} = require("../../src/shared/harthmere/grove/grove_quest_audit_manifest");
 const {
   groveNativeQuestId,
   groveNativeStepId,
@@ -709,6 +719,11 @@ async function loadNativeLegacyCombatBikkieTray() {
 }
 
 const root = path.resolve(__dirname, "../..");
+function sha256File(filePath) {
+  return filePath && fs.existsSync(filePath)
+    ? crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex")
+    : undefined;
+}
 const baseUrl = (
   process.env.HARTHMERE_E2E_BASE_URL || "http://127.0.0.1:3000"
 ).replace(/\/$/, "");
@@ -872,6 +887,10 @@ const jobsOnly = process.env.HARTHMERE_E2E_JOBS_ONLY === "1";
 const remainingJobsOnly = process.env.HARTHMERE_E2E_REMAINING_JOBS_ONLY === "1";
 const realJobsToolPurchase =
   process.env.HARTHMERE_E2E_REAL_JOB_TOOL_PURCHASE === "1";
+const realJobsItemSource =
+  process.env.HARTHMERE_E2E_REAL_JOB_ITEM_SOURCE === "1";
+const realJobsEscortMovement =
+  process.env.HARTHMERE_E2E_REAL_JOB_ESCORT_MOVEMENT === "1";
 const allowPreDynamicFieldTargetImage =
   process.env.HARTHMERE_E2E_ALLOW_PRE_DYNAMIC_FIELD_TARGET_IMAGE === "1";
 const remainingQuestsOnly =
@@ -883,6 +902,8 @@ const remainingQuestsOnly =
 // the catalog take hours without adding a distinct authority boundary.
 const fastGroveCatalog =
   remainingQuestsOnly && process.env.HARTHMERE_E2E_FAST_GROVE_CATALOG !== "0";
+const snapshotGroveVisualEvidence =
+  snapshotGroveOnboardingOnly || (remainingQuestsOnly && !fastGroveCatalog);
 const remainingBibleOnly =
   process.env.HARTHMERE_E2E_REMAINING_BIBLE_ONLY === "1";
 // Bible rows share one reducer/materializer/UI projection. The exhaustive
@@ -1248,6 +1269,23 @@ const report = {
     preDynamicFieldTargetFallbacks: [],
   },
   startedAt: new Date().toISOString(),
+  candidate: {
+    buildId: process.env.HARTHMERE_E2E_BUILD_ID || undefined,
+    bikkieOverlayVersion: HARTHMERE_NATIVE_BIKKIE_OVERLAY_VERSION,
+    redisWorldIdentity:
+      process.env.HARTHMERE_E2E_REDIS_WORLD_ID || undefined,
+    hotfixPath: clientHotfixScriptPath
+      ? path.relative(root, clientHotfixScriptPath)
+      : undefined,
+    hotfixSha256: sha256File(clientHotfixScriptPath),
+    runnerSha256: sha256File(__filename),
+    groveManifestSha256: sha256File(
+      path.join(
+        root,
+        "artifacts/grove-quest-audit-manifest-2026-08-07.json"
+      )
+    ),
+  },
   scenarios: [],
   browser: {
     console: [],
@@ -1276,6 +1314,16 @@ function isCatalogInfrastructureFailure(error) {
   // failures after the shared browser session can no longer reach its actor.
   return /ECONNREFUSED|ERR_CONNECTION_REFUSED|ECONNRESET|socket hang up|Target page, context or browser has been closed|page has been closed|aborted after browser failure|shared browser actor reset timed out|authoritative ECS read failed HTTP 401|Native quest .* actor is missing/i.test(
     message
+  );
+}
+
+function isGroveSetupInvalidFailure(error) {
+  const message = error?.stack || String(error);
+  return (
+    /\bat openUser\b/.test(message) ||
+    /visual test auth never became ready|game route failed|client context and bridge|loading-wrapper|post-bootstrap E2E admin/i.test(
+      message
+    )
   );
 }
 
@@ -2101,6 +2149,15 @@ async function frontendInteractionSnapshot(page) {
       mainQuest = undefined;
     }
     return {
+      activeElement: document.activeElement
+        ? {
+            tagName: document.activeElement.tagName,
+            id: document.activeElement.id,
+            className: document.activeElement.className,
+            title: document.activeElement.getAttribute("title"),
+            ariaLabel: document.activeElement.getAttribute("aria-label"),
+          }
+        : undefined,
       inspectable: inspectable
         ? {
             kind: inspectable.kind,
@@ -2148,6 +2205,14 @@ async function frontendInteractionSnapshot(page) {
             return {
               className: child.className,
               text: child.textContent?.trim(),
+              worldInteractionCandidateId:
+                child.getAttribute("data-world-interaction-candidate-id") ??
+                undefined,
+              worldInteractionPriority:
+                child.getAttribute("data-world-interaction-priority") ??
+                undefined,
+              worldInteractionOwner:
+                child.getAttribute("data-world-interaction-owner") ?? undefined,
               display: childStyle.display,
               visibility: childStyle.visibility,
               opacity: childStyle.opacity,
@@ -2199,6 +2264,28 @@ async function frontendInteractionSnapshot(page) {
           ancestors,
         };
       }),
+      worldInteractionCandidates: Array.from(
+        document.querySelectorAll("[data-world-interaction-candidate-id]")
+      ).map((element) => {
+        const htmlElement = element;
+        const style = getComputedStyle(htmlElement);
+        const rect = htmlElement.getBoundingClientRect();
+        return {
+          id: htmlElement.getAttribute("data-world-interaction-candidate-id"),
+          priority: htmlElement.getAttribute("data-world-interaction-priority"),
+          owner: htmlElement.getAttribute("data-world-interaction-owner"),
+          text: htmlElement.textContent?.trim(),
+          display: style.display,
+          visibility: style.visibility,
+          opacity: style.opacity,
+          rect: {
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+          },
+        };
+      }),
       bodyHasOpenContainer: document.body.innerText.includes("Open Container"),
       groveState,
       activeMapPin,
@@ -2208,6 +2295,10 @@ async function frontendInteractionSnapshot(page) {
             activeMarkerId: markerDebug.activeMarkerId,
             visibleSnapshotGroveMarkerIds:
               markerDebug.visibleSnapshotGroveMarkerIds,
+            markers:
+              typeof markerDebug.markers === "function"
+                ? markerDebug.markers()
+                : [],
           }
         : undefined,
     };
@@ -2544,6 +2635,13 @@ function attachDiagnostics(page, label) {
       /^\/buckets\/biomes-static\/asset_data\/audio\/(?:music-1|muck-music-1)\.[a-f0-9]+\.webm(?:\?|$)/.test(
         new URL(url).pathname
       );
+    const abortedQuestCatalogWorldMusicTransition =
+      (remainingQuestsOnly || remainingBibleOnly) &&
+      errorText === "net::ERR_ABORTED" &&
+      request.method() === "GET" &&
+      /^\/buckets\/biomes-static\/asset_data\/audio\/(?:music-1|muck-music-1)\.[a-f0-9]+\.webm(?:\?|$)/.test(
+        new URL(url).pathname
+      );
     const abortedHillCombatAmbientMusicTransition =
       (hillCombatOnly || retaliationOnly) &&
       errorText === "net::ERR_ABORTED" &&
@@ -2594,6 +2692,7 @@ function attachDiagnostics(page, label) {
         abortedCommittedChapter1VoicePlayback ||
         abortedChapter1CutsceneMusicTransition ||
         abortedChapter1WorldMusicTransition ||
+        abortedQuestCatalogWorldMusicTransition ||
         abortedHillCombatAmbientMusicTransition ||
         abortedHillCombatChapter1StoryPoll ||
         recoveredCatalogAbortedMutation ||
@@ -2771,6 +2870,7 @@ async function openUser(browser, username, label) {
         ? { width: 800, height: 600 }
         : { width: 1440, height: 900 },
   });
+  try {
   if (clientHotfixScriptPath) {
     assert(
       fs.existsSync(clientHotfixScriptPath),
@@ -3049,6 +3149,7 @@ async function openUser(browser, username, label) {
     robotStoryOnly ||
     jobsOnly ||
     remainingJobsOnly ||
+    remainingQuestsOnly ||
     escortOnly ||
     hoePurchaseOnly
   ) {
@@ -3232,6 +3333,7 @@ async function openUser(browser, username, label) {
     robotStoryOnly ||
     jobsOnly ||
     remainingJobsOnly ||
+    remainingQuestsOnly ||
     escortOnly ||
     hoePurchaseOnly
   ) {
@@ -3302,11 +3404,13 @@ async function openUser(browser, username, label) {
           ? `${label}: post-load robot-story actor is stable`
           : jobsOnly || remainingJobsOnly
             ? `${label}: post-load Jobs Board actor remains normalized`
-            : escortOnly
-              ? `${label}: post-load escort actor remains normalized`
-              : hoePurchaseOnly
-                ? `${label}: post-load held-tool actor remains normalized`
-                : `${label}: post-load Chapter 1 actor remains normalized`
+            : remainingQuestsOnly
+              ? `${label}: post-load Grove actor remains normalized`
+              : escortOnly
+                ? `${label}: post-load escort actor remains normalized`
+                : hoePurchaseOnly
+                  ? `${label}: post-load held-tool actor remains normalized`
+                  : `${label}: post-load Chapter 1 actor remains normalized`
       );
     }
     const staleWakeUpScreen = page.locator(".wake-up-container");
@@ -3377,11 +3481,13 @@ async function openUser(browser, username, label) {
             ? `${label}: reloaded robot-story actor is stable`
             : jobsOnly || remainingJobsOnly
               ? `${label}: reloaded Jobs Board actor remains normalized`
-              : escortOnly
-                ? `${label}: reloaded escort actor remains normalized`
-                : hoePurchaseOnly
-                  ? `${label}: reloaded held-tool actor remains normalized`
-                  : `${label}: reloaded Chapter 1 actor remains normalized`
+              : remainingQuestsOnly
+                ? `${label}: reloaded Grove actor remains normalized`
+                : escortOnly
+                  ? `${label}: reloaded escort actor remains normalized`
+                  : hoePurchaseOnly
+                    ? `${label}: reloaded held-tool actor remains normalized`
+                    : `${label}: reloaded Chapter 1 actor remains normalized`
         );
       }
       await staleWakeUpScreen.waitFor({
@@ -3427,6 +3533,14 @@ async function openUser(browser, username, label) {
     username,
     focusedCombatPosition,
   };
+  } catch (error) {
+    // A failed bootstrap previously leaked its WebGL context. By row four the
+    // leaked contexts could make every later quest time out before gameplay,
+    // which was then misreported as a product failure. A setup attempt owns
+    // its context and always releases it before the row is retried/classified.
+    await context.close().catch(() => undefined);
+    throw error;
+  }
 }
 
 async function openSameUserPeer(user, label) {
@@ -9643,7 +9757,7 @@ async function installAllJobsBoardE2EFixtures(actorId, templateFamily) {
         // Production auto-seeding assigns a collection point to repeatable
         // deliveries. Keep the deterministic fixture production-shaped so the
         // browser test proves pickup -> parcel -> drop-off marker transitions.
-        parcel.pickupMarkerId =
+        parcel.pickupMarkerId ??=
           template.boardScope === "harthmere"
             ? "harthmere_bridge_center"
             : "grove_tool_crate";
@@ -9801,14 +9915,22 @@ function replaceChapter1FixtureNativeGold(inventory, gold) {
 }
 
 function setNativeInventoryCount(inventory, itemId, count) {
+  let retained = false;
   for (const slots of [inventory.items, inventory.hotbar]) {
     for (let index = 0; index < slots.length; index += 1) {
       if (slots[index]?.item?.id !== itemId) continue;
-      slots[index] = count > 0 ? countOf(itemId, BigInt(count)) : undefined;
-      return;
+      if (count > 0 && !retained) {
+        slots[index] = countOf(itemId, BigInt(count));
+        retained = true;
+      } else {
+        // Reused E2E actors can retain the same item in backpack and hotbar.
+        // Clearing only the first matching stack made a source row begin with
+        // hidden inventory and falsely skip several physical gathers.
+        slots[index] = undefined;
+      }
     }
   }
-  if (count <= 0) return;
+  if (count <= 0 || retained) return;
   const emptyIndex = inventory.items.findIndex((slot) => !slot);
   assert(emptyIndex >= 0, `no native inventory slot available for ${itemId}`);
   inventory.items[emptyIndex] = countOf(itemId, BigInt(count));
@@ -9958,11 +10080,11 @@ async function prepareJobsE2ERealToolPurchase(first, expected) {
 async function buyAndEquipJobsE2ERequiredTool(
   first,
   expected,
-  acceptedMarker,
+  acceptedDestination,
   tool
 ) {
   assert.equal(
-    acceptedMarker.mapMarkerId,
+    acceptedDestination.worldObjectId,
     tool.vendorMarkerId,
     `${expected.templateId}: missing-tool job did not point to its exact vendor`
   );
@@ -10038,19 +10160,35 @@ async function buyAndEquipJobsE2ERequiredTool(
     objectiveMarkerId,
     `${expected.templateId}: no field marker after buying ${tool.listing.toolName}`
   );
+  const todoId = String(acceptedDestination.markerId ?? "").replace(
+    /^jobs_board_tool_source:/,
+    ""
+  );
   await waitFor(
-    `${expected.templateId}: purchase returns marker from vendor to job`,
+    `${expected.templateId}: purchase advances beyond the vendor to the next job requirement`,
     () =>
-      jobsBoardFetchWithRetry(first.page, `${expected.templateId}:tool-owned`),
-    (snapshot) =>
-      snapshot.markers.some(
-        (row) =>
-          row.jobsBoardJobId === expected.jobId &&
-          row.mapMarkerId === objectiveMarkerId
-      ),
+      first.page.evaluate(() => {
+        try {
+          return JSON.parse(
+            localStorage.getItem("biomes_ui_active_map_pin") ?? "null"
+          );
+        } catch {
+          return undefined;
+        }
+      }),
+    (pin) =>
+      pin?.worldObjectId === objectiveMarkerId ||
+      pin?.markerId === `jobs_board_item_source:${todoId}`,
     Math.max(originSyncGateMs, 10_000),
     timeoutMs
   );
+  await first.page.screenshot({
+    path: path.join(
+      artifactsDir,
+      `${runId}-${expected.templateId}-post-purchase-marker-handoff.png`
+    ),
+    fullPage: true,
+  });
 
   const purchasedRef = inventoryRefForItem(
     purchased.value.entity,
@@ -10143,6 +10281,11 @@ async function provisionJobsE2ERequirements(first, expected) {
   const requiredToolAction = expected.requirements.find(
     (requirement) => requirement.requiredToolAction
   )?.requiredToolAction;
+  const requiredToolItemKey = requiredToolAction
+    ? requiredToolAction === "repair"
+      ? "repair_mallet"
+      : "muck_rake"
+    : undefined;
   if (!requiredItems.length && !requiredToolAction) return;
 
   const authoritative = await authoritativeEntity(first.page, first.userId);
@@ -10168,8 +10311,7 @@ async function provisionJobsE2ERequirements(first, expected) {
   let selectedToolId;
   let selectedToolKey;
   if (requiredToolAction && !realJobsToolPurchase) {
-    const toolItemKey =
-      requiredToolAction === "repair" ? "repair_mallet" : "muck_rake";
+    const toolItemKey = requiredToolItemKey;
     const toolItemId = harthmereNativeBiomesIdForItemId(toolItemKey);
     assert(toolItemId, `${toolItemKey} has no native item id`);
     selectedToolKey = toolItemKey;
@@ -10238,6 +10380,37 @@ async function provisionJobsE2ERequirements(first, expected) {
         entity?.selected_item?.item?.item?.id === selectedToolId),
     originSyncGateMs,
     timeoutMs
+  );
+  await first.page.evaluate(
+    ({ itemCounts, toolItemKey }) => {
+      const items = Object.fromEntries(
+        itemCounts.map(({ itemId, count }) => [itemId, count])
+      );
+      if (toolItemKey) items[toolItemKey] = 1;
+      window.dispatchEvent(
+        new CustomEvent("biomes:harthmere-live-inventory-sync", {
+          detail: {
+            body: {
+              inventoryLootState: {
+                actor: {
+                  items,
+                  equipment: toolItemKey
+                    ? { main_hand: { itemId: toolItemKey } }
+                    : {},
+                },
+              },
+            },
+          },
+        })
+      );
+    },
+    {
+      itemCounts: requiredItems.map((requirement) => ({
+        itemId: requirement.itemId,
+        count: Math.max(1, Number(requirement.count ?? 1)),
+      })),
+      toolItemKey: requiredToolItemKey,
+    }
   );
   if (selectedToolId) {
     await waitForJobsE2EHeldTool(first, expected, {
@@ -10378,7 +10551,7 @@ async function performJobsE2EFieldInteraction(
   // second hand-in object. Resolve ordinary landmarks only for repeated
   // service work whose authored serviceUnits require multiple receipts.
   const landmark =
-    Number(requiredInteractionCount) > 1
+    Number(requiredInteractionCount) > 1 || selectFieldTargetOnMap
       ? snapshotGroveLandmarkById(targetId)
       : undefined;
   const target =
@@ -10524,15 +10697,26 @@ async function performJobsE2EFieldInteraction(
           );
           continue;
         }
-        const promptVisible = snapshot?.inspectOverlays?.some(
-          (overlay) =>
-            overlay.text?.includes(interaction.title) &&
+        const promptVisible = snapshot?.inspectOverlays?.some((overlay) => {
+          const owningPrompt = overlay.descendants?.find(
+            (descendant) =>
+              descendant.worldInteractionOwner === "true" &&
+              descendant.text?.includes(interaction.title)
+          );
+          return Boolean(
+            owningPrompt &&
             overlay.display !== "none" &&
             overlay.visibility !== "hidden" &&
             Number(overlay.opacity) > 0 &&
             overlay.rect?.width > 0 &&
-            overlay.rect?.height > 0
-        );
+            overlay.rect?.height > 0 &&
+            owningPrompt.display !== "none" &&
+            owningPrompt.visibility !== "hidden" &&
+            Number(owningPrompt.opacity) > 0 &&
+            owningPrompt.rect?.width > 0 &&
+            owningPrompt.rect?.height > 0
+          );
+        });
         if (
           snapshot?.inspectable?.kind === "harthmere_object" &&
           snapshot.inspectable.objectId === target.targetId &&
@@ -10619,9 +10803,19 @@ async function performJobsE2EFieldInteraction(
         )} last=${JSON.stringify(lastInteractionSnapshot)}`
     );
     if (interactionIndex === 0) {
+      (report.gates.jobsBoardFieldInteractionPromptDiagnostics ??= []).push({
+        jobId,
+        targetId: target.targetId,
+        interaction: interaction.kind,
+        activeElement: visiblePrompt.activeElement,
+        candidates: visiblePrompt.worldInteractionCandidates,
+        inspectOverlays: visiblePrompt.inspectOverlays,
+      });
       const screenshot = path.join(
         artifactsDir,
-        `${runId}-${jobId.replace(/[^a-z0-9_-]+/gi, "-")}-field-tool-use.png`
+        `${runId}-${jobId.replace(/[^a-z0-9_-]+/gi, "-")}-${label
+          .replace(/[^a-z0-9_-]+/gi, "-")
+          .replace(/^-+|-+$/g, "")}-field-interaction.png`
       );
       await first.page.screenshot({ path: screenshot });
       (report.gates.jobsBoardFieldToolUseScreenshots ??= []).push({
@@ -10634,7 +10828,37 @@ async function performJobsE2EFieldInteraction(
     let receiptRecorded = false;
     let lastReceiptError;
     for (let keyAttempt = 1; keyAttempt <= 3; keyAttempt += 1) {
-      await first.page.keyboard.press("KeyF");
+      // Keep keyboard focus on the real game canvas. Focusing document.body
+      // disables pointer-lock HUD input and unregisters the candidate; an
+      // iframe can also steal focus after nearby media initializes.
+      await first.page.evaluate(() => {
+        globalThis.focus();
+        document
+          .querySelector("canvas.biomes-canvas")
+          ?.focus({ preventScroll: true });
+      });
+      const focusedPrompt = await frontendInteractionSnapshot(first.page);
+      (report.gates.jobsBoardFieldInteractionKeyDiagnostics ??= []).push({
+        jobId,
+        targetId: target.targetId,
+        interaction: interaction.kind,
+        keyAttempt,
+        activeElement: focusedPrompt?.activeElement,
+        candidates: focusedPrompt?.worldInteractionCandidates,
+      });
+      assert(
+        focusedPrompt?.worldInteractionCandidates?.some(
+          (candidate) =>
+            candidate.owner === "true" &&
+            candidate.text?.includes(interaction.title) &&
+            candidate.display !== "none" &&
+            candidate.visibility !== "hidden" &&
+            Number(candidate.opacity) > 0
+        ),
+        `${label}: F ${interaction.title} stopped owning the game canvas before key attempt ${keyAttempt}; ` +
+          `snapshot=${JSON.stringify(focusedPrompt)}`
+      );
+      await first.page.keyboard.press("f");
       try {
         await waitFor(
           `${label}: server records interaction ${
@@ -10729,6 +10953,298 @@ function jobsE2EMarkerPosition(markerId, label) {
   return marker.position;
 }
 
+async function prepareJobsE2ERealItemSource(first, expected) {
+  if (
+    !realJobsItemSource ||
+    expected.templateId !== "town_gather_road_rations"
+  ) {
+    return undefined;
+  }
+  const requirement = expected.requirements.find(
+    (candidate) => candidate.itemId && candidate.mapMarkerId
+  );
+  assert(requirement, `${expected.templateId}: no physical item source`);
+  const nativeItemId = harthmereNativeBiomesIdForItemId(requirement.itemId);
+  assert(nativeItemId, `${requirement.itemId}: no native item id`);
+  const authoritative = await authoritativeEntity(first.page, first.userId);
+  assert(
+    authoritative.entity?.inventory,
+    `${expected.templateId}: no inventory`
+  );
+  const inventory = Inventory.clone(authoritative.entity.inventory);
+  setNativeInventoryCount(inventory, nativeItemId, 0);
+  await applyFixture(first.page, {
+    kind: "update",
+    entity: { id: first.userId, inventory },
+  });
+  await waitFor(
+    `${expected.templateId}: starts without retained source items`,
+    () => authoritativeEntity(first.page, first.userId),
+    ({ entity }) => inventoryCount(entity, nativeItemId) === 0n,
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  return { requirement, nativeItemId };
+}
+
+async function approachJobsE2EWorldObject(
+  first,
+  markerId,
+  label,
+  actionPattern
+) {
+  const target = harthmereJobsBoardQuestMarkerRuntimePositionForId(markerId);
+  assert(target, `${label}: missing world marker ${markerId}`);
+  const approaches = [
+    [0, 0.8],
+    [0.8, 0],
+    [0, -0.8],
+    [-0.8, 0],
+    [0, 1.5],
+    [1.5, 0],
+    [0, -1.5],
+    [-1.5, 0],
+    [0, 2.25],
+    [2.25, 0],
+    [0, -2.25],
+    [-2.25, 0],
+  ];
+  let lastSnapshot;
+  for (const [dx, dz] of approaches) {
+    const approachPosition = [
+      target.position[0] + dx,
+      target.position[1],
+      target.position[2] + dz,
+    ];
+    await moveJobsE2EPlayer(first, approachPosition, label);
+    await faceSnapshotGroveWorldObject(
+      first,
+      { position: target.position },
+      approachPosition,
+      0.9
+    );
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      const snapshot = await frontendInteractionSnapshot(first.page);
+      lastSnapshot = snapshot;
+      const owningAction = snapshot?.worldInteractionCandidates?.find(
+        (candidate) =>
+          candidate.owner === "true" &&
+          actionPattern.test(candidate.text ?? "") &&
+          candidate.display !== "none" &&
+          candidate.visibility !== "hidden" &&
+          Number(candidate.opacity) > 0 &&
+          candidate.rect?.width > 0 &&
+          candidate.rect?.height > 0
+      );
+      const exactInspectable =
+        snapshot?.inspectable?.kind === "harthmere_object" &&
+        snapshot.inspectable.objectId === markerId;
+      const visibleMarker = snapshot?.markerDebug?.markers?.some(
+        (candidate) => candidate.id === markerId && candidate.visible === true
+      );
+      if (owningAction && exactInspectable && visibleMarker) {
+        return { snapshot, approachPosition, target, owningAction };
+      }
+      await delay(150);
+    }
+  }
+  assert.fail(
+    `${label}: no visible owning F prompt for ${markerId}; last=${JSON.stringify(
+      lastSnapshot
+    )}`
+  );
+}
+
+async function performJobsE2ERealItemSource(first, expected, todo, source) {
+  const requiredCount = Math.max(1, Number(source.requirement.count ?? 1));
+  const sourceMarkerId = source.requirement.mapMarkerId;
+  const screenshots = [];
+  for (let index = 0; index < requiredCount; index += 1) {
+    const beforeGather = await authoritativeEntity(first.page, first.userId);
+    const beforeCount = inventoryCount(
+      beforeGather.entity,
+      source.nativeItemId
+    );
+    if (beforeCount >= BigInt(requiredCount)) break;
+    const prompt = await approachJobsE2EWorldObject(
+      first,
+      sourceMarkerId,
+      `${expected.templateId}: gather ${index + 1}/${requiredCount}`,
+      /\bGather\b/i
+    );
+    if (index === 0) {
+      const screenshot = path.join(
+        artifactsDir,
+        `${runId}-${expected.templateId}-visible-berry-source.png`
+      );
+      await first.page.screenshot({ path: screenshot, fullPage: true });
+      screenshots.push(screenshot);
+    }
+    await first.page.locator("canvas.biomes-canvas").focus();
+    await first.page.keyboard.press("f");
+    await waitFor(
+      `${expected.templateId}: real source grants berry ${index + 1}/${requiredCount}`,
+      () => authoritativeEntity(first.page, first.userId),
+      ({ entity }) => inventoryCount(entity, source.nativeItemId) > beforeCount,
+      Math.max(originSyncGateMs, 10_000),
+      timeoutMs
+    );
+  }
+  const gatheredInventory = await authoritativeEntity(first.page, first.userId);
+  assert(
+    inventoryCount(gatheredInventory.entity, source.nativeItemId) >=
+      BigInt(requiredCount),
+    `${expected.templateId}: physical gathers did not produce ${requiredCount} required items`
+  );
+  const readyToHandIn = await waitFor(
+    `${expected.templateId}: six real gathers return the marker to the board`,
+    () =>
+      jobsBoardFetchWithRetry(first.page, `${expected.templateId}:gathered`),
+    (snapshot) => {
+      const currentTodo = snapshot.todos.find(
+        (candidate) => candidate.todoId === todo.todoId
+      );
+      const marker = snapshot.markers.find(
+        (candidate) => candidate.jobsBoardJobId === expected.jobId
+      );
+      return (
+        (currentTodo?.status === "active" ||
+          currentTodo?.status === "completed") &&
+        marker?.mapMarkerId === "harthmere_market_posting_board"
+      );
+    },
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  const returnScreenshot = path.join(
+    artifactsDir,
+    `${runId}-${expected.templateId}-gather-complete-return-marker.png`
+  );
+  await first.page.screenshot({ path: returnScreenshot, fullPage: true });
+  screenshots.push(returnScreenshot);
+  const board = HARTHMERE_JOBS_BOARD_LOCATIONS[expected.boardId];
+  assert(board, `${expected.templateId}: missing hand-in board`);
+  await moveJobsE2EPlayer(
+    first,
+    [board.location.x, board.location.y, board.location.z],
+    `${expected.templateId}: hand in gathered berries`
+  );
+  const completed =
+    readyToHandIn.value.todos.find(
+      (candidate) => candidate.todoId === todo.todoId
+    )?.status === "completed"
+      ? readyToHandIn.value
+      : await jobsBoardMutationWithRetry(
+          first.page,
+          {
+            operation: "completeQuest",
+            jobId: expected.jobId,
+            boardId: expected.boardId,
+            questTodoId: todo.todoId,
+            requestId: `jobs_e2e_gather_hand_in:${runId}:${expected.templateId}`,
+          },
+          `${expected.templateId}:gather-hand-in`
+        );
+  assert.equal(
+    completed.todos.find((candidate) => candidate.todoId === todo.todoId)
+      ?.status,
+    "completed",
+    `${expected.templateId}: board hand-in did not complete the todo`
+  );
+  const handInScreenshot = path.join(
+    artifactsDir,
+    `${runId}-${expected.templateId}-berries-handed-in.png`
+  );
+  await first.page.screenshot({ path: handInScreenshot, fullPage: true });
+  screenshots.push(handInScreenshot);
+  (report.gates.jobsBoardRealItemSources ??= []).push({
+    jobId: expected.jobId,
+    templateId: expected.templateId,
+    sourceMarkerId,
+    requiredCount,
+    nativeItemId: source.nativeItemId,
+    screenshots,
+  });
+  return completed;
+}
+
+async function performJobsE2ERealDeliveryPickup(
+  first,
+  expected,
+  todo,
+  parcel,
+  parcelItemId,
+  beforePickup
+) {
+  const prompt = await approachJobsE2EWorldObject(
+    first,
+    parcel.pickupMarkerId,
+    `${expected.templateId}: visible sealed-package pickup`,
+    /Open Container|Pick up|Gather|Inspect/i
+  );
+  const pickupScreenshot = path.join(
+    artifactsDir,
+    `${runId}-${expected.templateId}-visible-sealed-package-pickup.png`
+  );
+  await first.page.screenshot({ path: pickupScreenshot, fullPage: true });
+  await first.page.locator("canvas.biomes-canvas").focus();
+  await first.page.keyboard.press("f");
+  const pickedUp = await waitFor(
+    `${expected.templateId}: real F pickup creates parcel and advances marker`,
+    async () => ({
+      jobs: await jobsBoardFetchWithRetry(
+        first.page,
+        `${expected.templateId}:after-real-pickup`
+      ),
+      actor: await authoritativeEntity(first.page, first.userId),
+    }),
+    ({ jobs, actor }) => {
+      const marker = jobs.markers.find(
+        (candidate) => candidate.jobsBoardJobId === expected.jobId
+      );
+      return (
+        marker?.mapMarkerId === parcel.mapMarkerId &&
+        inventoryCount(actor.entity, parcelItemId) ===
+          beforePickup + BigInt(parcel.count ?? 1)
+      );
+    },
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  await waitFor(
+    `${expected.templateId}: visible objective advances from pickup to delivery`,
+    async () =>
+      String(
+        (await first.page
+          .locator('[aria-label="Current objective"]')
+          .textContent()
+          .catch(() => "")) ?? ""
+      ).replace(/\s+/g, " "),
+    (text) =>
+      /(?:deliver|take)/i.test(text) &&
+      !/(?:pick up|collect)/i.test(text),
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  await first.page.keyboard.press("Escape").catch(() => undefined);
+  const handoffScreenshot = path.join(
+    artifactsDir,
+    `${runId}-${expected.templateId}-pickup-to-dropoff-marker.png`
+  );
+  await first.page.screenshot({ path: handoffScreenshot, fullPage: true });
+  (report.gates.jobsBoardDeliveryPickups ??= []).push({
+    jobId: expected.jobId,
+    templateId: expected.templateId,
+    todoId: todo.todoId,
+    pickupMarkerId: parcel.pickupMarkerId,
+    dropoffMarkerId: parcel.mapMarkerId,
+    pickupPosition: prompt.target.position,
+    prompt: prompt.owningAction.text,
+    screenshots: [pickupScreenshot, handoffScreenshot],
+  });
+  return pickedUp.value.jobs;
+}
+
 async function proveAllJobsBoardFrontendNativeEcsRoundTrips(
   first,
   templateFamily = "auto"
@@ -10781,6 +11297,7 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(
           `${expected.templateId}: native ECS board position`
         );
         const realTool = await prepareJobsE2ERealToolPurchase(first, expected);
+        const source = await prepareJobsE2ERealItemSource(first, expected);
 
         const before = await jobsBoardFetchWithRetry(
           first.page,
@@ -10861,20 +11378,112 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(
           `${expected.templateId}: accept did not use the native ECS board proximity`
         );
         if (realTool) {
+          const acceptedDestination = await waitFor(
+            `${expected.templateId}: accepted job becomes the main objective and exact tool destination`,
+            () =>
+              first.page.evaluate(() => {
+                const parse = (key) => {
+                  try {
+                    return JSON.parse(localStorage.getItem(key) ?? "null");
+                  } catch {
+                    return undefined;
+                  }
+                };
+                const pin = parse("biomes_ui_active_map_pin");
+                const mainQuest = parse("biomes_ui_main_quest");
+                const minimap = document.querySelector(
+                  "[data-biomes-ui-active-minimap-pin]"
+                );
+                const objective = document.querySelector(
+                  ".biomes-ui-current-objective-hud"
+                );
+                return {
+                  ...pin,
+                  mainQuestId: mainQuest?.questId,
+                  minimapMarkerId: minimap?.getAttribute(
+                    "data-biomes-ui-active-minimap-pin"
+                  ),
+                  objectiveText: objective?.textContent ?? "",
+                };
+              }),
+            (destination) =>
+              destination?.worldObjectId === realTool.vendorMarkerId &&
+              destination?.mainQuestId === `jobs_board:${todo.todoId}` &&
+              destination?.minimapMarkerId === destination?.markerId &&
+              /buy|mallet|rake/i.test(destination?.objectiveText ?? ""),
+            Math.max(originSyncGateMs, 10_000),
+            timeoutMs
+          );
+          await first.page.screenshot({
+            path: path.join(
+              artifactsDir,
+              `${runId}-${expected.templateId}-vendor-marker-handoff.png`
+            ),
+            fullPage: true,
+          });
           await buyAndEquipJobsE2ERequiredTool(
             first,
             expected,
-            marker,
+            acceptedDestination.value,
             realTool
           );
         }
-        await provisionJobsE2ERequirements(first, expected);
-        const goldBeforeReward = nativeGold(
-          (await authoritativeEntity(first.page, first.userId)).entity
+        if (!source) {
+          await provisionJobsE2ERequirements(first, expected);
+        }
+        if (realTool) {
+          const completionTarget =
+            expected.requirements.find(
+              (requirement) => requirement.mapMarkerId || requirement.targetId
+            ) ?? {};
+          const objectiveMarkerId =
+            completionTarget.mapMarkerId ?? expected.mapMarkerId;
+          assert(
+            objectiveMarkerId,
+            `${expected.templateId}: no field marker after requirements were provisioned`
+          );
+          await waitFor(
+            `${expected.templateId}: all prerequisites hand the same quest to its field marker`,
+            () =>
+              first.page.evaluate(() => {
+                try {
+                  return JSON.parse(
+                    localStorage.getItem("biomes_ui_active_map_pin") ?? "null"
+                  );
+                } catch {
+                  return undefined;
+                }
+              }),
+            (pin) => pin?.worldObjectId === objectiveMarkerId,
+            Math.max(originSyncGateMs, 10_000),
+            timeoutMs
+          );
+          await first.page.screenshot({
+            path: path.join(
+              artifactsDir,
+              `${runId}-${expected.templateId}-field-marker-handoff.png`
+            ),
+            fullPage: true,
+          });
+        }
+        const nativeBeforeReward = await authoritativeEntity(
+          first.page,
+          first.userId
         );
+        const goldBeforeReward = nativeGold(nativeBeforeReward.entity);
+        const sourceItemsBeforeReward = source
+          ? inventoryCount(nativeBeforeReward.entity, source.nativeItemId)
+          : undefined;
 
         let objectiveCompleted;
-        if (expected.kind === "delivery") {
+        if (source) {
+          objectiveCompleted = await performJobsE2ERealItemSource(
+            first,
+            expected,
+            todo,
+            source
+          );
+        } else if (expected.kind === "delivery") {
           const parcel = expected.requirements.find(
             (requirement) => requirement.itemId
           );
@@ -10904,17 +11513,13 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(
             ),
             `${expected.templateId}: pickup`
           );
-          const pickedUp = await jobsBoardMutationWithRetry(
-            first.page,
-            {
-              operation: "pickup",
-              jobId: expected.jobId,
-              boardId: expected.boardId,
-              questTodoId: todo.todoId,
-              completedTargetId: parcel.pickupMarkerId,
-              requestId: `jobs_e2e_pickup:${runId}:${expected.templateId}`,
-            },
-            `${expected.templateId}:pickup`
+          const pickedUp = await performJobsE2ERealDeliveryPickup(
+            first,
+            expected,
+            todo,
+            parcel,
+            parcelItemId,
+            beforePickup
           );
           const dropoffMarker = pickedUp.markers.find(
             (row) => row.jobsBoardJobId === expected.jobId
@@ -10989,16 +11594,6 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(
             `${expected.templateId}: authoritative escort marker missing`
           );
           const escortPosition = escortMarker.position;
-          await moveJobsE2EPlayer(
-            first,
-            escortPosition,
-            `${expected.templateId}: escort destination`
-          );
-          // The focused all-jobs stack deliberately omits the heavyweight Anima
-          // worker. Accepting still creates the exact native companion assignment
-          // and the server scheduler materializes its ECS entity; supply the one
-          // authoritative ECS arrival that Anima owns in production, then prove
-          // the real scheduler observes it and completes the browser todo.
           const companion = await waitFor(
             `${expected.templateId}: accepted escort companion exists`,
             () => fixture.escortCompanion(expected.jobId),
@@ -11016,14 +11611,52 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(
             Math.max(originSyncGateMs, 10_000),
             timeoutMs
           );
-          await applyFixture(first.page, {
-            kind: "update",
-            entity: {
-              id: companion.value.entityId,
-              position: Position.create({ v: escortPosition }),
-              rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
-            },
+          const companionStart = await authoritativeEntity(
+            first.page,
+            companion.value.entityId
+          );
+          await first.page.screenshot({
+            path: path.join(
+              artifactsDir,
+              `${runId}-${expected.templateId}-escort-destination-marker.png`
+            ),
+            fullPage: true,
           });
+          await moveJobsE2EPlayer(
+            first,
+            escortPosition,
+            `${expected.templateId}: escort destination`
+          );
+          if (!realJobsEscortMovement) {
+            // Compatibility path for source-only stacks that intentionally omit
+            // Anima. Production-shaped acceptance sets
+            // HARTHMERE_E2E_REAL_JOB_ESCORT_MOVEMENT=1 and must never use it.
+            await applyFixture(first.page, {
+              kind: "update",
+              entity: {
+                id: companion.value.entityId,
+                position: Position.create({ v: escortPosition }),
+                rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+              },
+            });
+          } else {
+            await waitFor(
+              `${expected.templateId}: Anima escort reaches supplied destination`,
+              () => fixture.escortCompanion(expected.jobId),
+              (candidate) =>
+                candidate?.status === "arrived" &&
+                distance3(
+                  [
+                    candidate.position.x,
+                    candidate.position.y,
+                    candidate.position.z,
+                  ],
+                  escortPosition
+                ) <= 8,
+              30_000,
+              Math.max(timeoutMs, 180_000)
+            );
+          }
           objectiveCompleted = (
             await waitFor(
               `${expected.templateId}: server escort scheduler completed todo`,
@@ -11040,6 +11673,35 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(
               timeoutMs
             )
           ).value;
+          const companionEnd = await authoritativeEntity(
+            first.page,
+            companion.value.entityId
+          );
+          const escortReturnMarker = objectiveCompleted.markers.find(
+            (row) => row.jobsBoardJobId === expected.jobId
+          );
+          assert(
+            escortReturnMarker,
+            `${expected.templateId}: completion did not produce a return marker`
+          );
+          await first.page.screenshot({
+            path: path.join(
+              artifactsDir,
+              `${runId}-${expected.templateId}-escort-arrival-return-marker.png`
+            ),
+            fullPage: true,
+          });
+          (report.gates.jobsBoardEscortMovement ??= []).push({
+            jobId: expected.jobId,
+            templateId: expected.templateId,
+            realMovement: realJobsEscortMovement,
+            destinationMarkerId: escortMarker.mapMarkerId,
+            destinationPosition: escortPosition,
+            companionId: companion.value.entityId,
+            companionStart: companionStart.entity?.position?.v,
+            companionEnd: companionEnd.entity?.position?.v,
+            returnMarkerId: escortReturnMarker.mapMarkerId,
+          });
         } else {
           const completionTarget =
             expected.requirements.find(
@@ -11091,7 +11753,8 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(
             expected.title,
             `${expected.templateId}: field interaction`,
             completionTarget.serviceUnits ?? 1,
-            expected.requirements.every((requirement) => !requirement.itemId)
+            expected.kind === "repair" ||
+              expected.requirements.every((requirement) => !requirement.itemId)
           );
           objectiveCompleted =
             visibleFieldCompletion ??
@@ -11159,7 +11822,11 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(
           () => authoritativeEntity(first.page, first.userId),
           ({ entity }) =>
             nativeGold(entity) ===
-            goldBeforeReward + BigInt(expected.rewardGold),
+              goldBeforeReward + BigInt(expected.rewardGold) &&
+            (!source ||
+              inventoryCount(entity, source.nativeItemId) ===
+                sourceItemsBeforeReward -
+                  BigInt(source.requirement.count ?? 1)),
           Math.max(acceptanceGateMs, 60_000),
           timeoutMs
         );
@@ -11168,6 +11835,63 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(
           goldBeforeReward + BigInt(expected.rewardGold),
           `${expected.templateId}: reward was not paid through native wallet`
         );
+        if (source) {
+          assert.equal(
+            inventoryCount(nativeCompleted.value.entity, source.nativeItemId),
+            sourceItemsBeforeReward - BigInt(source.requirement.count ?? 1),
+            `${expected.templateId}: board hand-in did not consume the exact required items`
+          );
+        }
+        if (expected.kind === "delivery") {
+          await waitFor(
+            `${expected.templateId}: paid delivery clears stale job objective and pin`,
+            async () => {
+              const snapshot = await frontendInteractionSnapshot(first.page);
+              const objectiveText = String(
+                (await first.page
+                  .locator('[aria-label="Current objective"]')
+                  .textContent()
+                  .catch(() => "")) ?? ""
+              ).replace(/\s+/g, " ");
+              return {
+                objectiveText,
+                activePinMarkerId: snapshot?.activeMapPin?.markerId,
+              };
+            },
+            ({ objectiveText, activePinMarkerId }) =>
+              !/(?:Pick up 1 Sealed Package|Deliver Sealed Package)/i.test(
+                objectiveText
+              ) &&
+              activePinMarkerId !== `jobs_board_marker:${todo.todoId}`,
+            Math.max(originSyncGateMs, 10_000),
+            timeoutMs
+          );
+        }
+        const rewardScreenshot = path.join(
+          artifactsDir,
+          `${runId}-${expected.templateId}-reward-paid.png`
+        );
+        await first.page.screenshot({ path: rewardScreenshot, fullPage: true });
+        (report.gates.jobsBoardRewardScreenshots ??= []).push({
+          jobId: expected.jobId,
+          templateId: expected.templateId,
+          rewardGold: expected.rewardGold,
+          goldBeforeReward: String(goldBeforeReward),
+          goldAfterReward: String(nativeGold(nativeCompleted.value.entity)),
+          sourceItemsBeforeReward:
+            sourceItemsBeforeReward === undefined
+              ? undefined
+              : String(sourceItemsBeforeReward),
+          sourceItemsAfterReward: source
+            ? String(
+                inventoryCount(
+                  nativeCompleted.value.entity,
+                  source.nativeItemId
+                )
+              )
+            : undefined,
+          screenshot: rewardScreenshot,
+        });
         await fixture.clearAcceptCooldown();
         report.scenarios.push({
           name: `jobs board frontend/native ECS/frontend: ${expected.templateId}`,
@@ -20310,82 +21034,76 @@ async function proveMuckRakeHeldVisual(first) {
   const radius = Math.max(0.9, Math.min(3.2, sortedSize[0] * 1.8));
   const cameras = {
     front: [target[0], target[1] + 0.08, target[2] - radius],
+    left: [target[0] - radius, target[1] + 0.08, target[2]],
+    right: [target[0] + radius, target[1] + 0.08, target[2]],
   };
   const gameplayScreenshot = path.join(
     artifactsDir,
     `${runId}-muck-rake-held-gameplay.png`
   );
   await first.page.screenshot({ path: gameplayScreenshot, fullPage: true });
-  const cutsceneId = await registerHostChapter1Cutscene(first, {
-    id: "muck-rake-held-visual-review",
-    name: "Muck Rake Held Visual Review",
-    priority: 950_000,
-    settings: {
-      skippable: true,
-      skipAfterSeconds: 0,
-      lockPlayer: true,
-      hideHud: false,
-      letterbox: false,
-      invulnerablePlayer: true,
-      mode: "clientPuppet",
-      commitOn: [],
-      maxSceneDurationSeconds: 20,
-    },
-    cast: [{ role: "player", binding: { kind: "player" } }],
-    shots: Object.entries(cameras).map(([id, position]) => ({
-      id,
-      duration: 20,
-      camera: {
-        kind: "static",
-        position,
-        orientation: lookAtOrientation(position, target),
-      },
-      transitionIn: "blend",
-      blendSeconds: 0.1,
-      actions: [{ kind: "fov", at: 0, fov: 40 }],
-    })),
-    onEnd: { placements: [], commits: [] },
+  const cameraSnapshot = await first.page.evaluate(() => {
+    const resources = globalThis.clientContext?.resources;
+    const camera = resources?.get("/scene/camera");
+    return {
+      waypoint: resources?.get("/scene/waypoint_camera/active"),
+      position: camera?.three.position.toArray(),
+      quaternion: camera?.three.quaternion.toArray(),
+      fov: camera?.three.fov,
+      isFirstPerson: camera?.isFirstPerson,
+    };
   });
-  const started = await bridgeCall(
-    first.page,
-    "chapter1StartCutscene",
-    cutsceneId
-  );
-  assert.equal(
-    started.accepted,
-    true,
-    "Muck Rake review cutscene was rejected"
-  );
   const screenshots = { gameplay: gameplayScreenshot };
-  for (const [label, position] of Object.entries(cameras)) {
-    await waitFor(
-      `Muck Rake ${label} camera settles`,
-      () =>
-        first.page.evaluate((expected) => {
+  try {
+    for (const [label, position] of Object.entries(cameras)) {
+      const orientation = lookAtOrientation(position, target);
+      await first.page.evaluate(
+        ({ position, target, orientation }) => {
           const resources = globalThis.clientContext?.resources;
-          const waypoint = resources?.get("/scene/waypoint_camera/active");
-          const current =
-            waypoint?.kind === "active" ? waypoint.value?.[0] : undefined;
-          return Array.isArray(current)
-            ? Math.hypot(
-                current[0] - expected[0],
-                current[1] - expected[1],
-                current[2] - expected[2]
-              )
-            : Number.POSITIVE_INFINITY;
-        }, position),
-      (distance) => distance <= 0.12,
-      15_000,
-      60_000
-    );
-    const screenshot = path.join(
-      artifactsDir,
-      `${runId}-muck-rake-held-${label}.png`
-    );
-    await first.page.screenshot({ path: screenshot, fullPage: true });
-    screenshots[label] = screenshot;
+          resources?.set("/scene/waypoint_camera/active", {
+            kind: "active",
+            value: [[...position], [...orientation]],
+          });
+          resources?.update("/scene/camera", (camera) => {
+            camera.isFirstPerson = false;
+            camera.three.position.fromArray(position);
+            camera.three.lookAt(target[0], target[1], target[2]);
+            camera.three.fov = 40;
+            camera.three.updateMatrixWorld();
+            camera.three.updateProjectionMatrix();
+            camera.updateFrustumBoundingSphere();
+          });
+        },
+        { position, target, orientation }
+      );
+      await first.page.waitForTimeout(500);
+      const screenshot = path.join(
+        artifactsDir,
+        `${runId}-muck-rake-held-${label}.png`
+      );
+      await first.page.screenshot({ path: screenshot, fullPage: true });
+      screenshots[label] = screenshot;
+    }
+  } finally {
+    await first.page.evaluate((snapshot) => {
+      const resources = globalThis.clientContext?.resources;
+      if (snapshot.waypoint) {
+        resources?.set("/scene/waypoint_camera/active", snapshot.waypoint);
+      }
+      resources?.update("/scene/camera", (camera) => {
+        camera.isFirstPerson = Boolean(snapshot.isFirstPerson);
+        if (snapshot.position)
+          camera.three.position.fromArray(snapshot.position);
+        if (snapshot.quaternion) {
+          camera.three.quaternion.fromArray(snapshot.quaternion);
+        }
+        if (Number.isFinite(snapshot.fov)) camera.three.fov = snapshot.fov;
+        camera.three.updateMatrixWorld();
+        camera.three.updateProjectionMatrix();
+        camera.updateFrustumBoundingSphere();
+      });
+    }, cameraSnapshot);
   }
-  await bridgeCall(first.page, "chapter1StopCutscene");
   report.scenarios.push({
     name: "Muck Rake held model is a long-handled rake/hoe, not a robot",
     status: "pass",
@@ -20661,13 +21379,48 @@ const SNAPSHOT_GROVE_QUESTS = GROVE_QUEST_CATALOG.map((quest) => ({
             }
           : undefined,
 }));
+assert.equal(
+  GROVE_QUEST_AUDIT_MANIFEST.length,
+  255,
+  "the physical browser lane requires the complete 255-objective Grove audit manifest"
+);
+assert.equal(
+  new Set(GROVE_QUEST_AUDIT_MANIFEST.map((row) => row.questId)).size,
+  SNAPSHOT_GROVE_QUESTS.length,
+  "the physical browser lane requires one audit entry for all 51 Grove quests"
+);
+assert.deepEqual(
+  groveQuestAuditTriggerKinds(),
+  [
+    "choice",
+    "collect",
+    "combat",
+    "craft",
+    "destroy",
+    "interact",
+    "inventory_change",
+    "item_grant",
+    "item_use",
+    "near_location",
+    "open_jobs_board",
+    "open_tab",
+    "photo_post",
+    "place_voxel",
+    "talk_npc",
+  ],
+  "the browser trigger-family preflight drifted from the authored catalog"
+);
+const GROVE_AUDIT_ROWS_BY_QUEST = new Map(
+  SNAPSHOT_GROVE_QUESTS.map((quest) => [
+    quest.id,
+    GROVE_QUEST_AUDIT_MANIFEST.filter((row) => row.questId === quest.id),
+  ])
+);
 const SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_IDS = [
   ...GROVE_FOUNTAIN_LESSON_IDS,
 ];
 const SNAPSHOT_GROVE_ONBOARDING_QUEST_IDS = [
-  "fountain_buttons_first",
-  "tools_before_treasure",
-  "road_ready_bag_check",
+  ...SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_IDS,
 ];
 const SNAPSHOT_GROVE_REQUESTED_QUEST_IDS = selectedCatalogIds(
   "HARTHMERE_E2E_GROVE_QUEST_IDS"
@@ -20707,6 +21460,105 @@ function snapshotGroveMarker(markerId) {
   const position = groveMarkerWorldPosition(markerId);
   assert(position, `missing live-space Snapshot Grove marker ${markerId}`);
   return { ...marker, position };
+}
+
+async function waitForSnapshotGroveCurrentGuidance(
+  first,
+  quest,
+  objectiveIndex,
+  expectedMarkerId = snapshotGroveObjectiveMarkerIdForProgress(
+    quest,
+    objectiveIndex,
+    0
+  )
+) {
+  assert(
+    expectedMarkerId,
+    `${quest.title}: objective ${objectiveIndex + 1} has no current marker`
+  );
+  return waitFor(
+    `${quest.title}: objective ${
+      objectiveIndex + 1
+    } current map/HUD guidance points to ${expectedMarkerId}`,
+    () =>
+      first.page.evaluate(
+        ({ questStateKey, expectedQuestId }) => {
+          const rawQuestState = localStorage.getItem(questStateKey);
+          const rawPin = localStorage.getItem("biomes_ui_active_map_pin");
+          const questState = rawQuestState
+            ? JSON.parse(rawQuestState)
+            : undefined;
+          const pin = rawPin ? JSON.parse(rawPin) : undefined;
+          const objectiveIndex = Number(
+            questState?.objectiveIndexByQuestId?.[expectedQuestId] ??
+              (questState?.activeQuestId === expectedQuestId
+                ? questState?.activeObjectiveIndex
+                : -1)
+          );
+          return {
+            activeQuestId: questState?.activeQuestId,
+            objectiveIndex,
+            pinMarkerId: pin?.markerId,
+            pinLabel: pin?.label,
+          };
+        },
+        {
+          questStateKey: SNAPSHOT_GROVE_QUEST_STATE_KEY,
+          expectedQuestId: quest.id,
+        }
+      ),
+    (guidance) =>
+      guidance?.activeQuestId === quest.id &&
+      guidance?.objectiveIndex === objectiveIndex &&
+      guidance?.pinMarkerId === expectedMarkerId,
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+}
+
+async function waitForSnapshotGroveAuthoredMarkerAsset(
+  first,
+  quest,
+  objectiveIndex,
+  marker
+) {
+  const assetUrl = HARTHMERE_GROVE_QUEST_OBJECT_ASSET_URLS[marker.id];
+  if (!assetUrl) return undefined;
+  const loaded = await waitFor(
+    `${quest.title}: objective ${
+      objectiveIndex + 1
+    } renders authored ${marker.label}`,
+    () =>
+      first.page.evaluate((markerId) => {
+        const debug = window.__harthmereQuestObjectMarkerDebug;
+        const row = debug?.markers?.().find((entry) => entry.id === markerId);
+        return {
+          loaded: debug?.groveQuestObjectAssetsLoaded ?? [],
+          failed: debug?.groveQuestObjectAssetsFailed ?? [],
+          row,
+        };
+      }, marker.id),
+    (snapshot) =>
+      snapshot?.loaded?.includes(assetUrl) &&
+      !snapshot?.failed?.includes(assetUrl) &&
+      snapshot?.row?.visible === true &&
+      snapshot?.row?.authoredAssetLoaded === true &&
+      snapshot?.row?.assetUrl === assetUrl,
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  if (snapshotGroveVisualEvidence) {
+    await first.page.screenshot({
+      path: path.join(
+        artifactsDir,
+        `${runId}-${quest.id}-objective-${String(objectiveIndex + 1).padStart(
+          2,
+          "0"
+        )}-${marker.id}-authored-visible.png`
+      ),
+    });
+  }
+  return loaded;
 }
 
 function snapshotGroveNpc(npcId) {
@@ -20841,6 +21693,13 @@ async function moveSnapshotGrovePlayer(first, position, label) {
     position,
     label
   );
+  // Hold the browser-owned simulation at the accepted grounded pose during
+  // the authoritative write. On the sparse production-shaped fixture, one
+  // collision frame between teleport and the old end-of-function pin could
+  // drop a fresh actor hundreds of metres, close the intended talk modal, and
+  // make Jackie's unrelated Road Ahead dialogue look like a missing Grove
+  // offer.
+  await setSnapshotGroveInteractionPin(first, livePosition, true);
   await applyFixture(first.page, {
     kind: "update",
     entity: {
@@ -21091,13 +21950,40 @@ async function withSnapshotGroveAuthoritativePositionPin(
 
 async function openSnapshotGroveNpcDialog(first, npcId, label) {
   const npc = snapshotGroveNpc(npcId);
-  const entityId = npc.entityId;
-  const entity = await authoritativeEntity(first.page, entityId);
+  // A mutable client hotfix intentionally keeps the candidate BUILD_ID fixed.
+  // If the checkout has since moved an NPC identity, use the identity exposed
+  // by the exact browser candidate under test, then fall back to the current
+  // source fixture only when that candidate entity is absent. This prevents a
+  // focused hotfix run from opening a lookalike Jackie that the built Grove
+  // runtime cannot classify.
+  const runtimeEntityId = await first.page.evaluate((requestedNpcId) => {
+    const row = window.__snapshotGrove
+      ?.dumpGrounding?.()
+      ?.find?.((candidate) => candidate.id === requestedNpcId);
+    return row?.seededEntityId;
+  }, npcId);
+  let entityId = runtimeEntityId ?? npc.entityId;
+  let entity = await authoritativeEntity(first.page, entityId);
+  if (!entity.entity?.position?.v && entityId !== npc.entityId) {
+    entityId = npc.entityId;
+    entity = await authoritativeEntity(first.page, entityId);
+  }
   assert(
     entity.entity?.position?.v,
     `${label}: NPC ${npcId} is absent from ECS`
   );
-  await moveSnapshotGrovePlayer(first, entity.entity.position.v, label);
+  // Seeded Grove NPC transforms can retain the retired Y=53 datum even though
+  // the production placement map grounds the visible marker around Y=71.
+  // Walking the test actor to the stale raw transform triggers fall recovery
+  // before the talk modal mounts. Use the same canonical marker position the
+  // quest/map surfaces publish, with the live ECS position only as a fallback
+  // for native Harthmere givers outside the Grove marker registry.
+  const groundedNpcPosition = groveMarkerWorldPosition(`npc_${npc.id}`);
+  await moveSnapshotGrovePlayer(
+    first,
+    groundedNpcPosition ?? entity.entity.position.v,
+    label
+  );
   await waitFor(
     `${label}: talk target reaches browser ECS`,
     () => localEntity(first.page, entityId),
@@ -21289,6 +22175,21 @@ async function clickTalkDialogButton(first, name, label) {
       await button.waitFor({ state: "attached", timeout: timeoutMs });
       assert(await button.isEnabled(), `${label}: ${name} is disabled`);
       await button.scrollIntoViewIfNeeded({ timeout: timeoutMs });
+      if (
+        snapshotGroveVisualEvidence &&
+        /^(?:Start|Complete)\s/.test(name)
+      ) {
+        const actionSlug = name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+        await first.page.screenshot({
+          path: path.join(
+            artifactsDir,
+            `${runId}-${actionSlug}-dialog-action-visible.png`
+          ),
+        });
+      }
       // Software WebGL overlays and the retained mobile joystick can retain a
       // stale hit-test layer over a visibly rendered dialogue button. The
       // exact, unique, enabled React button is already validated above; invoke
@@ -21439,10 +22340,9 @@ async function acceptSnapshotGroveQuestInBrowser(first, quest) {
 
 async function seedSnapshotGroveUnlockState(first, quest) {
   const prerequisite = quest.unlockedBy;
-  if (!prerequisite) return;
   const acceptedQuestIds = [];
   const completedQuestIds = [];
-  if (prerequisite.kind === "fountain_completion_count") {
+  if (prerequisite?.kind === "fountain_completion_count") {
     // This is an unlock fixture only. Every uncovered fountain lesson still
     // gets its own full browser run; the graduation actor receives five known
     // completions so the test does not re-run the three recently proven ones.
@@ -21455,12 +22355,32 @@ async function seedSnapshotGroveUnlockState(first, quest) {
     );
     acceptedQuestIds.push(...seeds);
     completedQuestIds.push(...seeds);
-  } else if (prerequisite.kind === "quest_accepted") {
+  } else if (prerequisite?.kind === "quest_accepted") {
     acceptedQuestIds.push(prerequisite.questId);
-  } else if (prerequisite.kind === "quest_completed") {
+  } else if (prerequisite?.kind === "quest_completed") {
     acceptedQuestIds.push(prerequisite.questId);
     completedQuestIds.push(prerequisite.questId);
   }
+  // Grove NPCs intentionally show only two offers at a time, with fountain
+  // lessons sorted ahead of story/economy rows. Catalog order alone therefore
+  // cannot make a requested focused row visible: Read the Jobs Board is the
+  // first catalog row, but Jackie's two fountain lessons still sort ahead of
+  // it. Retire every other offer from this giver for this isolated actor. Each
+  // retired quest still receives its own fresh-actor browser row elsewhere in
+  // the batch, so this preserves the shipped two-offer behavior while making
+  // the requested row deterministic.
+  for (const otherQuest of SNAPSHOT_GROVE_QUESTS) {
+    if (
+      otherQuest.id === quest.id ||
+      otherQuest.giverNpcId !== quest.giverNpcId
+    ) {
+      continue;
+    }
+    acceptedQuestIds.push(otherQuest.id);
+    completedQuestIds.push(otherQuest.id);
+  }
+  const acceptedUnique = [...new Set(acceptedQuestIds)];
+  const completedUnique = [...new Set(completedQuestIds)];
   await first.page.evaluate(
     ({ key, accepted, completed }) => {
       localStorage.setItem(
@@ -21488,8 +22408,8 @@ async function seedSnapshotGroveUnlockState(first, quest) {
     },
     {
       key: SNAPSHOT_GROVE_QUEST_STATE_KEY,
-      accepted: acceptedQuestIds,
-      completed: completedQuestIds,
+      accepted: acceptedUnique,
+      completed: completedUnique,
     }
   );
 }
@@ -21676,6 +22596,12 @@ async function completeSnapshotGroveCountedAction(
       } has no marker at ${completedCount}/${requiredCount}`
     );
     const marker = snapshotGroveMarker(markerId);
+    await waitForSnapshotGroveCurrentGuidance(
+      first,
+      quest,
+      objectiveIndex,
+      markerId
+    );
     await action(marker, {
       ...baseFixture,
       markerId,
@@ -21716,10 +22642,17 @@ async function completeSnapshotGroveWorldObjectStep(
         } needs a dedicated NPC interaction plan`
       );
       const approaches = [
-        [marker.position[0], marker.position[1], marker.position[2] + 2.25],
-        [marker.position[0], marker.position[1], marker.position[2] - 2.25],
-        [marker.position[0] + 2.25, marker.position[1], marker.position[2]],
-        [marker.position[0] - 2.25, marker.position[1], marker.position[2]],
+        // Start from a safe viewing ring rather than teleporting into the
+        // prop's own center. Exact-center screenshots can put the third-person
+        // camera inside a parcel stand, basket, wall, or terrain column and
+        // produce a black frame even though the target is healthy. Let the
+        // production teleport hook resolve terrain height at every X/Z.
+        [marker.position[0], 0, marker.position[2] + 3.25],
+        [marker.position[0] + 3.25, 0, marker.position[2]],
+        [marker.position[0], 0, marker.position[2] - 3.25],
+        [marker.position[0] - 3.25, 0, marker.position[2]],
+        [marker.position[0] + 2.3, 0, marker.position[2] + 2.3],
+        [marker.position[0] - 2.3, 0, marker.position[2] - 2.3],
       ];
       let promptFound = false;
       let lastError;
@@ -21739,7 +22672,14 @@ async function completeSnapshotGroveWorldObjectStep(
             () => frontendInteractionSnapshot(first.page),
             (interaction) =>
               (interaction?.inspectable?.objectId === marker.id ||
-                interaction?.inspectable?.label === marker.label) &&
+                interaction?.inspectable?.label === marker.label ||
+                interaction?.worldInteractionCandidates?.some(
+                  (candidate) =>
+                    candidate.id === marker.id &&
+                    candidate.display !== "none" &&
+                    candidate.visibility !== "hidden" &&
+                    Number(candidate.opacity) > 0
+                )) &&
               interaction.inspectOverlays?.some(
                 (overlay) =>
                   /\bF\b/.test(overlay.text ?? "") &&
@@ -21759,9 +22699,183 @@ async function completeSnapshotGroveWorldObjectStep(
       if (!promptFound) {
         throw lastError ?? new Error(`${marker.label}: no F prompt`);
       }
+      await waitForSnapshotGroveAuthoredMarkerAsset(
+        first,
+        quest,
+        objectiveIndex,
+        marker
+      );
       await first.page.keyboard.press("KeyF");
     }
   );
+}
+
+async function equipSnapshotGroveSparringWeapon(first, position) {
+  const swordId = harthmereNativeBiomesIdForItemId("iron_longsword");
+  assert(swordId, "Sparring Is a Promise: iron longsword has no native id");
+  const current = await authoritativeEntity(first.page, first.userId);
+  assert(current.entity?.inventory, "Sparring player has no native inventory");
+  const inventory = Inventory.clone(current.entity.inventory);
+  inventory.hotbar[0] = countOf(swordId, 1n);
+  inventory.selected = { kind: "hotbar", idx: 0 };
+  await applyFixture(first.page, {
+    kind: "update",
+    entity: {
+      id: first.userId,
+      position: Position.create({ v: [...position] }),
+      inventory,
+      selected_item: SelectedItem.create({ item: inventory.hotbar[0] }),
+    },
+  });
+  await Promise.all([
+    waitFor(
+      "Sparring Is a Promise: longsword reaches native selected item",
+      () => authoritativeEntity(first.page, first.userId),
+      ({ entity }) => entity?.selected_item?.item?.item?.id === swordId,
+      Math.max(originSyncGateMs, 10_000),
+      timeoutMs
+    ),
+    waitFor(
+      "Sparring Is a Promise: longsword returns to browser selected item",
+      () => localEntity(first.page, first.userId),
+      ({ entity }) => entity?.selected_item?.item?.item?.id === swordId,
+      Math.max(originSyncGateMs, 10_000),
+      timeoutMs
+    ),
+  ]);
+}
+
+async function completeSnapshotGroveSparringCombatStep(
+  first,
+  quest,
+  objectiveIndex
+) {
+  assert.equal(
+    quest.id,
+    "safe_sparring_not_pvp",
+    "real Grove dummy combat is reserved for the Sparring lesson"
+  );
+  const markerId = snapshotGroveObjectiveMarkerIdForProgress(
+    quest,
+    objectiveIndex,
+    0
+  );
+  assert.equal(markerId, "grove_combat_practice_dummy");
+  const marker = snapshotGroveMarker(markerId);
+  const approaches = [
+    [marker.position[0], marker.position[1], marker.position[2] + 2.75],
+    [marker.position[0] + 2.75, marker.position[1], marker.position[2]],
+    [marker.position[0], marker.position[1], marker.position[2] - 2.75],
+    [marker.position[0] - 2.75, marker.position[1], marker.position[2]],
+  ];
+
+  await waitForSnapshotGroveCurrentGuidance(
+    first,
+    quest,
+    objectiveIndex,
+    marker.id
+  );
+  await equipSnapshotGroveSparringWeapon(first, approaches[0]);
+  await first.page.evaluate((eventName) => {
+    localStorage.setItem("biomes.localDev.harthmere.combatDebug", "1");
+    window.__harthmereCombatDebugLog = [];
+    window.__snapshotGroveCombatHitEvents = [];
+    window.__snapshotGroveCombatHitCleanup?.();
+    const handler = (event) => {
+      window.__snapshotGroveCombatHitEvents.unshift(event.detail);
+    };
+    window.addEventListener(eventName, handler);
+    window.__snapshotGroveCombatHitCleanup = () =>
+      window.removeEventListener(eventName, handler);
+  }, "biomes:harthmere-local-combat-npc-damage");
+
+  let realHit;
+  let lastError;
+  for (let index = 0; index < approaches.length; index += 1) {
+    const approachPosition = approaches[index];
+    await moveSnapshotGrovePlayer(
+      first,
+      approachPosition,
+      `${quest.title}: weapon approach ${index + 1}`
+    );
+    await faceSnapshotGroveWorldObject(first, marker, approachPosition, 0.85);
+    await waitForSnapshotGroveAuthoredMarkerAsset(
+      first,
+      quest,
+      objectiveIndex,
+      marker
+    );
+    if (snapshotGroveVisualEvidence) {
+      await first.page.screenshot({
+        path: path.join(
+          artifactsDir,
+          `${runId}-${quest.id}-objective-${String(objectiveIndex + 1).padStart(
+            2,
+            "0"
+          )}-dummy-aimed-${index + 1}.png`
+        ),
+      });
+    }
+    const gameCanvas = first.page.locator("canvas.biomes-canvas");
+    await gameCanvas.waitFor({ state: "visible", timeout: timeoutMs });
+    await gameCanvas.focus({ timeout: probeTimeoutMs });
+    const canvasBox = await gameCanvas.boundingBox();
+    assert(canvasBox, `${quest.title}: game canvas has no layout box`);
+    await first.page.mouse.move(
+      canvasBox.x + canvasBox.width / 2,
+      canvasBox.y + canvasBox.height / 2
+    );
+    await first.page.mouse.down({ button: "left" });
+    await first.page.waitForTimeout(90);
+    await first.page.mouse.up({ button: "left" });
+    try {
+      realHit = await waitFor(
+        `${quest.title}: Mouse0 resolves damage on the exact Grove dummy`,
+        async () => {
+          return first.page.evaluate(
+            (targetOffset) => ({
+              debug: (window.__harthmereCombatDebugLog ?? []).find(
+                (entry) =>
+                  entry?.stage === "combat.attack.resolved" &&
+                  Number(entry?.targetOffset) === targetOffset &&
+                  Number(entry?.finalDamage) > 0
+              ),
+              bridge: (window.__snapshotGroveCombatHitEvents ?? []).find(
+                (entry) =>
+                  Number(entry?.targetOffset) === targetOffset &&
+                  Number(entry?.damage) > 0
+              ),
+            }),
+            HARTHMERE_GROVE_TRAINING_DUMMY_OFFSET
+          );
+        },
+        (result) => Boolean(result?.debug && result?.bridge),
+        100,
+        4_000
+      );
+      break;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (!realHit) {
+    throw (
+      lastError ?? new Error(`${quest.title}: Mouse0 never damaged the dummy`)
+    );
+  }
+  await waitForSnapshotGroveObjective(first, quest, objectiveIndex);
+  if (snapshotGroveVisualEvidence) {
+    await first.page.screenshot({
+      path: path.join(
+        artifactsDir,
+        `${runId}-${quest.id}-objective-${String(objectiveIndex + 1).padStart(
+          2,
+          "0"
+        )}-dummy-hit.png`
+      ),
+    });
+  }
+  await first.page.evaluate(() => window.__snapshotGroveCombatHitCleanup?.());
 }
 
 async function completeSnapshotGroveFixtureEventStep(
@@ -21785,6 +22899,14 @@ async function completeSnapshotGroveFixtureEventStep(
 }
 
 async function completeSnapshotGroveCraftStep(first, quest, objectiveIndex) {
+  if (quest.id === "econ_carlo_festival_skewers" && objectiveIndex === 2) {
+    await completeSnapshotGroveCampfireCookingStep(
+      first,
+      quest,
+      objectiveIndex
+    );
+    return;
+  }
   ensureHarthmereProductionCraftingCatalogue();
   const fixture = snapshotGroveObjectiveCompletionFixture(
     quest,
@@ -21868,6 +22990,150 @@ async function completeSnapshotGroveCraftStep(first, quest, objectiveIndex) {
     }
   );
   await waitForSnapshotGroveObjective(first, quest, objectiveIndex);
+}
+
+async function completeSnapshotGroveCampfireCookingStep(
+  first,
+  quest,
+  objectiveIndex
+) {
+  const fixture = snapshotGroveObjectiveCompletionFixture(
+    quest,
+    objectiveIndex
+  );
+  assert.equal(
+    fixture?.recipeId,
+    "harthmere_grove_festival_skewer",
+    `${quest.title}: wrong campfire recipe fixture`
+  );
+  assert.equal(
+    fixture?.outputItemId,
+    "grove_festival_skewer",
+    `${quest.title}: wrong cooked output fixture`
+  );
+  const ingredientItemId = harthmereNativeBiomesIdForItemId(
+    "grove_festival_skewer_ingredients"
+  );
+  const outputItemId = harthmereNativeBiomesIdForItemId(
+    "grove_festival_skewer"
+  );
+  assert(
+    ingredientItemId && outputItemId,
+    `${quest.title}: native items missing`
+  );
+  const before = await authoritativeEntity(first.page, first.userId);
+  assert(
+    inventoryCount(before.entity, ingredientItemId) >= 1n,
+    `${quest.title}: ingredient bundle did not reach native inventory`
+  );
+  const beforeOutput = inventoryCount(before.entity, outputItemId);
+  const marker = snapshotGroveMarker(quest.markerIds[objectiveIndex]);
+  const approaches = [
+    [marker.position[0], marker.position[1], marker.position[2] + 2.25],
+    [marker.position[0], marker.position[1], marker.position[2] - 2.25],
+    [marker.position[0] + 2.25, marker.position[1], marker.position[2]],
+    [marker.position[0] - 2.25, marker.position[1], marker.position[2]],
+  ];
+  let promptFound = false;
+  let lastError;
+  for (let index = 0; index < approaches.length; index += 1) {
+    const approachPosition = approaches[index];
+    await moveSnapshotGrovePlayer(
+      first,
+      approachPosition,
+      `${quest.title}: approach Carlo's campfire side ${index + 1}`
+    );
+    await faceSnapshotGroveWorldObject(first, marker, approachPosition);
+    try {
+      await waitFor(
+        `${quest.title}: visible campfire cooking prompt side ${index + 1}`,
+        () => frontendInteractionSnapshot(first.page),
+        (interaction) =>
+          interaction.inspectOverlays?.some(
+            (overlay) =>
+              /\bF\b/.test(overlay.text ?? "") &&
+              /cook|campfire|cooking fire/i.test(overlay.text ?? "") &&
+              overlay.display !== "none" &&
+              overlay.visibility !== "hidden" &&
+              Number(overlay.opacity) > 0
+          ),
+        Math.min(snapshotGroveInteractionControlTimeoutMs, 4_000),
+        Math.min(snapshotGroveInteractionControlTimeoutMs, 5_000)
+      );
+      promptFound = true;
+      break;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (!promptFound) {
+    throw (
+      lastError ?? new Error(`${quest.title}: no physical campfire F prompt`)
+    );
+  }
+  await first.page.keyboard.press("KeyF");
+  const cookingPanel = first.page.locator(
+    '[data-harthmere-cooking-interface="true"]'
+  );
+  await cookingPanel.waitFor({ state: "visible", timeout: timeoutMs });
+  await first.page.screenshot({
+    path: path.join(artifactsDir, `${runId}-${quest.id}-campfire-recipes.png`),
+  });
+  const recipeCard = cookingPanel
+    .getByText("Carlo's Festival Skewer", { exact: true })
+    .first();
+  await recipeCard.waitFor({ state: "visible", timeout: timeoutMs });
+  await recipeCard.click();
+  const cookButton = cookingPanel.locator(
+    '[data-harthmere-cooking-action="cook"]'
+  );
+  await waitFor(
+    `${quest.title}: campfire Cook button enabled`,
+    () => cookButton.isEnabled(),
+    Boolean,
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  await cookButton.click();
+  await first.page.screenshot({
+    path: path.join(artifactsDir, `${runId}-${quest.id}-campfire-queued.png`),
+  });
+  const collectButton = cookingPanel.getByRole("button", {
+    name: "Collect",
+    exact: true,
+  });
+  await collectButton.waitFor({
+    state: "visible",
+    timeout: Math.max(timeoutMs, 75_000),
+  });
+  await collectButton.click();
+  await Promise.all([
+    waitForSnapshotGroveObjective(first, quest, objectiveIndex),
+    waitFor(
+      `${quest.title}: cooked skewer reaches native inventory`,
+      () => authoritativeEntity(first.page, first.userId),
+      ({ entity }) => inventoryCount(entity, outputItemId) >= beforeOutput + 1n,
+      Math.max(originSyncGateMs, 10_000),
+      timeoutMs
+    ),
+  ]);
+  await closeSnapshotGroveModal(first.page);
+  await first.page.keyboard.press("KeyI");
+  const cookedSkewer = first.page
+    .getByText("Carlo's Festival Skewer", { exact: true })
+    .first();
+  await cookedSkewer.waitFor({ state: "visible", timeout: timeoutMs });
+  await cookedSkewer.click();
+  await clickUniqueButton(
+    first.page,
+    "Hotbar 1",
+    `${quest.title}: hold skewer`
+  );
+  await closeSnapshotGroveModal(first.page);
+  await first.page.waitForTimeout(500);
+  await first.page.screenshot({
+    path: path.join(artifactsDir, `${runId}-${quest.id}-skewer-held.png`),
+  });
 }
 
 async function completeSnapshotGroveInventoryStep(
@@ -21954,8 +23220,47 @@ async function completeSnapshotGroveOpenTabStep(first, quest, objectiveIndex) {
     quests: "KeyJ",
     inbox: "KeyV",
   };
+  const tutorLabelByTab = {
+    map: "Map",
+    inventory: "Bag",
+    journal: "Quests",
+    quests: "Quests",
+    inbox: "Mail",
+    chat: "Chat",
+    crafting: "Craft",
+    tasks: "Tasks",
+  };
+  const tutorLabel = tutorLabelByTab[fixture.tab];
+  const tutorTarget = tutorLabel
+    ? first.page.locator(
+        `[data-snapshot-grove-tutor-target="${tutorLabel}"]`
+      )
+    : undefined;
+  if (tutorTarget) {
+    await tutorTarget.waitFor({
+      state: "visible",
+      timeout: snapshotGroveInteractionControlTimeoutMs,
+    });
+    if (snapshotGroveVisualEvidence) {
+      await first.page.screenshot({
+        path: path.join(
+          artifactsDir,
+          `${runId}-${quest.id}-objective-${String(objectiveIndex + 1).padStart(
+            2,
+            "0"
+          )}-tutor-${tutorLabel.toLowerCase()}-visible.png`
+        ),
+      });
+    }
+  }
   const key = keyByTab[fixture.tab];
-  if (fixture.tab === "chat") {
+  if (tutorTarget) {
+    // The product intentionally pulses the target with a transform animation.
+    // Playwright's pointer click waits for a fully stable box and can therefore
+    // wait forever on the correct, visible button. Invoke the exact mounted
+    // button's real DOM click after the uniqueness/visibility assertions above.
+    await tutorTarget.evaluate((element) => element.click());
+  } else if (fixture.tab === "chat") {
     await first.page.evaluate(() =>
       window.dispatchEvent(
         new CustomEvent("biomes:snapshot-grove-tutor-chat-panel-open")
@@ -21977,6 +23282,21 @@ async function completeSnapshotGroveOpenTabStep(first, quest, objectiveIndex) {
     await publishSnapshotGroveGardenHoseEvent(first.page, fixture);
   }
   await waitForSnapshotGroveObjective(first, quest, objectiveIndex);
+  if (tutorTarget) {
+    const nextFixture =
+      objectiveIndex + 1 < quest.objectives.length
+        ? snapshotGroveObjectiveCompletionFixture(quest, objectiveIndex + 1)
+        : undefined;
+    const nextTutorLabel = nextFixture?.tab
+      ? tutorLabelByTab[nextFixture.tab]
+      : undefined;
+    if (nextTutorLabel !== tutorLabel) {
+      await tutorTarget.waitFor({
+        state: "hidden",
+        timeout: snapshotGroveInteractionControlTimeoutMs,
+      });
+    }
+  }
   await closeSnapshotGroveModal(first.page);
 }
 
@@ -22012,7 +23332,26 @@ async function completeSnapshotGroveChatMessageStep(
   await closeSnapshotGroveModal(first.page);
 }
 
-async function completeRemainingSnapshotGroveObjective(
+async function captureSnapshotGroveObjectiveFrame(
+  first,
+  quest,
+  objectiveIndex,
+  phase
+) {
+  if (!snapshotGroveVisualEvidence) return;
+  await first.page.waitForTimeout(200);
+  await first.page.screenshot({
+    path: path.join(
+      artifactsDir,
+      `${runId}-${quest.id}-objective-${String(objectiveIndex + 1).padStart(
+        2,
+        "0"
+      )}-${phase}.png`
+    ),
+  });
+}
+
+async function performRemainingSnapshotGroveObjective(
   first,
   quest,
   objectiveIndex
@@ -22099,15 +23438,52 @@ async function completeRemainingSnapshotGroveObjective(
       await closeSnapshotGroveModal(first.page);
       return;
     case "destroy":
-    case "combat":
     case "jump_run":
     case "item_use":
     case "photo_post":
       await completeSnapshotGroveFixtureEventStep(first, quest, objectiveIndex);
       return;
+    case "combat":
+      if (quest.id === "safe_sparring_not_pvp") {
+        await completeSnapshotGroveSparringCombatStep(
+          first,
+          quest,
+          objectiveIndex
+        );
+        return;
+      }
+      await completeSnapshotGroveFixtureEventStep(first, quest, objectiveIndex);
+      return;
     default:
       assert.fail(`${quest.title}: unsupported browser trigger ${trigger}`);
   }
+}
+
+async function completeRemainingSnapshotGroveObjective(
+  first,
+  quest,
+  objectiveIndex
+) {
+  const current = await snapshotGroveLocalState(first.page);
+  const alreadyAdvanced =
+    current?.completedQuestIds?.includes(quest.id) ||
+    snapshotGroveObjectiveIndexInLocalState(current, quest.id) > objectiveIndex;
+  if (!alreadyAdvanced) {
+    await waitForSnapshotGroveCurrentGuidance(first, quest, objectiveIndex);
+  }
+  await captureSnapshotGroveObjectiveFrame(
+    first,
+    quest,
+    objectiveIndex,
+    "current"
+  );
+  await performRemainingSnapshotGroveObjective(first, quest, objectiveIndex);
+  await captureSnapshotGroveObjectiveFrame(
+    first,
+    quest,
+    objectiveIndex,
+    "completed"
+  );
 }
 
 function snapshotGroveStructuredReward(questId) {
@@ -22522,6 +23898,12 @@ async function proveFastRemainingSnapshotGroveQuest(first, quest) {
 
 async function proveRemainingSnapshotGroveQuest(first, questId) {
   const quest = snapshotGroveQuest(questId);
+  const auditRows = GROVE_AUDIT_ROWS_BY_QUEST.get(questId) ?? [];
+  assert.equal(
+    auditRows.length,
+    quest.objectives.length,
+    `${quest.title}: physical run is missing objective audit rows`
+  );
   if (fastGroveCatalog) {
     await proveFastRemainingSnapshotGroveQuest(first, quest);
     return;
@@ -22533,9 +23915,23 @@ async function proveRemainingSnapshotGroveQuest(first, questId) {
     objectiveIndex < quest.objectives.length;
     objectiveIndex += 1
   ) {
+    const auditRow = auditRows[objectiveIndex];
+    assert.equal(auditRow?.objectiveIndex, objectiveIndex);
+    assert.equal(auditRow?.objective, quest.objectives[objectiveIndex]);
+    assert.equal(auditRow?.trigger, quest.triggers[objectiveIndex]);
+    assert.equal(auditRow?.markerId, quest.markerIds[objectiveIndex]);
     await completeRemainingSnapshotGroveObjective(first, quest, objectiveIndex);
   }
   await confirmSnapshotGroveCompletionAtGiver(first, quest, rewardBaseline);
+  report.scenarios.push({
+    name: `${quest.title}: complete physical lifecycle`,
+    status: "pass",
+    verdict: "physical_pass",
+    questId,
+    auditObjectiveCount: auditRows.length,
+    currentScreenshotCount: auditRows.length,
+    completedScreenshotCount: auditRows.length,
+  });
 }
 
 async function resetRemainingSnapshotGroveActor(first, redis, quest) {
@@ -22568,7 +23964,10 @@ async function resetRemainingSnapshotGroveActor(first, redis, quest) {
       // physical walk. Keep the shared actor nonlethal so unloaded-terrain
       // grounding cannot turn setup into a death/respawn quest failure.
       health: Health.create({ hp: 1_000_000, maxHp: 1_000_000 }),
+      player_status: PlayerStatus.create({ init: true }),
       position: Position.create({ v: neutralPosition }),
+      orientation: Orientation.create({ v: [0, 0] }),
+      rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
       // Old snapshot allocators can hand a new authenticated user an id that
       // was previously occupied by a disposable NPC. Authentication correctly
       // installs player components, but World updates merge components, so the
@@ -22580,6 +23979,9 @@ async function resetRemainingSnapshotGroveActor(first, redis, quest) {
       default_dialog: null,
       quest_giver: null,
       expires: null,
+      death_info: null,
+      icing: null,
+      warping_to: null,
     },
   });
   // Anima can have one already-queued NPC-state write from before
@@ -22614,23 +24016,35 @@ async function resetRemainingSnapshotGroveActor(first, redis, quest) {
     // plain JSON serialization silently drops authority state between rows.
     stringifyHarthmereLiveModePlayerPersistenceState(liveState)
   );
-  await first.page.evaluate((key) => {
-    localStorage.setItem(
-      key,
-      JSON.stringify({
-        acceptedQuestIds: [],
-        activeObjectiveIndex: 0,
-        objectiveIndexByQuestId: {},
-        objectiveProgressByQuestId: {},
-        completedQuestIds: [],
-        completedObjectiveIds: [],
-        rewards: [],
-      })
-    );
-    window.dispatchEvent(
-      new CustomEvent("biomes:local-dev-snapshot-grove-quest-state")
-    );
-  }, SNAPSHOT_GROVE_QUEST_STATE_KEY);
+  await first.page.evaluate(
+    ({ key, userId }) => {
+      for (const stateKey of [
+        "biomes.localDev.harthmere.deathState",
+        "biomes.localDev.harthmere.combatState",
+      ]) {
+        localStorage.removeItem(stateKey);
+        localStorage.removeItem(`${stateKey}.user.${userId}`);
+      }
+      window.dispatchEvent(new CustomEvent("biomes:harthmere-death-changed"));
+      window.dispatchEvent(new CustomEvent("biomes:harthmere-combat-changed"));
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          acceptedQuestIds: [],
+          activeObjectiveIndex: 0,
+          objectiveIndexByQuestId: {},
+          objectiveProgressByQuestId: {},
+          completedQuestIds: [],
+          completedObjectiveIds: [],
+          rewards: [],
+        })
+      );
+      window.dispatchEvent(
+        new CustomEvent("biomes:local-dev-snapshot-grove-quest-state")
+      );
+    },
+    { key: SNAPSHOT_GROVE_QUEST_STATE_KEY, userId: String(first.userId) }
+  );
   await closeSnapshotGroveModal(first.page).catch(() => undefined);
   const groveChallengeIds = SNAPSHOT_GROVE_QUESTS.map((authoredQuest) =>
     harthmereNativeQuestId("grove", authoredQuest.id)
@@ -22672,21 +24086,71 @@ async function resetRemainingSnapshotGroveActor(first, redis, quest) {
   );
 }
 
+async function openRemainingGroveUserWithRetry(
+  browser,
+  { usernamePrefix, label, questId }
+) {
+  const errors = [];
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const user = await openUser(
+        browser,
+        `${usernamePrefix}-attempt-${attempt}`,
+        `${label}-setup-${attempt}`
+      );
+      if (attempt > 1) {
+        report.scenarios.push({
+          name: `${label}: browser setup recovered`,
+          status: "pass",
+          verdict: "setup_recovered",
+          questId,
+          attempt,
+        });
+      }
+      return user;
+    } catch (error) {
+      const message = error?.stack || String(error);
+      errors.push(message);
+      if (!isGroveSetupInvalidFailure(error) || attempt === 2) {
+        const combined = new Error(
+          `${label}: browser setup invalid after ${attempt} attempt(s):\n${errors.join(
+            "\n\n"
+          )}`
+        );
+        combined.groveSetupInvalid = true;
+        throw combined;
+      }
+      report.scenarios.push({
+        name: `${label}: browser setup retry`,
+        status: "retry",
+        verdict: "setup_retry",
+        questId,
+        attempt,
+        error: message,
+      });
+      persistReportCheckpoint();
+    }
+  }
+  throw new Error(`${label}: unreachable setup retry state`);
+}
+
 async function runRemainingSnapshotGroveBrowserBatch(browser, suffix) {
   const redis = await connectToRedis("firehose");
-  const failures = [];
-  let user;
+  const productFailures = [];
+  const setupInvalids = [];
+  let sharedUser;
   try {
     // One warm browser actor per authority family is the measured fast path.
     // Recreating a SwiftShader/WebGL context per row retained enough memory to
     // terminate Chromium after three lessons; deterministic ECS/Redis/browser
     // resets keep rows independent without paying that cost.
-    user = await openUser(
-      browser,
-      `RemainingGrove-${suffix}`,
-      "remaining-grove-catalog"
-    );
-    user.groveRedis = redis;
+    if (fastGroveCatalog) {
+      sharedUser = await openRemainingGroveUserWithRetry(browser, {
+        usernamePrefix: `RemainingGrove-${suffix}`,
+        label: "remaining-grove-catalog",
+      });
+      sharedUser.groveRedis = redis;
+    }
     for (
       let index = 0;
       index < SNAPSHOT_GROVE_REMAINING_QUEST_IDS.length;
@@ -22694,7 +24158,16 @@ async function runRemainingSnapshotGroveBrowserBatch(browser, suffix) {
     ) {
       const questId = SNAPSHOT_GROVE_REMAINING_QUEST_IDS[index];
       const quest = snapshotGroveQuest(questId);
+      let user = sharedUser;
       try {
+        if (!user) {
+          user = await openRemainingGroveUserWithRetry(browser, {
+            usernamePrefix: `VisualGrove-${index + 1}-${suffix}`,
+            label: `visual-grove-${questId}`,
+            questId,
+          });
+          user.groveRedis = redis;
+        }
         await resetRemainingSnapshotGroveActor(user, redis, quest);
         const diagnostics = await bridgeCall(user.page, "diagnostics");
         assert(diagnostics.tableSize > 0, `${quest.title}: no ECS bootstrap`);
@@ -22706,6 +24179,18 @@ async function runRemainingSnapshotGroveBrowserBatch(browser, suffix) {
         });
         await proveRemainingSnapshotGroveQuest(user, questId);
       } catch (error) {
+        if (error?.groveSetupInvalid) {
+          const message = error?.stack || String(error);
+          setupInvalids.push({ questId, title: quest.title, error: message });
+          report.scenarios.push({
+            name: `${quest.title}: browser setup invalid`,
+            status: "setup_invalid",
+            verdict: "setup_invalid",
+            questId,
+            error: message,
+          });
+          continue;
+        }
         if (isCatalogInfrastructureFailure(error)) {
           report.scenarios.push({
             name: `${quest.title}: catalog infrastructure`,
@@ -22717,10 +24202,21 @@ async function runRemainingSnapshotGroveBrowserBatch(browser, suffix) {
           throw error;
         }
         const message = error?.stack || String(error);
-        failures.push({ questId, title: quest.title, error: message });
+        const verdict = /visual|authored asset|camera|luminance|screenshot/i.test(
+          message
+        )
+          ? "visual_fail"
+          : "functional_fail";
+        productFailures.push({
+          questId,
+          title: quest.title,
+          verdict,
+          error: message,
+        });
         report.scenarios.push({
           name: `${quest.title}: remaining quest batch`,
           status: "fail",
+          verdict,
           questId,
           error: message,
         });
@@ -22732,24 +24228,33 @@ async function runRemainingSnapshotGroveBrowserBatch(browser, suffix) {
             })
             .catch(() => undefined);
         }
-        await closeSnapshotGroveModal(user.page).catch(() => undefined);
+        if (user?.page && !user.page.isClosed()) {
+          await closeSnapshotGroveModal(user.page).catch(() => undefined);
+        }
       } finally {
         // Keep every completed row recoverable when a long catalog batch is
         // interrupted, so reruns can retain passes and target failures only.
         persistReportCheckpoint();
+        if (!fastGroveCatalog) {
+          await user?.context?.close().catch(() => undefined);
+        }
       }
     }
   } finally {
     await redis.quit("remaining Grove quest browser E2E complete");
-    await user?.context?.close().catch(() => undefined);
+    await sharedUser?.context?.close().catch(() => undefined);
   }
-  if (failures.length) {
+  if (productFailures.length || setupInvalids.length) {
     throw new Error(
-      `Remaining Snapshot Grove batch found ${
-        failures.length
-      } failure(s):\n${failures
-        .map((failure) => `${failure.title}: ${failure.error}`)
-        .join("\n\n")}`
+      `Remaining Snapshot Grove batch found ${productFailures.length} product failure(s) and ${setupInvalids.length} setup-invalid row(s):\n${[
+        ...productFailures.map(
+          (failure) =>
+            `[${failure.verdict}] ${failure.title}: ${failure.error}`
+        ),
+        ...setupInvalids.map(
+          (failure) => `[setup_invalid] ${failure.title}: ${failure.error}`
+        ),
+      ].join("\n\n")}`
     );
   }
 }
@@ -22757,7 +24262,14 @@ async function runRemainingSnapshotGroveBrowserBatch(browser, suffix) {
 function finishFocusedRemainingQuestsRun() {
   const coveredQuestIds = new Set(
     report.scenarios
-      .filter((scenario) => scenario.status === "pass" && scenario.questId)
+      .filter(
+        (scenario) =>
+          scenario.questId &&
+          (fastGroveCatalog
+            ? scenario.status === "pass" &&
+              scenario.catalogMode === "batched_browser_authority"
+            : scenario.verdict === "physical_pass")
+      )
       .map((scenario) => scenario.questId)
   );
   assert.deepEqual(
@@ -24526,6 +26038,18 @@ async function clickSnapshotGroveContextualActionAtMarker(
     await closeSnapshotGroveModal(first.page);
     return;
   }
+  if (snapshotGroveVisualEvidence) {
+    await button.scrollIntoViewIfNeeded({ timeout: timeoutMs });
+    await first.page.screenshot({
+      path: path.join(
+        artifactsDir,
+        `${runId}-${quest.id}-objective-${String(objectiveIndex + 1).padStart(
+          2,
+          "0"
+        )}-contextual-action-visible.png`
+      ),
+    });
+  }
   await clickUniqueButton(
     first.page,
     buttonName,
@@ -24654,55 +26178,16 @@ async function turnInSnapshotGroveQuest(first, quest) {
 
 async function proveSnapshotGroveLesson(first, questId) {
   const quest = snapshotGroveQuest(questId);
-  await acceptSnapshotGroveQuestInBrowser(first, quest);
-  switch (questId) {
-    case "fountain_buttons_first":
-      await completeSnapshotGroveContextualStep(
-        first,
-        quest,
-        1,
-        "Use marked object"
-      );
-      await completeSnapshotGroveTabStep(first, quest, 2, "KeyM");
-      await completeSnapshotGroveTabStep(first, quest, 3, "KeyJ");
-      break;
-    case "tools_before_treasure":
-      await completeSnapshotGroveContextualStep(
-        first,
-        quest,
-        1,
-        "Use marked object"
-      );
-      await completeSnapshotGroveContextualStep(
-        first,
-        quest,
-        2,
-        "Pick up marked item"
-      );
-      await completeSnapshotGrovePlacementStep(first, quest, 3);
-      await completeSnapshotGroveTabStep(first, quest, 4, "KeyM");
-      await completeSnapshotGroveContextualStep(
-        first,
-        quest,
-        5,
-        "Pick practice answer"
-      );
-      break;
-    case "road_ready_bag_check":
-      await completeSnapshotGroveTabStep(first, quest, 1, "KeyI");
-      await equipSnapshotGroveApronInBrowser(first, quest, 2);
-      await completeSnapshotGroveContextualStep(
-        first,
-        quest,
-        3,
-        "Use marked object"
-      );
-      await completeSnapshotGroveTabStep(first, quest, 4, "KeyI");
-      break;
-    default:
-      assert.fail(`No Snapshot Grove browser plan for ${questId}`);
+  const rewardBaseline = await snapshotGroveRewardBaseline(first, quest);
+  const firstObjective = await acceptRemainingSnapshotGroveQuest(first, quest);
+  for (
+    let objectiveIndex = firstObjective;
+    objectiveIndex < quest.objectives.length;
+    objectiveIndex += 1
+  ) {
+    await completeRemainingSnapshotGroveObjective(first, quest, objectiveIndex);
   }
-  await turnInSnapshotGroveQuest(first, quest);
+  await confirmSnapshotGroveCompletionAtGiver(first, quest, rewardBaseline);
 }
 
 async function runSnapshotGroveOnboardingBrowserBatch(browser, suffix) {

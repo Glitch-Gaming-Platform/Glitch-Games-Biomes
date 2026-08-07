@@ -18,6 +18,7 @@ import {
   ESCORT_DEFEND_RADIUS,
   ESCORT_DESTINATION_ARRIVE_RADIUS,
   ESCORT_FOLLOW_RUN_SPEED_MULTIPLIER,
+  ESCORT_HARD_WARP_LEASH_MULTIPLIER,
   ESCORT_PROGRESS_DISTANCE_METERS,
   ESCORT_STUCK_GRACE_SECONDS,
   ESCORT_WARP_PATH_FAILURE_SECONDS,
@@ -304,7 +305,9 @@ describe("escort: recovery", () => {
     // A warp must require BOTH a broken leash and sustained navigation failure.
     assert.equal(
       escortShouldWarp({
-        distanceToLeader: 200,
+        distanceToLeader:
+          ESCORT_DEFAULT_LEASH_DISTANCE *
+          (ESCORT_HARD_WARP_LEASH_MULTIPLIER - 1),
         leashDistance: ESCORT_DEFAULT_LEASH_DISTANCE,
         pathFailingSinceSeconds: undefined,
         nowSeconds: NOW,
@@ -320,6 +323,20 @@ describe("escort: recovery", () => {
         distanceToLeader: 200,
         leashDistance: ESCORT_DEFAULT_LEASH_DISTANCE,
         pathFailingSinceSeconds: NOW - ESCORT_WARP_PATH_FAILURE_SECONDS,
+        nowSeconds: NOW,
+        inCombat: false,
+      }),
+      true
+    );
+  });
+
+  it("warps at extreme separation even while path progress is still being reported", () => {
+    assert.equal(
+      escortShouldWarp({
+        distanceToLeader:
+          ESCORT_DEFAULT_LEASH_DISTANCE * ESCORT_HARD_WARP_LEASH_MULTIPLIER,
+        leashDistance: ESCORT_DEFAULT_LEASH_DISTANCE,
+        pathFailingSinceSeconds: undefined,
         nowSeconds: NOW,
         inCombat: false,
       }),

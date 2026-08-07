@@ -64,13 +64,8 @@ import type {
 import { isFloraId } from "@/shared/game/ids";
 import { anItem } from "@/shared/game/item";
 import { isHarthmereBowWeapon } from "@/shared/harthmere/harthmere_ranged_resources";
-import {
-  harthmereMeleeHitItem,
-  harthmereMeleeHitSoundIdForItem,
-} from "@/shared/harthmere/melee_hit_sound";
 import { harthmereNativeItemIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
 import { getHarthmerePremiumWeapon } from "@/shared/harthmere/premium_weapon_catalog";
-import { emitHarthmereSoundEffect } from "@/shared/harthmere/sound_effect_manifest";
 import {
   movementActionYaw,
   playerMovementActionAnimationName,
@@ -463,15 +458,6 @@ export class PlayersRenderer implements Renderer {
           damageDirection:
             damageSource?.kind === "attack" ? damageSource.dir : undefined,
         });
-        emitHarthmereSoundEffect(
-          harthmereMeleeHitSoundIdForItem(
-            harthmereMeleeHitItem(
-              attacker?.emote,
-              attacker?.selected_item?.item?.item
-            )
-          ),
-          { position: contactPosition }
-        );
       }
     }
 

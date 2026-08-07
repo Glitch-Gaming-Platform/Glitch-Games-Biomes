@@ -238,6 +238,22 @@ export function writeHarthmereFoodStaminaState(
   dispatchFoodStaminaEvent();
 }
 
+export function keepHarthmereFoodStaminaClockCurrentInMemory(
+  state: HarthmereFoodStaminaState,
+  nowMs: number
+) {
+  const next = {
+    ...state,
+    lastStaminaTickMs: nowMs,
+  };
+  // Native ECS/server stamina authority is sticky for the lifetime of the
+  // session. Keeping this compatibility clock current must therefore stay
+  // entirely in memory: persisting it used to dispatch a React refresh and
+  // upload the complete Cloud Save blob every five seconds during combat.
+  inMemoryFoodStaminaState = next;
+  return next;
+}
+
 export function isHarthmereWakeUpScreenActive() {
   return (
     isBrowser() &&
@@ -388,14 +404,11 @@ export const HarthmereFoodStaminaRuntimeController: React.FunctionComponent<{}> 
           deadFromStaminaAtMs: before.deadFromStaminaAtMs,
         });
         if (plan !== "client_simulates") {
-          // Server owns stamina. Only keep the local clock current (while the
-          // sim is still alive) so no phantom drain backlog accrues before a
-          // possible later offline transition; never drain or trigger death.
+          // Server owns stamina for the rest of this session. Keep only the
+          // in-memory compatibility clock current; never persist/dispatch a
+          // no-op clock write or trigger a second client-side death.
           if (plan === "server_owns_keep_clock") {
-            writeHarthmereFoodStaminaState({
-              ...before,
-              lastStaminaTickMs: Date.now(),
-            });
+            keepHarthmereFoodStaminaClockCurrentInMemory(before, Date.now());
           }
           return;
         }

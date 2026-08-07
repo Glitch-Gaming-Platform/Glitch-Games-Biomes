@@ -8,6 +8,7 @@ import {
   ensureHarthmereNativeItemCatalogue,
   HARTHMERE_NATIVE_BIKKIE_OVERLAY_VERSION,
   harthmereNativeBiomesIdForItemId,
+  harthmereNativePresentationSourceIdForTest,
   withHarthmereNativeBikkieItems,
 } from "@/shared/harthmere/harthmere_native_bikkie_items";
 import {
@@ -62,6 +63,24 @@ describe("Harthmere exact native Bikkie overlay", function () {
   // ~2s alone. Keep a bounded catalog-sized timeout instead of weakening any
   // identity or wire-decoding assertion.
   this.timeout(15_000);
+
+  it("keeps Carlo's skewer semantic and stops borrowing the raw-meat mesh", () => {
+    const definitions = ensureHarthmereNativeItemCatalogue();
+    const ingredients = definitions.find(
+      (definition) => definition.itemId === "grove_festival_skewer_ingredients"
+    );
+    const cooked = definitions.find(
+      (definition) => definition.itemId === "grove_festival_skewer"
+    );
+    assert.equal(ingredients?.isCraftingMaterial, true);
+    assert.equal(cooked?.displayName, "Carlo's Festival Skewer");
+    assert.equal(cooked?.isQuestItem, true);
+    assert.equal(
+      harthmereNativePresentationSourceIdForTest("grove_festival_skewer"),
+      undefined
+    );
+  });
+
   it("publishes the Simple Fishing Rod through the full native fishing action", () => {
     const donor = {
       id: SNAPSHOT_FISHING_RODS[1].id,

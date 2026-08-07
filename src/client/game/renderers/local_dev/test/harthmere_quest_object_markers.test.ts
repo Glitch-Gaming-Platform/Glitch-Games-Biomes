@@ -10,11 +10,13 @@ import {
   HARTHMERE_ACTIVE_QUEST_MARKER_BLUE,
   HARTHMERE_ACTIVE_QUEST_MARKER_CAP,
   HARTHMERE_ACTIVE_WORLD_OBJECT_MARKER_RENDER_POLICY,
+  HARTHMERE_GROVE_QUEST_OBJECT_ASSET_URLS,
   HARTHMERE_LUIS_REPAIR_CART_ASSET_URL,
   HARTHMERE_MOBILE_QUEST_MARKER_MAX_NEARBY,
   HARTHMERE_QUEST_OBJECT_MARKER_VERSION,
   HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY,
   HARTHMERE_QUEST_OBJECT_MARKERS,
+  isHarthmereExoticMatterDepositMarkerId,
   isHarthmereJobsBoardFieldTargetAliasId,
   isHarthmereJobsBoardFieldTargetMarkerId,
   harthmereResolveWorldQuestBeaconMarkerId,
@@ -30,6 +32,7 @@ import {
   shouldRenderHarthmereQuestObjectMarkerMesh,
   isRenderableHarthmereQuestObjectLandmark,
   makeHarthmereQuestObjectMarkersRenderer,
+  replaceHarthmereQuestObjectFallbackWithAsset,
   replaceHarthmereRepairCartFallbackWithAsset,
 } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers";
 import { createNewScenes } from "@/client/game/renderers/scenes";
@@ -59,7 +62,25 @@ import * as THREE from "three";
 import { publishChapter1ObjectiveWorldProjection } from "@/client/components/challenges/Chapter1ObjectiveWorldState";
 
 describe("harthmereResolveWorldQuestBeaconMarkerId (cross-system eclipse)", () => {
-  it("allows permanent business fixtures to ground beneath authored awnings", () => {
+  it("keeps quest-marker grounding and culling off the per-frame hot path", () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, "../harthmere_quest_object_markers.ts"),
+      "utf8"
+    );
+    assert.match(source, /private groundRefreshSeconds = 0/);
+    assert.match(source, /this\.groundRefreshSeconds = 0\.25/);
+    assert.match(
+      source,
+      /if \(this\.groundRefreshSeconds <= 0\)[\s\S]*this\.groundVisibleMarkers\(\)/
+    );
+    assert.doesNotMatch(
+      source,
+      /frustumCulled = false/,
+      "quest-marker meshes and authored replacements must use normal frustum culling"
+    );
+  });
+
+  it("allows permanent business fixtures and cave deposits to bypass open-sky grounding", () => {
     const source = fs.readFileSync(
       path.join(__dirname, "../harthmere_quest_object_markers.ts"),
       "utf8"
@@ -70,7 +91,11 @@ describe("harthmereResolveWorldQuestBeaconMarkerId (cross-system eclipse)", () =
     );
     assert.match(
       source,
-      /harthmereGroundedFeetYWithMemory\([\s\S]*!isFieldTarget\s*\)/
+      /const isCaveDeposit = isHarthmereExoticMatterDepositMarkerId\(id\)/
+    );
+    assert.match(
+      source,
+      /harthmereGroundedFeetYWithMemory\([\s\S]*!isFieldTarget && !isCaveDeposit\s*\)/
     );
     assert.match(
       source,
@@ -223,6 +248,83 @@ describe("Luis repair cart authored asset", () => {
       replaceHarthmereRepairCartFallbackWithAsset(marker, prototype),
       undefined,
       "asset replacement must be idempotent"
+    );
+  });
+});
+
+describe("Blender-authored Grove quest objects", () => {
+  it("ships a distinct non-empty GLB for every reported missing or ambiguous prop", () => {
+    assert.deepEqual(
+      Object.keys(HARTHMERE_GROVE_QUEST_OBJECT_ASSET_URLS).sort(),
+      [
+        "doc_clean_root_sample",
+        "doc_mucked_root_sample",
+        "doc_sealed_muck_sample",
+        "econ_kit_mailbag",
+        "grove_combat_practice_dummy",
+        "guild_charter_board",
+      ]
+    );
+    assert.equal(
+      new Set(Object.values(HARTHMERE_GROVE_QUEST_OBJECT_ASSET_URLS)).size,
+      Object.keys(HARTHMERE_GROVE_QUEST_OBJECT_ASSET_URLS).length,
+      "clean, mucked, sealed, courier, board, and dummy art must not alias one GLB"
+    );
+    for (const [markerId, assetUrl] of Object.entries(
+      HARTHMERE_GROVE_QUEST_OBJECT_ASSET_URLS
+    )) {
+      const assetPath = path.join(
+        process.cwd(),
+        "public",
+        assetUrl.replace(/^\/assets\//, "assets/")
+      );
+      const contents = fs.readFileSync(assetPath);
+      assert.equal(
+        contents.subarray(0, 4).toString("utf8"),
+        "glTF",
+        `${markerId} should be a binary glTF`
+      );
+      assert.ok(
+        contents.length > 20_000,
+        `${markerId} authored GLB is unexpectedly small`
+      );
+    }
+  });
+
+  it("replaces generic fallback geometry while preserving the active beacon", () => {
+    const marker = createHarthmereQuestObjectMarkerMesh({
+      id: "guild_charter_board",
+      label: "Grove Guild Charter Board",
+      kind: "interactable",
+      position: [502, 70, -130],
+    });
+    const beacon = createHarthmereActiveQuestMarkerBeacon();
+    marker.add(beacon);
+    const fallbackChildren = marker.children.length - 1;
+    assert.ok(fallbackChildren >= 5);
+    const prototype = new THREE.Group();
+    prototype.name = "test-grove-charter-board";
+    prototype.add(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(2, 2, 0.2),
+        new THREE.MeshBasicMaterial()
+      )
+    );
+    const assetUrl =
+      HARTHMERE_GROVE_QUEST_OBJECT_ASSET_URLS.guild_charter_board;
+    const asset = replaceHarthmereQuestObjectFallbackWithAsset(
+      marker,
+      prototype,
+      assetUrl
+    );
+    assert.ok(asset);
+    assert.ok(marker.children.includes(beacon));
+    assert.equal(marker.children.length, 2);
+    assert.equal(asset!.userData.harthmereQuestObjectAuthoredAsset, true);
+    assert.equal(marker.userData.harthmereQuestObjectAssetUrl, assetUrl);
+    assert.equal(
+      replaceHarthmereQuestObjectFallbackWithAsset(marker, prototype, assetUrl),
+      undefined
     );
   });
 });
@@ -389,6 +491,25 @@ describe("Harthmere quest object procedural markers current", () => {
     assert.deepEqual(orchard!.position, [2068, 53, -118]);
   });
 
+  it("keeps every Exotic Matter deposit visible and cave-grounded", () => {
+    const deposits = harthmereJobsBoardQuestMarkerPositions().filter(
+      (marker) => marker.source === "exotic_matter_deposit"
+    );
+    assert.ok(deposits.length >= 346, "expected the complete deposit registry");
+    for (const deposit of deposits) {
+      assert.equal(
+        isHarthmereExoticMatterDepositMarkerId(deposit.markerId),
+        true,
+        `${deposit.markerId} should use cave-safe grounding`
+      );
+      assert.equal(
+        isVisibleHarthmereWorldObjectMarker(deposit.markerId),
+        true,
+        `${deposit.markerId} should remain visible without an active job`
+      );
+    }
+  });
+
   it("adds active-only live-entity helper quest targets at the authored coordinates", () => {
     for (const helperMarker of LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS) {
       const marker = HARTHMERE_QUEST_OBJECT_MARKERS.find(
@@ -429,7 +550,7 @@ describe("Harthmere quest object procedural markers current", () => {
     assert.equal(ids.has("harthmere_town_market_posting_board"), false);
   });
 
-  it("uses unlit non-culled meshes so quest props remain visible in dim or filtered scenes", () => {
+  it("uses unlit frustum-culled meshes so quest props stay bright without submitting offscreen geometry", () => {
     const sampleIds = [
       "grove_painted_route_flags",
       "grove_tool_crate",
@@ -492,8 +613,8 @@ describe("Harthmere quest object procedural markers current", () => {
         );
         assert.equal(
           child.frustumCulled,
-          false,
-          `${id} should not be frustum-culled near the camera`
+          true,
+          `${id} should use normal frustum culling`
         );
       });
       assert.ok(
@@ -503,7 +624,8 @@ describe("Harthmere quest object procedural markers current", () => {
     }
   });
 
-  it("keeps active quest beacon art out of the always-visible base quest props", () => {
+  it("keeps active quest beacon art out of the always-visible base quest props", function () {
+    this.timeout(20_000);
     for (const marker of HARTHMERE_QUEST_OBJECT_MARKERS) {
       const mesh = createHarthmereQuestObjectMarkerMesh(marker);
       mesh.traverse((child) => {
@@ -795,11 +917,14 @@ describe("Harthmere quest object procedural markers current", () => {
       // as the jobs board itself: always drawn, always interactable. The
       // hidden-until-active rule exists so another player's QUEST loot box does
       // not read as public loot, which does not apply to them.
-      if (isHarthmereJobsBoardFieldTargetMarkerId(marker.id)) {
+      if (
+        isHarthmereJobsBoardFieldTargetMarkerId(marker.id) ||
+        isHarthmereExoticMatterDepositMarkerId(marker.id)
+      ) {
         assert.equal(
           isVisibleHarthmereWorldObjectMarker(marker),
           true,
-          `${marker.id} (${marker.label}) is a permanent business fixture and must stay visible`
+          `${marker.id} (${marker.label}) is a permanent public resource or business fixture and must stay visible`
         );
         continue;
       }

@@ -3,16 +3,16 @@ import { tryExitPointerLock } from "@/client/components/contexts/PointerLockCont
 import { DialogButton } from "@/client/components/system/DialogButton";
 import { reportClientError } from "@/client/util/request_helpers";
 import { log } from "@/shared/logging";
+import {
+  hasHarthmereInstallIdentity,
+  reloadPreservingHarthmereInstallIdentity,
+} from "@/shared/util/harthmere_auth_session";
 import React, { useEffect, useRef, useState } from "react";
 
 const INSTALL_DISCONNECT_SUPPRESSION_LOG_INTERVAL_MS = 30_000;
 
 function isHarthmereInstallLaunch() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  const params = new URLSearchParams(window.location.search);
-  return !!params.get("install_id") || !!params.get("installId");
+  return hasHarthmereInstallIdentity();
 }
 
 export const GameErrorOverlay: React.FunctionComponent<{}> = ({}) => {
@@ -91,7 +91,7 @@ export const GameErrorOverlay: React.FunctionComponent<{}> = ({}) => {
         </p>
         <DialogButton
           onClick={() => {
-            window.location.reload();
+            reloadPreservingHarthmereInstallIdentity();
           }}
         >
           Reconnect Manually

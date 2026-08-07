@@ -1348,6 +1348,110 @@ describe("Quest item grant/remove", () => {
   });
 });
 
+describe("Native backpack capacity projection", () => {
+  const flattenedCarriedItems = Object.fromEntries(
+    Array.from({ length: 44 }, (_, index) => [
+      `captured_backpack_hotbar_item_${index}`,
+      1,
+    ])
+  );
+
+  it("uses the server-projected limit for store, quest, loot, bank, and equipment ingress", () => {
+    const cases: Array<{
+      label: string;
+      snapshot: HarthmereInventorySnapshot;
+      request: HarthmereInventoryMutationRequest;
+    }> = [
+      {
+        label: "store purchase",
+        snapshot: makeSnapshot({
+          gold: 500,
+          items: { ...flattenedCarriedItems },
+          maxInventorySlots: 47,
+        }),
+        request: makeReq({
+          kind: "buy_from_vendor",
+          vendorId: "blacksmith",
+          itemId: "iron_sword",
+          count: 1,
+        }),
+      },
+      {
+        label: "quest item",
+        snapshot: makeSnapshot({
+          items: { ...flattenedCarriedItems },
+          maxInventorySlots: 47,
+        }),
+        request: makeReq({
+          kind: "grant_quest_item",
+          itemId: "quest_relic",
+          count: 1,
+          questId: "capacity_projection_quest",
+        }),
+      },
+      {
+        label: "loot or harvest pickup",
+        snapshot: makeSnapshot({
+          items: { ...flattenedCarriedItems },
+          maxInventorySlots: 47,
+        }),
+        request: makeReq({
+          kind: "pickup_item",
+          itemId: "iron_sword",
+          count: 1,
+        }),
+      },
+      {
+        label: "bank withdrawal",
+        snapshot: makeSnapshot({
+          items: { ...flattenedCarriedItems },
+          bank: { iron_sword: 1 },
+          maxInventorySlots: 47,
+        }),
+        request: makeReq({
+          kind: "withdraw_from_bank",
+          bankItemId: "iron_sword",
+          bankCount: 1,
+        }),
+      },
+      {
+        label: "unequip",
+        snapshot: makeSnapshot({
+          items: { ...flattenedCarriedItems },
+          equipment: { main_hand: "iron_sword" },
+          maxInventorySlots: 47,
+        }),
+        request: makeReq({
+          kind: "unequip_item",
+          sourceSlot: "main_hand",
+        }),
+      },
+    ];
+
+    for (const testCase of cases) {
+      const result = reduceHarthmereInventoryMutation(
+        testCase.request,
+        makeCtx(testCase.snapshot)
+      );
+      assert.ok(result.ok, `${testCase.label}: ${result.errors?.join(", ")}`);
+    }
+  });
+
+  it("still rejects a new stack when the native backpack has no empty slot", () => {
+    const snapshot = makeSnapshot({
+      items: { ...flattenedCarriedItems },
+      maxInventorySlots: 44,
+    });
+    const result = reduceHarthmereInventoryMutation(
+      makeReq({ kind: "pickup_item", itemId: "iron_sword", count: 1 }),
+      makeCtx(snapshot)
+    );
+
+    assert.ok(!result.ok);
+    assert.ok(result.errors?.includes("inventory_full"));
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Admin grant
 // ---------------------------------------------------------------------------

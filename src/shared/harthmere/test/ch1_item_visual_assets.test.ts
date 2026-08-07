@@ -64,7 +64,7 @@ describe("Chapter 1 held and dropped item visuals", () => {
     );
     assert.match(
       itemMeshSource,
-      /WORLD_TO_VOX_SCALE \* CH1_ITEM_WORLD_PRESENTATION_SCALE/
+      /WORLD_TO_VOX_SCALE \*\s*\(chapter1\s*\?\s*CH1_ITEM_WORLD_PRESENTATION_SCALE\s*:\s*GROVE_ITEM_WORLD_PRESENTATION_SCALE\)/
     );
     assert.match(
       itemMeshSource,

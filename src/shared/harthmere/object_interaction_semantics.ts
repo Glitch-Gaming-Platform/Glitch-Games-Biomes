@@ -43,7 +43,7 @@ export interface HarthmereObjectInteraction {
 // labelled "Lockbox" (a real decor item id) or "Safe Ruin Cache" failed the
 // non-living gate and could never surface an F prompt. Both forms now match.
 const HARTHMERE_NON_LIVING_OBJECT_RE =
-  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches?|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|shelves|shelf|workbenches|workbench|anvils?|tools?|boards?|signs?|posts?|markers?|inscriptions?|plates?|ledgers?|books?|notes?|letters?|orders?|strips?|feed|carts?|wagons?|lockbox(?:es)?|strongbox(?:es)?|stash(?:es)?|footlockers?|stakes?|stones?|rubbings?|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|pots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kettles?|fences?|boundar(?:y|ies)|tables?|desks?|mirrors?|moss|towers?|platforms?|offices?|chapels?|materials?|berries|patch(?:es)?|clumps?|plots?|branches?|softwood|harvests?|remains?|carcasses?|sounders?|stretch|spots?|overlooks?|corners?|ovens?|stoves?|beds?|stands?|cookpots?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pails?|mailboxes?|consoles?|terminals?|grates?|pillars?|candles?|altars?|shrines?|statues?|banners?|lamps?|braziers?|fountains?|wells?|gates?|doors?)\b/i;
+  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches?|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|shelves|shelf|workbenches|workbench|anvils?|tools?|boards?|signs?|posts?|markers?|inscriptions?|plates?|ledgers?|books?|notes?|letters?|orders?|strips?|feed|carts?|wagons?|lockbox(?:es)?|strongbox(?:es)?|stash(?:es)?|footlockers?|stakes?|stones?|rubbings?|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|pots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kettles?|fences?|boundar(?:y|ies)|tables?|desks?|mirrors?|moss|roots?|samples?|jars?|towers?|platforms?|offices?|chapels?|materials?|berries|patch(?:es)?|clumps?|plots?|branches?|softwood|harvests?|remains?|carcasses?|sounders?|stretch|spots?|overlooks?|corners?|ovens?|stoves?|beds?|stands?|cookpots?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pails?|mailboxes?|consoles?|terminals?|grates?|pillars?|candles?|altars?|shrines?|statues?|banners?|lamps?|braziers?|fountains?|wells?|gates?|doors?)\b/i;
 
 const HARTHMERE_CONTAINER_OBJECT_RE =
   /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches?|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|lockbox(?:es)?|strongbox(?:es)?|stash(?:es)?|footlockers?)\b/i;
@@ -64,7 +64,7 @@ const HARTHMERE_COOKING_STATION_OBJECT_RE =
   /\b(ovens?|stoves?|cookpots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kitchen\s+pots?|kettles?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pots?)\b/i;
 const HARTHMERE_USE_OBJECT_RE = /\b(pots?|tables?|desks?)\b/i;
 const HARTHMERE_RESOURCE_OBJECT_RE =
-  /\b(berries|berry|muckwad|materials?|patch(?:es)?|clumps?|branches?|softwood|harvests?|remains?|carcasses?|sounders?)\b/i;
+  /\b(berries|berry|muckwad|roots?|samples?|materials?|patch(?:es)?|clumps?|branches?|softwood|harvests?|remains?|carcasses?|sounders?)\b/i;
 const HARTHMERE_REPAIR_OBJECT_RE = /\b(repair|broken|scratch|fences?)\b/i;
 const HARTHMERE_PRACTICE_OBJECT_RE =
   /\b(practice|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|stakes?|stretch|spots?)\b/i;
@@ -163,16 +163,12 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS: ReadonlyMap<
     ),
     "doc's field table": objectInteraction("use", "Use Table", "Used"),
     "fern's sprout beds": objectInteraction("tend", "Tend", "Tended"),
-    "first-aid bin": objectInteraction(
-      "open_container",
-      "Open Container",
-      "Opened"
-    ),
+    "first-aid bin": objectInteraction("gather", "Take Bandage", "Took from"),
     "fountain dim corner": objectInteraction("inspect", "Inspect", "Inspected"),
     "fountain food satchel": objectInteraction(
-      "open_container",
-      "Open Container",
-      "Opened"
+      "gather",
+      "Take Ration",
+      "Took from"
     ),
     "fountain lesson board": objectInteraction("read", "Read", "Read"),
     "fountain repair post": objectInteraction("repair", "Repair", "Repaired"),
@@ -236,10 +232,10 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS: ReadonlyMap<
       "Open Wanted Board",
       "Opened"
     ),
-    "kit's mailbag stand": objectInteraction(
-      "open_container",
-      "Open Container",
-      "Opened"
+    "kit's parcel stand": objectInteraction(
+      "gather",
+      "Pick Up Parcel",
+      "Picked up from"
     ),
     "lost-and-found stone": objectInteraction(
       "recover",
@@ -253,9 +249,9 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS: ReadonlyMap<
     ),
     "luis's repair cart": objectInteraction("repair", "Repair", "Repaired"),
     "mail and bank satchel": objectInteraction(
-      "open_container",
-      "Open Container",
-      "Opened"
+      "inspect",
+      "Inspect Satchel",
+      "Inspected"
     ),
     "marked practice materials": objectInteraction(
       "gather",
@@ -283,11 +279,7 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS: ReadonlyMap<
     ),
     "muckwad patch": objectInteraction("gather", "Gather", "Gathered"),
     "old grove road post": objectInteraction("read", "Read", "Read"),
-    "old supply box": objectInteraction(
-      "open_container",
-      "Open Container",
-      "Opened"
-    ),
+    "old supply box": objectInteraction("inspect", "Inspect Box", "Inspected"),
     "orchard softwood branches": objectInteraction(
       "gather",
       "Gather",
@@ -309,9 +301,9 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS: ReadonlyMap<
       "Practiced at"
     ),
     "practice guild bank crate": objectInteraction(
-      "open_container",
-      "Open Container",
-      "Opened"
+      "inspect",
+      "Inspect Guild Crate",
+      "Inspected"
     ),
     "practice land ledger": objectInteraction("read", "Read", "Read"),
     "practice scratch post": objectInteraction("repair", "Repair", "Repaired"),
@@ -331,9 +323,24 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS: ReadonlyMap<
       "Practiced at"
     ),
     "road kit crate": objectInteraction(
-      "open_container",
-      "Open Container",
-      "Opened"
+      "inspect",
+      "Inspect Road Kit",
+      "Inspected"
+    ),
+    "clean root sample": objectInteraction(
+      "gather",
+      "Collect Clean Sample",
+      "Collected"
+    ),
+    "mucked root sample": objectInteraction(
+      "gather",
+      "Collect Mucked Sample",
+      "Collected"
+    ),
+    "sealed muck sample": objectInteraction(
+      "gather",
+      "Collect Sealed Sample",
+      "Collected"
     ),
     "boar sounder harvest": objectInteraction("gather", "Gather", "Gathered"),
     "safe-zone boundary stones": objectInteraction(

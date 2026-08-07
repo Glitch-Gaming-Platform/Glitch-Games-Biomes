@@ -4,6 +4,7 @@ import assert from "assert";
 
 import {
   HARTHMERE_TOOL_SOURCES,
+  harthmereDeliveryParcelPickupRecorded,
   harthmereJobItemSourceGuidance,
   harthmereJobMarkerPlan,
   harthmereJobNotification,
@@ -15,6 +16,23 @@ import {
 import { harthmereJobsBoardQuestMarkerPositionForId } from "@/shared/harthmere/jobs_board_quest_marker_positions";
 
 const BOARD = "harthmere_market_posting_board";
+
+describe("harthmereDeliveryParcelPickupRecorded", () => {
+  it("recognizes the durable delivery pickup receipt", () => {
+    assert.equal(
+      harthmereDeliveryParcelPickupRecorded({
+        logs: [
+          "delivery_parcel_picked_up:sealed_package:1:coop_supply_box:1000",
+        ],
+      }),
+      true
+    );
+    assert.equal(
+      harthmereDeliveryParcelPickupRecorded({ logs: ["accepted:1000"] }),
+      false
+    );
+  });
+});
 
 describe("HARTHMERE_TOOL_SOURCES — tool vendors resolve to real map positions", () => {
   it("every tool source's vendor marker resolves to a real owner position", () => {

@@ -1481,6 +1481,7 @@ function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
   serverTargetPosition?: { x: number; y: number; z: number },
   serverActorItemIds?: BiomesId[],
   serverActorItemCounts?: Record<string, number>,
+  serverActorBackpackFreeSlots?: number,
   serverActorEquippedItemKeys?: string[],
   serverActorGold?: number,
   serverActorEquipment?: Record<string, string>,
@@ -1514,6 +1515,7 @@ function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
     serverActorPosition,
     serverActorItemIds,
     serverActorItemCounts,
+    serverActorBackpackFreeSlots,
     serverActorEquippedItemKeys,
     serverActorGold,
     serverActorEquipment,
@@ -1577,6 +1579,7 @@ export async function readServerActorNativeContextForLiveMode(
     }
     const ids = new Set<BiomesId>();
     const itemCounts: Record<string, number> = {};
+    let backpackFreeSlots: number | undefined;
     const equipment: Record<string, string> = {};
     let equippedItemKeys: string[] = [];
     let knownRecipeIds: string[] = [];
@@ -1609,6 +1612,10 @@ export async function readServerActorNativeContextForLiveMode(
         Number(bagCount(inventory?.currencies, { id: BikkieIds.bling }))
       );
       if (inventory) {
+        backpackFreeSlots = 0;
+        for (let index = 0; index < inventory.items.length; index += 1) {
+          if (!inventory.items[index]) backpackFreeSlots += 1;
+        }
         const selected = getSlotByRef(
           { inventory, wearing },
           inventory.selected
@@ -1754,6 +1761,7 @@ export async function readServerActorNativeContextForLiveMode(
       position: parsedPosition,
       itemIds: includeItemIds ? [...ids] : undefined,
       itemCounts: includeItemIds ? itemCounts : undefined,
+      backpackFreeSlots: includeItemIds ? backpackFreeSlots : undefined,
       equippedItemKeys: includeItemIds ? equippedItemKeys : undefined,
       gold: includeItemIds ? gold : undefined,
       equipment: includeItemIds ? equipment : undefined,
@@ -1782,6 +1790,7 @@ export async function readServerActorNativeContextForLiveMode(
       position: undefined,
       itemIds: includeItemIds ? [] : undefined,
       itemCounts: includeItemIds ? {} : undefined,
+      backpackFreeSlots: undefined,
       equippedItemKeys: includeItemIds ? [] : undefined,
       gold: includeItemIds ? 0 : undefined,
       equipment: includeItemIds ? {} : undefined,
@@ -4392,6 +4401,7 @@ export default biomesApiHandler(
         serverTargetPosition,
         serverActorContext.itemIds,
         serverActorContext.itemCounts,
+        serverActorContext.backpackFreeSlots,
         serverActorContext.equippedItemKeys,
         serverActorContext.gold,
         serverActorContext.equipment,

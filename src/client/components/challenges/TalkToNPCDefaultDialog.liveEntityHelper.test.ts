@@ -219,7 +219,7 @@ describe("live-entity helper dialog context", () => {
     }
   });
 
-  it("classifies authored storage-like landmarks as containers", () => {
+  it("keeps authored storage-like landmarks container-shaped without forcing the native container flow", () => {
     for (const label of [
       "Road Kit Crate",
       "Mail and Bank Satchel",
@@ -228,12 +228,11 @@ describe("live-entity helper dialog context", () => {
       "Fountain Food Satchel",
       "First-Aid Bin",
       "Rin's Forage Basket",
-      "Kit's Mailbag Stand",
     ]) {
       assert.equal(
         isHarthmereContainerObjectLabel({ label }),
         true,
-        `${label} should open through the container path`
+        `${label} should retain container-shaped presentation`
       );
     }
   });
@@ -283,9 +282,9 @@ describe("live-entity helper dialog context", () => {
       "Doc's Field Table": ["use", "Use Table"],
       "East Pigment Muck Clump": ["gather", "Gather"],
       "Fern's Sprout Beds": ["tend", "Tend"],
-      "First-Aid Bin": ["open_container", "Open Container"],
+      "First-Aid Bin": ["gather", "Take Bandage"],
       "Fountain Dim Corner": ["inspect", "Inspect"],
-      "Fountain Food Satchel": ["open_container", "Open Container"],
+      "Fountain Food Satchel": ["gather", "Take Ration"],
       "Fountain Lesson Board": ["read", "Read"],
       "Fountain Repair Post": ["repair", "Repair"],
       "Fountain Workbench": ["craft", "Craft"],
@@ -306,13 +305,13 @@ describe("live-entity helper dialog context", () => {
       "Hoof Track Rubbing": ["gather", "Take Rubbing"],
       "Jackie's Sealed Letter": ["gather", "Pick Up"],
       "Jobs Board": ["open_jobs_board", "Open Jobs Board"],
-      "Kit's Mailbag Stand": ["open_container", "Open Container"],
+      "Kit's Parcel Stand": ["gather", "Pick Up Parcel"],
       "Lost-and-Found Stone": ["recover", "Recover Items"],
       "Lovely Locks Mirror": ["check_outfit", "Check Outfit"],
       "Low Moss Song Stone": ["inspect", "Inspect"],
       "Luis's Bolt Order": ["gather", "Pick Up"],
       "Luis's Repair Cart": ["repair", "Repair"],
-      "Mail and Bank Satchel": ["open_container", "Open Container"],
+      "Mail and Bank Satchel": ["inspect", "Inspect Satchel"],
       "Marked Bolt Materials": ["gather", "Pick Up"],
       "Marked Practice Materials": ["gather", "Gather"],
       "Mel's Workbench": ["craft", "Craft"],
@@ -320,17 +319,20 @@ describe("live-entity helper dialog context", () => {
       "Mosslawn Song Stones": ["inspect", "Inspect"],
       "Muckwad Patch": ["gather", "Gather"],
       "Old Grove Road Post": ["read", "Read"],
-      "Old Supply Box": ["open_container", "Open Container"],
+      "Old Supply Box": ["inspect", "Inspect Box"],
       "Painted Route Flags": ["practice", "Practice"],
       "Party Rope Marker": ["practice", "Practice"],
       "Practice Drop Stones": ["practice", "Practice"],
-      "Practice Guild Bank Crate": ["open_container", "Open Container"],
+      "Practice Guild Bank Crate": ["inspect", "Inspect Guild Crate"],
       "Practice Land Ledger": ["read", "Read"],
       "Practice Scratch Post": ["repair", "Repair"],
       "Ready Check Fireflies": ["practice", "Practice"],
       "Rin's Forage Basket": ["gather", "Gather Mushrooms"],
       "Road Jump Stretch": ["practice", "Practice"],
-      "Road Kit Crate": ["open_container", "Open Container"],
+      "Road Kit Crate": ["inspect", "Inspect Road Kit"],
+      "Clean Root Sample": ["gather", "Collect Clean Sample"],
+      "Mucked Root Sample": ["gather", "Collect Mucked Sample"],
+      "Sealed Muck Sample": ["gather", "Collect Sealed Sample"],
       "Safe-Zone Boundary Stones": ["inspect", "Inspect"],
       "Selfie Overlook": ["take_photo", "Take Photo"],
       "Shutter Cove Photo Marker": ["take_photo", "Take Photo"],

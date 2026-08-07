@@ -30,7 +30,10 @@ export interface HarthmereBusinessBoardMarkerLocation {
   yaw: number;
 }
 
-export const HARTHMERE_BUSINESS_BOARD_INTERACTION_RADIUS = 9;
+// Keep the board usable from its front edge without turning the whole business
+// interior into one giant F target. At the former nine-metre radius, facing a
+// patron four metres away still opened management instead of conversation.
+export const HARTHMERE_BUSINESS_BOARD_INTERACTION_RADIUS = 3.25;
 
 export const HARTHMERE_BUSINESS_BOARD_MARKER_LOCATIONS: readonly HarthmereBusinessBoardMarkerLocation[] =
   HARTHMERE_BUSINESS_OUTPOSTS.map((outpost, index) => {

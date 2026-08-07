@@ -100,6 +100,7 @@ import {
   HARTHMERE_EXOTIC_MATTER_COMPONENTS,
   HARTHMERE_EXOTIC_MATTER_DEPOSIT_REPLENISH_MS,
   harthmereExoticMatterDepositById,
+  harthmereExoticMatterDepositRuntimePosition,
 } from "@/shared/harthmere/exotic_matter_caves";
 import { HARTHMERE_GUILD_CREATION_MIN_LEVEL } from "@/shared/harthmere/mmo_guild_authority";
 import { createHarthmereInventoryLootActor } from "@/shared/harthmere/mmo_inventory_loot_authority";
@@ -8193,27 +8194,43 @@ describe("reduceHarthmereLiveModeBackendState — farming", function () {
     );
   });
 
-  it("mines a shifted-cave deposit when the player stands at its rendered terrainPosition", function () {
+  it("mines an additive-town cave deposit only at its current world position", function () {
     const deposit = harthmereExoticMatterDepositById(
-      "exotic_antiboron_mossglass_survey_03"
+      "exotic_antiboron_old_well_03"
     )!;
-    // Shifted-world deposits render their ore at terrainPosition (X - 512), which is where
-    // the player physically stands. Proximity must accept that coordinate; previously only
-    // deposit.position was checked, leaving every shifted-cave deposit un-mineable.
-    assert.ok(
-      deposit.terrainPosition,
-      "expected a shifted deposit with a terrainPosition"
-    );
+    const runtimePosition =
+      harthmereExoticMatterDepositRuntimePosition(deposit);
+    assert.deepEqual(runtimePosition, [2002, 48, -234]);
     const payload = {
       operation: "mine_exotic_matter_deposit",
       depositId: deposit.depositId,
     };
+
+    const staleAuthoredPosition = applyOne(
+      freshState(),
+      "request_farming_action",
+      payload,
+      {
+        subsystem: "farming",
+        serverActorPosition: {
+          x: deposit.position[0],
+          y: deposit.position[1],
+          z: deposit.position[2],
+        },
+      }
+    );
+    assert.ok(
+      staleAuthoredPosition.summary.warnings.includes(
+        "exotic_matter_rejected:deposit_proximity_required"
+      )
+    );
+
     const mined = applyOne(freshState(), "request_farming_action", payload, {
       subsystem: "farming",
       serverActorPosition: {
-        x: deposit.terrainPosition![0],
-        y: deposit.terrainPosition![1],
-        z: deposit.terrainPosition![2],
+        x: runtimePosition[0],
+        y: runtimePosition[1],
+        z: runtimePosition[2],
       },
     });
     assert.ok(
@@ -10466,6 +10483,12 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     assert.equal(exchange?.actorId, String(NATIVE_ACTOR_ID));
     assert.deepEqual(exchange?.rewardItemStacks, { sealed_package: 1 });
     assert.equal(result.state.jobsBoard.todos[todo.todoId].status, "active");
+    assert.equal(
+      result.state.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`]
+        ?.plotId,
+      "grove_mail_bank_satchel",
+      "the durable pickup receipt must advance the server quest marker even before the native inventory mirror catches up"
+    );
     const projected = projectHarthmereNativeEcsPlansOntoClientStateForTest(
       result.state,
       makeEnvelope(
@@ -11347,13 +11370,7 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       "accepted job should expose its primary cave marker"
     );
     assert.equal(genericMarker.plotId, "exotic_antiboron_mossglass_survey_03");
-    assert.deepEqual(
-      genericMarker.position,
-      resolveHarthmereProductionMarkerPosition({
-        markerId: target!.markerId,
-        fallback: target!.position,
-      })
-    );
+    assert.deepEqual(genericMarker.position, target!.position);
 
     const spawnedMarkerEntries = Object.entries(
       accepted.state.building.inWorldMarkers
@@ -11375,11 +11392,7 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       assert.equal(deposit!.caveId, "mossglass_survey_cave");
       assert.deepEqual(
         marker.position,
-        resolveHarthmereProductionMarkerPosition({
-          source: "exotic_matter_deposit",
-          markerId: deposit!.depositId,
-          fallback: deposit!.position,
-        })
+        harthmereExoticMatterDepositRuntimePosition(deposit!)
       );
       const cave = HARTHMERE_EXOTIC_MATTER_CAVES.find(
         (entry) => entry.caveId === deposit!.caveId

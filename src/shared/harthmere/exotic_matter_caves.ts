@@ -1,7 +1,12 @@
+import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
+import {
+  HARTHMERE_INDISWORM_CAVE_IDS,
+  HARTHMERE_INDISWORM_CAVE_LAYOUTS,
+} from "@/shared/harthmere/indisworm_cave_layout";
 import type { Vec3 } from "@/shared/math/types";
 
 export const HARTHMERE_EXOTIC_MATTER_CAVES_VERSION =
-  "harthmere-exotic-matter-caves" as const;
+  "harthmere-exotic-matter-caves-v2-runtime-markers-guarded-packs" as const;
 export const HARTHMERE_EXOTIC_MATTER_POWER_MW_PER_UNIT = 100_400;
 export const HARTHMERE_EXOTIC_MATTER_DEPOSIT_REPLENISH_MS =
   6 * 60 * 60 * 1000;
@@ -93,6 +98,26 @@ export type HarthmereExoticMatterCaveId =
   | "harthmere_core_massive_cave"
   | "harthmere_far_hollow_massive_cave"
   | "harthmere_high_vault_massive_cave";
+
+// These six caves are authored as part of Harthmere town and therefore use
+// the shared +1600 authored-to-world transform. The survey/massive caverns are
+// confirmed original-production-map spaces and must remain unshifted alongside
+// their existing Indisworm encounters.
+export const HARTHMERE_ADDITIVE_TOWN_EXOTIC_MATTER_CAVE_IDS =
+  new Set<HarthmereExoticMatterCaveId>([
+    "old_well_descent_room",
+    "underways_north_south_tunnel",
+    "underways_east_west_tunnel",
+    "rat_crowns_den",
+    "smuggler_drain_vault",
+    "crypt_rest_room",
+  ]);
+
+export function isHarthmereAdditiveTownExoticMatterCave(
+  caveId: HarthmereExoticMatterCaveId
+) {
+  return HARTHMERE_ADDITIVE_TOWN_EXOTIC_MATTER_CAVE_IDS.has(caveId);
+}
 
 export interface HarthmereExoticMatterBounds {
   x0: number;
@@ -243,6 +268,7 @@ export interface HarthmereExoticMatterDeposit {
   terrainPosition?: Vec3;
   jobEligible: boolean;
   clusterRadius: number;
+  guardGroupId?: string;
 }
 
 const deposit = (
@@ -417,6 +443,58 @@ const harthmereHighVaultMassiveDeposits =
       minY: 97,
     });
 
+const HARTHMERE_INDISWORM_GUARDED_DEPOSIT_OFFSETS = [
+  {
+    componentId: "antihydrogen",
+    labelNoun: "Spark Cache",
+    offset: [-7, 1, 0],
+  },
+  {
+    componentId: "antihelium",
+    labelNoun: "Pocket Cache",
+    offset: [0, 1, 7],
+  },
+  {
+    componentId: "antiboron",
+    labelNoun: "Vein Cache",
+    offset: [7, 1, 0],
+  },
+] as const satisfies readonly {
+  componentId: HarthmereExoticMatterComponentId;
+  labelNoun: string;
+  offset: Vec3;
+}[];
+
+const harthmereIndiswormGuardedDeposits =
+  (): HarthmereExoticMatterDeposit[] =>
+    HARTHMERE_INDISWORM_CAVE_IDS.flatMap((caveId) => {
+      const cave = harthmereExoticMatterCaveById(caveId);
+      if (!cave) {
+        throw new Error(`Missing guarded-deposit cave ${caveId}`);
+      }
+      return HARTHMERE_INDISWORM_CAVE_LAYOUTS[caveId].packCenters.flatMap(
+        (center, packIndex) => {
+          const guardGroupId = `indisworm:${caveId}:pack-${packIndex + 1}`;
+          return HARTHMERE_INDISWORM_GUARDED_DEPOSIT_OFFSETS.map(
+            ({ componentId, labelNoun, offset }) => ({
+              ...shiftedWorldDeposit(
+                caveId,
+                componentId,
+                `${caveId}_indisworm_pack_${packIndex + 1}`,
+                `${HARTHMERE_EXOTIC_MATTER_COMPONENTS[componentId].shortName} Indisworm ${labelNoun}`,
+                [
+                  center[0] + offset[0],
+                  cave.bounds.y0 + offset[1],
+                  center[1] + offset[2],
+                ]
+              ),
+              guardGroupId,
+            })
+          );
+        }
+      );
+    });
+
 export const HARTHMERE_EXOTIC_MATTER_DEPOSITS: readonly HarthmereExoticMatterDeposit[] =
   [
     deposit("old_well_descent_room", "antihydrogen", "old_well_01", "Antihydrogen Float-Seam", [396, 48, -240]),
@@ -498,6 +576,7 @@ export const HARTHMERE_EXOTIC_MATTER_DEPOSITS: readonly HarthmereExoticMatterDep
     ...harthmereCoreMassiveDeposits(),
     ...harthmereFarHollowMassiveDeposits(),
     ...harthmereHighVaultMassiveDeposits(),
+    ...harthmereIndiswormGuardedDeposits(),
   ];
 
 export interface HarthmereExoticMatterQuestMarker {
@@ -533,6 +612,20 @@ export function harthmereExoticMatterDepositsForCave(
   );
 }
 
+export function harthmereExoticMatterDepositRuntimePosition(
+  deposit: HarthmereExoticMatterDeposit
+): Vec3 {
+  return isHarthmereAdditiveTownExoticMatterCave(deposit.caveId)
+    ? shiftHarthmereAuthoredPositionToWorld(deposit.position)
+    : ([...deposit.position] as Vec3);
+}
+
+export function harthmereExoticMatterDepositRuntimePositions(
+  deposit: HarthmereExoticMatterDeposit
+): readonly Vec3[] {
+  return [harthmereExoticMatterDepositRuntimePosition(deposit)];
+}
+
 export function harthmereExoticMatterJobEligibleDeposits() {
   return HARTHMERE_EXOTIC_MATTER_DEPOSITS.filter(
     (deposit) => deposit.jobEligible
@@ -560,7 +653,7 @@ export function harthmereExoticMatterDepositQuestMarkers(): readonly HarthmereEx
   return HARTHMERE_EXOTIC_MATTER_DEPOSITS.map((deposit) => ({
     markerId: deposit.depositId,
     label: deposit.label,
-    position: [...deposit.position] as Vec3,
+    position: harthmereExoticMatterDepositRuntimePosition(deposit),
     depositId: deposit.depositId,
     caveId: deposit.caveId,
     componentId: deposit.componentId,
@@ -759,7 +852,7 @@ export function harthmereExoticMatterAcceptedJobDepositMarkers(input: {
     return {
       markerId: `fresh_${input.todoId}_${deposit.depositId}`,
       label: `Fresh ${component.shortName} Deposit`,
-      position: [...deposit.position] as Vec3,
+      position: harthmereExoticMatterDepositRuntimePosition(deposit),
       depositId: deposit.depositId,
       caveId: deposit.caveId,
       componentId: deposit.componentId,

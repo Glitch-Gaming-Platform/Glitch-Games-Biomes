@@ -91,6 +91,7 @@ import {
 import {
   HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MATCH_RADIUS,
   HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS,
+  harthmereWorldObjectCandidateAtActivePinPosition,
   harthmereWorldObjectCandidateIsVisibleForInteraction,
   isHarthmereInspectableWorldObject,
   selectNearestHarthmereWorldObjectInspectable,
@@ -118,8 +119,10 @@ import {
 import {
   MAX_OVERLAY_OCCLUSION_MARCHES_PER_FRAME,
   OverlayOcclusionRefreshQueue,
+  mobileOverlayRefreshIntervalForFrameGap,
   overlayOcclusionKey,
   overlayProjectionsEqual,
+  shouldRefreshOverlayFrame,
 } from "@/client/game/scripts/overlay_frame_budget";
 import { ok } from "assert";
 import { isEqual } from "lodash";
@@ -420,20 +423,29 @@ function harthmereVisibleStaticWorldObjectInspectCandidates(
   const activeMarkerId = activeHarthmereQuestMarkerId(questState);
   const activeMarkerIds = activeHarthmereQuestMarkerIds(questState);
   const activePin = readActiveBiomesUIMapPin();
+  const activePinMarkerId =
+    activePin?.interactionTargetId ??
+    activePin?.worldObjectId ??
+    activePin?.markerId;
   return [
-    ...harthmereWorldObjectInspectCandidates().filter((candidate) =>
+    ...harthmereWorldObjectInspectCandidates().flatMap((candidate) =>
       harthmereWorldObjectCandidateIsVisibleForInteraction({
         candidate,
         activeMarkerId,
-        activePinMarkerId:
-          activePin?.interactionTargetId ??
-          activePin?.worldObjectId ??
-          activePin?.markerId,
+        activePinMarkerId,
         activePinPosition: activePin?.worldPosition,
         alwaysVisible:
           activeMarkerIds.has(candidate.id) ||
           isVisibleHarthmereWorldObjectMarker(candidate.id),
       })
+        ? [
+            harthmereWorldObjectCandidateAtActivePinPosition({
+              candidate,
+              activePinMarkerId,
+              activePinPosition: activePin?.worldPosition,
+            }),
+          ]
+        : []
     ),
     ...harthmereJobsBoardFieldTargetInspectCandidates(resources),
   ];
@@ -767,6 +779,8 @@ export class OverlayScript implements Script {
   // refreshed under a per-frame budget: the answer stays correct within ~100 ms
   // while the per-frame raycast count is bounded by MAX_OCCLUSION_MARCHES.
   private readonly occlusionRefreshes = new OverlayOcclusionRefreshQueue();
+  private lastFullOverlayRefreshAtMs: number | undefined;
+  private lastOverlayTickAtMs: number | undefined;
 
   constructor(
     private readonly userId: BiomesId,
@@ -2486,7 +2500,13 @@ export class OverlayScript implements Script {
   }
 
   tick(_dt: number) {
-    this.occlusionRefreshes.sweep(performance.now());
+    const nowMs = performance.now();
+    const frameGapMs =
+      this.lastOverlayTickAtMs === undefined
+        ? undefined
+        : nowMs - this.lastOverlayTickAtMs;
+    this.lastOverlayTickAtMs = nowMs;
+    this.occlusionRefreshes.sweep(nowMs);
     const curTime = Date.now();
     const lootTimeout = 5 * 1000;
     const lootEvents = this.resources.get("/overlays/loot");
@@ -2511,6 +2531,25 @@ export class OverlayScript implements Script {
         lootEvents.version += 1;
       });
     }
+
+    // HARTHMERE_MOBILE_OVERLAY_FRAME_BUDGET (2026-08-07 physical iPhone
+    // fight audit). Rebuilding the complete overlay/nameplate/projection map
+    // was the largest measured client-owned frame cost on the phone. Keep
+    // desktop byte-for-byte on its existing every-frame path, while phones
+    // refresh the complete map at a bounded near-10 Hz cadence. Input,
+    // simulation, cursor authority and rendering continue at their existing
+    // rates; only derived overlay presentation is sampled.
+    if (
+      !shouldRefreshOverlayFrame({
+        mobileDevice: this.clientConfig.mobileDevice,
+        nowMs,
+        lastRefreshAtMs: this.lastFullOverlayRefreshAtMs,
+        refreshIntervalMs: mobileOverlayRefreshIntervalForFrameGap(frameGapMs),
+      })
+    ) {
+      return;
+    }
+    this.lastFullOverlayRefreshAtMs = nowMs;
 
     const newOverlays: OverlayMap = new Map();
     const newProjection: ProjectionMap = new Map();

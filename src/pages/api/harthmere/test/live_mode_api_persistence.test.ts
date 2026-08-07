@@ -1125,6 +1125,31 @@ describe("live_mode API Redis persistence", () => {
     );
   });
 
+  it("reports empty backpack slots separately from carried hotbar counts", async () => {
+    const backpackItem = harthmereItemIdToBiomesId("raw_meat")!;
+    const hotbarItem = harthmereItemIdToBiomesId("rusty_pickaxe")!;
+    const inventory = Inventory.create({
+      items: [countOf(backpackItem, 2n), undefined, undefined],
+      hotbar: [countOf(hotbarItem, 1n)],
+    });
+    const context = await readServerActorNativeContextForLiveMode(
+      {
+        get: async () => ({
+          position: () => ({ v: [503, 53, -270] }),
+          inventory: () => inventory,
+        }),
+      } as any,
+      1 as any,
+      true
+    );
+
+    assert.equal(context.backpackFreeSlots, 2);
+    assert.deepEqual(context.itemCounts, {
+      raw_meat: 2,
+      rusty_pickaxe: 1,
+    });
+  });
+
   it("keeps jobs-board mutation snapshots slim without cutting building snapshots from building actions", () => {
     assert.deepEqual(
       harthmereLiveModeMutationSnapshotKeys({

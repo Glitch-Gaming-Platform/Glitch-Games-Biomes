@@ -77,6 +77,12 @@ export const ESCORT_DESTINATION_ARRIVE_RADIUS = 3;
  * walking the leader quickly.
  */
 export const ESCORT_WARP_PATH_FAILURE_SECONDS = 6;
+/**
+ * At this many leash lengths, preserving visible pathing is less important
+ * than keeping the escort attached to the player. The caller still resolves
+ * the warp through terrain occupancy before moving the NPC.
+ */
+export const ESCORT_HARD_WARP_LEASH_MULTIPLIER = 3;
 /** Movement required to count as real catch-up progress. */
 export const ESCORT_PROGRESS_DISTANCE_METERS = 0.75;
 /** Time without that movement before navigation is considered stuck. */
@@ -406,14 +412,21 @@ export function escortPathProgress(
 /**
  * Whether the escort may teleport to the leader.
  *
- * Both conditions must hold: the escort is beyond its leash AND navigation has
- * been failing continuously for `warpAfterSeconds`. A companion that is merely
- * slow keeps running; only a companion that is genuinely stuck warps. Never
- * during combat, because a warp would abandon the fight it was assigned to.
+ * Normally both conditions must hold: the escort is beyond its leash AND
+ * navigation has been failing continuously for `warpAfterSeconds`. Extreme
+ * separation is also a recovery condition because small reported progress can
+ * otherwise leave a companion hundreds of metres behind. Never warp during
+ * combat, because that would abandon the fight it was assigned to.
  */
 export function escortShouldWarp(input: EscortWarpInput): boolean {
   if (input.inCombat) return false;
   if (input.distanceToLeader <= input.leashDistance) return false;
+  if (
+    input.distanceToLeader >=
+    input.leashDistance * ESCORT_HARD_WARP_LEASH_MULTIPLIER
+  ) {
+    return true;
+  }
   if (input.pathFailingSinceSeconds === undefined) return false;
   const failingFor = input.nowSeconds - input.pathFailingSinceSeconds;
   return (

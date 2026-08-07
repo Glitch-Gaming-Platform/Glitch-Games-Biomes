@@ -102,3 +102,13 @@ export function buildGlitchInstallRedirectDestination(query: ParsedUrlQuery) {
 
   return `/at?${params.toString()}`;
 }
+
+export function preserveGlitchInstallIdentityOnAtRedirect(
+  destination: string,
+  query: ParsedUrlQuery
+) {
+  if (destination !== "/at") {
+    return destination;
+  }
+  return buildGlitchInstallRedirectDestination(query) ?? destination;
+}

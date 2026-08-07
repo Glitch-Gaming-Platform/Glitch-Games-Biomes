@@ -137,8 +137,8 @@ ok(
   "near_location steps advance from player distance to the marker"
 );
 ok(
-  runtime.includes("expectedOpenTabForObjective") &&
-    runtime.includes("(event as any).tab === expectedTab"),
+  runtime.includes("expectedOpenTabsForObjective") &&
+    runtime.includes("expectedTabs.includes((event as any).tab)"),
   "open_tab steps validate the intended HUD tab when known"
 );
 ok(

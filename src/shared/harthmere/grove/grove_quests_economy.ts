@@ -521,7 +521,7 @@ const QUESTS: GroveQuestDef[] = [
       {
         "id": "econ_kit_heavy_parcel_to_crossroads_obj_02",
         "index": 1,
-        "label": "Pick up the parcel at Kit's mailbag stand.",
+        "label": "Pick up the parcel from Kit's marked parcel stand.",
         "trigger": "item_grant",
         "markerId": "econ_kit_mailbag"
       },
@@ -718,7 +718,7 @@ const QUESTS: GroveQuestDef[] = [
     "arc": "economy",
     "category": "road_story",
     "area": "The Grove Fountain",
-    "hook": "Carlo has a festival cook order and needs a runner-cook to grill skewers at the fountain workbench. Pays the best wage on the starter board.",
+    "hook": "Carlo has a festival cook order and needs a runner-cook to grill skewers at the campfire inside his fountain house. Pays the best wage on the starter board.",
     "start": {
       "kind": "giver",
       "giverNpcId": "carlo_the_cook"
@@ -741,9 +741,9 @@ const QUESTS: GroveQuestDef[] = [
       {
         "id": "econ_carlo_festival_skewers_obj_03",
         "index": 2,
-        "label": "Cook the skewers at the Fountain Workbench.",
+        "label": "Cook the skewers at Carlo's Campfire inside the house.",
         "trigger": "craft",
-        "markerId": "grove_fountain_workbench",
+        "markerId": "econ_carlo_campfire",
         "craft": {
           "recipeId": "harthmere_grove_festival_skewer",
           "outputItemId": "grove_festival_skewer"

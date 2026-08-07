@@ -58,7 +58,6 @@ import { groveNativeStepId } from "../grove/grove_quest_ids";
 import { HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST } from "../harthmere_native_quest_manifest";
 import { isHarthmereInspectableWorldObject } from "../harthmere_world_object_inspectable";
 import {
-  SNAPSHOT_GROVE_LIVE_MARKER_Y,
   SNAPSHOT_GROVE_MARKER_Y,
   SNAPSHOT_GROVE_NPCS,
 } from "../snapshot_grove_content";
@@ -168,14 +167,19 @@ describe("Grove engine contracts — Gaia", () => {
   // premise, so the lifting test above cannot quietly stop proving anything.
   it("confirms Grove-area landmarks really are stranded in authored space", () => {
     const stranded = groveStrandedLandmarks();
-    assert.equal(stranded.length, 15);
+    assert.equal(stranded.length, 16);
+    assert.ok(
+      stranded.some((landmark) => landmark.id === "econ_carlo_campfire"),
+      "Carlo's authored-height campfire must be lifted by the shared resolver"
+    );
     for (const landmark of stranded) {
       assert.equal(landmark.position[1], SNAPSHOT_GROVE_MARKER_Y);
       assert(!["harthmere", "harthmere_connector"].includes(landmark.area));
-      // The resolver must lift it to the live height.
-      assert.equal(
+      // The resolver must lift it out of the retired datum. Scanned landmarks
+      // then follow their real hilly terrain instead of being flattened to 71.
+      assert.notEqual(
         groveMarkerWorldPosition(landmark.id)![1],
-        SNAPSHOT_GROVE_LIVE_MARKER_Y
+        SNAPSHOT_GROVE_MARKER_Y
       );
     }
   });

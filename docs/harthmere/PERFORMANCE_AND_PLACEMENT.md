@@ -55,6 +55,87 @@ idle and multi-enemy sample on the exact final artifact. A root health response,
 source inspection, or a screenshot without FPS/renderer/console evidence is not
 an FPS pass.
 
+## August 7 Physical iPhone Fight Hotfix
+
+The connected iPhone 12 mini (`iPhone13,1`, iOS 26.5.2) exercised build
+`warm-grove-quest-audit-20260807-r3` through the normal cached LAN web origin
+and direct Sync. The valid unhotfixed 20-second row measured about 6 FPS while
+already at 0.3 render scale, 48 m draw distance, no bloom/AA/SSAO, and a
+15-entity draw limit. Performance API scopes proved this was not a terrain or
+postprocessing problem:
+
+- median/average CPU render work was about 18/21.9 ms;
+- `rendererScripts:overlay` alone averaged 10.0 ms with a 19 ms p95;
+- terrain rendering averaged 0.5 ms, resource collection 0.34 ms, and render +
+  postprocessing 2.3 ms; and
+- iOS delivered rendered frames roughly 130-167 ms apart while device thermal
+  budgets were constrained. The game therefore had a controllable overlay CPU
+  cost plus a separate device scheduler/thermal limit.
+
+The mobile-only hotfix bounds complete overlay-map reconstruction to 80 ms
+under normal frames and 200 ms after a severe `>=100 ms` frame gap. Desktop
+still rebuilds overlays every frame. Simulation, input, cursor/combat authority,
+networking, and rendering cadence are unchanged; only derived nameplate,
+prompt, and projection presentation is sampled.
+
+No-rebuild physical A/B results on the same phone/build:
+
+| Row                             |  FPS | Overlay average | CPU render average | Authoritative damage |
+| ------------------------------- | ---: | --------------: | -----------------: | -------------------: |
+| Unhotfixed idle                 | 5.99 |        10.02 ms |           21.91 ms |                  n/a |
+| Hotfixed idle                   | 7.63 |         0.79 ms |            6.95 ms |                  n/a |
+| Hotfixed five-enemy combat      | 8.49 |         0.86 ms |            9.45 ms |                   88 |
+| Final cleaned hotfix idle       | 8.03 |         0.79 ms |            6.49 ms |                  n/a |
+| Final cleaned five-enemy combat | 8.67 |         0.78 ms |            6.72 ms |                   59 |
+
+Both fight rows contained trusted touch `pointerdown`/`touchstart` input and a
+server-authoritative HP reduction. The final cleaned row reused the stable
+`PhysicalIPhoneFight-99001E` device actor, deleted the remaining stale
+timestamped test actor before navigation, created five enemies, delivered one
+trusted primary-action touch, and reduced the target from 1,000,000 HP to
+999,941 HP. The report completed with `status: pass` and no page errors.
+
+This is a functional physical-fight pass, not the final 20 FPS or ten-minute
+performance acceptance. The runner used observation mode so the sub-20 FPS
+result would be preserved instead of discarded as a threshold failure. Even
+after the controllable overlay cost fell from 10.02 ms to 0.78-0.79 ms and total
+CPU render work fell to 6.49-6.72 ms, iOS delivered frames 118.9-124.5 ms apart
+on average and the phone remained thermally constrained. Do not claim the
+remaining acceptance gates are closed until the same immutable build completes
+the required ten-minute real-fight soak at the documented frame target.
+
+A second instrumentation A/B restarted the Mac-side SafariDriver server without
+its global `--diagnose` flag and requested `safari:diagnose: false`. The page
+reported `visibilityState: visible`, `document.hidden: false`, and
+`document.hasFocus(): true`, but rAF still measured 8.37 FPS idle / 8.47 FPS in
+combat while CPU render work remained only 6.27-7.70 ms. Diagnostic collection
+therefore was not the 8-9 FPS cause. That comparison's trusted touch caused no
+authoritative HP change, so it is performance-only evidence, not another fight
+pass. The runner now enforces positive authoritative damage even in observation
+mode; observation relaxes FPS thresholds only.
+
+The exact-window filtered device log for that comparison advanced throughout
+the run, contained constrained thermal/granted-budget records, and contained no
+matching memory-highwater jetsam or WebGL context-loss event. This closes the
+telemetry gap in the earlier clean row without converting the sub-20 FPS result
+into an acceptance pass.
+
+Evidence:
+
+```text
+artifacts/harthmere-physical-iphone-fight/physical-iphone-fight-r3-timings-20260807/report.json
+artifacts/harthmere-physical-iphone-fight/physical-iphone-fight-r3-overlay-hotfix-20260807/report.json
+artifacts/harthmere-physical-iphone-fight/physical-iphone-fight-r3-final-clean-hotfix-20260807/report.json
+artifacts/harthmere-physical-iphone-fight/physical-iphone-fight-r3-no-diagnose-hotfix-20260807/report.json
+artifacts/harthmere-physical-iphone-fight/physical-iphone-fight-r3-no-diagnose-hotfix-20260807/device-syslog-acceptance.log
+scripts/harthmere/mobile-overlay-performance-hotfix-2026-08-07.js
+scripts/harthmere/test-harthmere-physical-iphone-fight.cjs
+```
+
+Focused source validation: the mobile overlay cadence tests pass (4 assertions)
+and `scripts/harthmere/t.sh perf` passes its 51-test performance batch and
+current source guardrails.
+
 The core rule has two coordinate spaces. The original snapshot/Grove terrain is
 hilly and must be sampled. The additive Harthmere extension is deliberately
 flat at ground Y=52 / feet Y=53. Streets, roofs, indoor floors, water, caves,
@@ -630,6 +711,12 @@ Current behavior:
 - the world itself retains the 96 m dynamic minimum described above;
 - static business/jobs-board debug bridges are installed once per renderer;
 - quest-marker debug snapshots publish at 2 Hz rather than every frame.
+- quest-object terrain grounding runs at 4 Hz and its procedural/authored
+  meshes use normal frustum culling instead of forcing every marker into every
+  draw submission;
+- the sticky Native ECS stamina-authority compatibility clock advances only in
+  memory, so it no longer dispatches React storage events or uploads the full
+  Cloud Save blob every five seconds during combat.
 
 Source:
 

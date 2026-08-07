@@ -8,6 +8,7 @@ import {
   activeJobsBoardMissionStepsForBiomesUI,
   firstActiveJobsBoardLandmarkForBiomesUI,
   jobsBoardLandmarkForActivePinHandoffForTest,
+  newlyAcceptedJobsBoardTodoIdForTest,
   jobsBoardTodoIdFromMarkerIdForTest,
   shouldClearStaleJobsBoardPin,
   BIOMES_UI_JOBS_BOARD_ITEM_SOURCE_MARKER_SOURCE,
@@ -551,6 +552,43 @@ describe("BiomesUI jobs board quest map adapter", () => {
     assert.equal(quest.itemSource?.sourceName, "Old Supply Box");
   });
 
+  it("keeps Run the Coop on delivery after a durable pickup receipt even when the inventory mirror is stale", () => {
+    const snapshot = acceptedJobsBoardSnapshot();
+    snapshot.inventoryItems = {};
+    snapshot.myAcceptedJobs[0] = {
+      ...snapshot.myAcceptedJobs[0],
+      jobId: "job_coop_food",
+      title: "Run the Coop Food Parcel",
+      description: "Collect the parcel from the hen-yard crate.",
+      kind: "delivery",
+      requirements: [
+        {
+          itemId: "sealed_package",
+          count: 1,
+          pickupMarkerId: "coop_supply_box",
+          mapMarkerId: "grove_mail_bank_satchel",
+        },
+      ],
+      mapMarkerId: "grove_mail_bank_satchel",
+      logs: [
+        "delivery_parcel_picked_up:sealed_package:1:coop_supply_box:1000",
+      ],
+    } as any;
+    snapshot.myTodos[0] = {
+      ...snapshot.myTodos[0],
+      todoId: "todo_coop_food",
+      jobId: "job_coop_food",
+      title: "Run the Coop Food Parcel",
+      kind: "delivery",
+      mapMarkerId: "grove_mail_bank_satchel",
+    } as any;
+
+    const [marker] = jobsBoardAcceptedJobLandmarksForBiomesUI(snapshot);
+    assert.equal(marker.mapMarkerId, "grove_mail_bank_satchel");
+    assert.ok(marker.description.includes("Deliver"));
+    assert.equal(jobsBoardItemSourceLandmarksForBiomesUI(snapshot).length, 0);
+  });
+
   it("drops markers for fully completed todos, but surfaces completed AND failed in the tracker", () => {
     const snapshot = acceptedJobsBoardSnapshot();
     snapshot.myAcceptedJobs[0].status = "completed" as any;
@@ -603,6 +641,33 @@ function repairJobSnapshot() {
 }
 
 describe("BiomesUI jobs board tool-source guidance", () => {
+  it("detects a newly accepted todo without reselecting jobs during initial hydration", () => {
+    const accepted = repairJobSnapshot();
+    const before = {
+      ...accepted,
+      myAcceptedJobs: [],
+      myTodos: [],
+    };
+    assert.equal(
+      newlyAcceptedJobsBoardTodoIdForTest({
+        previous: undefined,
+        next: accepted,
+      }),
+      undefined
+    );
+    assert.equal(
+      newlyAcceptedJobsBoardTodoIdForTest({ previous: before, next: accepted }),
+      "repair_todo_1"
+    );
+    assert.equal(
+      newlyAcceptedJobsBoardTodoIdForTest({
+        previous: accepted,
+        next: accepted,
+      }),
+      undefined
+    );
+  });
+
   it("hands a completed tool-buy phase back to the same accepted todo", () => {
     const snapshot = repairJobSnapshot();
     const [accepted] = jobsBoardAcceptedJobLandmarksForBiomesUI(snapshot);
@@ -620,6 +685,43 @@ describe("BiomesUI jobs board tool-source guidance", () => {
         landmarks: [accepted],
       })?.id,
       accepted.id
+    );
+  });
+
+  it("promotes an accepted field pin to the required tool vendor before work can begin", () => {
+    const snapshot = repairJobSnapshot();
+    const [accepted] = jobsBoardAcceptedJobLandmarksForBiomesUI(snapshot);
+    const [toolSource] = jobsBoardToolSourceLandmarksForBiomesUI(snapshot, {
+      repairToolOwned: false,
+      cleanupToolOwned: false,
+    });
+    assert.equal(
+      jobsBoardLandmarkForActivePinHandoffForTest({
+        activePinMarkerId: accepted.id,
+        landmarks: [accepted, toolSource],
+      })?.id,
+      toolSource.id
+    );
+  });
+
+  it("hands a completed tool-buy phase to the next unmet material source before the field target", () => {
+    const snapshot = missingItemRepairJobSnapshot();
+    const [accepted] = jobsBoardAcceptedJobLandmarksForBiomesUI(snapshot);
+    const [itemSource] = jobsBoardItemSourceLandmarksForBiomesUI(snapshot);
+    const [toolSource] = jobsBoardToolSourceLandmarksForBiomesUI(snapshot, {
+      repairToolOwned: false,
+      cleanupToolOwned: false,
+    });
+
+    const handoff = jobsBoardLandmarkForActivePinHandoffForTest({
+      activePinMarkerId: toolSource.id,
+      landmarks: [accepted, itemSource],
+    });
+
+    assert.equal(handoff?.id, itemSource.id);
+    assert.equal(
+      handoff?.source,
+      BIOMES_UI_JOBS_BOARD_ITEM_SOURCE_MARKER_SOURCE
     );
   });
 

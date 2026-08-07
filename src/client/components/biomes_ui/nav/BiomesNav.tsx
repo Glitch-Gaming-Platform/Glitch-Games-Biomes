@@ -15,6 +15,7 @@ import { Highlightable } from "../highlight/HighlightOverlay";
 import { TAB_DESCRIPTORS, TAB_ORDER } from "../BiomesUITypes";
 import type { TabKey } from "../BiomesUITypes";
 import { UI_IDS } from "../uniqueIds";
+import { snapshotGroveTutorLabelForTabForTest } from "../SnapshotGroveTutorPrompt";
 
 interface BiomesNavProps {
   activeTab: TabKey;
@@ -23,6 +24,7 @@ interface BiomesNavProps {
   badges?: Partial<Record<TabKey, number>>;
   /** Keep the tab rail to one touch-scrollable row on phone viewports. */
   mobile?: boolean;
+  tutorLabels?: ReadonlySet<string>;
 }
 
 const tabIdMap: Record<TabKey, string> = {
@@ -49,6 +51,7 @@ export const BiomesNav: React.FunctionComponent<BiomesNavProps> = ({
   onTabChange,
   badges,
   mobile = false,
+  tutorLabels = new Set(),
 }) => {
   const [focusedIndex, setFocusedIndex] = useState<number>(() =>
     Math.max(0, TAB_ORDER.indexOf(activeTab))
@@ -128,6 +131,10 @@ export const BiomesNav: React.FunctionComponent<BiomesNavProps> = ({
         const selected = tab === activeTab;
         const focused = focusedIndex === idx;
         const badge = badges?.[tab] ?? 0;
+        const tutorLabel = snapshotGroveTutorLabelForTabForTest(tab);
+        const tutorHighlighted = Boolean(
+          tutorLabel && tutorLabels.has(tutorLabel)
+        );
         return (
           <Highlightable key={tab} uniqueId={tabIdMap[tab]} showCaption>
             <button
@@ -144,7 +151,20 @@ export const BiomesNav: React.FunctionComponent<BiomesNavProps> = ({
               tabIndex={selected ? 0 : -1}
               data-focused={focused ? "true" : undefined}
               data-tab={tab}
+              data-snapshot-grove-tutor-highlight={
+                tutorHighlighted ? tutorLabel : undefined
+              }
               className="biomes-ui-tab"
+              style={
+                tutorHighlighted
+                  ? {
+                      borderColor: "rgba(217,249,157,.9)",
+                      color: "#f7fee7",
+                      background: "rgba(190,242,100,.18)",
+                      boxShadow: "0 0 18px rgba(190,242,100,.65)",
+                    }
+                  : undefined
+              }
               onClick={() => {
                 setFocusedIndex(idx);
                 onTabChange(tab);

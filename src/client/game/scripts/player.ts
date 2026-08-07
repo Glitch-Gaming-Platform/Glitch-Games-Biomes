@@ -156,6 +156,7 @@ import {
 import { fireAndForget } from "@/shared/util/async";
 import { setDiff } from "@/shared/util/collections";
 import { getNowMs } from "@/shared/util/helpers";
+import { hasHarthmereInstallIdentity } from "@/shared/util/harthmere_auth_session";
 import {
   EventThrottle,
   StateThrottle,
@@ -3273,6 +3274,10 @@ export class PlayerScript implements Script {
       velocity: player.player.velocity,
       shardIds: shardIds.map(friendlyShardId),
       presentTerrain,
+      syncRadius: this.io.syncRadius,
+      syncTarget: this.io.syncTarget,
+      pathname: window.location.pathname,
+      hasHarthmereInstallIdentity: hasHarthmereInstallIdentity(),
     });
   }
 
@@ -3618,7 +3623,10 @@ export class PlayerScript implements Script {
 
     const enabled = h === "" || h === "/" || h.startsWith("/at");
 
-    if (!enabled) {
+    // Install-backed players are identified by the Glitch install id, not by a
+    // durable Biomes username. Rewriting a temporary label such as "Guest User"
+    // into /at/<label> makes the recovery reload look like an observer permalink.
+    if (!enabled || hasHarthmereInstallIdentity()) {
       return;
     }
 

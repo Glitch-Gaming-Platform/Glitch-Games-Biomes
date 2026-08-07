@@ -171,6 +171,17 @@ describe("Harthmere business board procedural markers current", () => {
       z: location!.z + HARTHMERE_BUSINESS_BOARD_INTERACTION_RADIUS + 0.25,
     });
     assert.equal(tooFar, undefined);
+
+    const formerInteriorWidePrompt = nearestHarthmereBusinessBoardPhysicalPrompt({
+      x: location!.x,
+      y: location!.y,
+      z: location!.z + 4,
+    });
+    assert.equal(
+      formerInteriorWidePrompt,
+      undefined,
+      "a patron four metres from the board must remain talkable"
+    );
   });
 
   it("reattaches the procedural business boards after scene recreation", () => {
@@ -257,7 +268,11 @@ describe("Harthmere business board procedural markers current", () => {
       businessPromptSource.includes(
         "priority: WORLD_INTERACTION_PRIORITY.jobsBoard - prompt.distance"
       ),
-      "nearby NPCs must not steal the business board's F interaction"
+      "a board the player is facing must keep its explicit F interaction"
+    );
+    assert.ok(
+      businessPromptSource.includes("prompt && projectedPrompt\n        ? {"),
+      "an off-camera business board must not steal F from a visible NPC"
     );
     assert.ok(
       hudSource.includes("worldContext={businessWorldContext}"),

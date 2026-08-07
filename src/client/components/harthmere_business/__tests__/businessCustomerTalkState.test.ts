@@ -565,7 +565,8 @@ describe("business customer talk registry covers the whole queue", () => {
     );
     assert.equal(
       businessPromptSource.includes("prompt && projectedPrompt\n        ? {"),
-      false
+      true,
+      "the board may own F only while the player is actually facing it"
     );
     assert.equal(
       biomesMount.includes("<HarthmereBusinessWorldInteraction"),

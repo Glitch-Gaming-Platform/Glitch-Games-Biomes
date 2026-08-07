@@ -12,6 +12,7 @@ import {
 } from "@/shared/harthmere/jobs_board_quest_marker_positions";
 import { harthmereJobsBoardFieldTargetForId } from "@/shared/harthmere/jobs_board_field_targets";
 import {
+  harthmereDeliveryParcelPickupRecorded,
   harthmereJobMarkerPlan,
   harthmereJobItemSourceGuidance,
   harthmereJobToolSourceGuidance,
@@ -180,6 +181,25 @@ export function jobsBoardTodoIdFromMarkerIdForTest(
   return undefined;
 }
 
+export function newlyAcceptedJobsBoardTodoIdForTest(input: {
+  previous: unknown;
+  next: unknown;
+}): string | undefined {
+  if (!input.previous) return undefined;
+  const previous = normalizeJobsBoardSnapshotForBiomesUI(input.previous);
+  const next = normalizeJobsBoardSnapshotForBiomesUI(input.next);
+  if (!previous || !next) return undefined;
+  const previousActiveTodoIds = new Set(
+    previous.myTodos
+      .filter((todo) => todo.status === "active")
+      .map((todo) => todo.todoId)
+  );
+  return next.myTodos.find(
+    (todo) =>
+      todo.status === "active" && !previousActiveTodoIds.has(todo.todoId)
+  )?.todoId;
+}
+
 /** Preserve the player's selected todo while its current phase marker changes. */
 export function jobsBoardLandmarkForActivePinHandoffForTest(input: {
   activePinMarkerId: string | undefined;
@@ -188,12 +208,26 @@ export function jobsBoardLandmarkForActivePinHandoffForTest(input: {
   const exact = input.landmarks.find(
     (landmark) => landmark.id === input.activePinMarkerId
   );
-  if (exact) return exact;
   const todoId = jobsBoardTodoIdFromMarkerIdForTest(input.activePinMarkerId);
-  if (!todoId) return undefined;
-  return input.landmarks.find(
-    (landmark) => landmark.jobsBoardTodoId === todoId
-  );
+  if (!todoId) return exact;
+  const phasePriority = (
+    landmark: BiomesUIJobsBoardAcceptedJobLandmark
+  ): number => {
+    switch (landmark.source) {
+      case BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE:
+        return 0;
+      case BIOMES_UI_JOBS_BOARD_ITEM_SOURCE_MARKER_SOURCE:
+        return 1;
+      case BIOMES_UI_JOBS_BOARD_ACCEPTED_JOB_MARKER_SOURCE:
+        return 2;
+    }
+  };
+  const best = input.landmarks
+    .filter((landmark) => landmark.jobsBoardTodoId === todoId)
+    .sort((a, b) => phasePriority(a) - phasePriority(b))[0];
+  if (!best) return exact;
+  if (exact && phasePriority(exact) <= phasePriority(best)) return exact;
+  return best;
 }
 
 function jobsBoardTodoQuestId(todo: HarthmereJobsBoardTodo) {
@@ -363,7 +397,10 @@ function jobsBoardTodoMarkerPlanForBiomesUI(
       progress.gatheredCount = itemCount;
     }
     if (kind === "delivery" && itemCount !== undefined) {
-      progress.hasParcel = itemCount > 0;
+      progress.hasParcel =
+        itemCount > 0 || harthmereDeliveryParcelPickupRecorded(job);
+    } else if (kind === "delivery") {
+      progress.hasParcel = harthmereDeliveryParcelPickupRecorded(job);
     }
     if (kind === "cleanup") {
       const repeatedRequirement = job?.requirements.find(
@@ -408,6 +445,16 @@ function jobsBoardTodoMarkerPlanForBiomesUI(
     boardMarkerId,
     progress,
   });
+}
+
+function jobsBoardTodoStillNeedsItemSource(
+  todo: HarthmereJobsBoardTodo,
+  job: HarthmereJobsBoardPosting | undefined
+) {
+  return !(
+    (todo.kind ?? job?.kind) === "delivery" &&
+    harthmereDeliveryParcelPickupRecorded(job)
+  );
 }
 
 function jobsBoardEscortDestinationForBiomesUI(
@@ -614,6 +661,7 @@ export function jobsBoardItemSourceLandmarksForBiomesUI(
     if (
       todo.status !== "active" ||
       jobsBoardTodoIsClaimable(todo, job) ||
+      !jobsBoardTodoStillNeedsItemSource(todo, job) ||
       seenTodoIds.has(todo.todoId)
     ) {
       return [];
@@ -685,7 +733,9 @@ export function jobsBoardTrackableQuestsForBiomesUI(
         : undefined;
     const objective = jobsBoardTodoObjectiveForBiomesUI(todo, job, plan);
     const itemGuidance =
-      status === "active" && !isClaimable
+      status === "active" &&
+      !isClaimable &&
+      jobsBoardTodoStillNeedsItemSource(todo, job)
         ? harthmereJobItemSourceGuidance({
             kind: todo.kind,
             requirements: job?.requirements,

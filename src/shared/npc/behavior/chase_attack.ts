@@ -882,6 +882,16 @@ export const zChaseAttackComponent = z.object({
       rangedSelectionCursor: z.number().int().nonnegative().optional(),
       rangedMana: z.number().nonnegative().optional(),
       rangedManaUpdatedAt: z.number().optional(),
+      // Server-authored only after an accepted player projectile hits beyond
+      // this NPC's normal disengage leash. It lets Anima answer the shot without
+      // changing ordinary proximity aggro or every later chase.
+      projectileRetaliation: z
+        .object({
+          attackerId: zBiomesId,
+          leashDistance: z.number().nonnegative(),
+          expiresAt: z.number(),
+        })
+        .optional(),
       // Pathfinding behavior for chasing around walls/obstacles.
       pathfinding: zPathfindingComponent.optional(),
       // Briefly use direct pursuit after a path makes no progress. This lets
@@ -1721,6 +1731,71 @@ export function getNearestPlayer(
 // they actually enter a chase attack they will continue it until they lose
 // their target by distance/death/peace.
 export const ATTACK_MEMORY_SECONDS = 30;
+// A projectile can be server-valid beyond the victim's ordinary disengage
+// leash (for example, a 24 m bow against 16 m livestock or a 68 m energy
+// weapon against a 34 m Mucker). Give Anima enough margin to observe the
+// accepted hit and begin pursuit without globally enlarging proactive aggro.
+export const HARTHMERE_PROJECTILE_RETALIATION_CHASE_BUFFER_METERS = 4;
+
+export interface ProjectileRetaliationLeash {
+  attackerId: BiomesId;
+  leashDistance: number;
+  expiresAt: number;
+}
+
+export function harthmereProjectileRetaliationLeashDistance(input: {
+  authoredDisengageDistance: number;
+  projectileReach: number;
+  attackerDistance: number;
+}): number {
+  const authoredDisengageDistance = Math.max(
+    0,
+    Number.isFinite(input.authoredDisengageDistance)
+      ? input.authoredDisengageDistance
+      : 0
+  );
+  const projectileContactDistance = Math.max(
+    0,
+    Number.isFinite(input.projectileReach) ? input.projectileReach : 0,
+    Number.isFinite(input.attackerDistance) ? input.attackerDistance : 0
+  );
+  if (projectileContactDistance <= authoredDisengageDistance) {
+    return authoredDisengageDistance;
+  }
+  return (
+    projectileContactDistance +
+    HARTHMERE_PROJECTILE_RETALIATION_CHASE_BUFFER_METERS
+  );
+}
+
+export function effectiveRetaliationDisengageDistance(input: {
+  authoredDisengageDistance: number;
+  targetId: BiomesId | undefined;
+  now: number;
+  projectileRetaliation?: ProjectileRetaliationLeash;
+}): number {
+  const authoredDisengageDistance = Math.max(
+    0,
+    Number.isFinite(input.authoredDisengageDistance)
+      ? input.authoredDisengageDistance
+      : 0
+  );
+  const projectileRetaliation = input.projectileRetaliation;
+  if (
+    !projectileRetaliation ||
+    input.targetId === undefined ||
+    projectileRetaliation.attackerId !== input.targetId ||
+    !Number.isFinite(projectileRetaliation.leashDistance) ||
+    !Number.isFinite(projectileRetaliation.expiresAt) ||
+    input.now >= projectileRetaliation.expiresAt
+  ) {
+    return authoredDisengageDistance;
+  }
+  return Math.max(
+    authoredDisengageDistance,
+    projectileRetaliation.leashDistance
+  );
+}
 // A real hit opens combat to players close enough to be part of the same
 // visible encounter. This is deliberately smaller than the ordinary
 // disengage leash so retaliation cannot recruit spectators across a region.
@@ -2141,12 +2216,18 @@ function chooseRetaliationVicinityTarget(
 
   // Preserve the authored direct-retaliation leash even when the opener has
   // moved beyond the smaller multiplayer vicinity bubble.
+  const openerDisengageDistance = effectiveRetaliationDisengageDistance({
+    authoredDisengageDistance: params.disengageDistance,
+    targetId: source.attackerId,
+    now,
+    projectileRetaliation: npc.state.chaseAttack?.projectileRetaliation,
+  });
   const opener = retaliationParticipantCandidate(
     env,
     npc,
     env.resources.get("/ecs/entity", source.attackerId),
     source,
-    params.disengageDistance ** 2,
+    openerDisengageDistance ** 2,
     false
   );
   if (opener) {
@@ -2443,8 +2524,16 @@ export function updateAttackTarget(
   // bounded instead of growing with every distinct attacker forever.
   decayNpcThreat(npc);
 
-  const deAggroDistanceSq = params.disengageDistance ** 2;
   const now = secondsSinceEpoch();
+  const projectileRetaliation = npc.state.chaseAttack.projectileRetaliation;
+  if (
+    projectileRetaliation &&
+    (!Number.isFinite(projectileRetaliation.expiresAt) ||
+      now >= projectileRetaliation.expiresAt)
+  ) {
+    npc.mutableState().chaseAttack!.projectileRetaliation = undefined;
+  }
+  const authoredDeAggroDistanceSq = params.disengageDistance ** 2;
   const usesNightMuckerHexAggro = isMuckerOrHexerNpcForNightAggro(npc);
   const usesSoundHunting = isChapter1SoundHunterName(
     harthmereNpcCombatName(npc)
@@ -2469,10 +2558,21 @@ export function updateAttackTarget(
   // bug reported from the Grove combat primer where every hostile sits next to
   // Jackie/Thom/etc. and is therefore inside ward range.
   const directEncounterSource = recentRetaliationEncounterSource(npc, now);
+  const directAttackerId =
+    npc.health.lastDamageSource?.kind === "attack"
+      ? npc.health.lastDamageSource.attacker
+      : undefined;
+  const directRetaliationDisengageDistance =
+    effectiveRetaliationDisengageDistance({
+      authoredDisengageDistance: params.disengageDistance,
+      targetId: directAttackerId,
+      now,
+      projectileRetaliation: npc.state.chaseAttack.projectileRetaliation,
+    });
   const recentAttackerId = lastValidAttackerId(
     env,
     npc,
-    deAggroDistanceSq,
+    directRetaliationDisengageDistance ** 2,
     now
   );
   // A direct hit opens this NPC's retaliation encounter. Otherwise a member of
@@ -2481,7 +2581,7 @@ export function updateAttackTarget(
   // into a second ring.
   const groupAttackerId = recentAttackerId
     ? undefined
-    : nearbyGroupAlertAttackerId(env, npc, deAggroDistanceSq, now);
+    : nearbyGroupAlertAttackerId(env, npc, authoredDeAggroDistanceSq, now);
   const provokedAttackerId = recentAttackerId ?? groupAttackerId;
   const activeGroupAlert = groupAttackerId
     ? (npc.state.groupAlert as GroupAlert | undefined)
@@ -2592,6 +2692,12 @@ export function updateAttackTarget(
   if (targetId) {
     const attackTarget = env.resources.get("/ecs/entity", targetId);
     const buffs = getPlayerBuffs(env.voxeloo, env.resources, targetId);
+    const targetDisengageDistance = effectiveRetaliationDisengageDistance({
+      authoredDisengageDistance: params.disengageDistance,
+      targetId,
+      now,
+      projectileRetaliation: npc.state.chaseAttack.projectileRetaliation,
+    });
     const targetIsProvoked =
       targetId === provokedTargetId ||
       (npc.state.threat?.table?.[String(targetId)] ?? 0) > 0;
@@ -2599,7 +2705,8 @@ export function updateAttackTarget(
     if (!attackTarget?.position || (attackTarget.health?.hp ?? 0) <= 0) {
       targetId = undefined;
     } else if (
-      distSq(attackTarget.position.v, npc.position) > deAggroDistanceSq
+      distSq(attackTarget.position.v, npc.position) >
+      targetDisengageDistance ** 2
     ) {
       targetId = undefined;
     } else if (getPlayerModifiersFromBuffs(buffs)?.peace.enabled) {

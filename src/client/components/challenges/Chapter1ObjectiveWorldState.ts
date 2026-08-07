@@ -19,6 +19,13 @@ export function publishChapter1ObjectiveWorldProjection(
   projection: Chapter1ObjectiveWorldProjection | undefined
 ) {
   activeProjection = projection;
+  if (typeof window !== "undefined") {
+    (
+      window as typeof window & {
+        __chapter1ObjectiveWorldProjection?: Chapter1ObjectiveWorldProjection;
+      }
+    ).__chapter1ObjectiveWorldProjection = projection;
+  }
 }
 
 export function readChapter1ObjectiveWorldProjection() {

@@ -83,6 +83,16 @@ export interface HarthmereJobMarkerPlan {
   currentCount?: number;
 }
 
+export function harthmereDeliveryParcelPickupRecorded(input: {
+  logs?: readonly string[];
+} | undefined): boolean {
+  return Boolean(
+    input?.logs?.some((entry) =>
+      String(entry).startsWith("delivery_parcel_picked_up:")
+    )
+  );
+}
+
 // HARTHMERE_TOOL_SOURCE: where to GET a required tool when the player lacks
 // it. The vendor is a real on-map business owner (already a marker), so a missing
 // tool produces a concrete "go buy it here" objective with a map marker, and the

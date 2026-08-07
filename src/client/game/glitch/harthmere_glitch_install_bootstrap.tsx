@@ -4,15 +4,15 @@ import {
 } from "@/client/game/glitch/harthmere_glitch_identity";
 import { shouldReloadHarthmereGlitchAuth } from "@/client/game/glitch/harthmere_glitch_auth_reload";
 import {
+  buildHarthmereInstallRecoveryUrl,
   harthmereBiomesAuthHeaders,
+  readHarthmereInstallId,
   readHarthmereBiomesAuthSession,
   rememberHarthmereBiomesAuthSession,
 } from "@/shared/util/harthmere_auth_session";
 import { wireHarthmereCloudSave } from "@/client/util/storage/wire_glitch_cloud_save";
 import { rememberHarthmereLiveInstallId } from "@/client/components/harthmere_live_fetch";
 import { useEffect } from "react";
-
-const INSTALL_PARAM_NAMES = ["install_id", "installId"];
 
 const INSTALL_STORAGE_KEYS = [
   "glitch.install.id",
@@ -31,10 +31,6 @@ function firstString(value: unknown): string | undefined {
   if (typeof value === "string" && value.trim()) return value.trim();
   if (typeof value === "number" && Number.isFinite(value)) return String(value);
   return undefined;
-}
-
-function isLocalGeneratedInstallId(installId: string) {
-  return installId.startsWith("local-");
 }
 
 function isGuestLikeString(value: unknown) {
@@ -67,30 +63,7 @@ function isGuestLikeIdentity(json: any) {
 }
 
 export function findInstallId(): string | undefined {
-  if (typeof window === "undefined") {
-    return undefined;
-  }
-
-  const params = new URLSearchParams(window.location.search);
-  for (const name of INSTALL_PARAM_NAMES) {
-    const value = firstString(params.get(name));
-    if (value) {
-      return value;
-    }
-  }
-
-  for (const key of INSTALL_STORAGE_KEYS) {
-    try {
-      const value = firstString(window.localStorage.getItem(key));
-      if (value && !isLocalGeneratedInstallId(value)) {
-        return value;
-      }
-    } catch {
-      // Ignore unavailable localStorage.
-    }
-  }
-
-  return undefined;
+  return readHarthmereInstallId();
 }
 
 function persistInstallId(installId: string) {
@@ -164,12 +137,12 @@ export function normalizeIdentity(json: any, installId: string) {
     !guestIdentity && glitchUserId
       ? `glitch:${glitchUserId}`
       : !guestIdentity &&
-        responseGameUserId &&
-        !isGuestLikeString(responseGameUserId)
-      ? responseGameUserId
-      : !guestIdentity && biomesUserId
-      ? `biomes:${biomesUserId}`
-      : `install:${installId}`;
+          responseGameUserId &&
+          !isGuestLikeString(responseGameUserId)
+        ? responseGameUserId
+        : !guestIdentity && biomesUserId
+          ? `biomes:${biomesUserId}`
+          : `install:${installId}`;
 
   const userName =
     firstString(json?.user_name) ??
@@ -221,7 +194,9 @@ function markAutoAuthReload(installId: string, reason: string) {
     return false;
   }
 
-  const nextUrl = new URL(window.location.href);
+  const nextUrl = new URL(
+    buildHarthmereInstallRecoveryUrl(window.location.href, installId)
+  );
   nextUrl.searchParams.set(AUTO_AUTH_RELOAD_PARAM, "1");
   nextUrl.searchParams.set(AUTO_AUTH_RELOAD_REASON_PARAM, reason);
   // eslint-disable-next-line no-console
@@ -230,6 +205,25 @@ function markAutoAuthReload(installId: string, reason: string) {
   );
   window.location.replace(nextUrl.toString());
   return true;
+}
+
+export function shouldRecoverAuthedHarthmereInstallPage(input: {
+  initialAuthed: boolean;
+  installId: string | undefined;
+  pathname: string;
+  serverRenderedUserId: unknown;
+  serverRenderedObserverMode: unknown;
+}) {
+  if (
+    !input.initialAuthed ||
+    !input.installId ||
+    !(input.pathname === "/" || input.pathname.startsWith("/at"))
+  ) {
+    return false;
+  }
+  const renderedUserId = String(input.serverRenderedUserId ?? "").trim();
+  const renderedAsPlayer = renderedUserId !== "" && renderedUserId !== "0";
+  return !renderedAsPlayer || Boolean(input.serverRenderedObserverMode);
 }
 
 async function autoLoginWithGlitchInstall(installId: string) {
@@ -337,7 +331,13 @@ function writeBootstrapIdentity(json: any, installId: string) {
   };
 }
 
-export function HarthmereGlitchInstallBootstrap() {
+export function HarthmereGlitchInstallBootstrap({
+  serverRenderedUserId,
+  serverRenderedObserverMode,
+}: {
+  serverRenderedUserId?: unknown;
+  serverRenderedObserverMode?: unknown;
+}) {
   useEffect(() => {
     const installId = findInstallId();
     if (!installId) {
@@ -421,6 +421,28 @@ export function HarthmereGlitchInstallBootstrap() {
                   installId,
                 }
               );
+            } else if (
+              shouldRecoverAuthedHarthmereInstallPage({
+                initialAuthed,
+                installId,
+                pathname: window.location.pathname,
+                serverRenderedUserId,
+                serverRenderedObserverMode,
+              })
+            ) {
+              // The browser can authenticate install-backed requests from the
+              // remembered Biomes session even when third-party cookies were
+              // unavailable to SSR. If SSR already mounted observer mode, reload
+              // the canonical /at?install_id=... route so the server can render
+              // the actual install player instead of leaving "Login to Play" up.
+              if (
+                markAutoAuthReload(
+                  installId,
+                  "authed_install_rendered_as_observer"
+                )
+              ) {
+                return;
+              }
             } else {
               clearReloadAttempts(installId);
             }

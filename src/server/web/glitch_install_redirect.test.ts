@@ -1,4 +1,7 @@
-import { buildGlitchInstallRedirectDestination } from "@/server/web/glitch_install_redirect";
+import {
+  buildGlitchInstallRedirectDestination,
+  preserveGlitchInstallIdentityOnAtRedirect,
+} from "@/server/web/glitch_install_redirect";
 import assert from "assert";
 
 describe("Glitch install redirect query forwarding", () => {
@@ -60,6 +63,26 @@ describe("Glitch install redirect query forwarding", () => {
     assert.equal(
       buildGlitchInstallRedirectDestination({ id: "133" }),
       undefined
+    );
+  });
+
+  it("keeps install identity when an invalid player slug falls back to /at", () => {
+    const destination = preserveGlitchInstallIdentityOnAtRedirect("/at", {
+      install_id: "install-1",
+      glitch_auto_play: "1",
+    });
+    const url = new URL(destination, "https://game.example");
+    assert.equal(url.pathname, "/at");
+    assert.equal(url.searchParams.get("install_id"), "install-1");
+    assert.equal(url.searchParams.get("glitch_auto_play"), "1");
+  });
+
+  it("does not rewrite unrelated redirects", () => {
+    assert.equal(
+      preserveGlitchInstallIdentityOnAtRedirect("/sorry", {
+        install_id: "install-1",
+      }),
+      "/sorry"
     );
   });
 });

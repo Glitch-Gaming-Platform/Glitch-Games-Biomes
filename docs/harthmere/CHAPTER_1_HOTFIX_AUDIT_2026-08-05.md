@@ -530,3 +530,31 @@ Chapter 1 rows should not be replayed:
 Status at handoff: **source and focused contracts pass; final affected live
 acceptance is incomplete because the user requested immediate wrap before a
 source-coherent client artifact and bounded browser reruns were produced.**
+
+## August 7 latest-image attempt
+
+Registry ordering identified
+`glitchgames.azurecr.io/biomes-node:prod-50b9f486-asset-boundary-r2` as the
+latest image at the time of the attempt (digest
+`sha256:facaf6368667ec1c302e8fd7f542006bcc510c0d15c2f91eb559763d6a6fa358`).
+It superseded `prod-50b9f486-retaliation-r1` and natively included the two
+bucket assets that the older image omitted.
+
+The intended supplier-only command was nevertheless setup-invalid: it set the
+Chapter 1 resume and stop checkpoints but omitted
+`HARTHMERE_E2E_CHAPTER_1_FEATURES=quests`. The runner therefore entered the
+independent full held-item/cutscene feature matrix and created 61 partial PNGs
+with prefix `1786063933379-97830`. PID 97830 and its Chromium group were stopped
+once the scope error was identified. Those files have zero supplier acceptance
+value and are classified in
+`artifacts/harthmere-native-ecs-e2e/asset-boundary-r2-final/INTERRUPTED.json`.
+The Muck Rake and repair/cleanup rows were not started afterward.
+
+At explicit runtime release, no browser process or browser lease remained.
+Redis was healthy (`PONG`, DBSIZE 340201, restart 0, OOM false), and exact-image
+Anima remained ready/restart 0/OOM false. The app lifecycle was healthy, but a
+concurrent artifact change had mounted host `.next`, `dist`, and `public` with
+BUILD_ID `warm-audio-fps-20260807-r1`; therefore the final app state was no
+longer image-native and cannot be cited as `asset-boundary-r2` acceptance.
+
+Verdict remains unchanged: **the three affected live gates are still pending.**

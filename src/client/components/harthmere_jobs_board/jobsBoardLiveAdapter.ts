@@ -1155,9 +1155,18 @@ export async function submitHarthmereJobsBoardMutation(
   if (rejectionWarnings.length) {
     throw new HarthmereQuestActionError(rejectionWarnings, errorContext);
   }
-  const snapshot = normalizeHarthmereJobsBoardSnapshot(
+  const baseSnapshot = normalizeHarthmereJobsBoardSnapshot(
     json.jobsBoardState ?? json.economyState?.jobsBoardState ?? {}
   );
+  // A pickup/purchase response can materialize native inventory in the same
+  // request. Merge that freshest actor snapshot before caching or dispatching
+  // Jobs Board state; otherwise the map adapter immediately re-pins the old
+  // item source even though the parcel/tool is already in the native hotbar.
+  const snapshot =
+    jobsBoardSnapshotWithLiveInventoryForTest(
+      baseSnapshot,
+      json.inventoryLootState
+    ) ?? baseSnapshot;
   rememberHarthmereJobsBoardState(snapshot, fetchImpl, options.locationSearch);
   dispatchHarthmereJobsBoardStateUpdated(snapshot);
   dispatchHarthmereJobsBoardInventoryLootUpdated(json);

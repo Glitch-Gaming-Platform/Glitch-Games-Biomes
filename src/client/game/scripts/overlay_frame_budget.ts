@@ -4,6 +4,46 @@ import type { ReadonlyVec3 } from "@/shared/math/types";
 export const OVERLAY_OCCLUSION_CACHE_TTL_MS = 100;
 export const OVERLAY_OCCLUSION_CACHE_SWEEP_MS = 5_000;
 export const MAX_OVERLAY_OCCLUSION_MARCHES_PER_FRAME = 24;
+// A physical iPhone 12 mini measured overlay reconstruction at 10.0 ms average
+// / 19 ms p95, nearly half of the game's measured per-frame CPU work. Mobile
+// rendering is capped at 30 FPS, while names, prompts and screen projections do
+// not need a complete table scan every rendered frame. An 80 ms cadence keeps
+// interaction feedback within one tenth of a second and prevents healthy phone
+// sessions from spending roughly 300 ms of CPU per second on overlays alone.
+// Desktop remains unthrottled.
+export const MOBILE_OVERLAY_REFRESH_INTERVAL_MS = 80;
+export const MOBILE_OVERLAY_EMERGENCY_REFRESH_INTERVAL_MS = 200;
+
+export function mobileOverlayRefreshIntervalForFrameGap(frameGapMs?: number) {
+  return typeof frameGapMs === "number" &&
+    Number.isFinite(frameGapMs) &&
+    frameGapMs >= 100
+    ? MOBILE_OVERLAY_EMERGENCY_REFRESH_INTERVAL_MS
+    : MOBILE_OVERLAY_REFRESH_INTERVAL_MS;
+}
+
+export function shouldRefreshOverlayFrame(input: {
+  mobileDevice: boolean;
+  nowMs: number;
+  lastRefreshAtMs: number | undefined;
+  refreshIntervalMs?: number;
+}) {
+  if (!input.mobileDevice) {
+    return true;
+  }
+  if (
+    input.lastRefreshAtMs === undefined ||
+    !Number.isFinite(input.lastRefreshAtMs) ||
+    !Number.isFinite(input.nowMs) ||
+    input.nowMs < input.lastRefreshAtMs
+  ) {
+    return true;
+  }
+  return (
+    input.nowMs - input.lastRefreshAtMs >=
+    (input.refreshIntervalMs ?? MOBILE_OVERLAY_REFRESH_INTERVAL_MS)
+  );
+}
 
 export type OverlayOcclusionRefresh = {
   key: string;

@@ -9,11 +9,16 @@ import {
   readSnapshotGroveQuestState,
   requestSnapshotGroveLandmarkOnMapForBiomesUI,
   selectSnapshotGroveQuest,
+  snapshotGroveActiveMapPinForQuestStepForTest,
   snapshotGroveObjectiveIsCompletionTurnInForTest,
   snapshotGroveObjectiveIndexForQuest,
   snapshotGrovePracticeItemForObjectiveForTest,
+  snapshotGroveNpcIdForEntityForTest,
   snapshotGroveQuestEventFromWorldObjectInteractionForTest,
+  snapshotGroveTutorNavLabelsForObjectiveForTest,
+  type SnapshotGroveQuestState,
   validateSnapshotGroveQuestEventContext,
+  visibleSnapshotGroveQuestOffersForNpcForTest,
 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import {
   BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY,
@@ -21,7 +26,12 @@ import {
 } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import { CURSOR_INSPECTION_SHORTCUT_KEYS_FOR_TEST } from "@/client/components/overlays/inspected/inspectionShortcutKeys";
 import { harthmereInventoryCountByItemId } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import {
+  HARTHMERE_LOCAL_COMBAT_NPC_DAMAGE_EVENT,
+  dispatchHarthmereLocalCombatNpcDamage,
+} from "@/client/components/challenges/harthmereEvents";
 import { selectNearestHarthmereWorldObjectInspectable } from "@/shared/harthmere/harthmere_world_object_inspectable";
+import { harthmereObjectUsesContainerFlow } from "@/shared/harthmere/object_interaction_semantics";
 import {
   SNAPSHOT_GROVE_NPCS,
   SNAPSHOT_GROVE_QUESTS,
@@ -34,6 +44,8 @@ import {
   snapshotGroveObjectiveTargetMarkerIds,
 } from "@/shared/harthmere/snapshot_grove_trigger_contract";
 import { groveQuest } from "@/shared/harthmere/grove/grove_quest_catalog";
+import { SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS } from "@/shared/harthmere/snapshot_grove_ids";
+import { HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST } from "@/shared/harthmere/harthmere_native_quest_manifest";
 
 function questById(id: string) {
   const quest = SNAPSHOT_GROVE_QUESTS.find((entry) => entry.id === id);
@@ -184,6 +196,38 @@ function snapshotGrovePhysicalPickupCases() {
 }
 
 describe("Snapshot Grove quest runtime validation current", () => {
+  it("lights only HUD controls that perform the current objective", () => {
+    assert.deepEqual(
+      snapshotGroveTutorNavLabelsForObjectiveForTest(
+        "open_tab",
+        "Open the storage, mail, or recovery panel from the HUD."
+      ),
+      ["Mail"]
+    );
+    assert.deepEqual(
+      snapshotGroveTutorNavLabelsForObjectiveForTest(
+        "collect",
+        "Collect one clean root sample at the muck edge."
+      ),
+      [],
+      "a world pickup must not keep pulsing Bag"
+    );
+    assert.deepEqual(
+      snapshotGroveTutorNavLabelsForObjectiveForTest(
+        "inventory_change",
+        "Equip the camera Dimmi loans you."
+      ),
+      ["Bag"]
+    );
+    assert.deepEqual(
+      snapshotGroveTutorNavLabelsForObjectiveForTest(
+        "craft",
+        "Cook the skewers at Carlo's Campfire inside the house."
+      ),
+      ["Craft"]
+    );
+  });
+
   it("opens all reported onboarding return visits with completion dialogue", () => {
     for (const questId of [
       "fountain_buttons_first",
@@ -220,6 +264,65 @@ describe("Snapshot Grove quest runtime validation current", () => {
     assert.equal(jackieCompleted?.id, "read-the-jobs-board");
   });
 
+  it("shows at most two Rosalyn offers while exposing the next queued lesson", () => {
+    const base: SnapshotGroveQuestState = {
+      acceptedQuestIds: [],
+      activeObjectiveIndex: 0,
+      objectiveIndexByQuestId: {},
+      objectiveProgressByQuestId: {},
+      completedQuestIds: [],
+      completedObjectiveIds: [],
+      rewards: [],
+    };
+    const first = visibleSnapshotGroveQuestOffersForNpcForTest("rosalyn", base);
+    assert.equal(first.length, 2);
+
+    const second = visibleSnapshotGroveQuestOffersForNpcForTest("rosalyn", {
+      ...base,
+      completedQuestIds: [first[0].id],
+    });
+    assert.equal(second.length, 2);
+    assert.ok(!second.some((quest) => quest.id === first[0].id));
+    assert.ok(
+      second.some(
+        (quest) => !first.some((original) => original.id === quest.id)
+      ),
+      "finishing one visible offer should reveal a queued lesson"
+    );
+  });
+
+  it("keeps the Jobs Board in Jackie's first two readable offers", () => {
+    const offers = visibleSnapshotGroveQuestOffersForNpcForTest("jackie", {
+      acceptedQuestIds: [],
+      activeObjectiveIndex: 0,
+      objectiveIndexByQuestId: {},
+      objectiveProgressByQuestId: {},
+      completedQuestIds: [],
+      completedObjectiveIds: [],
+      rewards: [],
+    });
+    assert.ok(offers.length <= 2);
+    assert.ok(
+      offers.some((quest) => quest.id === "read-the-jobs-board"),
+      "Jackie's readable offer queue should expose the Jobs Board immediately"
+    );
+  });
+
+  it("maps retained legacy Grove actors back to their canonical dialogue profiles", () => {
+    assert.equal(
+      snapshotGroveNpcIdForEntityForTest({
+        entityId: SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS.jackie,
+      }),
+      "jackie"
+    );
+    assert.equal(
+      snapshotGroveNpcIdForEntityForTest({
+        entityId: SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS.taye,
+      }),
+      "taye"
+    );
+  });
+
   it("opens and centers BiomesUI map when a dialogue marker is shown on the map", () => {
     const restore = installBrowserStorageShim();
     try {
@@ -251,6 +354,15 @@ describe("Snapshot Grove quest runtime validation current", () => {
     }
   });
 
+  it("builds an owned automatic pin for Taye's current real objective", () => {
+    const quest = questById("painted_path_language");
+    const pin = snapshotGroveActiveMapPinForQuestStepForTest(quest, 1);
+    assert.equal(pin?.markerId, "paint_pot");
+    assert.equal(pin?.ownerQuestId, quest.id);
+    assert.equal(pin?.ownerStepId, "painted_path_language_obj_02");
+    assert.ok(pin?.worldPosition.every(Number.isFinite));
+  });
+
   it("audits every Snapshot Grove quest from accept through every objective fixture", () => {
     const failures: string[] = [];
 
@@ -279,6 +391,38 @@ describe("Snapshot Grove quest runtime validation current", () => {
       }
     }
 
+    assert.deepEqual(failures, []);
+  });
+
+  it("gives every Grove objective an exact finite current-step map pin", () => {
+    const failures: string[] = [];
+    for (const quest of SNAPSHOT_GROVE_QUESTS) {
+      for (
+        let objectiveIndex = 0;
+        objectiveIndex < quest.objectives.length;
+        objectiveIndex += 1
+      ) {
+        const expectedMarkerId = snapshotGroveObjectiveMarkerIdForProgress(
+          quest,
+          objectiveIndex,
+          0
+        );
+        const pin = snapshotGroveActiveMapPinForQuestStepForTest(
+          quest,
+          objectiveIndex
+        );
+        if (
+          !expectedMarkerId ||
+          pin?.markerId !== expectedMarkerId ||
+          pin.ownerQuestId !== quest.id ||
+          !pin.worldPosition.every(Number.isFinite)
+        ) {
+          failures.push(
+            `${quest.id}[${objectiveIndex}]: expected ${expectedMarkerId}, received ${pin?.markerId}`
+          );
+        }
+      }
+    }
     assert.deepEqual(failures, []);
   });
 
@@ -375,6 +519,173 @@ describe("Snapshot Grove quest runtime validation current", () => {
     );
   });
 
+  it("does not complete Taye's paint inspection from collision alone", () => {
+    const quest = questById("painted_path_language");
+    const collision = {
+      kind: "start_collide_entity",
+      questId: quest.id,
+      objectiveIndex: 1,
+      trigger: "interact",
+      markerId: "paint_pot",
+    };
+    const inspection = { ...collision, kind: "inspect_frame" };
+
+    assert.equal(
+      doesSnapshotGroveEventAdvanceQuestForTest(collision as any, quest, 1),
+      false
+    );
+    assert.equal(
+      doesSnapshotGroveEventAdvanceQuestForTest(inspection as any, quest, 1),
+      true
+    );
+  });
+
+  it("publishes a resolved local weapon hit through the canonical Grove combat bridge", () => {
+    const restore = installBrowserStorageShim();
+    try {
+      const target = new EventTarget();
+      let received: unknown;
+      target.addEventListener(
+        HARTHMERE_LOCAL_COMBAT_NPC_DAMAGE_EVENT,
+        (event) => {
+          received = (event as CustomEvent).detail;
+        }
+      );
+      assert.equal(
+        dispatchHarthmereLocalCombatNpcDamage(
+          {
+            targetOffset: 9015,
+            targetId: 9015,
+            targetName: "Softwood Practice Dummy",
+            damage: 7,
+            ability: "basic",
+            targetDead: false,
+          },
+          target
+        ),
+        true
+      );
+      assert.deepEqual(received, {
+        targetOffset: 9015,
+        targetId: 9015,
+        targetName: "Softwood Practice Dummy",
+        damage: 7,
+        ability: "basic",
+        targetDead: false,
+      });
+    } finally {
+      restore();
+    }
+  });
+
+  it("advances Sparring only from the exact dummy and supports both a real hit and the F fallback", () => {
+    const quest = questById("safe_sparring_not_pvp");
+    const practice = snapshotGroveQuestEventFromWorldObjectInteractionForTest(
+      {
+        label: "Softwood Practice Dummy",
+        kind: "practice",
+        title: "Practice",
+      },
+      quest,
+      3
+    );
+    assert.ok(practice);
+    assert.equal((practice as any).kind, "npc_damage");
+    assert.equal(
+      doesSnapshotGroveEventAdvanceQuestForTest(practice as any, quest, 3),
+      true
+    );
+    assert.equal(
+      doesSnapshotGroveEventAdvanceQuestForTest(
+        {
+          kind: "npc_damage",
+          targetId: 9015,
+          targetName: "Softwood Practice Dummy",
+          markerId: "grove_combat_practice_dummy",
+        } as any,
+        quest,
+        3
+      ),
+      true
+    );
+    assert.equal(
+      snapshotGroveQuestEventFromWorldObjectInteractionForTest(
+        {
+          label: "Consent Sparring Ring",
+          kind: "practice",
+          title: "Practice",
+        },
+        quest,
+        3
+      ),
+      undefined,
+      "the nearby ring must not count as hitting the dummy"
+    );
+  });
+
+  it("keeps the combat target beyond the protected Grove boundary marker", () => {
+    const ring = snapshotGroveLandmarkById("grove_sparring_boundary");
+    const dummy = snapshotGroveLandmarkById("grove_combat_practice_dummy");
+    const boundary = snapshotGroveLandmarkById("grove_safe_wild_boundary");
+    assert.ok(ring && dummy && boundary);
+    assert.equal(ring!.area, "old_grove_road");
+    assert.equal(dummy!.area, "old_grove_road");
+    assert.ok(
+      dummy!.position[0] > boundary!.position[0] &&
+        dummy!.position[2] < boundary!.position[2],
+      "dummy should sit on the Wilds side of both boundary axes"
+    );
+    assert.ok(
+      Math.hypot(
+        dummy!.position[0] - ring!.position[0],
+        dummy!.position[2] - ring!.position[2]
+      ) >= 5,
+      "the ring arrival must not immediately overlap the strike target"
+    );
+  });
+
+  it("uses three distinct mapped sample props for Doc's clean, mucked, and sealed objectives", () => {
+    const cases = [
+      ["sticky_medicine", 0, "doc_clean_root_sample", "Clean Root Sample"],
+      ["sticky_medicine", 1, "doc_mucked_root_sample", "Mucked Root Sample"],
+      [
+        "samples_for_the_chapel",
+        0,
+        "doc_sealed_muck_sample",
+        "Sealed Muck Sample",
+      ],
+    ] as const;
+    const positions: Array<readonly [number, number, number]> = [];
+    for (const [questId, objectiveIndex, markerId, itemLabel] of cases) {
+      const quest = questById(questId);
+      assert.equal(quest.markerIds[objectiveIndex], markerId);
+      const marker = snapshotGroveLandmarkById(markerId);
+      assert.ok(marker);
+      positions.push(marker!.position as readonly [number, number, number]);
+      assert.equal(
+        snapshotGrovePracticeItemForObjectiveForTest(quest, objectiveIndex)
+          ?.label,
+        itemLabel
+      );
+      const pin = snapshotGroveActiveMapPinForQuestStepForTest(
+        quest,
+        objectiveIndex
+      );
+      assert.equal(pin?.markerId, markerId);
+    }
+    for (let i = 0; i < positions.length; i += 1) {
+      for (let j = i + 1; j < positions.length; j += 1) {
+        assert.ok(
+          Math.hypot(
+            positions[i]![0] - positions[j]![0],
+            positions[i]![2] - positions[j]![2]
+          ) >= 5,
+          "sample objectives must not be stacked on the same world column"
+        );
+      }
+    }
+  });
+
   it("keeps authored tab validation strict", () => {
     const quest = questById("road_ready_not_fancy");
 
@@ -391,6 +702,47 @@ describe("Snapshot Grove quest runtime validation current", () => {
         { kind: "open_tab", tab: "inventory" } as any,
         quest,
         0
+      ),
+      true
+    );
+  });
+
+  it("accepts either highlighted storage panel for Nothing Useful Stays Lost", () => {
+    const quest = questById("lost_found_and_mail");
+    for (const tab of ["inbox", "banking"]) {
+      assert.equal(
+        doesSnapshotGroveEventAdvanceQuestForTest(
+          { kind: "open_tab", tab } as any,
+          quest,
+          1
+        ),
+        true,
+        tab
+      );
+    }
+    assert.equal(
+      doesSnapshotGroveEventAdvanceQuestForTest(
+        { kind: "open_tab", tab: "options" } as any,
+        quest,
+        1
+      ),
+      false
+    );
+  });
+
+  it("lets native connector NPC talks progress Grove while Chapter 1 keeps the visible dialogue", () => {
+    const quest = questById("samples_for_the_chapel");
+    const chapelStone = snapshotGroveLandmarkById("harthmere_chapel_stone");
+    assert.equal(chapelStone?.npcId, "father_aldren_mell");
+    assert.equal(
+      doesSnapshotGroveEventAdvanceQuestForTest(
+        {
+          kind: "talk_npc",
+          npcId:
+            HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST.father_aldren_mell.entityId,
+        } as any,
+        quest,
+        1
       ),
       true
     );
@@ -620,8 +972,8 @@ describe("Snapshot Grove quest runtime validation current", () => {
         index: 3,
         object: {
           label: "Practice Guild Bank Crate",
-          kind: "open_container" as const,
-          title: "Open Container",
+          kind: "inspect" as const,
+          title: "Inspect Guild Crate",
         },
       },
       {
@@ -768,6 +1120,24 @@ describe("Snapshot Grove quest runtime validation current", () => {
         `${quest.id}[${objectiveIndex}] F event should advance the active objective`
       );
     }
+  });
+
+  it("routes every lightweight Grove objective prop through signed world-object receipts, never the native ECS container API", () => {
+    const markerIds = new Set(
+      SNAPSHOT_GROVE_QUESTS.flatMap((quest) => quest.markerIds)
+    );
+    const offenders = [...markerIds]
+      .map((id) => snapshotGroveLandmarkById(id))
+      .filter((marker) => marker && marker.kind !== "npc")
+      .filter((marker) =>
+        harthmereObjectUsesContainerFlow({ label: marker!.label })
+      )
+      .map((marker) => `${marker!.id}:${marker!.label}`);
+    assert.deepEqual(
+      offenders,
+      [],
+      "procedural Grove props have no ECS container entity and must not call /native_container"
+    );
   });
 
   it("puts every physical pickup objective's item into inventory on the same F interaction path", () => {

@@ -189,9 +189,10 @@ function liveModeActiveQuestObjectiveIndex(
   if (!record || typeof record !== "object") {
     return undefined;
   }
-  if (typeof record.objectiveIndex === "number") {
-    return Math.max(0, Math.floor(record.objectiveIndex));
-  }
+  // Snapshot Grove writes objectiveIndex as evidence for the objective that
+  // just completed. stepId/progress are the authoritative current cursor.
+  // Reading objectiveIndex first made the journal and marker lag one step after
+  // every Cloud Save hydration.
   if (typeof record.stepId === "string") {
     const escapedQuestId = questId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const match = record.stepId.match(
@@ -203,6 +204,9 @@ function liveModeActiveQuestObjectiveIndex(
   }
   if (typeof record.progress === "number") {
     return Math.max(0, Math.floor(record.progress) - 1);
+  }
+  if (typeof record.objectiveIndex === "number") {
+    return Math.max(0, Math.floor(record.objectiveIndex));
   }
   return undefined;
 }

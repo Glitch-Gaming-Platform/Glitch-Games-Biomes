@@ -12,6 +12,7 @@ import {
   harthmereLiveModeCombatTargetIdForSeed,
   shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttack,
   shouldEngageHarthmereMousePrimaryAttack,
+  shouldRouteHarthmereGrovePracticeDummyMouseAttack,
 } from "@/client/components/challenges/harthmereMousePrimaryAttackRules";
 import { fallDamageForBlocks } from "@/shared/game/fall_damage";
 import { harthmerePvpPlayersInArc } from "@/client/components/challenges/harthmerePvpHitRules";
@@ -154,6 +155,34 @@ describe("harthmere left-mouse primary attack routing", () => {
         source: "keyboard_hotkey",
         hasPhysicalWeapon: true,
         weaponDrawn: false,
+      }),
+      false
+    );
+  });
+
+  it("routes the native mouse fallback only for the active Grove dummy objective in melee reach", () => {
+    const eligible = {
+      practiceObjectiveActive: true,
+      playerPosition: [548, 70, -223] as const,
+      dummyPosition: [548, -226] as const,
+      attackReach: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS,
+      targetRadius: 1.35,
+    };
+    assert.equal(
+      shouldRouteHarthmereGrovePracticeDummyMouseAttack(eligible),
+      true
+    );
+    assert.equal(
+      shouldRouteHarthmereGrovePracticeDummyMouseAttack({
+        ...eligible,
+        practiceObjectiveActive: false,
+      }),
+      false
+    );
+    assert.equal(
+      shouldRouteHarthmereGrovePracticeDummyMouseAttack({
+        ...eligible,
+        playerPosition: [548, 70, -250],
       }),
       false
     );

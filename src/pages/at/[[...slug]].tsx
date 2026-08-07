@@ -23,6 +23,7 @@ import { feedPostById, fetchFeedPostBundleById } from "@/server/web/db/social";
 import type { FirestoreUser } from "@/server/web/db/types";
 import { findByUID, findUniqueByUsername } from "@/server/web/db/users_fetch";
 import { okOrAPIError } from "@/server/web/errors";
+import { preserveGlitchInstallIdentityOnAtRedirect } from "@/server/web/glitch_install_redirect";
 import { absoluteBucketURL, resolveImageUrls } from "@/server/web/util/urls";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import { WorldMetadataId } from "@/shared/ecs/ids";
@@ -60,11 +61,26 @@ type AtPageConfig = {
 
 const FALLBACK_OBSERVER_START_POSITIONS: ReadonlyArray<readonly [Vec3, Vec2]> =
   [
-    [[502, 87, -102], [-0.473, 0.725]],
-    [[1264, 60, -59], [-0.368, 0.702]],
-    [[144, 50, -215], [-0.478, 3.765]],
-    [[-1059, 46, 1199], [-0.48, 1.934]],
-    [[-853, 71, 1171], [-0.274, 3.714]],
+    [
+      [502, 87, -102],
+      [-0.473, 0.725],
+    ],
+    [
+      [1264, 60, -59],
+      [-0.368, 0.702],
+    ],
+    [
+      [144, 50, -215],
+      [-0.478, 3.765],
+    ],
+    [
+      [-1059, 46, 1199],
+      [-0.48, 1.934],
+    ],
+    [
+      [-853, 71, 1171],
+      [-0.274, 3.714],
+    ],
   ];
 
 function atPageServerConfig(): Required<AtPageConfig> {
@@ -336,9 +352,12 @@ async function coordinateObserverForSlug(
   if (slug.length === 5) {
     startOrientation = slug.slice(3, 5).map((x) => parseFloat(x)) as Vec2;
     if (any(startOrientation, isNaN)) {
-      log.warn("Invalid coordinate observer orientation, redirecting to default", {
-        slug: slug.join(","),
-      });
+      log.warn(
+        "Invalid coordinate observer orientation, redirecting to default",
+        {
+          slug: slug.join(","),
+        }
+      );
       return {
         redirect: {
           permanent: false,
@@ -644,7 +663,13 @@ export async function getServerSideProps(
 
     if (slugObserverSpec.redirect) {
       return {
-        redirect: slugObserverSpec.redirect,
+        redirect: {
+          ...slugObserverSpec.redirect,
+          destination: preserveGlitchInstallIdentityOnAtRedirect(
+            slugObserverSpec.redirect.destination,
+            context.query
+          ),
+        },
       };
     } else {
       observerMode = slugObserverSpec.observerMode;

@@ -9,6 +9,7 @@ import {
   isHarthmereCookingStationRecipeVisible,
   harthmereCookStationJobs,
   playerMessageFromCookingWarning,
+  projectNativeHarthmereCookingInventory,
   type HarthmereCookSnapshot,
 } from "../cookingStationLiveAdapter";
 import {
@@ -24,6 +25,10 @@ describe("cookingStationLiveAdapter — recipe projection", () => {
     );
     const ids = recipes.map((r) => r.recipeId);
     assert.ok(ids.includes("grilled_meat"), "campfire shows grilled_meat");
+    assert.ok(
+      ids.includes("harthmere_grove_festival_skewer"),
+      "campfire shows Carlo's festival skewer recipe"
+    );
     assert.ok(!ids.includes("worker_meal"), "campfire hides cookpot recipes");
     assert.ok(!ids.includes("berry_tart"), "campfire hides oven recipes");
     // Any station-less cooking recipe is cookable everywhere.
@@ -74,6 +79,37 @@ describe("cookingStationLiveAdapter — recipe projection", () => {
     assert.equal(ready!.canCook, true);
     assert.deepEqual(ready!.missing, []);
     assert.equal(ready!.ingredients[0].have, 2);
+  });
+
+  it("enables Carlo's skewer recipe from the authored ingredient bundle", () => {
+    const recipe = createHarthmereCookVisibleRecipes(
+      { grove_festival_skewer_ingredients: 1 },
+      "campfire"
+    ).find((entry) => entry.recipeId === "harthmere_grove_festival_skewer");
+    assert.ok(recipe);
+    assert.equal(recipe!.canCook, true);
+    assert.equal(recipe!.outputItemId, "grove_festival_skewer");
+  });
+
+  it("projects Carlo's native ECS ingredient over the stale farming mirror", () => {
+    const inventory = projectNativeHarthmereCookingInventory(
+      {},
+      {
+        items: [
+          {
+            item: { id: 8_690_000_000_000_010 },
+            count: 1n,
+          },
+        ],
+        hotbar: [],
+      }
+    );
+    assert.equal(inventory.grove_festival_skewer_ingredients, 1);
+    const recipe = createHarthmereCookVisibleRecipes(
+      inventory,
+      "campfire"
+    ).find((entry) => entry.recipeId === "harthmere_grove_festival_skewer");
+    assert.equal(recipe?.canCook, true);
   });
 
   it("caps maxCookable by ingredients and recipe batch limit", () => {

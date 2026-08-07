@@ -5,6 +5,7 @@
 animations/character-animations.blend -text -filter -merge -diff
 animations/character-animations_expressions.blend -text -filter -merge -diff
 items/harthmere_chapter1_items.blend -text -filter -merge -diff
+items/harthmere_grove_items.blend -text -filter -merge -diff
 npcs/indisworm.blend -text -filter -merge -diff
 npcs/indisworm_palette.blend -text -filter -merge -diff
 npcs/*_animations.blend -text -filter -merge -diff

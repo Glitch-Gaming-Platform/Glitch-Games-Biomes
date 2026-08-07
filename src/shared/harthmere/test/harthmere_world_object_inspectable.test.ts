@@ -1,4 +1,5 @@
 import {
+  harthmereWorldObjectCandidateAtActivePinPosition,
   harthmereWorldObjectCandidateIsVisibleForInteraction,
   harthmereWorldObjectCandidateScore,
   isHarthmereInspectableWorldObject,
@@ -130,7 +131,7 @@ describe("harthmere world object inspectable selection", () => {
     assert.strictEqual(selected!.isContainer, false);
   });
 
-  it("flags container props so the open-container action is used", () => {
+  it("keeps container-shaped presentation while honoring the Road Kit's signed inspect action", () => {
     const selected = selectNearestHarthmereWorldObjectInspectable({
       playerPosition: [0, 0, 0],
       facingView: facingPlusX,
@@ -140,7 +141,7 @@ describe("harthmere world object inspectable selection", () => {
     });
     assert.ok(selected);
     assert.strictEqual(selected!.isContainer, true);
-    assert.strictEqual(selected!.interaction.kind, "open_container");
+    assert.strictEqual(selected!.interaction.kind, "inspect");
   });
 
   it("keeps nearby containers interactable across authored floor anchors", () => {
@@ -387,6 +388,39 @@ describe("harthmere world object inspectable selection", () => {
         activePinPosition: [25, 70, -4],
       }),
       false
+    );
+  });
+
+  it("uses the exact grounded active-pin pose for the targeted Run the Coop supply box", () => {
+    const authored: HarthmereWorldObjectCandidate = {
+      id: "coop_supply_box",
+      label: "Old Supply Box",
+      position: [384, 71, -198],
+    };
+    const grounded = harthmereWorldObjectCandidateAtActivePinPosition({
+      candidate: authored,
+      activePinMarkerId: "coop_supply_box",
+      activePinPosition: [384, 59, -198],
+    });
+    assert.deepEqual(grounded.position, [384, 59, -198]);
+    assert.ok(
+      selectNearestHarthmereWorldObjectInspectable({
+        playerPosition: [384.8, 59, -198],
+        facingView: [-1, 0, 0],
+        candidates: [grounded],
+        preferredCandidateIds: new Set(["coop_supply_box"]),
+      }),
+      "the grounded supply box must own an F prompt beside the real terrain surface"
+    );
+
+    assert.strictEqual(
+      harthmereWorldObjectCandidateAtActivePinPosition({
+        candidate: authored,
+        activePinMarkerId: "another_object",
+        activePinPosition: [384, 59, -198],
+      }),
+      authored,
+      "an unrelated pin must not move the candidate"
     );
   });
 });

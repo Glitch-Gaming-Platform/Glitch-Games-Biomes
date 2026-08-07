@@ -18,6 +18,7 @@ import {
   questDetailToolShopMarkerCandidates,
 } from "./tabs/questDetailToolSource";
 import type { MapTrackableQuest } from "./tabs/MapQuestsTab";
+import { groveNativeQuestId } from "@/shared/harthmere/grove/grove_quest_ids";
 
 interface CurrentQuestObjectiveMapAdapter {
   getTrackableQuests?: () => MapTrackableQuest[];
@@ -110,6 +111,17 @@ function questMatchesActivePin(
   pin: BiomesUIActiveMapPin | undefined
 ): boolean {
   if (!pin?.markerId) return false;
+  const pinOwnerQuestId = String(pin.ownerQuestId ?? "").trim();
+  if (pinOwnerQuestId) {
+    const nativeGroveQuestId = groveNativeQuestId(pinOwnerQuestId);
+    if (
+      quest.questId === pinOwnerQuestId ||
+      (nativeGroveQuestId !== undefined &&
+        quest.questId === String(nativeGroveQuestId))
+    ) {
+      return true;
+    }
+  }
   if (quest.firstMarkerId === pin.markerId) return true;
   return (
     questDetailToolShopMarkerCandidates(quest).includes(pin.markerId) ||

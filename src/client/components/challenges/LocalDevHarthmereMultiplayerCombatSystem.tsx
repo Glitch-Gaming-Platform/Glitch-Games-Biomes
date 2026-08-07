@@ -28,6 +28,7 @@ export const HARTHMERE_RESOURCE_GATHERING_HIT_CONTRACT = {
 } as const;
 
 import {
+  HARTHMERE_GROVE_TRAINING_DUMMY_OFFSET,
   harthmereHasAttackableTargetNearPlayer,
   performHarthmereCombatAttack,
   performHarthmereForwardArcAttack,
@@ -69,6 +70,7 @@ import {
   harthmereLiveModeCombatTargetIdForEcsEntity,
   shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttack,
   shouldEngageHarthmereMousePrimaryAttack,
+  shouldRouteHarthmereGrovePracticeDummyMouseAttack,
 } from "@/client/components/challenges/harthmereMousePrimaryAttackRules";
 import {
   HARTHMERE_NATIVE_COMBAT_KEY_EVENT,
@@ -94,6 +96,7 @@ import { harthmereUserScopedStorageKey } from "@/client/components/challenges/Lo
 import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS } from "@/shared/harthmere/combat_reach";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { HARTHMERE_PLAYER_ATTACK_TIMINGS } from "@/shared/harthmere/deliberate_combat";
+import { HARTHMERE_GROVE_TRAINING_DUMMY_WORLD_XZ } from "@/shared/harthmere/grove_quest_visual_assets";
 import React, { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION =
@@ -158,6 +161,11 @@ export const HARTHMERE_COMBAT_ACTION_CLIPS = {
 
 const TARGETS = [
   { offset: 9001, label: "Training Dummy", kind: "safe" },
+  {
+    offset: HARTHMERE_GROVE_TRAINING_DUMMY_OFFSET,
+    label: "Grove Practice Dummy",
+    kind: "safe",
+  },
   { offset: 9003, label: "Road Bandit", kind: "hostile" },
   { offset: 9004, label: "Road Wolf", kind: "hostile" },
   { offset: 9002, label: "Drain Rat", kind: "hostile" },
@@ -2429,7 +2437,35 @@ installHarthmereHardCombatKeyRouter();
 // route to Harthmere body combat even on debug/visual pages that do not mount the
 // full HUD hook. PvP remains in the hook because it needs live ClientContext.
 const HARTHMERE_HARD_COMBAT_MOUSE_ROUTER_VERSION =
-  "harthmere-hard-mouse-router";
+  "harthmere-hard-mouse-router-grove-practice";
+
+function isHarthmereGrovePracticeDummyObjectiveActive() {
+  if (!isBrowser()) return false;
+  try {
+    const raw = window.localStorage.getItem(
+      "biomes.localDev.snapshotGroveQuestState"
+    );
+    if (!raw) return false;
+    const state = JSON.parse(raw) as {
+      activeQuestId?: string;
+      activeObjectiveIndex?: number;
+      objectiveIndexByQuestId?: Record<string, number>;
+      completedQuestIds?: string[];
+    };
+    const questId = "safe_sparring_not_pvp";
+    const objectiveIndex = Number(
+      state.objectiveIndexByQuestId?.[questId] ??
+        (state.activeQuestId === questId ? state.activeObjectiveIndex : -1)
+    );
+    return (
+      state.activeQuestId === questId &&
+      objectiveIndex === 3 &&
+      !state.completedQuestIds?.includes(questId)
+    );
+  } catch {
+    return false;
+  }
+}
 
 function installHarthmereHardCombatMouseRouter() {
   if (typeof window === "undefined") {
@@ -2492,6 +2528,20 @@ function installHarthmereHardCombatMouseRouter() {
       viewportHeight: window.innerHeight,
     });
     const runtimeForGate = readHarthmereForwardArcRuntime();
+    const legacyMouseCombatEnabled =
+      typeof process !== "undefined" &&
+      process.env.NEXT_PUBLIC_BIOMES_ENABLE_LEGACY_MOUSE_COMBAT === "1";
+    const grovePracticeDummyRoute =
+      shouldRouteHarthmereGrovePracticeDummyMouseAttack({
+        practiceObjectiveActive: isHarthmereGrovePracticeDummyObjectiveActive(),
+        playerPosition: runtimeForGate?.position,
+        dummyPosition: HARTHMERE_GROVE_TRAINING_DUMMY_WORLD_XZ,
+        attackReach: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS,
+        targetRadius: 1.35,
+      });
+    if (!legacyMouseCombatEnabled && !grovePracticeDummyRoute) {
+      return;
+    }
     const hasCrosshairTarget = harthmereHasCrosshairCombatTarget({
       actors: readHarthmereCrosshairCombatActors(),
       aim,
@@ -2579,15 +2629,10 @@ function installHarthmereHardCombatMouseRouter() {
   });
 }
 
-// Deliberately disabled by default. It is retained only as an opt-in diagnostic
-// for the legacy Harthmere simulator; production uses native ECS item delegates
-// so a terrain placement click can never become a proximity attack.
-if (
-  typeof process !== "undefined" &&
-  process.env.NEXT_PUBLIC_BIOMES_ENABLE_LEGACY_MOUSE_COMBAT === "1"
-) {
-  installHarthmereHardCombatMouseRouter();
-}
+// The listener is always present, but production routing remains a no-op except
+// for the exact active Grove practice-dummy objective. The legacy simulator can
+// still opt into the broader proximity route through its existing env flag.
+installHarthmereHardCombatMouseRouter();
 
 // current combat variation event marker
 const __HARTHMERE_ATTACK_VARIATION_EVENT = {

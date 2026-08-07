@@ -1608,13 +1608,15 @@ ok(
 ok(
   pushAndDeploy.includes(
     [
+      'validate_production_revision_before_traffic "$latest_revision"',
+      'validate_production_bucket_assets "$latest_revision" revision',
       'reconcile_production_world_sync "$latest_revision"',
       'force_azure_traffic_to_revision "$latest_revision"',
-      'validate_production_bucket_assets "$latest_revision"',
+      'validate_production_bucket_assets "$latest_revision" production',
       'validate_production_world_sync_http "$latest_revision"',
     ].join("\n  ")
   ),
-  "app-only production deploy validates live Harthmere world APIs even when Redis reconciliation is skipped"
+  "app-only production deploy validates candidate assets before traffic and live Harthmere world APIs after promotion"
 );
 ok(
   script.includes("audit_production_authored_content"),

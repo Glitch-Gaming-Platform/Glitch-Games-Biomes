@@ -61,6 +61,10 @@ import {
   runHarthmereLiveMutationSerially,
 } from "@/client/components/harthmere_live_fetch";
 import { HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT } from "@/client/components/challenges/harthmereEvents";
+import {
+  dispatchHarthmereJobsBoardStateUpdated,
+  type HarthmereJobsBoardSnapshot,
+} from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
 
 export type {
   HarthmereBusinessBikkieGraphic,
@@ -372,6 +376,7 @@ export interface HarthmereBusinessInterfaceResponse {
   economyState?: HarthmereBusinessEconomySnapshot;
   inventoryLootState?: unknown;
   playerStatusState?: unknown;
+  jobsBoardState?: HarthmereJobsBoardSnapshot;
   backendMutation?: { warnings?: string[] };
 }
 
@@ -1256,6 +1261,7 @@ export async function submitHarthmereBusinessEconomyMutation(
               "economyState",
               "inventoryLootState",
               "playerStatusState",
+              "jobsBoardState",
             ],
           }),
           // A caller-owned signal makes this one bounded attempt instead of
@@ -2845,6 +2851,9 @@ export function createHarthmereBusinessInterfaceAdapter(options: {
     try {
       const response = await options.submit?.(operation, payload);
       dispatchHarthmereBusinessInventoryLootUpdated(response);
+      if (response?.jobsBoardState) {
+        dispatchHarthmereJobsBoardStateUpdated(response.jobsBoardState);
+      }
       if (response?.economyState)
         setCurrent(
           normalizeHarthmereBusinessEconomySnapshot(response.economyState)

@@ -25,7 +25,12 @@ import { CurrentQuestObjectiveHUD } from "./CurrentQuestObjectiveHUD";
 import { QuestInviteHUD } from "./quest_invites/QuestInviteHUD";
 import { PlayerInviteModal } from "@/client/components/system/PlayerInviteModal";
 import { PLAYER_INVITE_HOTKEY_CODE } from "@/client/game/invites/player_invites";
-import { SnapshotGroveMapHUD } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
+import {
+  SNAPSHOT_GROVE_TUTOR_HIGHLIGHT_EVENT,
+  SnapshotGroveMapHUD,
+  openSnapshotGroveTutorChatPanel,
+} from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
+import { SnapshotGroveTutorPrompt } from "./SnapshotGroveTutorPrompt";
 import {
   type BiomesHUDVisibilitySnapshot,
   useBiomesHUDVisibilitySnapshot,
@@ -104,7 +109,7 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
   paneMode = "overlay",
   hudVisibilityOverride,
 }) => {
-  const { clientConfig } = useClientContext();
+  const { clientConfig, reactResources } = useClientContext();
   const phoneLayout = clientConfig.mobileDevice;
   const pointerLockManager = usePointerLockManager();
   const shouldReturnPointerLock = useRef<PointerLockUnlockWhileOpenReturnRef>({
@@ -113,9 +118,40 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
   const shortcuts = shortcutOverrides ?? DEFAULT_TAB_SHORTCUTS;
   const hudVisibility = useBiomesHUDVisibilitySnapshot(hudVisibilityOverride);
   const [playerInviteOpen, setPlayerInviteOpen] = React.useState(false);
+  const [snapshotGroveTutorLabels, setSnapshotGroveTutorLabels] =
+    React.useState<Set<string>>(
+      () =>
+        new Set(
+          typeof window === "undefined"
+            ? []
+            : (
+                window as typeof window & {
+                  __snapshotGroveTutorHighlights?: { labels?: string[] };
+                }
+              ).__snapshotGroveTutorHighlights?.labels ?? []
+        )
+    );
 
   useEffect(() => {
     installBiomesUITheme();
+  }, []);
+
+  useEffect(() => {
+    const onTutorHighlights = (event: Event) => {
+      const labels = (
+        event as CustomEvent<{ labels?: string[] }>
+      ).detail?.labels;
+      setSnapshotGroveTutorLabels(new Set(labels ?? []));
+    };
+    window.addEventListener(
+      SNAPSHOT_GROVE_TUTOR_HIGHLIGHT_EVENT,
+      onTutorHighlights
+    );
+    return () =>
+      window.removeEventListener(
+        SNAPSHOT_GROVE_TUTOR_HIGHLIGHT_EVENT,
+        onTutorHighlights
+      );
   }, []);
 
   const previousActiveTabRef = useRef<TabKey | null | undefined>(undefined);
@@ -219,6 +255,16 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
         mobile={phoneLayout}
         onClose={() => setPlayerInviteOpen(false)}
       />
+      {activeTab === null && (
+        <SnapshotGroveTutorPrompt
+          labels={snapshotGroveTutorLabels}
+          onOpenTab={onActiveTabChange}
+          onOpenRecipes={() =>
+            reactResources.set("/game_modal", { kind: "crafting" })
+          }
+          onOpenChat={openSnapshotGroveTutorChatPanel}
+        />
+      )}
       {paneMode === "overlay" && activeTab !== null && (
         <div
           role="dialog"
@@ -312,6 +358,7 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
             onTabChange={onActiveTabChange}
             badges={badges}
             mobile={phoneLayout}
+            tutorLabels={snapshotGroveTutorLabels}
           />
           <div
             className={`biomes-ui-panel biomes-ui-overlay__panel ${
@@ -458,6 +505,7 @@ const ActiveTabPane: React.FunctionComponent<{
           // Grove objective card inside the replacement map so every authored
           // contextual action remains reachable from the shipped UI.
           contextualQuestPanel={<SnapshotGroveMapHUD />}
+          showContextualQuestPanelWithActiveQuest
         />
       )}
       {tab === "collections" && (

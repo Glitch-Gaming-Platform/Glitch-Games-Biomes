@@ -75,8 +75,6 @@ export const SNAPSHOT_GROVE_TRIGGER_COMPLETION_EVENTS = {
     "open_shop",
     "inspect_frame",
     "place_placeable",
-    "start_collide_placeable",
-    "start_collide_entity",
     "snapshot_grove_practice_action",
   ],
   destroy: ["destroy", "snapshot_grove_practice_action"],
@@ -604,12 +602,16 @@ export function snapshotGrovePracticeItemFixtureForObjective(
       text
     )
   ) {
+    const sealed = /sealed\s+muck/.test(text);
+    const mucked = /mucked\s+root|corrupted\s+(?:root|sample)/.test(text);
     return {
       itemId: "mudroot",
       quantity: 1,
-      label: /mucked|muck|sealed/.test(text)
-        ? "Mucked Root Sample"
-        : "Clean Root Sample",
+      label: sealed
+        ? "Sealed Muck Sample"
+        : mucked
+          ? "Mucked Root Sample"
+          : "Clean Root Sample",
     };
   }
   if (/mushrooms?|fungus|spore|cap/.test(text)) {

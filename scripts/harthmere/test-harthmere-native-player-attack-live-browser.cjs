@@ -41,6 +41,7 @@ const {
   SerializeForServer,
 } = require("../../src/shared/ecs/gen/json_serde");
 const { ChangeSerde } = require("../../src/shared/ecs/serde");
+const { zrpcWebSerialize } = require("../../src/shared/zrpc/serde");
 const { countOf } = require("../../src/shared/game/items");
 const {
   harthmereNativeBiomesIdForItemId,
@@ -81,6 +82,9 @@ const artifactsDir = path.resolve(
 );
 const reportPath = path.join(artifactsDir, "report.json");
 let browserRuntimeLease;
+// Current retained-world Harthmere fixture with rendered terrain and no
+// protected-area suppression. This pose must be written before page creation
+// so the initial subscription is selected around it.
 const basePosition = [895, 62, -197];
 const baseOrientation = [0, -Math.PI / 2]; // Positive X.
 const scenarioCooldownMs = Number(
@@ -107,6 +111,8 @@ const skipProjectileCatalog =
   process.env.HARTHMERE_E2E_ATTACK_SKIP_PROJECTILE_CATALOG === "1";
 const skipPerformance =
   process.env.HARTHMERE_E2E_ATTACK_SKIP_PERFORMANCE === "1";
+const projectileAudioOnly =
+  process.env.HARTHMERE_E2E_ATTACK_PROJECTILE_AUDIO_ONLY === "1";
 const preflightCleanupIds = (
   process.env.HARTHMERE_E2E_ATTACK_PREFLIGHT_CLEANUP_IDS || ""
 )
@@ -182,6 +188,37 @@ async function applyFixture(page, ...changes) {
   await bridgeCall(page, "applyChanges", changes.map(serializedChange));
 }
 
+async function applyPreNavigationPlayerFixture(context, userId) {
+  const response = await context.request.post(
+    new URL("/api/admin/apply_ecs_changes", baseUrl).toString(),
+    {
+      data: {
+        z: zrpcWebSerialize([
+          serializedChange({
+            kind: "update",
+            entity: {
+              id: userId,
+              position: Position.create({ v: basePosition }),
+              orientation: Orientation.create({ v: baseOrientation }),
+              health: Health.create({ hp: 1_000, maxHp: 1_000 }),
+              rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+              death_info: null,
+              icing: null,
+              warping_to: null,
+              movement_state: MovementState.create(),
+            },
+          }),
+        ]),
+      },
+      timeout: timeoutMs,
+    }
+  );
+  assert(
+    response.ok(),
+    `pre-navigation player fixture failed HTTP ${response.status()}: ${await response.text()}`
+  );
+}
+
 async function authoritativeEntity(page, id) {
   const rows = await bridgeCall(page, "getAuthoritative", [id]);
   const [version, serialized] = rows[0] || [];
@@ -233,7 +270,7 @@ function safeName(value) {
     .replace(/(^-|-$)/g, "");
 }
 
-async function waitForStableGameplay(page) {
+async function waitForClientBridge(page) {
   await page.waitForFunction(
     () =>
       globalThis.__harthmereNativeEcsE2E?.version === "native-ecs-e2e-v1" &&
@@ -241,6 +278,10 @@ async function waitForStableGameplay(page) {
     undefined,
     { timeout: timeoutMs }
   );
+}
+
+async function waitForStableGameplay(page) {
+  await waitForClientBridge(page);
   await page.waitForFunction(
     () => {
       const key = "__nativeAttackLoadingClearSince";
@@ -839,6 +880,13 @@ async function waitForHpDecrease(page, id, before, waitMs = 8_000) {
   );
 }
 
+async function harthmereSoundEffectsSnapshot(page) {
+  return page.evaluate(() => {
+    const value = globalThis.__harthmereSoundEffectsDebug;
+    return value ? JSON.parse(JSON.stringify(value)) : undefined;
+  });
+}
+
 async function assertHpUnchanged(page, id, before, settleMs = 1_500) {
   await sleep(settleMs);
   const after = await hp(page, id);
@@ -1041,6 +1089,7 @@ async function runProjectileCatalog(page) {
           globalThis.__harthmereProjectileVisuals?.magicChargeReleasedCount || 0
         ),
       }));
+      const soundBefore = await harthmereSoundEffectsSnapshot(page);
       const locator = page.getByTestId(button.testId);
       await locator.evaluate((element) => element.click());
       await waitFor(
@@ -1105,8 +1154,20 @@ async function runProjectileCatalog(page) {
         30_000,
         100
       );
+      const soundAfter = await waitFor(
+        `${button.label} requests projectile audio`,
+        () => harthmereSoundEffectsSnapshot(page),
+        (snapshot) =>
+          Number(snapshot?.requestedPlayCount || 0) >
+            Number(soundBefore?.requestedPlayCount || 0) &&
+          Number(snapshot?.pendingRequestCount || 0) === 0,
+        8_000,
+        20
+      );
       row.before = before;
       row.after = after;
+      row.soundBefore = soundBefore;
+      row.soundAfter = soundAfter;
       row.status = "pass";
     } catch (error) {
       row.status = "fail";
@@ -1237,6 +1298,7 @@ async function main() {
       },
       { userId: auth.userId, sessionId }
     );
+    await applyPreNavigationPlayerFixture(context, auth.userId);
 
     page = await context.newPage();
     page.setDefaultTimeout(timeoutMs);
@@ -1268,7 +1330,7 @@ async function main() {
       const url = request.url();
       if (
         failure === "net::ERR_ABORTED" &&
-        /avatar-placeholder|player_mesh\.glb|weapon_icons\/|audio\/music-|destroy_hover|cval_logging|client_error|chapter1_(?:story|progress|gate)|live_mode_.*_state/.test(
+        /avatar-placeholder|player_mesh\.glb|weapon_icons\/|audio\/(?:muck-)?music-|destroy_hover|cval_logging|client_error|chapter1_(?:story|progress|gate)|live_mode_.*_state/.test(
           url
         )
       ) {
@@ -1296,10 +1358,100 @@ async function main() {
       timeout: timeoutMs,
     });
     assert(response && response.status() < 500, "game route failed");
-    await waitForStableGameplay(page);
+    await waitForClientBridge(page);
     const diagnostics = await bridgeCall(page, "diagnostics");
     assert.equal(String(diagnostics.userId), String(auth.userId));
     await holdDeterministicPlayerFixture(page);
+    if (projectileAudioOnly) {
+      await page.waitForFunction(
+        () =>
+          Number(
+            globalThis.clientContext?.rendererController?.renderedFrames ?? 0
+          ) >= 30 &&
+          Boolean(
+            document.querySelector(
+              '[data-testid="harthmere-projectile-visual-audit"]'
+            )
+          ),
+        undefined,
+        { timeout: timeoutMs }
+      );
+      const audioReady = await page.evaluate(async () => {
+        const manager = globalThis.clientContext?.audioManager;
+        await manager?.resumeAudio?.();
+        return Boolean(manager?.isRunning?.());
+      });
+      assert.equal(audioReady, true, "projectile audit could not unlock Web Audio");
+      report.environment = await page.evaluate(() => ({
+        url: location.href,
+        userId: String(globalThis.clientContext?.userId),
+        frames: Number(
+          globalThis.clientContext?.rendererController?.renderedFrames || 0
+        ),
+        loading: Boolean(document.querySelector(".loading-wrapper")),
+        projectilePanelVisible: Boolean(
+          document.querySelector(
+            '[data-testid="harthmere-projectile-visual-audit"]'
+          )
+        ),
+        audioRunning: Boolean(
+          globalThis.clientContext?.audioManager?.isRunning?.()
+        ),
+      }));
+      await runProjectileCatalog(page);
+      report.finalScreenshot = await screenshot(
+        page,
+        "40-projectile-audio-final-rendered-state"
+      );
+      const catalogFailures = report.projectileCatalog.filter(
+        (row) => row.status !== "pass"
+      );
+      report.summary = {
+        combatPassed: 0,
+        combatFailed: 0,
+        catalogPassed:
+          report.projectileCatalog.length - catalogFailures.length,
+        catalogFailed: catalogFailures.length,
+        browserFailures: report.browser.failures.length,
+      };
+      report.status =
+        catalogFailures.length === 0 && report.browser.failures.length === 0
+          ? "pass"
+          : "fail";
+      report.finishedAt = new Date().toISOString();
+      persist();
+      console.log(JSON.stringify(report.summary));
+      console.log(`REPORT ${reportPath}`);
+      if (report.status !== "pass") process.exitCode = 1;
+      return;
+    }
+    const loadingPlayer = await authoritativeEntity(page, auth.userId);
+    const loadingPlayerMaxHp = Math.max(
+      1,
+      Number(
+        loadingPlayer.entity?.health?.maxHp ??
+          loadingPlayer.entity?.health?.hp ??
+          1
+      )
+    );
+    await applyFixture(page, {
+      kind: "update",
+      entity: {
+        id: auth.userId,
+        position: Position.create({ v: basePosition }),
+        orientation: Orientation.create({ v: baseOrientation }),
+        health: Health.create({
+          hp: loadingPlayerMaxHp,
+          maxHp: loadingPlayerMaxHp,
+        }),
+        rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+        death_info: null,
+        warping_to: null,
+        movement_state: MovementState.create(),
+      },
+    });
+    await placeFrontendPlayer(page, auth.userId, basePosition, baseOrientation);
+    await waitForStableGameplay(page);
     if (preflightCleanupIds.length > 0) {
       await deleteFixtures(page, preflightCleanupIds);
       report.preflightCleanupIds = preflightCleanupIds.map(String);
@@ -1547,12 +1699,32 @@ async function main() {
         const cursor = await waitForCrosshair(page, target.id, true);
         await capture("before");
         const before = await hp(page, target.id);
+        const soundBefore = await harthmereSoundEffectsSnapshot(page);
         await clickCanvas(page);
         const after = await waitForHpDecrease(page, target.id, before);
         singleHitDelta = before.hp - after.hp;
         assert(singleHitDelta > 0, "melee hit did not reduce authoritative HP");
+        const soundAfter = await waitFor(
+          "ECS-confirmed melee sound request",
+          () => harthmereSoundEffectsSnapshot(page),
+          (snapshot) =>
+            Number(snapshot?.confirmedMeleeHitCount || 0) >
+              Number(soundBefore?.confirmedMeleeHitCount || 0) &&
+            snapshot?.lastRequestedId === "melee_hit_weapon_clink" &&
+            Number(snapshot?.pendingRequestCount || 0) === 0,
+          8_000,
+          20
+        );
         await capture("after");
-        return { target, cursor, before, after, damage: singleHitDelta };
+        return {
+          target,
+          cursor,
+          before,
+          after,
+          damage: singleHitDelta,
+          soundBefore,
+          soundAfter,
+        };
       }
     );
 

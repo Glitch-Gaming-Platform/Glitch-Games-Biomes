@@ -39,6 +39,10 @@ import {
   getCh1ItemVisualAsset,
   resolveCh1ItemGltfBaseColor,
 } from "@/shared/harthmere/ch1_item_visual_assets";
+import {
+  GROVE_ITEM_WORLD_PRESENTATION_SCALE,
+  getGroveItemVisualAsset,
+} from "@/shared/harthmere/grove_item_visual_assets";
 import { harthmereNativeItemIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
 import { getHarthmerePremiumWeapon } from "@/shared/harthmere/premium_weapon_catalog";
 import { log } from "@/shared/logging";
@@ -338,10 +342,12 @@ async function makeHarthmerePremiumItemMesh(item: Item) {
   );
 }
 
-async function makeHarthmereChapter1ItemMesh(item: Item) {
+async function makeHarthmereAuthoredItemMesh(item: Item) {
   const semanticItemId =
     harthmereNativeItemIdForBiomesId(Number(item.id)) ?? String(item.id);
-  const authored = getCh1ItemVisualAsset(semanticItemId);
+  const chapter1 = getCh1ItemVisualAsset(semanticItemId);
+  const grove = getGroveItemVisualAsset(semanticItemId);
+  const authored = chapter1 ?? grove;
   if (!authored) return undefined;
 
   const gltf = await parseGltf(await binaryFetch(authored.assetUrl));
@@ -383,7 +389,10 @@ async function makeHarthmereChapter1ItemMesh(item: Item) {
   // literal real-world prop into the sleeve, so apply the shared readable
   // voxel-world multiplier after the ordinary meter-to-voxel conversion.
   template.scale.setScalar(
-    WORLD_TO_VOX_SCALE * CH1_ITEM_WORLD_PRESENTATION_SCALE
+    WORLD_TO_VOX_SCALE *
+      (chapter1
+        ? CH1_ITEM_WORLD_PRESENTATION_SCALE
+        : GROVE_ITEM_WORLD_PRESENTATION_SCALE)
   );
 
   return makeDisposable(
@@ -580,10 +589,10 @@ async function makeItemMesh(
   { item }: ItemMeshKey
 ): Promise<ItemMeshFactory> {
   try {
-    const chapter1 = await makeHarthmereChapter1ItemMesh(item);
-    if (chapter1) return chapter1;
+    const authored = await makeHarthmereAuthoredItemMesh(item);
+    if (authored) return authored;
   } catch (error) {
-    log.warn("Failed to load authored Chapter 1 item mesh", {
+    log.warn("Failed to load authored Harthmere item mesh", {
       id: item.id,
       error,
     });

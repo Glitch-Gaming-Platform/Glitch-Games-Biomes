@@ -6,11 +6,14 @@ import { isCh1NativeQuestId } from "@/shared/harthmere/ch1_native_quests";
 import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
 import { harthmereJobsBoardFieldTargetsNearPosition } from "@/shared/harthmere/jobs_board_field_targets";
 import { HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MATCH_RADIUS } from "@/shared/harthmere/harthmere_world_object_inspectable";
+import { groveNativeQuestId } from "@/shared/harthmere/grove/grove_quest_ids";
 import { linearMainStoryProgressOrderForTest } from "./mainQuestSelection";
 
 export const BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY = "biomes_ui_active_map_pin";
 export const BIOMES_UI_ACTIVE_MAP_PIN_EVENT = "biomes-ui-active-map-pin";
 export const BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID = 14_200_147;
+const SNAPSHOT_GROVE_QUEST_STATE_STORAGE_KEY =
+  "biomes.localDev.snapshotGroveQuestState";
 
 // BIOMES_UI_LOCATE_ON_MAP:
 // "Locate on map" should do more than drop a pin — it should open the Map tab
@@ -34,6 +37,74 @@ export interface BiomesUIActiveMapPin {
   /** Exact interaction candidate when it differs from the rendered prop id. */
   interactionTargetId?: string;
   setAtMs: number;
+}
+
+export function shouldPreserveExactChapter1RoutePinForTest(input: {
+  current:
+    | Pick<BiomesUIActiveMapPin, "markerId" | "ownerQuestId" | "ownerStepId">
+    | undefined;
+  next:
+    | Pick<BiomesUIActiveMapPin, "markerId" | "ownerQuestId" | "ownerStepId">
+    | undefined;
+}) {
+  return Boolean(
+    input.current?.markerId.startsWith("chapter1_route:") &&
+    input.next?.markerId.startsWith("native_quest:") &&
+    input.current.ownerQuestId &&
+    input.current.ownerQuestId === input.next.ownerQuestId &&
+    input.current.ownerStepId &&
+    input.current.ownerStepId === input.next.ownerStepId
+  );
+}
+
+export function shouldPreserveExactGroveRoutePinForTest(input: {
+  current:
+    | Pick<BiomesUIActiveMapPin, "markerId" | "ownerQuestId" | "ownerStepId">
+    | undefined;
+  nextQuestId: string | undefined;
+}) {
+  const ownerQuestId = String(input.current?.ownerQuestId ?? "").trim();
+  const nativeOwnerQuestId = ownerQuestId
+    ? groveNativeQuestId(ownerQuestId)
+    : undefined;
+  return Boolean(
+    input.current?.ownerStepId &&
+    !input.current.markerId.startsWith("native_quest:") &&
+    nativeOwnerQuestId !== undefined &&
+    Boolean(String(input.nextQuestId ?? "").trim())
+  );
+}
+
+export function shouldBlockNativeQuestPinDuringGroveQuestForTest(input: {
+  nextMarkerId: string | undefined;
+  activeGroveQuestId: string | undefined;
+}) {
+  return Boolean(
+    String(input.nextMarkerId ?? "").startsWith("native_quest:") &&
+    input.activeGroveQuestId &&
+    groveNativeQuestId(input.activeGroveQuestId) !== undefined
+  );
+}
+
+function activeSnapshotGroveQuestIdFromStorage(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = window.localStorage?.getItem(
+      SNAPSHOT_GROVE_QUEST_STATE_STORAGE_KEY
+    );
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as {
+      activeQuestId?: unknown;
+      completedQuestIds?: unknown;
+    };
+    const questId = String(parsed.activeQuestId ?? "").trim();
+    const completed = Array.isArray(parsed.completedQuestIds)
+      ? parsed.completedQuestIds.map(String)
+      : [];
+    return questId && !completed.includes(questId) ? questId : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export interface BiomesUIMapPinSourceMarker {
@@ -92,6 +163,20 @@ export function automaticQuestDestinationMarkerForTest(input: {
     input.existingPin?.ownerQuestId === input.quest.questId &&
     input.existingPin?.ownerStepId === input.quest.currentStepId
   ) {
+    return undefined;
+  }
+  if (
+    shouldPreserveExactGroveRoutePinForTest({
+      current: input.existingPin,
+      nextQuestId: input.quest.questId,
+    })
+  ) {
+    // Grove publishes an exact landmark id/position for its authored step.
+    // The native challenge projection also exposes a quest-level fallback,
+    // but that fallback can say "Talk to Jackie" while the real current step
+    // is a paint flag, charter board, sample, or practice dummy. Keep the more
+    // precise Grove-owned route until that quest completes or Grove advances
+    // it itself.
     return undefined;
   }
   if (existingMarkerId === markerId) {
@@ -178,10 +263,22 @@ export function shouldClearOwnedQuestMapPinForTest(input: {
 }): boolean {
   const ownerQuestId = String(input.pin?.ownerQuestId ?? "").trim();
   if (!ownerQuestId) return false;
+  const nativeOwnerQuestId = groveNativeQuestId(ownerQuestId);
   const owner = input.quests.find(
-    (quest) => quest.questId === ownerQuestId && quest.status === "active"
+    (quest) =>
+      quest.status === "active" &&
+      (quest.questId === ownerQuestId ||
+        (nativeOwnerQuestId !== undefined &&
+          quest.questId === String(nativeOwnerQuestId)))
   );
   if (!owner) return true;
+  if (nativeOwnerQuestId !== undefined) {
+    // Native Grove projections do not preserve the authored step id used by
+    // the exact Grove pin. The Grove runtime owns objective handoffs; the
+    // generic native adapter should only clear this pin when the quest is no
+    // longer active.
+    return false;
+  }
   const ownerStepId = String(input.pin?.ownerStepId ?? "").trim();
   return Boolean(
     ownerStepId && owner.currentStepId && ownerStepId !== owner.currentStepId
@@ -357,6 +454,26 @@ export function writeActiveBiomesUIMapPin(
   pin: BiomesUIActiveMapPin | undefined
 ): void {
   if (typeof window === "undefined") return;
+  const current = readActiveBiomesUIMapPin();
+  const nextNativeQuestId = /^native_quest:([^:]+):/.exec(
+    String(pin?.markerId ?? "")
+  )?.[1];
+  if (
+    shouldPreserveExactChapter1RoutePinForTest({
+      current,
+      next: pin,
+    }) ||
+    shouldPreserveExactGroveRoutePinForTest({
+      current,
+      nextQuestId: nextNativeQuestId,
+    }) ||
+    shouldBlockNativeQuestPinDuringGroveQuestForTest({
+      nextMarkerId: pin?.markerId,
+      activeGroveQuestId: activeSnapshotGroveQuestIdFromStorage(),
+    })
+  ) {
+    return;
+  }
   try {
     if (pin) {
       window.localStorage?.setItem(

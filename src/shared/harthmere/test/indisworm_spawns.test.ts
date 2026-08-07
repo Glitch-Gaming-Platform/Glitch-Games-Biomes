@@ -1,9 +1,15 @@
 import assert from "assert";
 
 import {
+  HARTHMERE_EXOTIC_MATTER_COMPONENT_IDS,
+  HARTHMERE_EXOTIC_MATTER_DEPOSITS,
   harthmereExoticMatterCaveById,
   harthmereExoticMatterDepositAtBlock,
 } from "@/shared/harthmere/exotic_matter_caves";
+import {
+  HARTHMERE_INDISWORM_HOSTILITY,
+  harthmereNativeNpcCombatProfileForSeed,
+} from "@/shared/harthmere/harthmere_native_combat";
 import {
   HARTHMERE_INDISWORM_CAVE_IDS,
   HARTHMERE_INDISWORM_PACKS_PER_CAVERN,
@@ -155,5 +161,86 @@ describe("Indisworm massive-cavern packs", () => {
       );
     }
     assert.deepEqual(validateHarthmereLiveEntityProductionSeeds(), []);
+  });
+
+  it("guards every three-material cache with exactly five nearby Indisworms", () => {
+    for (const caveId of HARTHMERE_INDISWORM_CAVE_IDS) {
+      const cave = harthmereExoticMatterCaveById(caveId)!;
+      for (
+        let packIndex = 0;
+        packIndex < HARTHMERE_INDISWORM_PACKS_PER_CAVERN;
+        packIndex += 1
+      ) {
+        const groupId = `indisworm:${caveId}:pack-${packIndex + 1}`;
+        const members = HARTHMERE_INDISWORM_SPAWNS.filter(
+          (spawn) => spawn.groupId === groupId
+        );
+        const deposits = HARTHMERE_EXOTIC_MATTER_DEPOSITS.filter(
+          (deposit) => deposit.guardGroupId === groupId
+        );
+
+        assert.equal(members.length, HARTHMERE_INDISWORMS_PER_PACK, groupId);
+        assert.equal(deposits.length, 3, groupId);
+        assert.deepEqual(
+          new Set(deposits.map((deposit) => deposit.componentId)),
+          new Set(HARTHMERE_EXOTIC_MATTER_COMPONENT_IDS),
+          `${groupId} must contain every Raw Exotic Matter block material`
+        );
+
+        for (const deposit of deposits) {
+          assert.equal(
+            deposit.position[1],
+            cave.bounds.y0 + 1,
+            `${deposit.depositId} should sit visibly above the cavern floor`
+          );
+          assert.ok(
+            isPositionInsideHarthmereIndiswormCave(caveId, deposit.position),
+            `${deposit.depositId} escaped ${caveId}`
+          );
+        }
+
+        for (const member of members) {
+          for (const componentId of HARTHMERE_EXOTIC_MATTER_COMPONENT_IDS) {
+            const nearest = Math.min(
+              ...deposits
+                .filter((deposit) => deposit.componentId === componentId)
+                .map((deposit) =>
+                  Math.hypot(
+                    member.position[0] - deposit.position[0],
+                    member.position[1] - deposit.position[1],
+                    member.position[2] - deposit.position[2]
+                  )
+                )
+            );
+            assert.ok(
+              nearest <= 12,
+              `${member.seedId} is not guarding ${componentId} (${nearest.toFixed(
+                2
+              )}m)`
+            );
+          }
+        }
+      }
+    }
+  });
+
+  it("makes every production Indisworm attack on proximity without provocation", () => {
+    for (const seed of HARTHMERE_LIVE_ENTITY_CAVERN_MONSTER_SEEDS) {
+      const profile = harthmereNativeNpcCombatProfileForSeed(seed);
+      assert.equal(profile.behaviorKind, "hostile", seed.seedId);
+      assert.deepEqual(
+        profile.aggroTrigger,
+        {
+          kind: "proximity",
+          distance: HARTHMERE_INDISWORM_HOSTILITY.aggroDistance,
+        },
+        seed.seedId
+      );
+      assert.notDeepEqual(
+        profile.aggroTrigger,
+        { kind: "onlyIfAttacked" },
+        seed.seedId
+      );
+    }
   });
 });

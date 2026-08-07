@@ -1328,6 +1328,61 @@ describe("mmo_jobs_board_authority — accept timer + failure (HARTHMERE_JOB_ACC
     );
   });
 
+  it("chooses a fresh supplied escort destination on every acceptance of a reused posting", () => {
+    const boardPosition = {
+      x: 501.99486179104775,
+      y: 70,
+      z: -132.00350672753194,
+    };
+    const posted = mutate(
+      defaultHarthmereJobsBoardState(NOW),
+      "create_job_posting",
+      escortPostPayload(),
+      {},
+      "poster"
+    );
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    const first = mutate(
+      posted.jobsBoard,
+      "accept_job",
+      { jobId, nowMs: NOW },
+      { actorPosition: boardPosition },
+      "seeker"
+    );
+    assert.deepEqual(first.warnings, []);
+    const firstMarker = first.jobsBoard.postings[jobId].mapMarkerId;
+    assert.ok(firstMarker);
+
+    const abandoned = mutate(
+      first.jobsBoard,
+      "abandon_job",
+      { jobId, nowMs: NOW + HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS },
+      {},
+      "seeker"
+    );
+    assert.deepEqual(abandoned.warnings, []);
+
+    const second = mutate(
+      abandoned.jobsBoard,
+      "accept_job",
+      {
+        jobId,
+        nowMs: NOW + HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS * 2,
+      },
+      { actorPosition: boardPosition },
+      "seeker2"
+    );
+    assert.deepEqual(second.warnings, []);
+    const secondJob = second.jobsBoard.postings[jobId];
+    assert.ok(secondJob.mapMarkerId);
+    assert.notEqual(secondJob.mapMarkerId, firstMarker);
+    assert.equal(
+      secondJob.escortCompanion?.destinationMarkerId,
+      secondJob.mapMarkerId
+    );
+    assert.equal(secondJob.requirements[0].mapMarkerId, secondJob.mapMarkerId);
+  });
+
   it("reactivates a stale failed todo when the same actor re-accepts a released job", () => {
     const posted = mutate(
       defaultHarthmereJobsBoardState(NOW),

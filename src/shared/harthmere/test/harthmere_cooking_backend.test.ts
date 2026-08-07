@@ -23,7 +23,8 @@ let seq = 0;
 function envelope(
   payload: Record<string, unknown>,
   nowMs = NOW,
-  serverActorItemCounts: Record<string, number> = {}
+  serverActorItemCounts: Record<string, number> = {},
+  serverActorBackpackFreeSlots?: number
 ): HarthmereLiveModeAuthorityEnvelope {
   seq += 1;
   return {
@@ -41,6 +42,8 @@ function envelope(
     clientClaims: {},
     serverActorPosition: { x: 0, y: 0, z: 0 },
     serverActorItemCounts,
+    serverActorBackpackFreeSlots,
+    serverActorGold: serverActorBackpackFreeSlots === undefined ? undefined : 0,
   };
 }
 
@@ -54,11 +57,17 @@ function reduce(
   state: HarthmereLiveModeBackendState,
   payload: Record<string, unknown>,
   nowMs = NOW,
-  serverActorItemCounts: Record<string, number> = state.inventory.items
+  serverActorItemCounts: Record<string, number> = state.inventory.items,
+  serverActorBackpackFreeSlots?: number
 ) {
   return reduceHarthmereLiveModeBackendState(
     state,
-    envelope(payload, nowMs, serverActorItemCounts),
+    envelope(
+      payload,
+      nowMs,
+      serverActorItemCounts,
+      serverActorBackpackFreeSlots
+    ),
     nowMs
   );
 }
@@ -98,10 +107,21 @@ describe("Harthmere live-mode cooking backend", () => {
 
     // Client snapshot projects the station + an in-progress job.
     const snapshot = createHarthmereLiveModeFarmingFoodClientSnapshot(
-      enq.state
+      enq.state,
+      station.jobs[0].startedAtMs + 1
     ) as any;
     assert.equal(snapshot.cookingStations.length, 1);
     assert.equal(snapshot.cookingStations[0].jobs[0].recipeId, "grilled_meat");
+    const readySnapshot = createHarthmereLiveModeFarmingFoodClientSnapshot(
+      enq.state,
+      station.jobs[0].readyAtMs + 1
+    ) as any;
+    assert.equal(
+      readySnapshot.cookingStations[0].jobs[0].status,
+      "ready",
+      "read-only polling must promote cooking jobs using wall clock time"
+    );
+    assert.equal(readySnapshot.updatedAtMs, station.jobs[0].readyAtMs + 1);
   });
 
   it("rejects collecting before the dish is ready", () => {
@@ -158,6 +178,54 @@ describe("Harthmere live-mode cooking backend", () => {
         HARTHMERE_COOKING_RECIPES.grilled_meat.xp,
       JSON.stringify(collected.state.classMagic.skills.cooking)
     );
+  });
+
+  it("advances Carlo's quest only when the campfire skewer is collected", () => {
+    const state = freshState();
+    state.quests.active.econ_carlo_festival_skewers = {
+      source: "snapshot_grove",
+      title: "Carlo's Festival Skewers",
+      stepId: "econ_carlo_festival_skewers:2:craft",
+      progress: 3,
+    };
+    const enqueued = reduce(
+      state,
+      {
+        operation: "cook_enqueue",
+        stationId: "carlo:campfire",
+        stationKind: "campfire",
+        recipeId: "harthmere_grove_festival_skewer",
+        count: 1,
+      },
+      NOW,
+      { grove_festival_skewer_ingredients: 1 }
+    );
+    assert.equal(
+      enqueued.state.quests.active.econ_carlo_festival_skewers.progress,
+      3,
+      "starting the timer is not the completed craft"
+    );
+    const jobId =
+      enqueued.state.farming.cooking["carlo:campfire"].jobs[0].jobId;
+    const collected = reduce(
+      enqueued.state,
+      {
+        operation: "cook_collect",
+        stationId: "carlo:campfire",
+        jobId,
+      },
+      READY_AT,
+      {}
+    );
+    const quest = collected.state.quests.active.econ_carlo_festival_skewers;
+    assert.equal(quest.progress, 4);
+    assert.equal(quest.stepId, "econ_carlo_festival_skewers:3:interact");
+    const exchange = collected.summary.nativeEcsMaterializationPlans?.find(
+      (plan) => plan.kind === "inventory_exchange"
+    );
+    assert.deepEqual(exchange?.rewardItemStacks, {
+      grove_festival_skewer: 1,
+    });
   });
 
   it("end-to-end: collects cooked meat while overweight when one backpack slot is free", () => {
@@ -280,6 +348,68 @@ describe("Harthmere live-mode cooking backend", () => {
     if (exchange?.kind === "inventory_exchange") {
       assert.deepEqual(exchange.consumeItemStacks, { raw_meat: 1 });
       assert.deepEqual(exchange.rewardItemStacks, {});
+    }
+  });
+
+  it("collects into a real free backpack slot when hotbar keys inflate the flattened count", () => {
+    const capturedCarriedCounts = Object.fromEntries(
+      Array.from({ length: 43 }, (_, index) => [
+        `captured_native_item_${index}`,
+        1,
+      ])
+    );
+    capturedCarriedCounts.raw_meat = 61;
+    const state = freshState();
+    state.inventory.items = { ...capturedCarriedCounts };
+
+    const enqueued = reduce(
+      state,
+      {
+        operation: "cook_enqueue",
+        stationId: "ecs:captured-free-slot-campfire",
+        stationKind: "campfire",
+        label: "Campfire",
+        recipeId: "grilled_meat",
+        count: 1,
+      },
+      NOW,
+      capturedCarriedCounts,
+      3
+    );
+    assert.deepEqual(
+      enqueued.summary.warnings.filter((warning) =>
+        warning.startsWith("cooking_rejected")
+      ),
+      []
+    );
+
+    const jobId =
+      enqueued.state.farming.cooking["ecs:captured-free-slot-campfire"].jobs[0]
+        .jobId;
+    const collected = reduce(
+      enqueued.state,
+      {
+        operation: "cook_collect",
+        stationId: "ecs:captured-free-slot-campfire",
+        jobId,
+      },
+      READY_AT,
+      capturedCarriedCounts,
+      3
+    );
+
+    assert.deepEqual(
+      collected.summary.warnings.filter((warning) =>
+        warning.startsWith("cooking_rejected")
+      ),
+      []
+    );
+    const exchange = collected.summary.nativeEcsMaterializationPlans?.find(
+      (plan) => plan.kind === "inventory_exchange"
+    );
+    assert.equal(exchange?.kind, "inventory_exchange");
+    if (exchange?.kind === "inventory_exchange") {
+      assert.deepEqual(exchange.rewardItemStacks, { grilled_meat: 1 });
     }
   });
 

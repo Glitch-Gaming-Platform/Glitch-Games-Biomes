@@ -1716,11 +1716,20 @@ validate_bucket_asset_url() {
 
 validate_production_bucket_assets() {
   local revision="$1"
+  local target="${2:-both}"
   local revision_fqdn revision_origin
   revision_fqdn="$(azure_revision_fqdn "$revision")"
   revision_origin="https://${revision_fqdn}"
 
-  log "Validating iframe/XHR bucket assets on production FQDN and concrete revision FQDN."
+  case "$target" in
+    revision|production|both) ;;
+    *)
+      echo "ERROR unknown production bucket validation target: $target" >&2
+      exit 2
+      ;;
+  esac
+
+  log "Validating iframe/XHR bucket assets target=$target revision=$revision."
   local asset_paths=(
     "/buckets/biomes-static/assets/69/69e51f48fd43cdef37609a2b2cf880e7570e35aa"
     "/buckets/biomes-static/assets/69/69a456e2e5160e977ef7bcfbc0ee80cfbb317369"
@@ -1735,12 +1744,52 @@ validate_production_bucket_assets() {
     "/buckets/biomes-static/assets/c4/c49da8c16810b0714b8fdefd80c5165744c19800"
   )
 
+  # Resolve current content-addressed canaries from the same asset index that
+  # the candidate client loads. Historical fixed hashes can stay green after
+  # asset_versions.json advances to a missing file.
+  local versioned_asset_paths
+  if ! versioned_asset_paths="$(
+    node - <<'NODE'
+const versions = require("./src/galois/js/interface/gen/asset_versions.json").paths || {};
+const requiredLogicalAssets = [
+  "wearables/animations",
+  "audio/harthmere-environment/cave-music-loop",
+  "audio/harthmere-environment/mountain-wind-loop",
+  "audio/muck-music-1",
+  "icons/npcs/indisworm",
+  "item_meshes/npcs/indisworm",
+  "npcs/indisworm",
+];
+for (const logicalName of requiredLogicalAssets) {
+  const assetPath = versions[logicalName];
+  if (!assetPath) {
+    console.error(`Missing required asset_versions entry: ${logicalName}`);
+    process.exitCode = 1;
+    continue;
+  }
+  console.log(assetPath);
+}
+NODE
+  )"; then
+    echo "ERROR failed to resolve current versioned bucket asset canaries." >&2
+    exit 1
+  fi
+  while IFS= read -r asset_path; do
+    if [ -n "$asset_path" ]; then
+      asset_paths+=("/buckets/biomes-static/${asset_path}")
+    fi
+  done <<< "$versioned_asset_paths"
+
   for asset_path in "${asset_paths[@]}"; do
-    validate_bucket_asset_url "$revision_origin" "$asset_path"
-    validate_bucket_asset_url "$PROD_ORIGIN" "$asset_path"
+    if [ "$target" = "revision" ] || [ "$target" = "both" ]; then
+      validate_bucket_asset_url "$revision_origin" "$asset_path"
+    fi
+    if [ "$target" = "production" ] || [ "$target" = "both" ]; then
+      validate_bucket_asset_url "$PROD_ORIGIN" "$asset_path"
+    fi
   done
 
-  log "Production bucket asset validation passed for revision $revision."
+  log "Production bucket asset validation passed target=$target revision=$revision."
 }
 
 validate_world_sync_http_url() {
@@ -2933,6 +2982,8 @@ ensure_production_asset_inputs() {
   ensure_harthmere_runtime_assets
   ensure_harthmere_voice_assets
   ensure_snapshot_bucket_assets
+  log "Validating generated asset_versions.json against this build workspace."
+  node scripts/harthmere/check-snapshot-asset-version-boundary.cjs .
 }
 
 reset_build_outputs_preserving_caches() {
@@ -3781,9 +3832,10 @@ push_and_deploy() {
   wait_for_azure_revision_ready "$latest_revision"
   verify_azure_revision_zero_restarts "$latest_revision"
   validate_production_revision_before_traffic "$latest_revision"
+  validate_production_bucket_assets "$latest_revision" revision
   reconcile_production_world_sync "$latest_revision"
   force_azure_traffic_to_revision "$latest_revision"
-  validate_production_bucket_assets "$latest_revision"
+  validate_production_bucket_assets "$latest_revision" production
   validate_production_world_sync_http "$latest_revision"
   AZURE_TRAFFIC_RESTORE_ARMED=0
   deactivate_stale_azure_revisions "$latest_revision"

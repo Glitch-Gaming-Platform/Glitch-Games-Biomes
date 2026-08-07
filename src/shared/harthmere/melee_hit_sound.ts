@@ -1,7 +1,11 @@
 import type { ReadonlyEmote } from "@/shared/ecs/gen/components";
 import type { ReadonlyItem } from "@/shared/ecs/gen/types";
-import { harthmereNativeItemDefinitionForBiomesId } from "@/shared/harthmere/harthmere_native_combat";
+import {
+  harthmereNativeItemCombatProfile,
+  harthmereNativeItemDefinitionForBiomesId,
+} from "@/shared/harthmere/harthmere_native_combat";
 import { harthmereNativeItemIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
+import { getHarthmerePremiumWeapon } from "@/shared/harthmere/premium_weapon_catalog";
 
 export const HARTHMERE_MELEE_HIT_SOUND_DURATION_SECONDS = 0.15;
 
@@ -53,6 +57,32 @@ export function harthmereMeleeHitSoundKindForItem(
       : "weapon";
   }
   return item.isAxe || item.isPickaxe ? "tool" : "weapon";
+}
+
+export function isHarthmereMeleeHitSoundItem(
+  item: Pick<ReadonlyItem, "id" | "isAxe" | "isPickaxe"> | undefined
+) {
+  const kind = harthmereNativeItemCombatProfile(item)?.kind;
+  if (kind) {
+    return kind === "unarmed" || kind === "melee" || kind === "heavy";
+  }
+  const semanticItemId = item
+    ? harthmereNativeItemIdForBiomesId(item.id)
+    : undefined;
+  const premiumWeapon = semanticItemId
+    ? getHarthmerePremiumWeapon(semanticItemId)
+    : undefined;
+  if (premiumWeapon) {
+    return premiumWeapon.profile === "melee";
+  }
+  return (
+    item === undefined ||
+    harthmereNativeItemDefinitionForBiomesId(item.id)?.category === "tool" ||
+    (semanticItemId !== undefined &&
+      HARTHMERE_UTILITY_TOOL_ITEM_IDS.has(semanticItemId)) ||
+    item.isAxe === true ||
+    item.isPickaxe === true
+  );
 }
 
 export function harthmereMeleeHitSoundIdForItem(

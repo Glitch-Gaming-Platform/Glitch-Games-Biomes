@@ -63,6 +63,7 @@ import {
   type HarthmereBusinessTypeId,
 } from "../businessInterfaceLiveAdapter";
 import { HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT } from "@/client/components/challenges/harthmereEvents";
+import { HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT } from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
 import type { BiomesId } from "@/shared/ids";
 
 function resolveRepoAliasForEsbuild(importPath: string) {
@@ -375,6 +376,7 @@ describe("Harthmere in-world business interface live adapter", () => {
     assert.equal(typeof envelope.clientSentAtMs, "number");
     assert.equal(envelope.payload.operation, "deposit_business_inventory");
     assert.equal(envelope.payload.businessId, "business_food");
+    assert.ok(envelope.includeSnapshots.includes("jobsBoardState"));
   });
 
   it("serializes business writes so one degraded replica cannot create an actor-lock request pileup", async () => {
@@ -472,7 +474,7 @@ describe("Harthmere in-world business interface live adapter", () => {
     assert.equal(calls.at(-1), "hung_tick_retry");
   });
 
-  it("broadcasts inventory loot updates from business mutations for HUD wallet refreshes", async () => {
+  it("broadcasts inventory and jobs-board updates from business mutations for immediate objective and map handoff", async () => {
     const originalWindow = (globalThis as any).window;
     const originalCustomEvent = (globalThis as any).CustomEvent;
     const events: any[] = [];
@@ -495,6 +497,7 @@ describe("Harthmere in-world business interface live adapter", () => {
       const state = sampleSnapshot();
       const inventoryLootState = { actor: { gold: 225 } };
       const playerStatusState = { health: 88 };
+      const jobsBoardState = { actorId: "player_a", myTodos: [] };
       const adapter = createHarthmereBusinessInterfaceAdapter({
         state,
         hydrated: true,
@@ -504,6 +507,7 @@ describe("Harthmere in-world business interface live adapter", () => {
           economyState: state,
           inventoryLootState,
           playerStatusState,
+          jobsBoardState,
         }),
       });
 
@@ -514,13 +518,24 @@ describe("Harthmere in-world business interface live adapter", () => {
         "customer_ticket_1"
       );
 
-      assert.equal(events.length, 1);
-      assert.equal(
-        events[0].type,
-        HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT
+      const inventoryEvent = events.find(
+        (event) =>
+          event.type === HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT
       );
-      assert.deepEqual(events[0].detail.inventoryLootState, inventoryLootState);
-      assert.deepEqual(events[0].detail.playerStatusState, playerStatusState);
+      const jobsEvent = events.find(
+        (event) => event.type === HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT
+      );
+      assert.ok(inventoryEvent);
+      assert.deepEqual(
+        inventoryEvent.detail.inventoryLootState,
+        inventoryLootState
+      );
+      assert.deepEqual(
+        inventoryEvent.detail.playerStatusState,
+        playerStatusState
+      );
+      assert.ok(jobsEvent);
+      assert.deepEqual(jobsEvent.detail.jobsBoardState, jobsBoardState);
     } finally {
       (globalThis as any).window = originalWindow;
       (globalThis as any).CustomEvent = originalCustomEvent;

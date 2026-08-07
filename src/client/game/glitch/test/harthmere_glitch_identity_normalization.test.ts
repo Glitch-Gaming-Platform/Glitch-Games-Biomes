@@ -1,5 +1,8 @@
 import assert from "assert";
-import { normalizeIdentity } from "@/client/game/glitch/harthmere_glitch_install_bootstrap";
+import {
+  normalizeIdentity,
+  shouldRecoverAuthedHarthmereInstallPage,
+} from "@/client/game/glitch/harthmere_glitch_install_bootstrap";
 import {
   identityFromResponse,
   type HarthmereGlitchRuntimeConfig,
@@ -52,5 +55,33 @@ describe("harthmere Glitch Cloud Save identity normalization", () => {
     assert.equal(identity.biomesUserId, "2338109331446422");
     assert.notEqual(identity.gameUserId, `install:${installId}`);
     assert.notEqual(identity.gameUserId, "biomes:2338109331446422");
+  });
+});
+
+describe("Harthmere install observer recovery", () => {
+  it("reloads an authenticated install that SSR rendered anonymously", () => {
+    assert.equal(
+      shouldRecoverAuthedHarthmereInstallPage({
+        initialAuthed: true,
+        installId: "install-1",
+        pathname: "/at",
+        serverRenderedUserId: 0,
+        serverRenderedObserverMode: { kind: "rotate" },
+      }),
+      true
+    );
+  });
+
+  it("does not reload an already player-rendered install", () => {
+    assert.equal(
+      shouldRecoverAuthedHarthmereInstallPage({
+        initialAuthed: true,
+        installId: "install-1",
+        pathname: "/at",
+        serverRenderedUserId: 1234,
+        serverRenderedObserverMode: null,
+      }),
+      false
+    );
   });
 });

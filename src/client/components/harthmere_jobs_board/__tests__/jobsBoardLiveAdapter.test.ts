@@ -476,8 +476,9 @@ describe("Harthmere universal jobs board live adapter", () => {
       }),
     })) as any;
 
+    let returned;
     try {
-      await submitHarthmereJobsBoardMutation(
+      returned = await submitHarthmereJobsBoardMutation(
         "accept_job",
         { jobId: "delivery_job_1" },
         { fetchImpl, requestId: "inventory_sync_request" }
@@ -497,6 +498,17 @@ describe("Harthmere universal jobs board live adapter", () => {
       syncEvent.detail.body.inventoryLootState,
       inventoryLootState
     );
+    assert.deepEqual(
+      returned?.inventoryItems,
+      { sealed_package: 1 },
+      "the returned/cached jobs snapshot must use the same fresh native inventory"
+    );
+    const stateEvent = events.find(
+      (event) => event.type === HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT
+    );
+    assert.deepEqual(stateEvent?.detail.jobsBoardState.inventoryItems, {
+      sealed_package: 1,
+    });
   });
 
   it("throws when backend abuse or validation protections reject the mutation", async () => {

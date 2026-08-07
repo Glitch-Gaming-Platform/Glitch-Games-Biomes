@@ -24,6 +24,7 @@ import { log } from "@/shared/logging";
 import type { GaussianDistribution } from "@/shared/math/gaussian";
 import type { BiomesResourceCapacities } from "@/shared/resources/biomes";
 import { makeCvalHook } from "@/shared/util/cvals";
+import { readHarthmereInstallId } from "@/shared/util/harthmere_auth_session";
 import type { JSONable } from "@/shared/util/type_helpers";
 import type { Vec3f } from "@/shared/wasm/types/common";
 import { ok } from "assert";
@@ -715,10 +716,15 @@ export async function initializeClientConfig(
   // Docker runs Biomes with NODE_ENV=production, but local Glitch play must
   // not connect to wss://api*.biomes.gg or to a stale Azure host that leaked
   // into NEXT_PUBLIC_GLITCH_SYNC_BASE_URL via .env.local. Force the browser
-  // to local sync whenever install_id is present in the URL.
+  // to local sync whenever install_id is present in the URL or restored from
+  // the install-backed browser session.
   const installIdInUrl =
     typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).has("install_id");
+    (["install_id", "installId"] as const).some((key) =>
+      new URLSearchParams(window.location.search).has(key)
+    );
+  const installIdentityAvailable =
+    installIdInUrl || Boolean(readHarthmereInstallId());
   const runtimeQuery =
     typeof window === "undefined"
       ? undefined
@@ -728,7 +734,7 @@ export async function initializeClientConfig(
   const isGlitchLocalRuntime =
     process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||
     process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
-    installIdInUrl ||
+    installIdentityAvailable ||
     (typeof window !== "undefined" &&
       isLocalGameHostname(window.location.hostname));
 
@@ -747,7 +753,7 @@ export async function initializeClientConfig(
     ret.dynamicMinDrawDistance = HARTHMERE_DESKTOP_DYNAMIC_MIN_DRAW_DISTANCE;
 
     const resolved = resolveGlitchLocalSyncBaseUrl({
-      installIdInUrl,
+      installIdInUrl: installIdentityAvailable,
       runtimeOverride: nativeEcsE2E
         ? (runtimeQuery?.get("syncBaseUrl") ?? undefined)
         : undefined,
@@ -764,7 +770,7 @@ export async function initializeClientConfig(
     // unwrapping puppeteer's JSHandle@object boxing of the second arg.
     // eslint-disable-next-line no-console
     console.info(
-      `HARTHMERE_SYNC_URL_RESOLVED syncBaseUrl=${resolved.syncBaseUrl} reason=${resolved.reason} fallback=${resolved.fallback} hostname=${window.location.hostname} port=${window.location.port} installIdInUrl=${installIdInUrl}`
+      `HARTHMERE_SYNC_URL_RESOLVED syncBaseUrl=${resolved.syncBaseUrl} reason=${resolved.reason} fallback=${resolved.fallback} hostname=${window.location.hostname} port=${window.location.port} installIdInUrl=${installIdInUrl} installIdentityAvailable=${installIdentityAvailable}`
     );
   }
 

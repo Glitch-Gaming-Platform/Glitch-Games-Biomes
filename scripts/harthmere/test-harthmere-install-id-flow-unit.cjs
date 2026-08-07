@@ -144,7 +144,7 @@ assert(
   "resolveGlitchLocalSyncBaseUrl is exported as a function"
 );
 
-// Scenario A: install_id playboot, no explicit env -> same-host fallback.
+// Scenario A: install_id playboot, no explicit env -> same-origin fallback.
 {
   const r = resolve({
     installIdInUrl: true,
@@ -155,8 +155,8 @@ assert(
     href: "http://127.0.0.1:3017/at?install_id=abc",
   });
   assert(
-    r.syncBaseUrl === "http://127.0.0.1:3018",
-    "playboot with no explicit env -> falls back to same-host:3018"
+    r.syncBaseUrl === "http://127.0.0.1:3017",
+    "playboot with no explicit env -> falls back to the web origin"
   );
   assert(
     r.reason === "no_explicit_value_using_same_host_fallback",
@@ -197,8 +197,8 @@ assert(
     href: "http://127.0.0.1:3017/at?install_id=abc",
   });
   assert(
-    r.syncBaseUrl === "http://127.0.0.1:3018",
-    "playboot with stale azurecontainerapps env -> still uses local fallback"
+    r.syncBaseUrl === "http://127.0.0.1:3017",
+    "playboot with stale azurecontainerapps env -> still uses same-origin fallback"
   );
   assert(
     r.reason === "explicit_points_to_remote_but_install_id_local",
@@ -250,7 +250,7 @@ assert(
   );
 }
 
-// Scenario E: install_id playboot served from port 3000 -> sync fallback 3002.
+// Scenario E: install_id playboot served from port 3000 -> same-origin proxy.
 {
   const r = resolve({
     installIdInUrl: true,
@@ -261,8 +261,8 @@ assert(
     href: "http://127.0.0.1:3000/at?install_id=abc",
   });
   assert(
-    r.syncBaseUrl === "http://127.0.0.1:3002",
-    "playboot from :3000 falls back to :3002"
+    r.syncBaseUrl === "http://127.0.0.1:3000",
+    "playboot from :3000 falls back to the :3000 web origin"
   );
 }
 
@@ -295,9 +295,29 @@ let bootstrap;
       "biomes:harthmere-glitch-identity-changed",
     writeHarthmereGlitchIdentity: () => {},
   };
+  const authSessionStub = {
+    readHarthmereInstallId: () => {
+      const params = new URLSearchParams(global.window?.location?.search ?? "");
+      for (const key of ["install_id", "installId"]) {
+        const value = params.get(key)?.trim();
+        if (value && !value.startsWith("local-")) return value;
+      }
+      for (const key of [
+        "glitch.install.id",
+        "biomes.localDev.harthmere.localInstallId",
+      ]) {
+        const value = global.window?.localStorage?.getItem(key)?.trim();
+        if (value && !value.startsWith("local-")) return value;
+      }
+      return undefined;
+    },
+  };
   bootstrap = loadTsModule(
     "src/client/game/glitch/harthmere_glitch_install_bootstrap.tsx",
-    { "@/client/game/glitch/harthmere_glitch_identity": identityStub }
+    {
+      "@/client/game/glitch/harthmere_glitch_identity": identityStub,
+      "@/shared/util/harthmere_auth_session": authSessionStub,
+    }
   );
 }
 

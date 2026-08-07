@@ -164,15 +164,10 @@ import {
 } from "@/shared/harthmere/magic_charge";
 import { harthmereBossMagicPresentation } from "@/shared/harthmere/boss_magic_presentation";
 import {
-  harthmereMeleeHitItem,
-  harthmereMeleeHitSoundIdForItem,
-} from "@/shared/harthmere/melee_hit_sound";
-import {
   dispatchHarthmereMagicCharge,
   harthmereMagicChargeId,
 } from "@/client/game/util/harthmere_magic_charge";
 import {
-  emitHarthmereSoundEffect,
   getHarthmereSoundEffect,
   HARTHMERE_GIANT_BOSS_STOMP_SOUND_ID,
   harthmereNpcSoundIdForIdentity,
@@ -3671,17 +3666,6 @@ export class NpcRenderState {
           damageDirection:
             damageSource?.kind === "attack" ? damageSource.dir : undefined,
         });
-        emitHarthmereSoundEffect(
-          harthmereMeleeHitSoundIdForItem(
-            harthmereMeleeHitItem(
-              attackerEmote,
-              attackerId === undefined
-                ? undefined
-                : resources.get("/ecs/c/selected_item", attackerId)?.item?.item
-            )
-          ),
-          { position: contactPosition }
-        );
       }
     }
 

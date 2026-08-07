@@ -2713,18 +2713,18 @@ function HarthmereBusinessBoardWorldPrompt({
 
   const worldCandidate = React.useMemo(
     () =>
-      prompt
+      prompt && projectedPrompt
         ? {
             id: `harthmere:business-board:${prompt.businessId}`,
-            // A physical business board is the player's explicit station
-            // target. It must beat a customer or shopkeeper standing beside
-            // it, just like the town jobs boards do.
+            // The board owns F only while it is actually in the player's view.
+            // The bottom fallback remains clickable for discoverability, but
+            // it must not steal F from a patron or worker the player is facing.
             priority: WORLD_INTERACTION_PRIORITY.jobsBoard - prompt.distance,
             keyCodes: ["KeyF", "KeyE"],
             onInteract: openBusinessBoardFromPrompt,
           }
         : undefined,
-    [openBusinessBoardFromPrompt, prompt]
+    [openBusinessBoardFromPrompt, projectedPrompt, prompt]
   );
   const ownsInteraction = useWorldInteractionCandidate(worldCandidate);
 

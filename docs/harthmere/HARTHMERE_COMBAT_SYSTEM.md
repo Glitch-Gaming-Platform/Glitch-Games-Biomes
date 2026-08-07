@@ -407,12 +407,19 @@ magic cast, heal, fire tick, or environmental damage cannot display it. NPC and
 remote-player targets share the same cue.
 
 That same confirmed contact emits one 0.15-second positional impact sound. A
-bare-handed hit uses a dry slap, a held tool uses a compact axe-on-wood chop,
-and a held weapon uses a bright high-pitched metal clink. Classification uses
+bare-handed hit uses a dry finger snap, a held tool uses a compact axe-on-wood
+chop, and a held weapon uses a bright sword-on-metal strike. Classification uses
 the item captured on the attack emote before falling back to the current
 selected item, so changing equipment after commitment cannot change the sound
-of an already-authored hit. Desktop and capable Android browsers use normalized
-mono Opus; iOS/mobile WebKit uses the generated AAC-LC `.m4a` variant.
+of an already-authored hit. Playback is requested from the replicated ECS
+health mutation listener rather than an NPC/player renderer tick, so frame
+throttling, culling, or a temporarily absent render state cannot swallow the
+sound. If confirmed combat audio arrives before Web Audio is unlocked, the
+sound script holds it in a bounded 64-entry queue for at most five seconds and
+flushes it as soon as the listener is running; stale fight audio is discarded.
+The selected combat profile still rejects ranged and spell impacts.
+Desktop and capable Android browsers use normalized mono Opus; iOS/mobile
+WebKit uses the generated AAC-LC `.m4a` variant.
 
 ### Creature and boss stun/stagger presentation
 

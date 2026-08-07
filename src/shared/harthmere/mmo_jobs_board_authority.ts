@@ -2378,6 +2378,38 @@ export function repairHarthmereEscortJobDestination(
   return true;
 }
 
+/**
+ * A reusable escort posting must choose from the supplied destination list on
+ * every acceptance. The previous implementation randomized only when the
+ * shared posting was seeded, so every player was sent to the same landmark.
+ * Excluding the posting's previous marker prevents an immediate repeat when
+ * more than one valid destination exists, while the acceptance identity keeps
+ * retries deterministic.
+ */
+export function assignHarthmereEscortJobDestinationForAcceptance(
+  job: HarthmereJobsBoardPosting,
+  boardPosition: { x: number; y: number; z: number },
+  actorId: string,
+  nowMs: number
+) {
+  if (job.kind !== "escort") return false;
+  const candidates = harthmereLegacyProtectionEscortCandidates(boardPosition);
+  if (!candidates.length) return false;
+  const previousMarkerId = job.mapMarkerId ?? job.targetId;
+  const freshCandidates = candidates.filter(
+    (candidate) => candidate.markerId !== previousMarkerId
+  );
+  const selectionPool = freshCandidates.length ? freshCandidates : candidates;
+  const destination =
+    selectionPool[
+      harthmereDeterministicHash(
+        `escort-accept-destination:${job.jobId}:${actorId}:${nowMs}`
+      ) % selectionPool.length
+    ];
+  applyEscortDestinationToJob(job, destination);
+  return true;
+}
+
 function createEscortCompanionForAcceptedJob(
   state: HarthmereJobsBoardState,
   job: HarthmereJobsBoardPosting,
@@ -2397,9 +2429,11 @@ function createEscortCompanionForAcceptedJob(
           z: boardRecord.location.z,
         }
       : { x: 501.99486179104775, y: 70, z: -132.00350672753194 });
-  repairHarthmereEscortJobDestination(
+  assignHarthmereEscortJobDestinationForAcceptance(
     job,
-    pointObject(boardRecord?.location ?? anchor)
+    pointObject(boardRecord?.location ?? anchor),
+    request.actorId,
+    request.nowMs
   );
   const destinationMarker =
     harthmereJobsBoardQuestMarkerRuntimePositionForId(job.mapMarkerId) ??

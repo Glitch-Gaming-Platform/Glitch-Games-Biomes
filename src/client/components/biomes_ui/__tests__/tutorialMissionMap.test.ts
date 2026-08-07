@@ -255,6 +255,42 @@ describe("BiomesUI tutorial mission map", () => {
     assert.ok(cues.some((c) => c.uniqueId === UI_IDS.INVENTORY_ACTION("use")));
   });
 
+  it("lights Mail and Bank only until the Nothing Useful panel step completes", () => {
+    const openPanel = cuesForAuthoredTutorialStep({
+      questId: "lost_found_and_mail",
+      objective: "Open the storage, mail, or recovery panel from the HUD.",
+      objectiveIndex: 1,
+      trigger: "open_tab",
+      markerId: "grove_mail_bank_satchel",
+    });
+    assert.ok(
+      openPanel.some((cue) => cue.uniqueId === UI_IDS.HUD_PROMPT_OPEN_MENU)
+    );
+    assert.ok(openPanel.some((cue) => cue.uniqueId === UI_IDS.TAB_INBOX));
+    assert.ok(openPanel.some((cue) => cue.uniqueId === UI_IDS.TAB_BANKING));
+
+    const inspectSatchel = cuesForAuthoredTutorialStep({
+      questId: "lost_found_and_mail",
+      objective: "Inspect the Mail and Bank Satchel by the fountain.",
+      objectiveIndex: 2,
+      trigger: "interact",
+      markerId: "grove_mail_bank_satchel",
+    });
+    assert.equal(
+      inspectSatchel.some((cue) => cue.uniqueId === UI_IDS.TAB_INBOX),
+      false
+    );
+    assert.equal(
+      inspectSatchel.some((cue) => cue.uniqueId === UI_IDS.TAB_BANKING),
+      false
+    );
+    assert.ok(
+      inspectSatchel.some(
+        (cue) => cue.uniqueId === UI_IDS.MAP_MARKER("grove_mail_bank_satchel")
+      )
+    );
+  });
+
   it("authored cue derivation dedupes overlapping map/journal wording", () => {
     const cues = cuesForAuthoredTutorialStep({
       objective:

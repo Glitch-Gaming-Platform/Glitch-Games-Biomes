@@ -67,6 +67,7 @@ public/assets/harthmere/glb/creatures/** -text -filter -merge -diff
 public/assets/harthmere/glb/gathering_nodes/** -text -filter -merge -diff
 public/assets/harthmere/glb/jobs_boards/** -text -filter -merge -diff
 public/assets/harthmere/glb/items/chapter1/** -text -filter -merge -diff
+public/assets/harthmere/glb/items/grove/** -text -filter -merge -diff
 public/assets/harthmere/glb/projectiles/** -text -filter -merge -diff
 public/assets/harthmere/glb/quest/** -text -filter -merge -diff
 public/assets/harthmere/glb/request_boards/** -text -filter -merge -diff

@@ -53,7 +53,10 @@ import {
 import { groveLandmarkWorldPosition } from "@/shared/harthmere/grove/grove_waypoints";
 import { isHarthmereContainerObjectLabel } from "@/shared/harthmere/object_interaction_semantics";
 import { snapshotGroveObjectiveMarkerIdForProgress } from "@/shared/harthmere/snapshot_grove_trigger_contract";
+import { HARTHMERE_GROVE_QUEST_OBJECT_ASSET_URLS } from "@/shared/harthmere/grove_quest_visual_assets";
 import * as THREE from "three";
+
+export { HARTHMERE_GROVE_QUEST_OBJECT_ASSET_URLS } from "@/shared/harthmere/grove_quest_visual_assets";
 
 export const HARTHMERE_QUEST_OBJECT_MARKER_VERSION =
   "harthmere-quest-object-marker" as const;
@@ -140,6 +143,12 @@ const HARTHMERE_FIELD_TARGET_ALIAS_MARKER_IDS: ReadonlySet<string> = new Set(
     .map((target) => target.targetId)
 );
 
+const HARTHMERE_EXOTIC_MATTER_DEPOSIT_MARKER_IDS: ReadonlySet<string> = new Set(
+  harthmereJobsBoardQuestMarkerPositions()
+    .filter((marker) => marker.source === "exotic_matter_deposit")
+    .map((marker) => marker.markerId)
+);
+
 /** True for the permanent business/outpost job fixtures (not quest loot). */
 export function isHarthmereJobsBoardFieldTargetMarkerId(markerId: string) {
   return (
@@ -153,11 +162,17 @@ export function isHarthmereJobsBoardFieldTargetAliasId(markerId: string) {
   return HARTHMERE_FIELD_TARGET_ALIAS_MARKER_IDS.has(markerId);
 }
 
+/** True for a permanent, mineable Exotic Matter deposit in a cave. */
+export function isHarthmereExoticMatterDepositMarkerId(markerId: string) {
+  return HARTHMERE_EXOTIC_MATTER_DEPOSIT_MARKER_IDS.has(markerId);
+}
+
 export const HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_IDS: ReadonlySet<string> =
   new Set([
     // Non-container authored props that must stay physically visible in world.
     "econ_grove_billy_post",
     ...HARTHMERE_FIELD_TARGET_MARKER_IDS,
+    ...HARTHMERE_EXOTIC_MATTER_DEPOSIT_MARKER_IDS,
   ]);
 
 const QUEST_OBJECT_MARKER_SKIP_IDS = new Set([
@@ -461,7 +476,7 @@ const mesh = (geometry: THREE.BufferGeometry, color: number): THREE.Mesh => {
   const mesh = new THREE.Mesh(geometry, material);
   mesh.castShadow = false;
   mesh.receiveShadow = true;
-  mesh.frustumCulled = false;
+  mesh.frustumCulled = true;
   return mesh;
 };
 
@@ -779,6 +794,40 @@ function disposeQuestMarkerFallbackObject(object: THREE.Object3D): void {
   });
 }
 
+export function replaceHarthmereQuestObjectFallbackWithAsset(
+  markerGroup: THREE.Group,
+  prototype: THREE.Object3D,
+  assetUrl: string
+): THREE.Object3D | undefined {
+  if (markerGroup.userData.harthmereQuestObjectAuthoredAssetLoaded === true) {
+    return undefined;
+  }
+
+  // Keep the director-owned active quest beacon; replace every direct
+  // procedural fallback child with the exact Blender-authored object.
+  for (const child of [...markerGroup.children]) {
+    if (child.userData.harthmereActiveQuestBeacon === true) continue;
+    markerGroup.remove(child);
+    disposeQuestMarkerFallbackObject(child);
+  }
+
+  const asset = prototype.clone(true);
+  asset.name = `harthmere-authored-quest-object:${markerGroup.userData.harthmereQuestObjectMarkerId ?? "unknown"}`;
+  asset.userData.harthmereQuestObjectAuthoredAsset = true;
+  asset.userData.harthmereQuestObjectAssetUrl = assetUrl;
+  asset.traverse((child) => {
+    child.frustumCulled = true;
+    if (child instanceof THREE.Mesh) {
+      child.castShadow = false;
+      child.receiveShadow = true;
+    }
+  });
+  markerGroup.add(asset);
+  markerGroup.userData.harthmereQuestObjectAuthoredAssetLoaded = true;
+  markerGroup.userData.harthmereQuestObjectAssetUrl = assetUrl;
+  return asset;
+}
+
 export function replaceHarthmereRepairCartFallbackWithAsset(
   markerGroup: THREE.Group,
   prototype: THREE.Object3D
@@ -804,7 +853,7 @@ export function replaceHarthmereRepairCartFallbackWithAsset(
   asset.userData.harthmereRepairCartAssetUrl =
     HARTHMERE_LUIS_REPAIR_CART_ASSET_URL;
   asset.traverse((child) => {
-    child.frustumCulled = false;
+    child.frustumCulled = true;
     if (child instanceof THREE.Mesh) {
       child.castShadow = false;
       child.receiveShadow = true;
@@ -865,7 +914,11 @@ function disposeHarthmereQuestMarker(root: THREE.Object3D) {
   const dispose = (object: THREE.Object3D) => {
     // Authored repair-cart clones share their geometry/materials with the
     // retained prototype. Detach that subtree without disposing shared data.
-    if (object.userData.harthmereRepairCartAsset === true) return;
+    if (
+      object.userData.harthmereRepairCartAsset === true ||
+      object.userData.harthmereQuestObjectAuthoredAsset === true
+    )
+      return;
     for (const child of object.children) dispose(child);
     if (!(object instanceof THREE.Mesh)) return;
     object.geometry.dispose();
@@ -892,11 +945,21 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
   private chapter1ObjectiveMarkerId: string | undefined;
   private chapter1ObjectiveProjectionSignature: string | undefined;
   private activeQuestStateRefreshSeconds = 0;
+  private groundRefreshSeconds = 0;
   private mobileProximityRefreshSeconds = 0;
   private elapsedSeconds = 0;
   private repairCartPrototype: THREE.Object3D | undefined;
   private repairCartAssetLoading: Promise<void> | undefined;
   private repairCartAssetFailed = false;
+  private readonly groveQuestObjectAssetPrototypes = new Map<
+    string,
+    THREE.Object3D
+  >();
+  private readonly groveQuestObjectAssetLoading = new Map<
+    string,
+    Promise<void>
+  >();
+  private readonly groveQuestObjectAssetFailed = new Set<string>();
 
   constructor(
     private readonly resources?: ClientResources,
@@ -930,8 +993,8 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
     }
     const beacon = createHarthmereActiveQuestMarkerBeacon();
     mesh.add(beacon);
-    // Remember the authored world XZ + hint Y so we can re-ground the marker
-    // onto real terrain each frame (markers are outdoor quest beacons).
+    // Remember the authored world XZ + hint Y so the bounded grounding pass can
+    // keep the marker on real terrain (markers are outdoor quest beacons).
     mesh.userData.harthmereMarkerWorldXZ = [
       marker.position[0],
       marker.position[2],
@@ -946,6 +1009,7 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
         this.repairCartPrototype
       );
     }
+    this.applyLoadedGroveQuestObjectAsset(marker.id, mesh);
     return mesh;
   }
 
@@ -1043,6 +1107,66 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
       });
   }
 
+  private applyLoadedGroveQuestObjectAsset(
+    markerId: string,
+    markerMesh: THREE.Group
+  ): void {
+    const assetUrl = HARTHMERE_GROVE_QUEST_OBJECT_ASSET_URLS[markerId];
+    if (!assetUrl) return;
+    markerMesh.userData.harthmereQuestObjectAssetUrl = assetUrl;
+    const prototype = this.groveQuestObjectAssetPrototypes.get(assetUrl);
+    if (prototype) {
+      replaceHarthmereQuestObjectFallbackWithAsset(
+        markerMesh,
+        prototype,
+        assetUrl
+      );
+    }
+  }
+
+  private applyLoadedGroveQuestObjectAssets(assetUrl: string): void {
+    for (const [markerId, markerMesh] of this.markerMeshes) {
+      if (HARTHMERE_GROVE_QUEST_OBJECT_ASSET_URLS[markerId] !== assetUrl) {
+        continue;
+      }
+      this.applyLoadedGroveQuestObjectAsset(markerId, markerMesh);
+    }
+  }
+
+  private queueGroveQuestObjectAssetLoads(): void {
+    if (typeof document === "undefined") return;
+    for (const markerId of this.markerMeshes.keys()) {
+      const assetUrl = HARTHMERE_GROVE_QUEST_OBJECT_ASSET_URLS[markerId];
+      if (
+        !assetUrl ||
+        this.groveQuestObjectAssetPrototypes.has(assetUrl) ||
+        this.groveQuestObjectAssetLoading.has(assetUrl) ||
+        this.groveQuestObjectAssetFailed.has(assetUrl)
+      ) {
+        continue;
+      }
+      const loading = this.repairCartAssetLoader
+        .loadAsync(assetUrl)
+        .then((gltf) => {
+          const prototype = gltf.scene ?? gltf.scenes?.[0];
+          if (!prototype) {
+            throw new Error(`Grove quest object GLB has no scene: ${assetUrl}`);
+          }
+          this.groveQuestObjectAssetPrototypes.set(assetUrl, prototype);
+          this.groveQuestObjectAssetFailed.delete(assetUrl);
+          this.applyLoadedGroveQuestObjectAssets(assetUrl);
+        })
+        .catch(() => {
+          // The semantic procedural object remains visible and interactable.
+          this.groveQuestObjectAssetFailed.add(assetUrl);
+        })
+        .finally(() => {
+          this.groveQuestObjectAssetLoading.delete(assetUrl);
+        });
+      this.groveQuestObjectAssetLoading.set(assetUrl, loading);
+    }
+  }
+
   // HARTHMERE_ENTITY_GROUNDING: keep visible quest markers resting on the real
   // terrain surface (cave-safe + water-aware) instead of a flat authored Y.
   private groundVisibleMarkers(): void {
@@ -1072,16 +1196,18 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
       // keep-last-surface memory. A defined feetY is the real (or last-known
       // real) surface; undefined means terrain is genuinely unknown here.
       const isFieldTarget = isHarthmereJobsBoardFieldTargetMarkerId(id);
+      const isCaveDeposit = isHarthmereExoticMatterDepositMarkerId(id);
       const groundedFeetY = harthmereGroundedFeetYWithMemory(
         this.resources,
         this.groundedFeetYByColumn,
         xz[0],
         xz[1],
         hintY,
-        // Permanent business fixtures may be under an authored awning. Other
-        // outdoor quest props retain open-sky grounding so cave ceilings do
-        // not pull them away from their intended surface.
-        !isFieldTarget
+        // Permanent business fixtures may be under an authored awning, and
+        // Exotic Matter deposits are deliberately underground. Both require
+        // cave-safe probing; ordinary outdoor quest props retain open-sky
+        // grounding so a ceiling does not pull them off their intended floor.
+        !isFieldTarget && !isCaveDeposit
       );
       const feetY = isFieldTarget
         ? harthmereJobsBoardFieldTargetFeetY(groundedFeetY, hintY)
@@ -1278,6 +1404,11 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
       repairCartAssetUrl: HARTHMERE_LUIS_REPAIR_CART_ASSET_URL,
       repairCartAssetLoaded: Boolean(this.repairCartPrototype),
       repairCartAssetFailed: this.repairCartAssetFailed,
+      groveQuestObjectAssetUrls: HARTHMERE_GROVE_QUEST_OBJECT_ASSET_URLS,
+      groveQuestObjectAssetsLoaded: [
+        ...this.groveQuestObjectAssetPrototypes.keys(),
+      ],
+      groveQuestObjectAssetsFailed: [...this.groveQuestObjectAssetFailed],
       activeMarkerId: this.activeMarkerId,
       visibleSnapshotGroveMarkerIds: [...this.visibleSnapshotGroveMarkerIds],
       markers: () =>
@@ -1292,6 +1423,9 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
             (marker) => marker.id === id
           )?.dynamic,
           beaconVisible: this.activeBeacons.get(id)?.visible === true,
+          assetUrl: mesh.userData.harthmereQuestObjectAssetUrl,
+          authoredAssetLoaded:
+            mesh.userData.harthmereQuestObjectAuthoredAssetLoaded === true,
           chapter1Objective: id === this.chapter1ObjectiveMarkerId,
         })),
     };
@@ -1317,8 +1451,17 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
       }
     }
     this.queueRepairCartAssetLoad();
+    this.queueGroveQuestObjectAssetLoads();
     this.animateActiveBeacons(dt);
-    this.groundVisibleMarkers();
+    // Terrain/WASM grounding is static world-placement work, not animation.
+    // Running it for every visible marker on every frame cost roughly 5 ms in
+    // the captured fight. Four hertz is responsive to shard streaming while
+    // keeping the per-frame renderer path bounded.
+    this.groundRefreshSeconds -= Math.min(dt, 0.5);
+    if (this.groundRefreshSeconds <= 0) {
+      this.groundRefreshSeconds = 0.25;
+      this.groundVisibleMarkers();
+    }
     this.debugRefreshSeconds -= Math.min(dt, 0.5);
     if (this.debugRefreshSeconds <= 0) {
       this.debugRefreshSeconds = 0.5;

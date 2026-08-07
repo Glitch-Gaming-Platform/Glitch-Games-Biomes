@@ -110,12 +110,14 @@ check(
     runner.includes("buyAndEquipJobsE2ERequiredTool") &&
     runner.includes("missing-tool job did not point to its exact vendor") &&
     runner.includes("name: `Buy ${tool.listing.toolName}`") &&
-    runner.includes("purchase returns marker from vendor to job") &&
+    runner.includes(
+      "purchase advances beyond the vendor to the next job requirement"
+    ) &&
     runner.includes('name: "Hotbar 1"') &&
     runner.includes("selected job tool has a visible held mesh") &&
     runner.includes("itemMeshInstance?.three") &&
     runner.includes("jobsBoardFieldToolUseScreenshots") &&
-    runner.includes("field-tool-use.png"),
+    runner.includes("field-interaction.png"),
   "focused repair/cleanup acceptance buys each real tool, follows the returning marker, equips a visible held mesh, and captures field use"
 );
 check(
@@ -148,7 +150,8 @@ check(
   "all Jobs Board catalog warps ground their feet, use the stable live-player relocation path, and ignore only exact aborted background polls"
 );
 check(
-  runner.includes('operation: "pickup"') &&
+  runner.includes("performJobsE2ERealDeliveryPickup") &&
+    runner.includes("real F pickup creates parcel and advances marker") &&
     runner.includes("marker did not advance to drop-off") &&
     runner.includes("parcel was not created in native inventory") &&
     runner.includes("delivered parcel was not consumed natively") &&
@@ -158,8 +161,8 @@ check(
 check(
   runner.includes("server escort scheduler completed todo") &&
     runner.includes("scheduler materializes native escort ECS") &&
-    runner.includes("supply the one") &&
-    runner.includes("authoritative ECS arrival") &&
+    runner.includes("Anima escort reaches supplied destination") &&
+    runner.includes("destinationPosition: escortPosition") &&
     runner.includes("reward was not paid through native wallet"),
   "focused-stack escort proves native companion materialization, authoritative arrival, scheduler completion, and payout"
 );

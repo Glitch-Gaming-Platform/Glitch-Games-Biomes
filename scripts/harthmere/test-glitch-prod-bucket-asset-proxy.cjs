@@ -22,6 +22,7 @@ function ok(condition, message) {
 
 const app = read("src/server/web/app.ts");
 const deploy = read("scripts/glitch/deploy-production-local-redis-smoke.sh");
+const dockerfile = read("Dockerfile.biomes");
 const waitForAzureRevisionReady = deploy.slice(
   deploy.indexOf("wait_for_azure_revision_ready()"),
   deploy.indexOf("ensure_azure_revision_active()")
@@ -80,8 +81,30 @@ ok(
   deploy.includes("validate_production_bucket_assets") &&
     deploy.includes("Origin: https://www.glitch.fun") &&
     deploy.includes("69e51f48fd43cdef37609a2b2cf880e7570e35aa") &&
+    deploy.includes('"wearables/animations"') &&
     deploy.includes("source=local"),
-  "deploy script validates known failing bikkie assets with iframe-like request headers"
+  "deploy script validates current versioned canaries and known failing bikkie assets with iframe-like request headers"
+);
+ok(
+  deploy.includes("check-snapshot-asset-version-boundary.cjs .") &&
+    dockerfile.includes("check-snapshot-asset-version-boundary.cjs /app"),
+  "workspace and final Docker image both enforce the asset_versions bucket boundary"
+);
+const preTrafficAssetValidation = deploy.indexOf(
+  'validate_production_bucket_assets "$latest_revision" revision'
+);
+const trafficPromotion = deploy.indexOf(
+  'force_azure_traffic_to_revision "$latest_revision"',
+  preTrafficAssetValidation
+);
+ok(
+  preTrafficAssetValidation !== -1 &&
+    trafficPromotion !== -1 &&
+    preTrafficAssetValidation < trafficPromotion &&
+    deploy.includes(
+      'validate_production_bucket_assets "$latest_revision" production'
+    ),
+  "candidate revision bucket assets pass before traffic and the production FQDN passes after promotion"
 );
 
 if (failures.length) {

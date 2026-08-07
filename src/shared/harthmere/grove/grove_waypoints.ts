@@ -44,8 +44,9 @@ import type {
   GroveQuestStep,
 } from "@/shared/harthmere/grove/grove_quest_schema";
 import type { Vec3 } from "@/shared/math/types";
+import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
 
-export const GROVE_WAYPOINTS_VERSION = 1 as const;
+export const GROVE_WAYPOINTS_VERSION = 2 as const;
 
 /**
  * Live call sites that still read `landmark.position` directly instead of
@@ -136,7 +137,16 @@ export function groveMarkerWorldPosition(
   markerId: string
 ): Vec3 | undefined {
   const landmark = groveLandmark(markerId);
-  return landmark ? groveLandmarkWorldPosition(landmark) : undefined;
+  if (!landmark) return undefined;
+  const livePlaneFallback = groveLandmarkWorldPosition(landmark);
+  // The Grove is hilly. Y=71 is only correct around the fountain, so every
+  // quest/map/browser consumer must use the checked-in production terrain
+  // scan when one exists. Unscanned landmarks retain the already-live fallback
+  // rather than inventing another magic height.
+  return resolveHarthmereProductionMarkerPosition({
+    markerId,
+    fallback: livePlaneFallback,
+  });
 }
 
 export function groveStepWorldWaypoint(step: GroveQuestStep): Vec3 | undefined {

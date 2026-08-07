@@ -196,4 +196,40 @@ describe("CurrentQuestObjectiveHUD", () => {
       "Deliver the sealed package to the marked drop-off."
     );
   });
+
+  it("uses the exact Grove-owned pin to override Road Ahead at every objective", () => {
+    const groveQuest: MapTrackableQuest = {
+      questId: "8760000000000003",
+      title: "Paint Knows Where Eyes Go",
+      area: "The Grove",
+      status: "active",
+      firstMarkerId: "native_quest:8760000000000003:8760000000000003",
+      objective: "Choose what the brightest route flag means.",
+    };
+    const roadAhead: MapTrackableQuest = {
+      questId: "snapshot_road_ahead_full_chain",
+      title: "Road Ahead",
+      area: "The Grove",
+      status: "active",
+      kind: "snapshot_nux_challenge_bridge",
+      kindLabel: "Story Quest",
+      objective: "Talk to Jackie",
+    };
+
+    assert.equal(
+      currentQuestObjectiveForHUDForTest({
+        quests: [roadAhead, groveQuest],
+        activeMapPin: {
+          markerId: "grove_painted_route_flags",
+          label: "Painted Route Flags",
+          kind: "interactable",
+          worldPosition: [501, 71, -131],
+          ownerQuestId: "painted_path_language",
+          ownerStepId: "painted_path_language_obj_05",
+          setAtMs: 3000,
+        },
+      }),
+      "Choose what the brightest route flag means."
+    );
+  });
 });

@@ -6,6 +6,7 @@
 // it fetches live farming/food state and submits cook_enqueue/collect/cancel.
 
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
+import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import {
   closePointerLockUnlockWhileOpen,
   openPointerLockUnlockWhileOpen,
@@ -13,6 +14,7 @@ import {
 } from "@/client/components/contexts/pointerLockModalPolicy";
 import {
   createHarthmereCookingAdapter,
+  projectNativeHarthmereCookingInventory,
   type HarthmereCookJobClient,
   type HarthmereCookSnapshot,
   type HarthmereCookVisibleRecipe,
@@ -37,13 +39,19 @@ const COOKING_OPEN_REQUEST_STORAGE_KEY =
 const COOKING_POLL_INTERVAL_MS = 1000;
 
 function toCookSnapshot(
-  farmingFoodState: any
+  farmingFoodState: any,
+  nativeInventory?: Parameters<
+    typeof projectNativeHarthmereCookingInventory
+  >[1]
 ): HarthmereCookSnapshot | undefined {
   if (!farmingFoodState) {
     return undefined;
   }
   return {
-    inventory: farmingFoodState.inventory ?? {},
+    inventory: projectNativeHarthmereCookingInventory(
+      farmingFoodState.inventory ?? {},
+      nativeInventory
+    ),
     stations: Array.isArray(farmingFoodState.cookingStations)
       ? farmingFoodState.cookingStations
       : [],
@@ -880,6 +888,8 @@ const jobFooterStyle: React.CSSProperties = {
 };
 
 export const HarthmereCookingStationPanel: React.FunctionComponent = () => {
+  const { reactResources, userId } = useClientContext();
+  const nativeInventory = reactResources.use("/ecs/c/inventory", userId);
   const pointerLockManager = usePointerLockManager();
   const shouldReturnPointerLock = useRef<PointerLockUnlockWhileOpenReturnRef>(
     {
@@ -962,13 +972,23 @@ export const HarthmereCookingStationPanel: React.FunctionComponent = () => {
   const refresh = useCallback(async () => {
     try {
       const next = await fetchCookingState();
-      setSnapshot(next);
+      setSnapshot(
+        next
+          ? {
+              ...next,
+              inventory: projectNativeHarthmereCookingInventory(
+                next.inventory,
+                nativeInventory
+              ),
+            }
+          : undefined
+      );
     } catch {
       setSnapshot(undefined);
     } finally {
       setHydrated(true);
     }
-  }, []);
+  }, [nativeInventory]);
 
   // Fetch on open and poll while open so progress bars and "Ready" update live.
   useEffect(() => {
@@ -1016,7 +1036,9 @@ export const HarthmereCookingStationPanel: React.FunctionComponent = () => {
             submit: async (operation, payload) => {
               const result = await submitCookingAction(operation, payload);
               if (result.farmingFoodState) {
-                setSnapshot(toCookSnapshot(result.farmingFoodState));
+                setSnapshot(
+                  toCookSnapshot(result.farmingFoodState, nativeInventory)
+                );
               }
               if (result.ok) {
                 emitHarthmereSoundEffect(
@@ -1027,7 +1049,7 @@ export const HarthmereCookingStationPanel: React.FunctionComponent = () => {
             },
           })
         : undefined,
-    [request, snapshot, hydrated]
+    [request, snapshot, hydrated, nativeInventory]
   );
 
   const recipes = useMemo(() => adapter?.getRecipes() ?? [], [adapter]);

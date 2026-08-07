@@ -15,6 +15,7 @@ import { anItem, resolveItemAttributeId } from "@/shared/game/item";
 import { createBag } from "@/shared/game/items";
 import { itemBagToString } from "@/shared/game/items_serde";
 import { sellPrice } from "@/shared/game/sales";
+import type { BiomesId } from "@/shared/ids";
 import { idToNpcType } from "@/shared/npc/bikkie";
 import { modifyNpcHealth } from "@/shared/npc/modify_health";
 import {
@@ -43,7 +44,11 @@ import {
   bodyVerticalGap,
   horizontalDistance,
 } from "@/shared/npc/behavior/combat_geometry";
-import { canAttackTarget } from "@/shared/npc/behavior/chase_attack";
+import {
+  ATTACK_MEMORY_SECONDS,
+  canAttackTarget,
+  harthmereProjectileRetaliationLeashDistance,
+} from "@/shared/npc/behavior/chase_attack";
 import {
   applyHarthmereNativeAttackStats,
   awardHarthmereNativeCombatXp,
@@ -282,6 +287,13 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
       | undefined;
     let acceptedAttackCadence:
       ReturnType<typeof harthmereNativeAttackCadenceDecision> | undefined;
+    let pendingProjectileRetaliation:
+      | {
+          attackerId: BiomesId;
+          leashDistance: number;
+          expiresAt: number;
+        }
+      | undefined;
 
     if (event.damageSource?.kind === "attack") {
       if (npcAttacker) {
@@ -440,6 +452,24 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
             return;
           }
           const nowMs = Date.now();
+          const stageProjectileRetaliation = (
+            projectileReach: number,
+            targetPosition: readonly [number, number, number]
+          ) => {
+            const leashDistance = harthmereProjectileRetaliationLeashDistance({
+              authoredDisengageDistance: nativeProfile.disengageDistance,
+              projectileReach,
+              attackerDistance: dist(attackerPosition, targetPosition),
+            });
+            if (leashDistance <= nativeProfile.disengageDistance) {
+              return;
+            }
+            pendingProjectileRetaliation = {
+              attackerId: attacker.id,
+              leashDistance,
+              expiresAt: nowMs / 1000 + ATTACK_MEMORY_SECONDS,
+            };
+          };
           const burn = deserializedNpcState.energyWeapon?.burn;
           const helixWeapon = getHarthmereEnergyWeapon("helix_projector");
           const authorizedBurnTick = Boolean(
@@ -571,6 +601,10 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
           if (authorizedSecondary && energyWeapon && secondaryDamage) {
             hpDelta = -secondaryDamage;
             energyWeaponForResistance = energyWeapon;
+            stageProjectileRetaliation(
+              energyWeapon.hardMaxRange,
+              targetPosition
+            );
             if (
               authorization?.mode === "singularity" &&
               energyWeapon.special.kind === "singularity"
@@ -682,6 +716,12 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
                 reach,
               });
               return;
+            }
+            if (
+              itemProfile?.kind === "ranged" ||
+              itemProfile?.kind === "spell"
+            ) {
+              stageProjectileRetaliation(reach, targetPosition);
             }
 
             let baseDamage = energyWeapon
@@ -899,6 +939,31 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
         Math.round(
           resistedDamage + (rawDamage - resistedDamage) * armorPenetration
         )
+      );
+    }
+
+    if (pendingProjectileRetaliation && npc.health().hp + hpDelta > 0) {
+      deserializedNpcState.chaseAttack ??= {};
+      const existing = deserializedNpcState.chaseAttack.projectileRetaliation;
+      deserializedNpcState.chaseAttack.projectileRetaliation = {
+        attackerId: pendingProjectileRetaliation.attackerId,
+        leashDistance:
+          existing?.attackerId === pendingProjectileRetaliation.attackerId
+            ? Math.max(
+                existing.leashDistance,
+                pendingProjectileRetaliation.leashDistance
+              )
+            : pendingProjectileRetaliation.leashDistance,
+        expiresAt:
+          existing?.attackerId === pendingProjectileRetaliation.attackerId
+            ? Math.max(
+                existing.expiresAt,
+                pendingProjectileRetaliation.expiresAt
+              )
+            : pendingProjectileRetaliation.expiresAt,
+      };
+      npc.setNpcState(
+        NpcState.create({ data: serializeNpcCustomState(deserializedNpcState) })
       );
     }
 

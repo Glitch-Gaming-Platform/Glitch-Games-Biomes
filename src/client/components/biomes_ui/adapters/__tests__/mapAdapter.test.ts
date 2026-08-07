@@ -676,6 +676,38 @@ describe("biomes_ui map adapter (V141)", () => {
     );
   });
 
+  it("uses live stepId/progress instead of the last-completed objective evidence", () => {
+    installFixture({
+      acceptedQuestIds: [],
+      activeObjectiveIndex: 0,
+      objectiveIndexByQuestId: {},
+      objectiveProgressByQuestId: {},
+      completedQuestIds: [],
+    });
+
+    const adapter = buildBiomesUIMapAdapterForTest(1, undefined, undefined, {
+      active: {
+        coops_key_hen: {
+          source: "snapshot_grove",
+          objectiveIndex: 0,
+          stepId: "coops_key_hen:2:interact",
+          progress: 3,
+        },
+      },
+      completed: {},
+    });
+
+    assert.equal(adapter.getMissionTitle(), "Coop's Key Hen");
+    assert.equal(adapter.getMissionSteps()[0]?.done, true);
+    assert.equal(adapter.getMissionSteps()[1]?.done, true);
+    assert.equal(adapter.getMissionSteps()[2]?.done, false);
+    const supplyBox = adapter
+      .getMarkers()
+      .find((marker) => marker.label === "Old Supply Box");
+    assert.equal(supplyBox?.active, true);
+    assert.equal(supplyBox?.kind, "objective");
+  });
+
   it("projects an accepted Jackie quest into the real BiomesUI map adapter", () => {
     installFixture({
       acceptedQuestIds: ["fountain_buttons_first"],

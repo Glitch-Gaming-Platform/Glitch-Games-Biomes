@@ -594,14 +594,14 @@ const QUESTS: GroveQuestDef[] = [
         index: 0,
         label: "Collect one clean root sample at the muck edge.",
         trigger: "collect",
-        markerId: "doc_field_table",
+        markerId: "doc_clean_root_sample",
       },
       {
         id: "sticky_medicine_obj_02",
         index: 1,
         label: "Collect one mucked root sample further in.",
         trigger: "collect",
-        markerId: "muckwad_patch",
+        markerId: "doc_mucked_root_sample",
       },
       {
         id: "sticky_medicine_obj_03",
@@ -609,7 +609,7 @@ const QUESTS: GroveQuestDef[] = [
         label:
           "Return along the safe edge to Doc's field table without lingering in heavy muck.",
         trigger: "near_location",
-        markerId: "muckwad_patch",
+        markerId: "doc_field_table",
       },
       {
         id: "sticky_medicine_obj_04",
@@ -987,7 +987,7 @@ const QUESTS: GroveQuestDef[] = [
         index: 0,
         label: "Collect a sealed muck sample at the muck edge.",
         trigger: "collect",
-        markerId: "muckwad_patch",
+        markerId: "doc_sealed_muck_sample",
       },
       {
         id: "samples_for_the_chapel_obj_02",

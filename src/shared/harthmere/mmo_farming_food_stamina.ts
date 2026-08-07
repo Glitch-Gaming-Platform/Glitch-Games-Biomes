@@ -388,6 +388,17 @@ export const HARTHMERE_FOOD_DEFINITIONS: Record<string, HarthmereFoodDefinition>
 };
 
 const HARTHMERE_LOCAL_COOKING_RECIPES: Record<string, HarthmereCookingRecipe> = {
+  harthmere_grove_festival_skewer: {
+    recipeId: "harthmere_grove_festival_skewer",
+    displayName: "Carlo's Festival Skewer",
+    stationKind: "campfire",
+    inputs: { grove_festival_skewer_ingredients: 1 },
+    outputs: { grove_festival_skewer: 1 },
+    cookTimeMs: 45_000,
+    xp: 12,
+    maxBatchCount: 5,
+    requiredSkillLevel: 1,
+  },
   grilled_meat: {
     recipeId: "grilled_meat",
     displayName: "Grilled Meat",

@@ -163,8 +163,13 @@ describe("world-object F interaction: all prop types", () => {
     }
     assert.equal(
       harthmereObjectUsesContainerFlow({ label: "Road Kit Crate" }),
+      false,
+      "the procedural Road Kit has no native ECS container entity"
+    );
+    assert.equal(
+      harthmereObjectUsesContainerFlow({ label: "Clothing Crate" }),
       true,
-      "ordinary authored containers still open normally"
+      "an actual native ECS container still opens normally"
     );
   });
 

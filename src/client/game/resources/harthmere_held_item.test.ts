@@ -59,4 +59,15 @@ describe("Harthmere authoritative held-item bridge", () => {
       false
     );
   });
+
+  it("keeps Carlo's authored skewer visible in the protected Grove", () => {
+    const nativeId = harthmereNativeBiomesIdForItemId(
+      "grove_festival_skewer"
+    );
+    assert(nativeId);
+    assert.equal(
+      isHarthmereProtectedRegionVisibleHeldItem(anItem(nativeId)),
+      true
+    );
+  });
 });

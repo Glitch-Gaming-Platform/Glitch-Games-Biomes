@@ -3,6 +3,7 @@ import { blockIsEmptyInTensor } from "@/shared/game/terrain_helper";
 import { blockPos, voxelShard } from "@/shared/game/shard";
 import {
   HARTHMERE_EXOTIC_MATTER_CAVES,
+  isHarthmereAdditiveTownExoticMatterCave,
   type HarthmereExoticMatterBounds,
 } from "@/shared/harthmere/exotic_matter_caves";
 import {
@@ -31,15 +32,6 @@ export const MOUNTAIN_WIND_HIGH_ALTITUDE_MIN_Y = 118;
 // remaining user-confirmed caves were recorded against the retired +512 town
 // layout, so their current additive-world authored X is 512 blocks lower.
 const HARTHMERE_LEGACY_CAVE_SCAN_OFFSET_X = 512;
-const HARTHMERE_TOWN_LOCAL_CAVE_IDS = new Set([
-  "old_well_descent_room",
-  "underways_north_south_tunnel",
-  "underways_east_west_tunnel",
-  "rat_crowns_den",
-  "smuggler_drain_vault",
-  "crypt_rest_room",
-]);
-
 type TerrainAudioDeps = {
   get(path: any, shard: any): any;
 };
@@ -65,7 +57,7 @@ export function knownHarthmereCaveAt(position: ReadonlyVec3) {
 
   const authoredX = position[0] - HARTHMERE_ADDITIVE_TOWN_OFFSET_X;
   return HARTHMERE_EXOTIC_MATTER_CAVES.find((cave) => {
-    const caveX = HARTHMERE_TOWN_LOCAL_CAVE_IDS.has(cave.caveId)
+    const caveX = isHarthmereAdditiveTownExoticMatterCave(cave.caveId)
       ? authoredX
       : authoredX + HARTHMERE_LEGACY_CAVE_SCAN_OFFSET_X;
     return inBounds([caveX, position[1], position[2]], cave.bounds);

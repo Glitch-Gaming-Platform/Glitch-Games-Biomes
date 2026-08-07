@@ -8,9 +8,11 @@ import {
   cancelPendingMeleeAttack,
   chasePathTargetIsStale,
   enhancedNightMuckerHexCombatParams,
+  effectiveRetaliationDisengageDistance,
   evaluateMixedCreatureGroupRetaliationTarget,
   evaluateRetaliationTarget,
   effectiveAttackStrikeDelaySecs,
+  harthmereProjectileRetaliationLeashDistance,
   isMixedCreatureGroupRetaliationEligible,
   isMixedCreatureGroupRetaliationName,
   isHarthmereCivilianNpcName,
@@ -34,6 +36,7 @@ import {
   HARTHMERE_NPC_SPEED_STEP_DOWN_10,
   HARTHMERE_NPC_SPEED_STEP_DOWN_30,
   HARTHMERE_NON_BOSS_CREATURE_MELEE_FOV_CAP_DEG,
+  HARTHMERE_PROJECTILE_RETALIATION_CHASE_BUFFER_METERS,
   HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER,
   retaliationTargetRotationIndex,
   isRetaliationEncounterParticipant,
@@ -941,6 +944,90 @@ describe("chase attack: multiplayer retaliation rotation", () => {
         isNpc: true,
       }),
       true
+    );
+  });
+});
+
+describe("chase attack: long-range projectile retaliation", () => {
+  const attackerId = 9301 as BiomesId;
+  const now = 10_000;
+
+  it("extends only projectiles that outrange the authored chase leash", () => {
+    assert.equal(
+      harthmereProjectileRetaliationLeashDistance({
+        authoredDisengageDistance: 34,
+        projectileReach: 24,
+        attackerDistance: 20,
+      }),
+      34,
+      "ordinary bow contact inside a Mucker leash should not enlarge it"
+    );
+    assert.equal(
+      harthmereProjectileRetaliationLeashDistance({
+        authoredDisengageDistance: 16,
+        projectileReach: 24,
+        attackerDistance: 20,
+      }),
+      24 + HARTHMERE_PROJECTILE_RETALIATION_CHASE_BUFFER_METERS,
+      "a bow that can hit livestock beyond its leash must open a chase"
+    );
+    assert.equal(
+      harthmereProjectileRetaliationLeashDistance({
+        authoredDisengageDistance: 34,
+        projectileReach: 68,
+        attackerDistance: 60,
+      }),
+      68 + HARTHMERE_PROJECTILE_RETALIATION_CHASE_BUFFER_METERS,
+      "the longest energy weapon must not become a free stationary kill"
+    );
+  });
+
+  it("acquires the projectile attacker during retaliation memory, then restores the authored leash", () => {
+    const projectileRetaliation = {
+      attackerId,
+      leashDistance: 72,
+      expiresAt: now + ATTACK_MEMORY_SECONDS,
+    };
+    const extendedDistance = effectiveRetaliationDisengageDistance({
+      authoredDisengageDistance: 34,
+      targetId: attackerId,
+      now,
+      projectileRetaliation,
+    });
+    assert.equal(extendedDistance, 72);
+    assert.equal(
+      evaluateRetaliationTarget({
+        lastDamageSource: { kind: "attack", attacker: attackerId },
+        lastDamageTime: now - 1,
+        npcPosition: [0, 0, 0],
+        deAggroDistanceSq: extendedDistance ** 2,
+        lookupEntity: () => ({
+          position: { v: [60, 0, 0] },
+          health: { hp: 100 },
+        }),
+        now,
+        memorySeconds: ATTACK_MEMORY_SECONDS,
+      }),
+      attackerId
+    );
+    assert.equal(
+      effectiveRetaliationDisengageDistance({
+        authoredDisengageDistance: 34,
+        targetId: attackerId,
+        now: projectileRetaliation.expiresAt,
+        projectileRetaliation,
+      }),
+      34
+    );
+    assert.equal(
+      effectiveRetaliationDisengageDistance({
+        authoredDisengageDistance: 34,
+        targetId: 9302 as BiomesId,
+        now,
+        projectileRetaliation,
+      }),
+      34,
+      "the extension belongs only to the player whose projectile connected"
     );
   });
 });
