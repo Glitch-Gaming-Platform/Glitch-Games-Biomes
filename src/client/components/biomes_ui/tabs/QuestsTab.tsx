@@ -24,6 +24,7 @@ import {
 import {
   BIOMES_UI_MAIN_QUEST_EVENT,
   biomesUIMainQuestClearedSelectionForTest,
+  isBiomesUIMainQuestClearedSelection,
   readBiomesUIMainQuestSelection,
   setBiomesUIMainQuestFromTrackableQuest,
   writeBiomesUIMainQuestSelection,
@@ -101,6 +102,23 @@ export function questsTabStatusCountsForTest(
   return counts;
 }
 
+export function questsTabInitialSelectedQuestIdForTest(input: {
+  quests: readonly MapTrackableQuest[];
+  mainQuest: BiomesUIMainQuestSelection | undefined;
+}): string | null {
+  if (
+    !input.mainQuest ||
+    isBiomesUIMainQuestClearedSelection(input.mainQuest)
+  ) {
+    return null;
+  }
+  return input.quests.some(
+    (quest) => quest.questId === input.mainQuest?.questId
+  )
+    ? input.mainQuest.questId
+    : null;
+}
+
 export function questsTabObjectiveHeadingForTest(
   status: MapTrackableQuest["status"]
 ): string {
@@ -141,10 +159,10 @@ export function activateQuestsTabMainQuestForTest(input: {
   );
   if (marker) {
     if (input.adapter?.setActiveMapPin) {
-      input.adapter.setActiveMapPin(marker);
+      input.adapter.setActiveMapPin(marker, { source: "user" });
     } else {
       const pin = activeBiomesUIMapPinFromMarkerForTest(marker);
-      if (pin) writeActiveBiomesUIMapPin(pin);
+      if (pin) writeActiveBiomesUIMapPin(pin, { source: "user" });
     }
   }
   return selection;
@@ -191,9 +209,27 @@ export const QuestsTab: React.FunctionComponent<{
     () => adapter?.getMainQuestSelection?.() ?? readBiomesUIMainQuestSelection()
   );
   const [filter, setFilter] = React.useState<QuestFilter>("all");
-  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [selectedId, setSelectedId] = React.useState<string | null>(() =>
+    questsTabInitialSelectedQuestIdForTest({ quests, mainQuest })
+  );
+  const didChooseQuestRef = React.useRef(selectedId !== null);
 
   React.useEffect(() => ensureQuestsTabStyles(), []);
+
+  // Some quest families hydrate just after the tab mounts. If the persisted
+  // current quest was not in the first adapter snapshot, select it as soon as
+  // it appears. Stop auto-selecting after any user choice so clicking a row
+  // closed or reviewing a different quest remains respected.
+  React.useEffect(() => {
+    if (didChooseQuestRef.current) return;
+    const currentQuestId = questsTabInitialSelectedQuestIdForTest({
+      quests,
+      mainQuest,
+    });
+    if (!currentQuestId) return;
+    didChooseQuestRef.current = true;
+    setSelectedId(currentQuestId);
+  }, [mainQuest, quests]);
 
   // Same poll-while-mounted pattern the map tab uses: quest progress advances
   // while the menu is open (party members, timers), and the adapter is the
@@ -365,11 +401,12 @@ export const QuestsTab: React.FunctionComponent<{
               <li key={quest.questId} style={{ marginBottom: 6 }}>
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    didChooseQuestRef.current = true;
                     setSelectedId((current) =>
                       current === quest.questId ? null : quest.questId
-                    )
-                  }
+                    );
+                  }}
                   aria-expanded={isSelected}
                   style={{
                     display: "block",

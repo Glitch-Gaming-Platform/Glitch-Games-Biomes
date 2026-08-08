@@ -4,10 +4,19 @@ This runbook records the deterministic cutscene-based workflow for the eleven
 Harthmere boss hero images. The scene source of truth is
 `src/shared/cutscene/promo_scenes.ts`, in `HARTHMERE_BOSS_PROMO_SPECS`.
 
+The accepted 2026-08-07 gallery is in
+`artifacts/cutscenes/final-boss-marketing-20260807/`, with a branded contact
+sheet at `all-bosses-contact-sheet.jpg`. Every accepted row keeps branded/raw
+PNG, HAR, and capture metadata together. Rows made through the mutable client
+layer are labeled `mounted build + injected hotfix`; they prove the current
+mounted build plus the recorded hotfix chain, not immutable-image packaging.
+
 ## Fast path
 
 1. Use Node `24.18.1` from `.nvmrc`.
-2. Run the narrow cutscene and promo-scene tests before rebuilding.
+2. Run the narrow cutscene and promo-scene tests. Do **not** rebuild for camera,
+   staging, actor-visibility, or capture-harness iteration when the mounted
+   image already contains the mutable-hotfix bootstrap.
 3. Generate no-browser angle candidates and reject body-envelope/FOV/dolly
    mistakes before Chromium:
 
@@ -90,21 +99,51 @@ promoBatchCaptureAuthUrl("boss-marketing", "http://localhost:3000");
 
 | Boss                     | Encounter scenery              | Stage position         | Camera far → near                   | FOV |    Yaw | Time |
 | ------------------------ | ------------------------------ | ---------------------- | ----------------------------------- | --: | -----: | ---: |
-| Muck-Scarred Helix       | West Muck Breach               | `238, 32.05, -500`     | `222, 36, -496` → `225, 35, -499`   |  44 |     0° | 0.78 |
+| Muck-Scarred Helix       | West Muck Breach               | `218, 38.05, -492`     | `233.373, 42.37, -492` → `229.373, 41.17, -492` |  40 |     0° | 0.78 |
 | The Gilded Bull          | Sun Court                      | `2968, 46.08, -312`    | `2950, 51, -305` → `2957, 49, -309` |  32 | −22.5° | 0.38 |
-| The Ninth Winter         | Ash Hall                       | `3524, 65, -344`       | `3498, 70, -344` → `3505, 69, -344` |  42 |   −45° | 0.86 |
-| The Failed Apprentice    | Bellward Halls — Bell Ring     | `354, 53.05, -313.4`   | `366, 58, -301` → `363, 56.5, -304` |  35 |    45° | 0.73 |
-| The First Choir          | Bellward Halls — Central Choir | `356, 53.05, -309`     | `370, 58, -295` → `367, 56.5, -298` |  35 |    45° | 0.78 |
-| The Echo-Singer          | Veins of the Wyrm — Echo Hall  | `632, 53.05, -318`     | `616, 59, -302` → `620, 56.5, -306` |  36 |   −45° | 0.71 |
-| Vyrahel, the Vein-Keeper | Veins of the Wyrm — Spine Hall | `642, 53.05, -334`     | `656, 59, -350` → `653, 56.5, -346` |  35 |   180° | 0.66 |
-| Thaedryn the Bellbound   | Wyrm's Bed                     | `640, 53.05, -268`     | `596, 70, -212` → `602, 66, -220`   |  44 |     0° | 0.75 |
-| Hex Wraith               | Gravewood Pale Muck            | `632.924, 47, 146.321` | `620, 53, 159` → `624, 51, 155`     |  30 |   −45° | 0.74 |
-| Alpha Mucker             | Old Wood Muck Patch            | `648.693, 57, -455`    | `696, 68, -410` → `690, 66, -416`   |  40 |     0° | 0.72 |
-| The Root-Crowned Dead    | Deep Old Wood                  | `620, 53, -505`        | `603, 60, -518` → `608, 57, -514`   |  32 |   −90° | 0.80 |
+| The Ninth Winter         | Ash Hall                       | `3524, 65, -344`       | `3498, 72, -344` → `3505, 71, -344` |  45 |   −45° | 0.86 |
+| The Failed Apprentice    | Bellward Halls — Bell Ring     | `354, 80.05, -313.4`   | `366, 85, -301` → `363, 83.5, -304` |  35 |    45° | 0.73 |
+| The First Choir          | Bellward Halls — Central Choir | `356, 80.05, -309`     | `367, 84, -299` → `364, 83, -302`   |  32 |    45° | 0.78 |
+| The Echo-Singer          | Veins of the Wyrm — Echo Hall  | `632, 90.05, -318`     | `616, 96, -302` → `620, 93.5, -306` |  36 |   −45° | 0.71 |
+| Vyrahel, the Vein-Keeper | Veins of the Wyrm — Spine Hall | `642, 90.05, -334`     | `654, 95.5, -346` → `650, 93.5, -342` |  35 |   180° | 0.66 |
+| Thaedryn the Bellbound   | Wyrm's Bed                     | `760, 110.05, -268`    | `716, 127, -212` → `722, 123, -220` |  44 |     0° | 0.75 |
+| Hex Wraith               | Gravewood Pale Muck            | `628.924, 56.05, 170.321` | `638.924, 59.85, 170.321` → `634.924, 58.65, 170.321` |  35 |   −45° | 0.74 |
+| Alpha Mucker             | Old Wood Muck Patch            | `708.693, 56.05, -495` | `728.43, 68.65, -475.263` → `725.601, 67.45, -478.092` |  44 |     0° | 0.72 |
+| The Root-Crowned Dead    | Deep Old Wood                  | `604, 45.05, -517`     | `614, 50, -517` → `610.519, 48.8, -517` |  35 |   −90° | 0.80 |
 
 All eleven stills capture at `2.05s`. Their generic combat emote is delayed to
 `2.65s`, after the saved frame. A combat pose may only move before capture when
 that exact boss/clip/camera combination has passed visual QA.
+
+### 2026-08-07 no-build completion
+
+The accepted eleven-shot set was completed without rebuilding Next, the
+server, Docker, or an image. The capture lane used the compatible mounted build
+`611d083245f76f513698de90ab2c1dba2c5b6e0933008b9d75ab29795422f7e7`
+and SHA-guarded mutable client/chunk hotfixes. The final evidence and contact
+sheet are in `artifacts/cutscenes/final-boss-marketing-20260807/`; the complete
+angle history is in
+`artifacts/cutscenes/boss-camera-angle-ledger-20260805.json`.
+
+The decisive single-subject fix was promo-only suppression of three ordinary
+world render paths: regular `NpcRenderState`, Harthmere runtime-life
+placements, and gameplay players. The canonical native synthetic cutscene
+actor remains visible. If a giant foreground body does not follow changes to
+the promo stage position, treat it as a duplicate live actor, not as a camera
+or body-envelope problem.
+
+For runtime Underways scenes, use the authenticated observer route when a
+player-route missing-shard recovery attempts to navigate away from the local
+stack. Keep the streaming focus near the encounter even when the cinematic
+camera is elevated or offset. Abort immediately if the page requests Azure,
+`biomes.gg`, Firebase, Google Cloud, or any non-local Sync endpoint.
+
+The isolated capture runtime applied versions v13 through v20 as sequential
+deltas. That was valid for a throwaway, continuously running lane, but the
+individual manifests are not independently restart-safe. A durable hotfix must
+be cumulative from the immutable base or encode an explicit dependency chain.
+Always record the compatible build ID, previous and resulting SHA-256 values,
+served-byte verification, and the label `mounted build + injected hotfix`.
 
 ### Rejected passes and mistakes
 

@@ -2,11 +2,15 @@
 import assert from "assert";
 import {
   automaticQuestDestinationMarkerForTest,
+  BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY,
   biomesUIActiveMapPinNavigationAidKindForTest,
+  readActiveBiomesUIMapPin,
+  resetActiveBiomesUIMapPinVolatileStateForTest,
   shouldBlockNativeQuestPinDuringGroveQuestForTest,
   shouldPreserveExactChapter1RoutePinForTest,
   shouldPreserveExactGroveRoutePinForTest,
   shouldClearOwnedQuestMapPinForTest,
+  writeActiveBiomesUIMapPin,
 } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import { biomesUIActiveMiniMapPinDistanceLabelForTest } from "@/client/components/map/markers/biomes_ui_active_minimap_pin";
 import {
@@ -45,6 +49,54 @@ describe("active map pin navigation aid", () => {
     status: "active",
     firstMarkerId: mossyMarker.id,
   };
+
+  function withMapPinWindow(
+    storage: Pick<Storage, "getItem" | "setItem" | "removeItem">,
+    run: () => void
+  ) {
+    const previousWindow = Object.getOwnPropertyDescriptor(
+      globalThis,
+      "window"
+    );
+    const previousCustomEvent = Object.getOwnPropertyDescriptor(
+      globalThis,
+      "CustomEvent"
+    );
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: {
+        localStorage: storage,
+        dispatchEvent: () => true,
+      },
+    });
+    if (typeof CustomEvent === "undefined") {
+      Object.defineProperty(globalThis, "CustomEvent", {
+        configurable: true,
+        value: class TestCustomEvent {
+          constructor(
+            public readonly type: string,
+            public readonly init?: { detail?: unknown }
+          ) {}
+        },
+      });
+    }
+    resetActiveBiomesUIMapPinVolatileStateForTest();
+    try {
+      run();
+    } finally {
+      resetActiveBiomesUIMapPinVolatileStateForTest();
+      if (previousWindow) {
+        Object.defineProperty(globalThis, "window", previousWindow);
+      } else {
+        delete (globalThis as { window?: unknown }).window;
+      }
+      if (previousCustomEvent) {
+        Object.defineProperty(globalThis, "CustomEvent", previousCustomEvent);
+      } else {
+        delete (globalThis as { CustomEvent?: unknown }).CustomEvent;
+      }
+    }
+  }
 
   it("uses authenticated moving targets for every multi-person Chapter 1 route", () => {
     for (const stepId of [
@@ -164,6 +216,73 @@ describe("active map pin navigation aid", () => {
         ],
       }),
       false
+    );
+  });
+
+  it("allows an explicit user destination to replace protected automatic Grove guidance", () => {
+    const values = new Map<string, string>();
+    const current = {
+      markerId: "grove_painted_route_flags",
+      label: "Painted Route Flags",
+      kind: "objective",
+      ownerQuestId: "painted_path_language",
+      ownerStepId: "painted_path_language_obj_03",
+      worldPosition: [516, 71, -131] as [number, number, number],
+      setAtMs: 1,
+    };
+    const requested = {
+      ...mossyMarker,
+      markerId: mossyMarker.id,
+      setAtMs: 2,
+    };
+    values.set(BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY, JSON.stringify(current));
+    values.set(
+      "biomes.localDev.snapshotGroveQuestState",
+      JSON.stringify({ activeQuestId: "painted_path_language" })
+    );
+    withMapPinWindow(
+      {
+        getItem: (key) => values.get(key) ?? null,
+        setItem: (key, value) => values.set(key, String(value)),
+        removeItem: (key) => values.delete(key),
+      },
+      () => {
+        const automatic = writeActiveBiomesUIMapPin(requested);
+        assert.equal(automatic.ok, false);
+        assert.equal(readActiveBiomesUIMapPin()?.markerId, current.markerId);
+
+        const user = writeActiveBiomesUIMapPin(requested, { source: "user" });
+        assert.equal(user.ok, true);
+        assert.equal(readActiveBiomesUIMapPin()?.markerId, requested.markerId);
+      }
+    );
+  });
+
+  it("keeps the selected destination in memory when embedded storage is blocked", () => {
+    const requested = {
+      ...mossyMarker,
+      markerId: mossyMarker.id,
+      setAtMs: 3,
+    };
+    withMapPinWindow(
+      {
+        getItem: () => null,
+        setItem: () => {
+          throw new Error("SecurityError");
+        },
+        removeItem: () => {
+          throw new Error("SecurityError");
+        },
+      },
+      () => {
+        const result = writeActiveBiomesUIMapPin(requested, {
+          source: "user",
+        });
+        assert.equal(result.ok, true);
+        assert.equal(result.ok && result.persisted, false);
+        assert.match(result.message ?? "", /browser blocked map storage/i);
+        assert.equal(readActiveBiomesUIMapPin()?.markerId, requested.markerId);
+      }
     );
   });
 

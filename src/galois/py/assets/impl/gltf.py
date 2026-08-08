@@ -4,7 +4,9 @@ import base64
 import copy
 import hashlib
 import io
+import mimetypes
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, TypeVar, Union
 
 import numpy as np
@@ -12,8 +14,6 @@ import numpy.typing as npt
 import pygltflib
 from impl import affine_transforms, poses, repo
 from impl import types as t
-
-from impl.files import path_to_content
 
 T = TypeVar("T")
 
@@ -832,12 +832,51 @@ def serialize_to_glb(gltf: pygltflib.GLTF2):
         return output.getvalue()
 
 
+def _is_external_uri(uri: Optional[str]):
+    return uri is not None and not uri.startswith(("data:", "http:", "https:"))
+
+
+def _load_gltf_path(path: str):
+    """Load glTF/GLB data and record all external file dependencies."""
+    source_path = repo.resolve_file(path)
+    content = pygltflib.GLTF2().load(str(source_path))
+    source_dir = Path(path).parent
+    for buffer in content.buffers:
+        if _is_external_uri(buffer.uri):
+            repo.resolve_file(str(source_dir / buffer.uri))
+    for image in content.images:
+        if _is_external_uri(image.uri):
+            repo.resolve_file(str(source_dir / image.uri))
+    return content
+
+
 def load_gltf(path: str):
-    return pygltflib.GLTF2().gltf_from_json(path_to_content(path))
+    return _load_gltf_path(path)
 
 
 def load_glb(path: str):
-    return pygltflib.GLTF2().load_from_bytes(path_to_content(path))
+    return _load_gltf_path(path)
+
+
+def embed_external_images(content: pygltflib.GLTF2, path: str):
+    """Embed URI images without rewriting images already stored in buffer views."""
+    source_dir = Path(path).parent
+    for image in content.images:
+        if not _is_external_uri(image.uri):
+            continue
+        image_path = str(source_dir / image.uri)
+        with repo.open_file(image_path, binary=True) as source:
+            image_bytes = source.read()
+        mime_type = (
+            image.mimeType
+            or mimetypes.guess_type(image.uri)[0]
+            or "application/octet-stream"
+        )
+        image.uri = (
+            f"data:{mime_type};base64," + base64.b64encode(image_bytes).decode()
+        )
+        image.bufferView = None
+        image.mimeType = None
 
 
 def remove_mesh_node_names(gltf: pygltflib.GLTF2):

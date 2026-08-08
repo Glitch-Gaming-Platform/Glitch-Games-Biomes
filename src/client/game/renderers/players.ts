@@ -1,5 +1,6 @@
 import { readHarthmereCombatLockState } from "@/client/components/challenges/harthmere_combat_lock_on";
 import type { ClientConfig } from "@/client/game/client_config";
+import { isBossPromoCaptureSearch } from "@/client/game/cutscene/boss_promo_visibility";
 import { cutscenePlayerAttackVisualPose } from "@/client/game/cutscene/player_attack_visual";
 import type { AudioManager } from "@/client/game/context_managers/audio_manager";
 import type { AuthManager } from "@/client/game/context_managers/auth_manager";
@@ -689,6 +690,14 @@ export class PlayersRenderer implements Renderer {
   }
 
   draw(scenes: Scenes, dt: number) {
+    if (
+      typeof window !== "undefined" &&
+      isBossPromoCaptureSearch(window.location.search)
+    ) {
+      numPlayersCval.value = 0;
+      numRenderedPlayersCval.value = 0;
+      return;
+    }
     // Add the local player.
     const tweaks = this.resources.get("/tweaks");
     const camera = this.resources.get("/scene/camera");

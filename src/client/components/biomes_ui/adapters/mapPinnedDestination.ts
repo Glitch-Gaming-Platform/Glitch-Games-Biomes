@@ -39,6 +39,34 @@ export interface BiomesUIActiveMapPin {
   setAtMs: number;
 }
 
+export type BiomesUIMapPinWriteSource = "automatic" | "user";
+
+export interface BiomesUIMapPinWriteOptions {
+  source?: BiomesUIMapPinWriteSource;
+}
+
+export type BiomesUIMapPinWriteResult =
+  | {
+      ok: true;
+      persisted: boolean;
+      message?: string;
+    }
+  | {
+      ok: false;
+      reason: "invalid_destination" | "automatic_destination_protected";
+      message: string;
+    };
+
+// Sandboxed/cross-origin embeds can deny localStorage even after the game has
+// already loaded. Keep the accepted pin in memory so adapter refreshes do not
+// immediately replace the user's choice with the last persisted value.
+let volatileActiveMapPinOverride:
+  { pin: BiomesUIActiveMapPin | undefined } | undefined;
+
+export function resetActiveBiomesUIMapPinVolatileStateForTest() {
+  volatileActiveMapPinOverride = undefined;
+}
+
 export function shouldPreserveExactChapter1RoutePinForTest(input: {
   current:
     | Pick<BiomesUIActiveMapPin, "markerId" | "ownerQuestId" | "ownerStepId">
@@ -441,6 +469,9 @@ function parseActiveBiomesUIMapPin(
 
 export function readActiveBiomesUIMapPin(): BiomesUIActiveMapPin | undefined {
   if (typeof window === "undefined") return undefined;
+  if (volatileActiveMapPinOverride) {
+    return volatileActiveMapPinOverride.pin;
+  }
   try {
     return parseActiveBiomesUIMapPin(
       window.localStorage?.getItem(BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY) ?? null
@@ -451,14 +482,22 @@ export function readActiveBiomesUIMapPin(): BiomesUIActiveMapPin | undefined {
 }
 
 export function writeActiveBiomesUIMapPin(
-  pin: BiomesUIActiveMapPin | undefined
-): void {
-  if (typeof window === "undefined") return;
+  pin: BiomesUIActiveMapPin | undefined,
+  options: BiomesUIMapPinWriteOptions = {}
+): BiomesUIMapPinWriteResult {
+  if (typeof window === "undefined") {
+    return {
+      ok: false,
+      reason: "invalid_destination",
+      message:
+        "Map destinations are unavailable until the game finishes loading.",
+    };
+  }
   const current = readActiveBiomesUIMapPin();
   const nextNativeQuestId = /^native_quest:([^:]+):/.exec(
     String(pin?.markerId ?? "")
   )?.[1];
-  if (
+  const protectedAutomaticDestination =
     shouldPreserveExactChapter1RoutePinForTest({
       current,
       next: pin,
@@ -470,32 +509,56 @@ export function writeActiveBiomesUIMapPin(
     shouldBlockNativeQuestPinDuringGroveQuestForTest({
       nextMarkerId: pin?.markerId,
       activeGroveQuestId: activeSnapshotGroveQuestIdFromStorage(),
-    })
-  ) {
-    return;
+    });
+  if (options.source !== "user" && protectedAutomaticDestination) {
+    return {
+      ok: false,
+      reason: "automatic_destination_protected",
+      message:
+        "Kept your current destination because a background quest update tried to replace it.",
+    };
   }
+  let persisted = true;
   try {
+    const storage = window.localStorage;
+    if (!storage) {
+      throw new Error("localStorage unavailable");
+    }
     if (pin) {
-      window.localStorage?.setItem(
+      storage.setItem(
         BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY,
         JSON.stringify(pin)
       );
     } else {
-      window.localStorage?.removeItem(BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY);
+      storage.removeItem(BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY);
     }
+    volatileActiveMapPinOverride = undefined;
   } catch {
-    // The map still updates in-memory when storage is unavailable.
+    persisted = false;
+    volatileActiveMapPinOverride = { pin };
   }
   window.dispatchEvent(
     new CustomEvent(BIOMES_UI_ACTIVE_MAP_PIN_EVENT, { detail: pin })
   );
+  if (!persisted) {
+    return {
+      ok: true,
+      persisted: false,
+      message: pin
+        ? "Destination set for this session, but your browser blocked map storage. It may reset when you reload."
+        : "Destination cleared for this session, but your browser blocked map storage. It may return when you reload.",
+    };
+  }
+  return { ok: true, persisted: true };
 }
 
 // BIOMES_UI_LOCATE_ON_MAP:
 // "Locate on map" entry point. Persists the destination pin (so the nav aid /
 // minimap arrow appear as before) AND asks the UI to open the Map tab and center
 // on it. Used by the Land/Property panels' "Locate on map" buttons.
-export function requestBiomesUILocateOnMap(pin: BiomesUIActiveMapPin): void {
+export function requestBiomesUILocateOnMap(
+  pin: BiomesUIActiveMapPin
+): BiomesUIMapPinWriteResult {
   const normalized = activeBiomesUIMapPinFromMarkerForTest(
     {
       id: pin.markerId,
@@ -508,10 +571,17 @@ export function requestBiomesUILocateOnMap(pin: BiomesUIActiveMapPin): void {
     },
     pin.setAtMs
   );
-  if (!normalized) return;
-  writeActiveBiomesUIMapPin(normalized);
-  if (typeof window === "undefined") return;
+  if (!normalized) {
+    return {
+      ok: false,
+      reason: "invalid_destination",
+      message: "This destination does not have a valid map location yet.",
+    };
+  }
+  const result = writeActiveBiomesUIMapPin(normalized, { source: "user" });
+  if (!result.ok || typeof window === "undefined") return result;
   window.dispatchEvent(
     new CustomEvent(BIOMES_UI_LOCATE_ON_MAP_EVENT, { detail: normalized })
   );
+  return result;
 }

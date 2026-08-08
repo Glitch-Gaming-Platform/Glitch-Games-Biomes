@@ -9,6 +9,7 @@ import { questObjectiveRowsForTest } from "../tabs/MapQuestsTab";
 import {
   QuestsTab,
   activateQuestsTabMainQuestForTest,
+  questsTabInitialSelectedQuestIdForTest,
   questsTabMarkerForQuestForTest,
   questsTabObjectiveHeadingForTest,
   questsTabStatusCountsForTest,
@@ -40,6 +41,59 @@ const failedQuest: MapTrackableQuest = {
 };
 
 describe("QuestsTab", () => {
+  it("opens the current quest instead of the adapter's fallback mission log", () => {
+    const muckBreachBoss: MapTrackableQuest = {
+      questId: "live_helper_muck_scarred_helix",
+      title: "Muck Breach Boss",
+      area: "West Muck Breach",
+      status: "active",
+      objective:
+        "Defeat the Muck-Scarred Helix at the West Muck Breach. Damage alone does not count; the boss must be fully defeated.",
+    };
+    const gimmeShelter: MapTrackableQuest = {
+      questId: "gimme_shelter",
+      title: "Gimme Shelter",
+      area: "Biomes",
+      status: "active",
+      objective: "Build a Workbench using its blueprint.",
+    };
+    const mainQuest = {
+      questId: muckBreachBoss.questId,
+      title: muckBreachBoss.title,
+      setAtMs: 1,
+    };
+
+    assert.equal(
+      questsTabInitialSelectedQuestIdForTest({
+        quests: [gimmeShelter, muckBreachBoss],
+        mainQuest,
+      }),
+      muckBreachBoss.questId
+    );
+
+    const html = renderToStaticMarkup(
+      <QuestsTab
+        adapter={{
+          getTrackableQuests: () => [gimmeShelter, muckBreachBoss],
+          getMainQuestSelection: () => mainQuest,
+          // This is the old fallback that incorrectly won on first open.
+          getMissionTitle: () => gimmeShelter.title,
+          getMissionSteps: () => [
+            {
+              id: "gimme-step",
+              title: "Current step 10",
+              objective: gimmeShelter.objective!,
+              done: false,
+            },
+          ],
+        }}
+      />
+    );
+    assert.match(html, /aria-label="Quest detail: Muck Breach Boss"/);
+    assert.match(html, /Defeat the Muck-Scarred Helix/);
+    assert.doesNotMatch(html, /aria-label="Active mission log"/);
+  });
+
   it("moves the active HUD/map destination when a new main quest is selected", () => {
     const calls: string[] = [];
     const marker = {
@@ -60,7 +114,9 @@ describe("QuestsTab", () => {
           calls.push(`main:${quest.questId}`);
           return { questId: quest.questId, title: quest.title, setAtMs: 1 };
         },
-        setActiveMapPin: (next) => calls.push(`pin:${next.id}`),
+        setActiveMapPin: (next) => {
+          calls.push(`pin:${next.id}`);
+        },
       },
     });
     assert.equal(selection?.questId, activeQuest.questId);

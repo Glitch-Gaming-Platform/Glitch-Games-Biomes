@@ -1053,6 +1053,55 @@ describe("cutscene director core", () => {
     assert.ok(poses.every((pose) => pose.position[1] === 12));
   });
 
+  it("preserves explicit cinematic Y for synthetic ghost teleports", () => {
+    const actors = new Map<string, ResolvedActor>([
+      ["ghost", ghostActor("ghost", [0, 80, 0])],
+    ]);
+    const def = parse({
+      id: "elevated-ghost",
+      name: "Elevated Ghost",
+      cast: [
+        {
+          role: "ghost",
+          binding: {
+            kind: "ghost",
+            asset: "boss.glb",
+            family: "quest_creature",
+            spawnAt: [0, 80, 0],
+            height: 5,
+          },
+        },
+      ],
+      shots: [
+        {
+          id: "hero",
+          duration: 1,
+          camera: { kind: "trackRole", role: "ghost" },
+          actions: [
+            { kind: "teleport", role: "ghost", to: [10, 80, 20] },
+          ],
+        },
+      ],
+    });
+    const runtime = createCutsceneRuntime({
+      def,
+      actors,
+      instanceNonce: "elevated-ghost",
+    });
+    const h = new Harness(runtime, actors);
+    h.effects.push(
+      ...runtime.tick(0.05, {
+        ...h.providers(),
+        groundPosition: (_actor, desired) => [desired[0], 45, desired[2]],
+      })
+    );
+    const poses = h
+      .ofKind("actorPose")
+      .filter((pose) => pose.actor.role === "ghost");
+    assert.ok(poses.length > 0);
+    assert.ok(poses.every((pose) => pose.position[1] === 80));
+  });
+
   it("scene-level timeOfDay/music apply at begin and restore at finish", () => {
     const h = makeRuntime(
       flyoverDef({

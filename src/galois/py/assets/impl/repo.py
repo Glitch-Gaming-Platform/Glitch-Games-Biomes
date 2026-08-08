@@ -33,6 +33,12 @@ def open_file(path: str, *, binary=False):
     return open(workspace_dir() / path, "rb" if binary else "r")
 
 
+def resolve_file(path: str):
+    """Resolve a workspace-relative file while recording it as a dependency."""
+    FILE_LOG.files.append(str(path))
+    return workspace_dir() / path
+
+
 def is_file(path: str):
     FILE_LOG.files.append(str(path))
     return (workspace_dir() / path).is_file()

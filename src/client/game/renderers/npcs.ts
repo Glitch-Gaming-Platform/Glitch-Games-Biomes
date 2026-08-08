@@ -1,4 +1,5 @@
 import type { ClientConfig } from "@/client/game/client_config";
+import { isBossPromoCaptureSearch } from "@/client/game/cutscene/boss_promo_visibility";
 import type { ClientTable } from "@/client/game/game";
 import { nearestKEntitiesInFrustum } from "@/client/game/renderers/cull_entities";
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
@@ -51,6 +52,17 @@ export const makeNpcsRenderer = (
 
       numNpcsCval.value = 0;
       numNpcsRenderedCval.value = 0;
+
+      // Boss marketing scenes render one canonical synthetic actor through
+      // the cutscene bridge. Retained-world encounter NPCs otherwise remain
+      // visible through NpcRenderState, duplicating the boss or placing a
+      // lesser creature between the authored camera and subject.
+      if (
+        typeof window !== "undefined" &&
+        isBossPromoCaptureSearch(window.location.search)
+      ) {
+        return;
+      }
 
       const becomeNpc = resources.get("/scene/npc/become_npc");
       const puppetOverrides = readRenderablePuppetOverrides();

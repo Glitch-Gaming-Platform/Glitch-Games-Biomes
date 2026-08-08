@@ -205,6 +205,9 @@ describe("cutscene client integration contract", () => {
     const director = read("src/client/game/scripts/cutscene_director.ts");
     const renderer = read("src/client/game/renderers/renderer_controller.ts");
     const promo = read("src/client/game/cutscene/promo_capture.ts");
+    const assets = read(
+      "src/client/game/renderers/local_dev/harthmere_assets.ts"
+    );
     assert.match(director, /case "capture"/);
     assert.match(director, /deltaSeconds: 0/);
     assert.match(renderer, /projectionMatrix\.clone\(\)/);
@@ -241,6 +244,35 @@ describe("cutscene client integration contract", () => {
     assert.match(
       assets.slice(snapshotFilter, snapshotFilter + 1800),
       /shouldPreserveHarthmereUnderwaysRuntimeScenery\(placement\.district\)/
+    );
+    const floatingFilter = assets.indexOf(
+      "function shouldCullUnsupportedFloatingBlock"
+    );
+    const performanceFilter = assets.indexOf(
+      "function shouldKeepHarthmerePlacementForPerformance"
+    );
+    assert.ok(floatingFilter >= 0 && performanceFilter >= 0);
+    assert.match(
+      assets.slice(floatingFilter, floatingFilter + 700),
+      /shouldPreserveHarthmereUnderwaysRuntimeScenery\(placement\.district\)[\s\S]*return false/
+    );
+    assert.match(
+      assets.slice(performanceFilter, performanceFilter + 700),
+      /shouldPreserveHarthmereUnderwaysRuntimeScenery\(placement\.district\)[\s\S]*return true/
+    );
+    assert.match(
+      assets,
+      /function createHarthmereUnderwaysRoomShellPlacements[\s\S]*continuous stone floor slab[\s\S]*continuous stone ceiling slab[\s\S]*south stone wall[\s\S]*north stone wall[\s\S]*west stone wall[\s\S]*east stone wall/
+    );
+    assert.match(
+      assets,
+      /\.\.\.createHarthmereBellwardHallsShellPlacements\(\)/,
+      "Bellward Halls must install its complete runtime-owned room shell"
+    );
+    assert.match(
+      assets,
+      /placement\.asset === "arch_wall_stone" &&[\s\S]*!shouldPreserveHarthmereUnderwaysRuntimeScenery\(placement\.district\)/,
+      "the generic stone-wall removal must not erase the Underways shell"
     );
   });
 

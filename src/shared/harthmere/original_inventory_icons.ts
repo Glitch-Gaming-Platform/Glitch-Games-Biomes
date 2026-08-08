@@ -1,4 +1,5 @@
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
+import { resolveHarthmereAssetUrl } from "@/shared/harthmere/galois_asset_paths";
 import { harthmereNativeItemIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
 import { safeParseBiomesId } from "@/shared/ids";
 
@@ -61,6 +62,6 @@ export function harthmereOriginalInventoryIconUrl(
       : undefined);
   if (!assetPath) return undefined;
   return assetPath.startsWith("/")
-    ? assetPath
+    ? resolveHarthmereAssetUrl(assetPath)
     : resolveAssetUrlUntyped(assetPath);
 }

@@ -2,6 +2,7 @@
 
 # Keep the Chapter 1 animation and generated combat source assets out of LFS
 # while the repository's LFS budget is exhausted.
+harthmere/legacy_converted/** -text -filter -merge -diff
 animations/character-animations.blend -text -filter -merge -diff
 animations/character-animations_expressions.blend -text -filter -merge -diff
 items/harthmere_chapter1_items.blend -text -filter -merge -diff

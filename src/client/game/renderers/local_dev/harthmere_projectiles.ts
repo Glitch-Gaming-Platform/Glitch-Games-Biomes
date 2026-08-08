@@ -27,6 +27,7 @@ import {
   harthmereMagicImpactProfile,
   type HarthmereMagicImpactProfile,
 } from "@/shared/harthmere/magic_impact";
+import { resolveHarthmereAssetUrl } from "@/shared/harthmere/galois_asset_paths";
 import * as THREE from "three";
 import type {
   GLTF,
@@ -1854,27 +1855,29 @@ export class HarthmereProjectileVisualRuntime {
   private load(definition: HarthmereProjectileVisualDefinition) {
     let pending = this.prototypes.get(definition.id);
     if (!pending) {
-      pending = this.loader.loadAsync(definition.assetUrl).then(
-        (gltf: GLTF) => {
-          this.loadedPrototypeIds.add(definition.id);
-          this.failedPrototypeIds.delete(definition.id);
-          return {
-            scene: gltf.scene,
-            animations: gltf.animations,
-          };
-        },
-        (error: unknown) => {
-          this.prototypes.delete(definition.id);
-          this.loadedPrototypeIds.delete(definition.id);
-          this.failedPrototypeIds.add(definition.id);
-          this.debug?.("renderer.projectile.asset_failed", {
-            projectileId: definition.id,
-            assetUrl: definition.assetUrl,
-            error: error instanceof Error ? error.message : String(error),
-          });
-          throw error;
-        }
-      );
+      pending = this.loader
+        .loadAsync(resolveHarthmereAssetUrl(definition.assetUrl))
+        .then(
+          (gltf: GLTF) => {
+            this.loadedPrototypeIds.add(definition.id);
+            this.failedPrototypeIds.delete(definition.id);
+            return {
+              scene: gltf.scene,
+              animations: gltf.animations,
+            };
+          },
+          (error: unknown) => {
+            this.prototypes.delete(definition.id);
+            this.loadedPrototypeIds.delete(definition.id);
+            this.failedPrototypeIds.add(definition.id);
+            this.debug?.("renderer.projectile.asset_failed", {
+              projectileId: definition.id,
+              assetUrl: definition.assetUrl,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            throw error;
+          }
+        );
       this.prototypes.set(definition.id, pending);
     }
     return pending;
@@ -1883,21 +1886,23 @@ export class HarthmereProjectileVisualRuntime {
   private loadShape(definition: HarthmereBossAttackShapeVisualDefinition) {
     let pending = this.shapePrototypes.get(definition.shape);
     if (!pending) {
-      pending = this.loader.loadAsync(definition.assetUrl).then(
-        (gltf: GLTF) => ({
-          scene: gltf.scene,
-          animations: gltf.animations,
-        }),
-        (error: unknown) => {
-          this.shapePrototypes.delete(definition.shape);
-          this.debug?.("renderer.boss_attack_shape.asset_failed", {
-            attackShape: definition.shape,
-            assetUrl: definition.assetUrl,
-            error: error instanceof Error ? error.message : String(error),
-          });
-          throw error;
-        }
-      );
+      pending = this.loader
+        .loadAsync(resolveHarthmereAssetUrl(definition.assetUrl))
+        .then(
+          (gltf: GLTF) => ({
+            scene: gltf.scene,
+            animations: gltf.animations,
+          }),
+          (error: unknown) => {
+            this.shapePrototypes.delete(definition.shape);
+            this.debug?.("renderer.boss_attack_shape.asset_failed", {
+              attackShape: definition.shape,
+              assetUrl: definition.assetUrl,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            throw error;
+          }
+        );
       this.shapePrototypes.set(definition.shape, pending);
     }
     return pending;

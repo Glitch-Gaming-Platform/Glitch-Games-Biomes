@@ -29,6 +29,7 @@ import {
   harthmereGeneratedInventoryIconUrl,
 } from "@/shared/harthmere/generated/harthmere_inventory_icon_manifest";
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
+import { resolveHarthmereAssetUrl } from "@/shared/harthmere/galois_asset_paths";
 import { BikkieRuntime } from "@/shared/bikkie/active";
 import { NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID } from "@/shared/harthmere/native_road_ahead_contract";
 import { harthmereOriginalInventoryIconUrl } from "@/shared/harthmere/original_inventory_icons";
@@ -63,7 +64,7 @@ describe("Harthmere native item presentation", () => {
       assert.ok(expected, itemId);
       const display = getHarthmereItemDisplay(itemId);
       assert.ok(display, itemId);
-      assert.equal(display.icon, expected, itemId);
+      assert.equal(display.icon, resolveHarthmereAssetUrl(expected), itemId);
     }
   });
 
@@ -96,10 +97,14 @@ describe("Harthmere native item presentation", () => {
       for (const runtimeItemId of [String(nativeId), `b:${nativeId}`]) {
         const display = getHarthmereItemDisplay(runtimeItemId);
         assert.ok(display, runtimeItemId);
-        assert.equal(display.icon, expectedIcon, runtimeItemId);
+        assert.equal(
+          display.icon,
+          resolveHarthmereAssetUrl(expectedIcon),
+          runtimeItemId
+        );
         assert.equal(
           biomesInventoryItemIcon(runtimeItemId),
-          expectedIcon,
+          resolveHarthmereAssetUrl(expectedIcon),
           `${runtimeItemId}: direct inventory icon resolver`
         );
       }
@@ -190,7 +195,9 @@ describe("Harthmere native item presentation", () => {
   });
 
   it("uses a readable rake silhouette for Muck Rake storefronts", () => {
-    const expected = "/assets/harthmere/png/kenney/items/hoe_iron.png";
+    const expected = resolveHarthmereAssetUrl(
+      "/assets/harthmere/png/kenney/items/hoe_iron.png"
+    );
     assert.equal(harthmereOriginalInventoryIconUrl("muck_rake"), expected);
     assert.equal(biomesInventoryItemIcon("muck_rake"), expected);
     const nativeId = harthmereNativeBiomesIdForItemId("muck_rake");
@@ -216,7 +223,11 @@ describe("Harthmere native item presentation", () => {
     for (const itemId of notebookSeedIds) {
       const generatedIcon = harthmereGeneratedInventoryIconUrl(itemId);
       assert.ok(generatedIcon, itemId);
-      assert.equal(biomesInventoryItemIcon(itemId), generatedIcon, itemId);
+      assert.equal(
+        biomesInventoryItemIcon(itemId),
+        resolveHarthmereAssetUrl(generatedIcon),
+        itemId
+      );
       assert.equal(
         harthmereOriginalInventoryIconUrl(itemId),
         undefined,
@@ -233,7 +244,7 @@ describe("Harthmere native item presentation", () => {
       assert.ok(generatedIcon, itemId);
       assert.equal(
         biomesInventoryItemIcon(itemId),
-        generatedIcon,
+        resolveHarthmereAssetUrl(generatedIcon),
         `${itemId}: non-notebook seed artwork stays on its existing path`
       );
     }
@@ -318,7 +329,9 @@ describe("Harthmere native item presentation", () => {
     assert.equal(display.category, "weapon");
     assert.equal(
       display.icon,
-      "/assets/harthmere/weapon_icons/iron_longsword.png"
+      resolveHarthmereAssetUrl(
+        "/assets/harthmere/weapon_icons/iron_longsword.png"
+      )
     );
     assert.doesNotMatch(display.icon, /^(?:IT\s*|\?+)$/);
   });
@@ -331,7 +344,11 @@ describe("Harthmere native item presentation", () => {
       assert.ok(display, `missing native display for ${weapon.id}`);
       assert.equal(display.name, weapon.label, weapon.id);
       assert.equal(display.category, "weapon", weapon.id);
-      assert.equal(display.icon, weapon.inventoryIconUrl, weapon.id);
+      assert.equal(
+        display.icon,
+        resolveHarthmereAssetUrl(weapon.inventoryIconUrl),
+        weapon.id
+      );
       assert.equal(display.slot, weapon.slot, weapon.id);
       assert.equal(display.hotbarEligible, true, weapon.id);
     }

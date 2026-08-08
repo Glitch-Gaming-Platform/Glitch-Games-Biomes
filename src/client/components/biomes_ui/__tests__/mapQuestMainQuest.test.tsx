@@ -3,6 +3,7 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   MapQuestsTab,
+  mapDestinationFeedbackForWriteResultForTest,
   mapPanelTabForMarkerForTest,
   preventCancelableMapWheelDefaultForTest,
   questMapMarkerCandidatesForTest,
@@ -11,6 +12,33 @@ import { biomesUIMainQuestSelectionFromQuestForTest } from "../adapters/mainQues
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
 
 describe("MapQuestsTab main quest controls", () => {
+  it("turns destination write failures into human-readable map feedback", () => {
+    assert.deepEqual(
+      mapDestinationFeedbackForWriteResultForTest({
+        ok: false,
+        reason: "invalid_destination",
+        message: "This destination does not have a valid map location yet.",
+      }),
+      {
+        kind: "error",
+        message: "This destination does not have a valid map location yet.",
+      }
+    );
+    assert.deepEqual(
+      mapDestinationFeedbackForWriteResultForTest({
+        ok: true,
+        persisted: false,
+        message:
+          "Destination set for this session, but your browser blocked map storage. It may reset when you reload.",
+      }),
+      {
+        kind: "warning",
+        message:
+          "Destination set for this session, but your browser blocked map storage. It may reset when you reload.",
+      }
+    );
+  });
+
   it("offers My Crops as an off-by-default personal map layer", () => {
     const html = renderToStaticMarkup(
       <MapQuestsTab

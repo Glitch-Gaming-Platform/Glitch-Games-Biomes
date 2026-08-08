@@ -77,6 +77,7 @@ def compress_gltf(gltf: pygltflib.GLTF2) -> bytes:
             "-o",
             str(GLB_FILE_NAME),
             "-kn",  # Don't prune empty nodes, used as attachment points.
+            "-ac",  # Keep constant tracks; clip names and attachment state matter.
             "-c",  # EXT_meshopt_compression; decoded by the shared GLTF loader.
         ]
         if texture_mode != "legacy":

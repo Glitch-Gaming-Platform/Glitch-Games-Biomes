@@ -8,6 +8,7 @@ import {
   coalescedPlayerMeshGltfArrayBufferFetch,
   shouldCoalescePlayerMeshGltfFetch,
 } from "@/client/game/util/gltf_fetch_coalescing";
+import { resolveHarthmereAssetUrl } from "@/shared/harthmere/galois_asset_paths";
 import { log } from "@/shared/logging";
 
 export const KTX2_TRANSCODER_PATH = "/three/basis/";
@@ -56,7 +57,7 @@ export function configureGltfTextureTranscoding(renderer: THREE.WebGLRenderer) {
 const loader = createGltfLoader();
 
 export function loadGltf(url: string) {
-  return loader.loadAsync(url);
+  return loader.loadAsync(resolveHarthmereAssetUrl(url));
 }
 
 export async function loadGltfWithRetry(
@@ -94,12 +95,13 @@ async function defaultPlayerMeshGltfArrayBufferFetch(url: string) {
 }
 
 export async function loadGltfWithCoalescedNetworkFetch(url: string) {
-  if (!shouldCoalescePlayerMeshGltfFetch(url)) {
-    return loadGltf(url);
+  const resolvedUrl = resolveHarthmereAssetUrl(url);
+  if (!shouldCoalescePlayerMeshGltfFetch(resolvedUrl)) {
+    return loader.loadAsync(resolvedUrl);
   }
 
   const data = await coalescedPlayerMeshGltfArrayBufferFetch(
-    url,
+    resolvedUrl,
     defaultPlayerMeshGltfArrayBufferFetch
   );
   return parseGltf(data.slice(0));

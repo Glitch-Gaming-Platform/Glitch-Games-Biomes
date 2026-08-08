@@ -25,6 +25,8 @@ import {
   BIOMES_UI_LOCATE_ON_MAP_EVENT,
   BIOMES_UI_LOCATE_ON_MAP_RECENCY_MS,
   type BiomesUIActiveMapPin,
+  type BiomesUIMapPinWriteOptions,
+  type BiomesUIMapPinWriteResult,
   readActiveBiomesUIMapPin,
   writeActiveBiomesUIMapPin,
 } from "../adapters/mapPinnedDestination";
@@ -161,8 +163,13 @@ export interface MapAdapter {
   getMapBounds?: () => MapBounds | undefined;
   getTrackableQuests?: () => MapTrackableQuest[];
   getActiveMapPin?: () => BiomesUIActiveMapPin | undefined;
-  setActiveMapPin?: (marker: MapMarker) => void;
-  clearActiveMapPin?: () => void;
+  setActiveMapPin?: (
+    marker: MapMarker,
+    options?: BiomesUIMapPinWriteOptions
+  ) => BiomesUIMapPinWriteResult | void;
+  clearActiveMapPin?: (
+    options?: BiomesUIMapPinWriteOptions
+  ) => BiomesUIMapPinWriteResult | void;
   getMainQuestSelection?: () => BiomesUIMainQuestSelection | undefined;
   setMainQuest?: (
     quest: MapTrackableQuest
@@ -171,6 +178,24 @@ export interface MapAdapter {
   // Authentic terrain regions (town, roads, river, muck, highland), already
   // projected to 0..100 map units against the same bounds as the markers.
   getTerrainRegions?: () => MapTerrainRegion[];
+}
+
+export interface MapDestinationFeedback {
+  kind: "error" | "warning";
+  message: string;
+}
+
+export function mapDestinationFeedbackForWriteResultForTest(
+  result: BiomesUIMapPinWriteResult | void
+): MapDestinationFeedback | undefined {
+  if (!result) return undefined;
+  if (!result.ok) {
+    return { kind: "error", message: result.message };
+  }
+  if (!result.persisted && result.message) {
+    return { kind: "warning", message: result.message };
+  }
+  return undefined;
 }
 
 type MapPanelTab =
@@ -884,6 +909,9 @@ export const MapQuestsTab: React.FunctionComponent<{
   const [activeMapPin, setActiveMapPin] = React.useState<
     BiomesUIActiveMapPin | undefined
   >(() => adapter?.getActiveMapPin?.() ?? readActiveBiomesUIMapPin());
+  const [destinationFeedback, setDestinationFeedback] = React.useState<
+    MapDestinationFeedback | undefined
+  >(undefined);
   const [mainQuestSelection, setMainQuestSelection] = React.useState<
     BiomesUIMainQuestSelection | undefined
   >(
@@ -1211,22 +1239,30 @@ export const MapQuestsTab: React.FunctionComponent<{
   const setActiveDestination = React.useCallback(
     (marker: MapMarker) => {
       const pin = activeBiomesUIMapPinFromMarkerForTest(marker);
-      if (!pin) return;
-      if (adapter?.setActiveMapPin) {
-        adapter.setActiveMapPin(marker);
-      } else {
-        writeActiveBiomesUIMapPin(pin);
+      if (!pin) {
+        setDestinationFeedback({
+          kind: "error",
+          message: "This destination does not have a valid map location yet.",
+        });
+        return;
       }
+      const result = adapter?.setActiveMapPin
+        ? adapter.setActiveMapPin(marker, { source: "user" })
+        : writeActiveBiomesUIMapPin(pin, { source: "user" });
+      setDestinationFeedback(
+        mapDestinationFeedbackForWriteResultForTest(result)
+      );
+      if (result && !result.ok) return;
       setActiveMapPin(pin);
     },
     [adapter]
   );
   const clearActiveDestination = React.useCallback(() => {
-    if (adapter?.clearActiveMapPin) {
-      adapter.clearActiveMapPin();
-    } else {
-      writeActiveBiomesUIMapPin(undefined);
-    }
+    const result = adapter?.clearActiveMapPin
+      ? adapter.clearActiveMapPin({ source: "user" })
+      : writeActiveBiomesUIMapPin(undefined, { source: "user" });
+    setDestinationFeedback(mapDestinationFeedbackForWriteResultForTest(result));
+    if (result && !result.ok) return;
     setActiveMapPin(undefined);
   }, [adapter]);
   const questMarkerForMap = React.useCallback(
@@ -1782,35 +1818,56 @@ export const MapQuestsTab: React.FunctionComponent<{
               Center on marker
             </button>
             {focusedMarker.worldPosition ? (
-              <button
-                type="button"
-                onClick={() =>
-                  activeMapPinMarkerId === focusedMarker.id
-                    ? clearActiveDestination()
-                    : setActiveDestination(focusedMarker)
-                }
-                style={{
-                  marginTop: 4,
-                  padding: "5px 8px",
-                  fontSize: 11,
-                  fontWeight: 800,
-                  background:
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
                     activeMapPinMarkerId === focusedMarker.id
-                      ? "rgba(252,211,77,0.20)"
-                      : "rgba(190,242,100,0.18)",
-                  color: "var(--biomes-fg)",
-                  border:
-                    activeMapPinMarkerId === focusedMarker.id
-                      ? "1px solid var(--biomes-warn-amber)"
-                      : "1px solid #bef264",
-                  borderRadius: 3,
-                  cursor: "pointer",
-                }}
-              >
-                {activeMapPinMarkerId === focusedMarker.id
-                  ? "Clear active destination"
-                  : "Set active destination"}
-              </button>
+                      ? clearActiveDestination()
+                      : setActiveDestination(focusedMarker)
+                  }
+                  style={{
+                    marginTop: 4,
+                    padding: "5px 8px",
+                    fontSize: 11,
+                    fontWeight: 800,
+                    background:
+                      activeMapPinMarkerId === focusedMarker.id
+                        ? "rgba(252,211,77,0.20)"
+                        : "rgba(190,242,100,0.18)",
+                    color: "var(--biomes-fg)",
+                    border:
+                      activeMapPinMarkerId === focusedMarker.id
+                        ? "1px solid var(--biomes-warn-amber)"
+                        : "1px solid #bef264",
+                    borderRadius: 3,
+                    cursor: "pointer",
+                  }}
+                >
+                  {activeMapPinMarkerId === focusedMarker.id
+                    ? "Clear active destination"
+                    : "Set active destination"}
+                </button>
+                {destinationFeedback ? (
+                  <p
+                    role={
+                      destinationFeedback.kind === "error" ? "alert" : "status"
+                    }
+                    aria-live="polite"
+                    style={{
+                      margin: "6px 0 0",
+                      fontSize: 10,
+                      lineHeight: 1.35,
+                      color:
+                        destinationFeedback.kind === "error"
+                          ? "var(--biomes-danger, #fca5a5)"
+                          : "var(--biomes-warn-amber, #fcd34d)",
+                    }}
+                  >
+                    {destinationFeedback.message}
+                  </p>
+                ) : null}
+              </>
             ) : null}
           </div>
         ) : null}

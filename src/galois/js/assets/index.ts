@@ -5,6 +5,7 @@ import * as florae from "@/galois/assets/florae";
 import * as gaia from "@/galois/assets/gaia";
 import * as glass from "@/galois/assets/glass";
 import * as groups from "@/galois/assets/groups";
+import * as harthmere from "@/galois/assets/harthmere";
 import * as icons from "@/galois/assets/icons";
 import * as items from "@/galois/assets/items";
 import * as mapping from "@/galois/assets/mapping";
@@ -32,6 +33,7 @@ const assets = new Map<string, l.GeneralNode<string>>();
   florae,
   gaia,
   groups,
+  harthmere,
   icons,
   items,
   mapping,

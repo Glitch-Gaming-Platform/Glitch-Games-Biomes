@@ -2278,6 +2278,38 @@ must additionally show one applied-version/hash log per matching replica, the
 unchanged base build id, healthy lifecycle endpoints after backend restarts,
 and the expected `biomes:mutable-hotfix-applied` browser event.
 
+##### Boss screenshot mutable-hotfix lane
+
+Boss screenshot iteration is a browser/client hotfix workload. Once the
+mounted build has the mutable bootstrap, do not rebuild Next, the server,
+Docker, or an image for camera, staging, promo visibility, or capture-runner
+changes. Use this bounded loop:
+
+1. Run the focused cutscene, renderer, and capture-contract tests.
+2. Run the strict no-browser boss-angle preflight.
+3. Apply one exact-build SHA-guarded client/chunk hotfix with
+   `expectCount: 1`.
+4. Verify the resulting served hash before opening Chromium.
+5. Capture one scene in a fresh context and save branded/raw PNG, HAR, and
+   metadata.
+6. Inspect the frame before the next bracket; stop after three brackets and
+   review a contact sheet.
+7. Use the authenticated observer route for runtime Underways if player-route
+   missing-shard recovery navigates away from the local stack.
+8. Clear only the isolated hotfix key and remove only the isolated capture
+   containers when the batch is complete.
+
+The August 7 boss run exposed four mistakes worth preventing. Rebuilding for
+each camera change disrupts unrelated tasks and is unnecessary. A giant actor
+that ignores stage-coordinate changes is usually a duplicate ordinary render
+path; boss promo mode must suppress regular NPCs, Harthmere runtime-life
+placements, and gameplay players while retaining the synthetic cutscene actor.
+Camera position and streaming focus are independent, so an elevated lens does
+not justify moving the interest set away from the encounter. Finally,
+sequential delta manifests are not restart-safe individually; use them only in
+a disposable uninterrupted lane, and make any durable manifest cumulative from
+the immutable base or dependency-aware.
+
 A create-only full-topology reconciliation can also be CPU-bound for more than
 ten minutes under AMD64/Rosetta before lifecycle services start. Constant CPU,
 flat memory, and unchanged restart counts are progress, not a hang. A focused

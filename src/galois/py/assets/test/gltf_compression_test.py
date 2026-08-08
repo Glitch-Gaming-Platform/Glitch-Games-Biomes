@@ -20,6 +20,11 @@ def textured_triangle() -> pygltflib.GLTF2:
         image_bytes, format="PNG"
     )
 
+    animation_times = struct.pack("<2f", 0, 1)
+    constant_translation = struct.pack("<6f", 0, 0, 0, 0, 0, 0)
+    animation_offset = len(binary)
+    binary += animation_times + constant_translation
+
     return pygltflib.GLTF2(
         asset=pygltflib.Asset(version="2.0"),
         scene=0,
@@ -59,6 +64,20 @@ def textured_triangle() -> pygltflib.GLTF2:
                 count=3,
                 type="SCALAR",
             ),
+            pygltflib.Accessor(
+                bufferView=3,
+                componentType=pygltflib.FLOAT,
+                count=2,
+                type="SCALAR",
+                min=[0],
+                max=[1],
+            ),
+            pygltflib.Accessor(
+                bufferView=4,
+                componentType=pygltflib.FLOAT,
+                count=2,
+                type="VEC3",
+            ),
         ],
         bufferViews=[
             pygltflib.BufferView(
@@ -78,6 +97,16 @@ def textured_triangle() -> pygltflib.GLTF2:
                 byteOffset=len(positions) + len(texcoords),
                 byteLength=len(indices),
                 target=pygltflib.ELEMENT_ARRAY_BUFFER,
+            ),
+            pygltflib.BufferView(
+                buffer=0,
+                byteOffset=animation_offset,
+                byteLength=len(animation_times),
+            ),
+            pygltflib.BufferView(
+                buffer=0,
+                byteOffset=animation_offset + len(animation_times),
+                byteLength=len(constant_translation),
             ),
         ],
         buffers=[
@@ -101,6 +130,22 @@ def textured_triangle() -> pygltflib.GLTF2:
                 )
             )
         ],
+        animations=[
+            pygltflib.Animation(
+                name="ConstantAttachmentPose",
+                samplers=[
+                    pygltflib.AnimationSampler(input=3, output=4)
+                ],
+                channels=[
+                    pygltflib.AnimationChannel(
+                        sampler=0,
+                        target=pygltflib.AnimationChannelTarget(
+                            node=0, path="translation"
+                        ),
+                    )
+                ],
+            )
+        ],
     )
 
 
@@ -115,6 +160,7 @@ class GltfCompressionTestCase(unittest.TestCase):
         self.assertEqual(compressed.images[0].mimeType, "image/ktx2")
         self.assertIsNotNone(compressed.images[0].bufferView)
         self.assertIn("KHR_texture_basisu", compressed.textures[0].extensions)
+        self.assertEqual(compressed.animations[0].name, "ConstantAttachmentPose")
 
 
 if __name__ == "__main__":

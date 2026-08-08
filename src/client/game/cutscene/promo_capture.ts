@@ -194,9 +194,12 @@ function finiteVec3(value: unknown): [number, number, number] | undefined {
 }
 
 function hasPromoStreamingHook(): boolean {
+  const observerDebug = promoObserverStreamingDebug();
+  const observerPosition = finiteVec3(observerDebug?.getPosition?.());
   return (
     typeof promoLivePlayerDebug()?.teleportTo === "function" ||
-    typeof promoObserverStreamingDebug()?.moveTo === "function"
+    (observerPosition !== undefined &&
+      typeof observerDebug?.moveTo === "function")
   );
 }
 
@@ -246,19 +249,12 @@ async function stagePromoStreamingObserver(
   const observerPosition = finiteVec3(observerDebug?.getPosition?.());
 
   let landed = false;
-  if (
-    observerPosition !== undefined &&
-    typeof observerDebug?.moveTo === "function"
-  ) {
-    const result = (await observerDebug.moveTo(position)) as
-      { ok?: unknown; position?: unknown } | undefined;
-    const after = finiteVec3(result?.position ?? observerDebug.getPosition?.());
-    landed =
-      result?.ok === true &&
-      after !== undefined &&
-      Math.abs(after[0] - position[0]) < 0.35 &&
-      Math.abs(after[2] - position[2]) < 0.35;
-  } else if (typeof playerDebug?.teleportTo === "function") {
+  // A normal authenticated `/at/<username>` page may publish both bridges.
+  // Runtime scenery follows the real local player, not the coordinate-only
+  // observer, so player authority must win whenever it exists. Picking the
+  // observer here moves the cutscene camera while leaving scenery streamed at
+  // the login location, which makes distant boss environments disappear.
+  if (typeof playerDebug?.teleportTo === "function") {
     const result = playerDebug.teleportTo({
       x: position[0],
       y: position[1],
@@ -269,6 +265,18 @@ async function stagePromoStreamingObserver(
     const after = finiteVec3(result?.after ?? playerDebug.getPosition?.());
     landed =
       result?.teleported === true &&
+      after !== undefined &&
+      Math.abs(after[0] - position[0]) < 0.35 &&
+      Math.abs(after[2] - position[2]) < 0.35;
+  } else if (
+    observerPosition !== undefined &&
+    typeof observerDebug?.moveTo === "function"
+  ) {
+    const result = (await observerDebug.moveTo(position)) as
+      { ok?: unknown; position?: unknown } | undefined;
+    const after = finiteVec3(result?.position ?? observerDebug.getPosition?.());
+    landed =
+      result?.ok === true &&
       after !== undefined &&
       Math.abs(after[0] - position[0]) < 0.35 &&
       Math.abs(after[2] - position[2]) < 0.35;
@@ -319,10 +327,15 @@ async function waitForPromoRuntimeScenery(
         ? [lastStatus.origin[0], expectedOrigin[1], lastStatus.origin[1]]
         : undefined
     );
-    const originReady =
-      origin !== undefined &&
-      Math.abs(origin[0] - expectedOrigin[0]) < 1 &&
-      Math.abs(origin[2] - expectedOrigin[2]) < 1;
+    const livePlayerPosition = finiteVec3(
+      promoLivePlayerDebug()?.getPosition?.()
+    );
+    const originReady = [origin, livePlayerPosition].some(
+      (candidate) =>
+        candidate !== undefined &&
+        Math.abs(candidate[0] - expectedOrigin[0]) < 1 &&
+        Math.abs(candidate[2] - expectedOrigin[2]) < 1
+    );
     if (failed > 0) {
       throw new Error(
         `promo runtime scenery failed: ${JSON.stringify({ spec, lastStatus })}`

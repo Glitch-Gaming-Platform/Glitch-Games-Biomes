@@ -10,6 +10,7 @@ import type { BiomesId } from "@/shared/ids";
 import { anyMapValue } from "@/shared/util/collections";
 import { resolveBinaryAttribute } from "@/shared/util/dye_helpers";
 import { assertNever } from "@/shared/util/type_helpers";
+import { resolveHarthmereAssetUrl } from "@/shared/harthmere/galois_asset_paths";
 import challengesIcon from "/public/hud/default-challenge-icon.png";
 import defaultEquipmentIcon from "/public/hud/icon-16-equipment.png";
 
@@ -38,7 +39,7 @@ export const ATTRIBUTE_TO_ICON: [
   (
     value: unknown,
     extra: { seen?: Set<BiomesId>; item?: Item }
-  ) => string | undefined
+  ) => string | undefined,
 ][] = [
   ["groupId", (value) => groupIconURL(value as BiomesId)],
   [
@@ -57,8 +58,9 @@ export const ATTRIBUTE_TO_ICON: [
     (value) => {
       const icon = String(value);
       return /^(?:https?:\/\/|data:image\/|blob:|\/)/i.test(icon)
-        ? icon
-        : resolveAssetUrlUntyped(`icons/${icon}`);
+        ? resolveHarthmereAssetUrl(icon)
+        : (resolveAssetUrlUntyped(icon) ??
+            resolveAssetUrlUntyped(`icons/${icon}`));
     },
   ],
   ["galoisPath", (value) => resolveAssetUrlUntyped(`icons/${value}`)],

@@ -14,6 +14,7 @@ const publishedStaticAssetData = [
   new RegExp("^atlases/.*"),
   new RegExp("^audio/.*"),
   new RegExp("^gaia/.*"),
+  new RegExp("^harthmere/.*"),
   new RegExp("^icons/.*"),
   new RegExp("^indices/.*"),
   new RegExp("^item_meshes/.*"),

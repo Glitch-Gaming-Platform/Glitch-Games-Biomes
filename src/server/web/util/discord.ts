@@ -396,7 +396,9 @@ export async function simpleItemThumbnailUserNotification(
   if (item?.icon) {
     iconUrl = staticUrlForAttribute(item.icon);
   } else if (item?.galoisIcon) {
-    iconUrl = resolveAssetUrlUntyped(`icons/${item.galoisIcon}`);
+    iconUrl =
+      resolveAssetUrlUntyped(item.galoisIcon) ??
+      resolveAssetUrlUntyped(`icons/${item.galoisIcon}`);
   }
 
   const userBundle = await fetchSingleUserBundleById(db, id);

@@ -7,6 +7,7 @@ import {
 import { harthmereResolveBikkieVisual } from "@/shared/harthmere/bikkie_visual_resolver";
 import type { HarthmereBikkieItemMetadata } from "@/shared/harthmere/mmo_bikkie_farming_food_catalog";
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
+import { resolveHarthmereAssetUrl } from "@/shared/harthmere/galois_asset_paths";
 import { staticUrlForAttribute } from "@/shared/bikkie/schema/binary";
 import { anItem } from "@/shared/game/item";
 import { safeParseBiomesId } from "@/shared/ids";
@@ -104,8 +105,9 @@ function biomesBikkieItemIcon(itemId: string): string | undefined {
     }
     if (item.galoisIcon) {
       return /^(?:https?:\/\/|data:image\/|blob:|\/)/i.test(item.galoisIcon)
-        ? item.galoisIcon
-        : resolveAssetUrlUntyped(`icons/${item.galoisIcon}`);
+        ? resolveHarthmereAssetUrl(item.galoisIcon)
+        : (resolveAssetUrlUntyped(item.galoisIcon) ??
+            resolveAssetUrlUntyped(`icons/${item.galoisIcon}`));
     }
     if (item.galoisPath) {
       return resolveAssetUrlUntyped(`icons/${item.galoisPath}`);
@@ -170,13 +172,15 @@ export function biomesInventoryItemVisual(itemId: string) {
 
 export function biomesInventoryItemIcon(itemId: string): string {
   const premiumWeapon = getHarthmerePremiumWeapon(itemId);
-  if (premiumWeapon) return premiumWeapon.inventoryIconUrl;
+  if (premiumWeapon) {
+    return resolveHarthmereAssetUrl(premiumWeapon.inventoryIconUrl);
+  }
   const voxelBlockIcon = nativeVoxelBlockInventoryIcon(itemId);
   if (voxelBlockIcon) return voxelBlockIcon;
   const originalIcon = harthmereOriginalInventoryIconUrl(itemId);
   if (originalIcon) return originalIcon;
   const generatedIcon = harthmereGeneratedInventoryIconUrl(itemId);
-  if (generatedIcon) return generatedIcon;
+  if (generatedIcon) return resolveHarthmereAssetUrl(generatedIcon);
   const bikkieIcon = biomesBikkieItemIcon(itemId);
   if (bikkieIcon) return bikkieIcon;
   const visual = biomesInventoryItemVisual(itemId);

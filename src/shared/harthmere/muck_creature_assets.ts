@@ -1,8 +1,7 @@
 export const HARTHMERE_MUCK_CREATURE_NPC_ASSET_VERSION =
   "harthmere-muck-creature-npc-asset-v3-stagger-polish" as const;
 
-export const HARTHMERE_INDISWORM_RUNTIME_ASSET_URL =
-  "/assets/harthmere/glb/creatures/indisworm.glb" as const;
+export const HARTHMERE_INDISWORM_RUNTIME_ASSET_URL = "npcs/indisworm" as const;
 
 export const HARTHMERE_CREATURE_STAGGER_RUNTIME_ASSET_URLS = Object.freeze({
   "npcs/mossy_mucker":

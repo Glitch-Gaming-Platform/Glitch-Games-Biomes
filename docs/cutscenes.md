@@ -702,6 +702,35 @@ while the horizon is still fragmented. If this gate passes and the horizon is
 still wrong, investigate camera direction or authored scenery; do not blindly
 raise draw distance beyond the performance contract.
 
+#### No-build boss-still hotfix and single-subject gate
+
+When the mounted client contains the mutable-hotfix bootstrap, boss camera,
+staging, promo visibility, and capture-runner fixes do not require a Next,
+server, Docker, or image rebuild. Run the focused source tests, apply an exact
+build-compatible hotfix with `expectCount: 1` and old/new SHA-256 guards, verify
+the served bytes, then open one fresh browser context and capture one scene.
+Inspect that frame before applying the next delta.
+
+A valid boss still must contain exactly one intended subject. Boss promo mode
+suppresses ordinary `NpcRenderState`, Harthmere runtime-life placements, and
+gameplay player rendering while preserving the canonical native synthetic
+cutscene actor. A large foreground body that does not move when the promo stage
+position changes is evidence of a duplicate live render path, not a need to
+widen the body envelope or move the camera farther away.
+
+For runtime Underways scenes, prefer the authenticated observer route if the
+player route enters missing-shard recovery. Keep `streamingFocus` near the
+encounter independently of the cinematic camera. Abort the row if it navigates
+to a non-local Sync, Azure, `biomes.gg`, Firebase, or Google Cloud endpoint.
+
+Use no more than three live camera brackets per scene before contact-sheet
+review. Save branded PNG, raw PNG, HAR, capture metadata, registry waypoints,
+and sampled camera for accepted and rejected rows. Evidence produced this way
+must be labeled `mounted build + injected hotfix`; it is not proof of immutable
+image packaging. Sequential delta manifests are suitable only for a disposable
+continuous lane. Any restartable hotfix must be cumulative from the immutable
+base or carry an explicit dependency chain.
+
 ### Capture gotchas that are now handled for you
 
 - **Always enter through visual auth.** Use `promoCaptureAuthUrl()` for a single

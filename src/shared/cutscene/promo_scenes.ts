@@ -689,6 +689,8 @@ export interface HarthmereBossPromoSpec {
   stage: CutsceneVec3;
   cameraFar: CutsceneVec3;
   cameraNear: CutsceneVec3;
+  /** Terrain-valid player position used when the cinematic set is elevated. */
+  streamingFocus?: CutsceneVec3;
   timeOfDay: number;
   fov: number;
   framingBias?: number;
@@ -767,31 +769,37 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
       id: "ninth_winter",
       area: "Ash Hall",
       dungeonId: "ch1_dungeon_winter",
+      // The retained-world encounter boss is suppressed during promo capture,
+      // leaving this single canonical ghost on the authored hearth dais.
       stage: [3524, 65, -344],
-      // Stay on the accepted Ash Hall interior axis (local z=-88).
-      cameraFar: [3498, 70, -344],
-      cameraNear: [3505, 69, -344],
+      // Stay on the accepted Ash Hall interior axis (local z=-88). The wall
+      // behind the far mark prevents a longer dolly, so use the baseline
+      // rather than the clipped lateral preset and widen only to 45 degrees.
+      cameraFar: [3498, 72, -344],
+      cameraNear: [3505, 71, -344],
       timeOfDay: 0.86,
-      fov: 42,
-      framingBias: 2.5,
+      fov: 45,
+      framingBias: 1.5,
       yaw: -Math.PI / 4,
       emoteAt: 2.65,
       animation: "attack2",
       terrainViewFarMeters: 48,
       cameraPresetPriority: [
+        "baseline",
         "three-quarter-left",
         "three-quarter-right",
-        "baseline",
       ],
     },
     {
       id: "failed_apprentice",
       area: "Bellward Halls — Bell Ring",
-      // Authored runtime placement beside the broken handbell. The retained
-      // screenshot stack disables the optional +1600 additive-town offset.
-      stage: [354, 53.05, -313.4],
-      cameraFar: [366, 58, -301],
-      cameraNear: [363, 56.5, -304],
+      // The retained snapshot has surface terrain but no underground voxel
+      // volume at Bellward. Stage the runtime-owned room above that clutter so
+      // its continuous floor/walls/ceiling, not trees and open sky, own frame.
+      stage: [354, 80.05, -313.4],
+      cameraFar: [366, 85, -301],
+      cameraNear: [363, 83.5, -304],
+      streamingFocus: [366, 53, -301],
       timeOfDay: 0.73,
       fov: 35,
       framingBias: 1.3,
@@ -808,30 +816,32 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
     {
       id: "first_choir",
       area: "Bellward Halls — Central Choir",
-      // Runtime triad floor sigil and three harmony candles.
-      stage: [356, 53.05, -309],
-      cameraFar: [370, 58, -295],
-      cameraNear: [367, 56.5, -298],
+      // Shares the enclosed runtime-owned Bellward room with the Apprentice.
+      stage: [356, 80.05, -309],
+      cameraFar: [367, 84, -299],
+      cameraNear: [364, 83, -302],
+      streamingFocus: [367, 53, -299],
       timeOfDay: 0.78,
-      fov: 35,
-      framingBias: 1.15,
+      fov: 32,
+      framingBias: 0.9,
       yaw: Math.PI / 4,
       emoteAt: 2.65,
       animation: "attack2",
       runtimeSceneryDistrict: "Old Well / Underways",
       cameraPresetPriority: [
+        "baseline",
         "environment-wide",
         "three-quarter-left",
-        "three-quarter-right",
       ],
     },
     {
       id: "echo_singer",
       area: "Veins of the Wyrm — Echo Hall",
-      // Runtime phase-safe essence pool in Old Well / Underways.
-      stage: [632, 53.05, -318],
-      cameraFar: [616, 59, -302],
-      cameraNear: [620, 56.5, -306],
+      // Runtime-owned Veins chamber staged above retained surface clutter.
+      stage: [632, 90.05, -318],
+      cameraFar: [616, 96, -302],
+      cameraNear: [620, 93.5, -306],
+      streamingFocus: [616, 53, -302],
       timeOfDay: 0.71,
       fov: 36,
       framingBias: 1.6,
@@ -848,10 +858,13 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
     {
       id: "vyrahel_vein_keeper",
       area: "Veins of the Wyrm — Spine Hall",
-      // Shoot from north of the runtime rib wall so it remains backdrop.
-      stage: [642, 53.05, -334],
-      cameraFar: [656, 59, -350],
-      cameraNear: [653, 56.5, -346],
+      // The first clean baseline used the right environment but left the boss
+      // at only ~16% of frame height. Keep the same south-east sightline and
+      // move the dolly inside the complete runtime room shell.
+      stage: [642, 90.05, -334],
+      cameraFar: [654, 95.5, -346],
+      cameraNear: [650, 93.5, -342],
+      streamingFocus: [656, 53, -350],
       timeOfDay: 0.66,
       fov: 35,
       framingBias: 1.35,
@@ -868,12 +881,13 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
     {
       id: "thaedryn_bellbound",
       area: "Wyrm's Bed",
-      stage: [640, 53.05, -268],
+      stage: [760, 110.05, -268],
       // The dragon is nearly sixty metres long. The old 35m camera sat inside
       // its own world bounds once the combat pose began. Stay on the same
       // True-Bell axis, but outside the full body and wing envelope.
-      cameraFar: [596, 70, -212],
-      cameraNear: [602, 66, -220],
+      cameraFar: [716, 127, -212],
+      cameraNear: [722, 123, -220],
+      streamingFocus: [716, 53, -212],
       timeOfDay: 0.75,
       fov: 44,
       framingBias: 4.2,
@@ -919,14 +933,15 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
     {
       id: "alpha_mucker",
       area: "Old Wood Muck Patch",
-      // Exact grounded legacy bounty marker. Pull the lens outside the
-      // fourteen-metre canopy; the rejected camera sat inside the boss crown.
-      stage: [648.693, 57, -455],
-      cameraFar: [696, 68, -410],
-      cameraNear: [690, 66, -416],
+      // The encounter marker is intentionally crowded with lesser muckers.
+      // A wider read-only retained-world survey found this flat pad in the
+      // same Old Wood biome with 46m of NPC clearance and a clear 45° lens.
+      stage: [708.693, 56.05, -495],
+      cameraFar: [728.43, 68.65, -475.263],
+      cameraNear: [725.601, 67.45, -478.092],
       timeOfDay: 0.72,
-      fov: 40,
-      framingBias: 3.2,
+      fov: 44,
+      framingBias: 2,
       yaw: 0,
       emoteAt: 2.65,
       animation: "attack2",
@@ -936,24 +951,22 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
         "three-quarter-left",
       ],
       terrainProofs: [
-        [616, 57, -479],
-        [616, 57, -431],
-        [648.693, 57, -455],
-        [672, 57, -479],
-        [672, 57, -431],
+        [702, 56, -501],
+        [702, 56, -489],
+        [708.693, 56, -495],
+        [715, 56, -501],
+        [715, 56, -489],
       ],
     },
     {
       id: "root_crowned_dead",
       area: "Deep Old Wood",
-      // Runtime public-event marker among standing stones and ritual light.
-      stage: [620, 53, -505],
-      // Approach from the southwest between the ancient trees. The rejected
-      // northeast camera stood behind a dark terrain lip above the ritual.
-      cameraFar: [603, 60, -518],
-      cameraNear: [608, 57, -514],
+      // Read-only retained-world survey found a zero-obstruction lower pad.
+      stage: [604, 45.05, -517],
+      cameraFar: [614, 50, -517],
+      cameraNear: [610.519, 48.8, -517],
       timeOfDay: 0.8,
-      fov: 32,
+      fov: 35,
       framingBias: 1.35,
       yaw: -Math.PI / 2,
       emoteAt: 2.65,
@@ -964,11 +977,11 @@ export const HARTHMERE_BOSS_PROMO_SPECS: readonly HarthmereBossPromoSpec[] =
         "three-quarter-right",
       ],
       terrainProofs: [
-        [596, 53, -529],
-        [596, 53, -481],
-        [620, 53, -505],
-        [644, 53, -529],
-        [644, 53, -481],
+        [588, 45, -533],
+        [588, 45, -501],
+        [604, 45, -517],
+        [620, 45, -533],
+        [620, 45, -501],
       ],
     },
   ]);
@@ -1113,6 +1126,7 @@ const HARTHMERE_BOSS_PROMO_SCENES: readonly PromoSceneDef[] =
         position: spec.cameraFar,
         orientation: [-0.1, 0],
       },
+      streamingFocus: spec.streamingFocus,
       terrainProofs: spec.terrainProofs,
       terrainView: spec.runtimeSceneryDistrict
         ? undefined

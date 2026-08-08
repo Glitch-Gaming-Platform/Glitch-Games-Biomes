@@ -87,11 +87,7 @@ describe("promo scenes - registry", () => {
         assert.deepEqual(boss!.binding.spawnAt, spec.stage);
       }
       assert.deepEqual(scene.observer.position, spec.cameraFar);
-      assert.equal(
-        scene.streamingFocus,
-        undefined,
-        `${scene.id}: boss capture must keep the already-bootstrapped camera interest set instead of reconnecting at the actor stage`
-      );
+      assert.deepEqual(scene.streamingFocus, spec.streamingFocus);
       assert.deepEqual(scene.terrainProofs, spec.terrainProofs);
       if (spec.runtimeSceneryDistrict) {
         assert.equal(scene.terrainView, undefined);
@@ -133,7 +129,7 @@ describe("promo scenes - registry", () => {
       first_choir: 356,
       echo_singer: 632,
       vyrahel_vein_keeper: 642,
-      thaedryn_bellbound: 640,
+      thaedryn_bellbound: 760,
     };
     for (const spec of HARTHMERE_BOSS_PROMO_SPECS) {
       const x = expectedX[spec.id];
@@ -145,6 +141,17 @@ describe("promo scenes - registry", () => {
         );
       }
     }
+    assert.equal(
+      HARTHMERE_BOSS_PROMO_SPECS.find(
+        (spec) => spec.id === "failed_apprentice"
+      )?.stage[1],
+      80.05
+    );
+    assert.equal(
+      HARTHMERE_BOSS_PROMO_SPECS.find((spec) => spec.id === "first_choir")
+        ?.stage[1],
+      80.05
+    );
   });
 
   it("requires multi-shard native terrain proofs for ordinary-map boss landscapes", () => {
@@ -310,6 +317,21 @@ describe("promo scenes - registry", () => {
     );
     assert.match(captureSource, /promoObserverStreamingDebug/);
     assert.match(captureSource, /waitForPromoStreamingHook/);
+    assert.match(
+      captureSource,
+      /\[origin, livePlayerPosition\]\.some/,
+      "runtime scenery readiness accepts the authoritative player target even when the third-person camera origin is several metres behind it"
+    );
+    assert.match(
+      captureSource,
+      /observerPosition !== undefined[\s\S]*typeof observerDebug\?\.moveTo === "function"/,
+      "an observer hook is usable only after it owns a finite position; otherwise the player hook must win the startup race"
+    );
+    assert.match(
+      captureSource,
+      /if \(typeof playerDebug\?\.teleportTo === "function"\)[\s\S]*else if \([\s\S]*observerPosition !== undefined/,
+      "authenticated promo capture must prefer live-player scenery authority over the observer bridge"
+    );
     assert.doesNotMatch(
       captureSource,
       /performance\.now\(\) \+ 30_000/,

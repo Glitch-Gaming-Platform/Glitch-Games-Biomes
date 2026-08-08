@@ -1481,6 +1481,30 @@ describe("biomes_ui map adapter (V141)", () => {
     adapter.clearActiveMapPin();
   });
 
+  it("reconciles active pins against the rendered marker id instead of the raw landmark id", () => {
+    installFixture({
+      activeObjectiveIndex: 0,
+      completedQuestIds: [],
+      acceptedQuestIds: [],
+    });
+    globalAny.window.__snapshotGrove.landmarks = [
+      {
+        id: "npc_wayfinder",
+        label: "Wayfinder",
+        position: [510, 71, -140],
+        kind: "npc",
+        visibleOnWorldMap: true,
+      },
+    ];
+    const adapter = buildBiomesUIMapAdapterForTest(1);
+    const marker = adapter
+      .getMarkers()
+      .find((entry) => entry.id === "wayfinder");
+    assert.ok(marker);
+    adapter.setActiveMapPin(marker);
+    assert.equal(adapter.getActiveMapPin()?.markerId, "wayfinder");
+  });
+
   it("expands map bounds east so the town is inside the drawn map", () => {
     const bounds = buildBiomesUIMapAdapterForTest(1).getMapBounds()!;
     assert.ok(

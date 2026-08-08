@@ -2,6 +2,7 @@
 // HARTHMERE_RENDERER_ANIMATION_SYNTAX_FIX_VERSION
 
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
+import { isBossPromoCaptureSearch } from "@/client/game/cutscene/boss_promo_visibility";
 import { freezeStaticObjectMatrices } from "@/client/game/renderers/static_object_matrices";
 import { createGltfLoader } from "@/client/game/util/gltf_helpers";
 import {
@@ -184,12 +185,10 @@ import {
 import { ch1DungeonAuthoredToWorld } from "@/shared/harthmere/ch1_dungeon_terrain";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
-import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
-import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { loadGltf } from "@/client/game/util/gltf_helpers";
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
+import { resolveHarthmereAssetUrl } from "@/shared/harthmere/galois_asset_paths";
 import { HARTHMERE_MAIN_QUEST_SPACES } from "../../../../shared/harthmere/main_quest_spaces";
 import {
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS,
@@ -1977,15 +1976,6 @@ function expandHarthmereCombatClipPriority(
   return expanded;
 }
 
-function assetUrl(path: string) {
-  return path
-    .split("/")
-    .map((part, index) =>
-      index === 0 && part === "" ? "" : encodeURIComponent(part)
-    )
-    .join("/");
-}
-
 function gltf(key: string, path: string, defaultScale = 1): RuntimeAsset {
   return { key, format: "gltf", path: `${ROOT}/${path}`, defaultScale };
 }
@@ -2241,36 +2231,16 @@ const ASSETS: RuntimeAsset[] = [
   // Harthmere placements, so combat can drive real humanoid/animal actors
   // when the downloaded GLTF packs are present. Missing/LFS-pointer assets
   // safely fall back to the existing procedural models below.
-  gltf(
-    "animal_chicken",
-    "glb/creatures/animals/chicken.glb",
-    1
-  ),
+  gltf("animal_chicken", "glb/creatures/animals/chicken.glb", 1),
   gltf(
     "animal_bunny",
     "gltf/creatures/animal_action_variants/harthmere_animal_rabbit_brown.gltf",
     0.8
   ),
-  gltf(
-    "animal_pigeon",
-    "glb/creatures/animals/pigeon.glb",
-    1
-  ),
-  gltf(
-    "animal_cat",
-    "glb/creatures/animals/cat.glb",
-    1
-  ),
-  gltf(
-    "animal_dog",
-    "glb/creatures/animals/dog.glb",
-    1
-  ),
-  gltf(
-    "animal_pig",
-    "glb/creatures/animals/pig.glb",
-    1
-  ),
+  gltf("animal_pigeon", "glb/creatures/animals/pigeon.glb", 1),
+  gltf("animal_cat", "glb/creatures/animals/cat.glb", 1),
+  gltf("animal_dog", "glb/creatures/animals/dog.glb", 1),
+  gltf("animal_pig", "glb/creatures/animals/pig.glb", 1),
   gltf(
     "animal_sheep",
     "gltf/creatures/animal_action_variants/harthmere_animal_sheep_cream.gltf",
@@ -2281,46 +2251,14 @@ const ASSETS: RuntimeAsset[] = [
     "gltf/creatures/animal_action_variants/harthmere_animal_cow_spotted.gltf",
     1.05
   ),
-  gltf(
-    "animal_horse",
-    "glb/creatures/animals/horse.glb",
-    1
-  ),
-  gltf(
-    "animal_deer",
-    "glb/creatures/animals/deer.glb",
-    1
-  ),
-  gltf(
-    "animal_wolf",
-    "glb/creatures/animals/wolf.glb",
-    1
-  ),
-  gltf(
-    "animal_boar",
-    "glb/creatures/animals/boar.glb",
-    1
-  ),
-  gltf(
-    "animal_bear",
-    "glb/creatures/animals/bear.glb",
-    1
-  ),
-  gltf(
-    "animal_fox",
-    "glb/creatures/animals/fox.glb",
-    1
-  ),
-  gltf(
-    "animal_crow",
-    "glb/creatures/animals/crow.glb",
-    1
-  ),
-  gltf(
-    "animal_rat",
-    "glb/creatures/animals/rat.glb",
-    1
-  ),
+  gltf("animal_horse", "glb/creatures/animals/horse.glb", 1),
+  gltf("animal_deer", "glb/creatures/animals/deer.glb", 1),
+  gltf("animal_wolf", "glb/creatures/animals/wolf.glb", 1),
+  gltf("animal_boar", "glb/creatures/animals/boar.glb", 1),
+  gltf("animal_bear", "glb/creatures/animals/bear.glb", 1),
+  gltf("animal_fox", "glb/creatures/animals/fox.glb", 1),
+  gltf("animal_crow", "glb/creatures/animals/crow.glb", 1),
+  gltf("animal_rat", "glb/creatures/animals/rat.glb", 1),
   gltf("animal_squirrel", "glb/creatures/animals/squirrel.glb", 1),
   gltf("animal_songbird", "glb/creatures/animals/songbird.glb", 1),
   gltf("animal_duck", "glb/creatures/animals/duck.glb", 1),
@@ -2331,11 +2269,7 @@ const ASSETS: RuntimeAsset[] = [
   gltf("animal_stag", "glb/creatures/animals/stag.glb", 1),
   gltf("animal_hound", "glb/creatures/animals/hound.glb", 1),
   gltf("animal_spider", "glb/creatures/animals/spider.glb", 1),
-  gltf(
-    "animal_river_lurker",
-    "glb/creatures/animals/river_lurker.glb",
-    1
-  ),
+  gltf("animal_river_lurker", "glb/creatures/animals/river_lurker.glb", 1),
   gltf(
     "townsperson_guard",
     "gltf/characters/player_body_variants/harthmere_player_broad_ash.gltf",
@@ -3101,6 +3035,236 @@ const P = (
     lodTier: meta.lodTier,
   };
 };
+
+const HARTHMERE_UNDERWAYS_SHELL_DISTRICT = "Old Well / Underways";
+const HARTHMERE_UNDERWAYS_SHELL_TILE_METERS = 8;
+
+/**
+ * Build a bounded stone room around an authored underground encounter.
+ *
+ * The retained world snapshot has surface terrain at these coordinates but no
+ * voxel replacement for the Underways. Sparse floor markers and altar props
+ * therefore rendered against open sky. These coarse four-metre modules keep
+ * the full room below the desktop streaming cap while providing a continuous
+ * floor, ceiling, and wall ring for gameplay and cutscene screenshots.
+ */
+function createHarthmereUnderwaysRoomShellPlacements(options: {
+  name: string;
+  centerX: number;
+  centerZ: number;
+  halfX: number;
+  halfZ: number;
+  floorY?: number;
+  height?: number;
+  tileMeters?: number;
+}): RuntimePlacement[] {
+  const tile =
+    options.tileMeters ?? HARTHMERE_UNDERWAYS_SHELL_TILE_METERS;
+  const floorY = options.floorY ?? GROUND_Y;
+  const height = options.height ?? 8;
+  const minX = options.centerX - options.halfX;
+  const maxX = options.centerX + options.halfX;
+  const minZ = options.centerZ - options.halfZ;
+  const maxZ = options.centerZ + options.halfZ;
+  const placements: RuntimePlacement[] = [];
+
+  for (let x = minX + tile / 2; x < maxX; x += tile) {
+    for (let z = minZ + tile / 2; z < maxZ; z += tile) {
+      placements.push(
+        P(
+          "arch_roof_flat",
+          x,
+          z,
+          0,
+          tile,
+          `${options.name} continuous stone floor slab`,
+          HARTHMERE_UNDERWAYS_SHELL_DISTRICT,
+          floorY - 0.51
+        ),
+        P(
+          "arch_roof_flat",
+          x,
+          z,
+          0,
+          tile,
+          `${options.name} continuous stone ceiling slab`,
+          HARTHMERE_UNDERWAYS_SHELL_DISTRICT,
+          floorY + height
+        )
+      );
+    }
+  }
+
+  for (let y = floorY; y < floorY + height; y += tile) {
+    for (let x = minX + tile / 2; x < maxX; x += tile) {
+      placements.push(
+        P(
+          "arch_wall_stone",
+          x,
+          minZ,
+          0,
+          tile,
+          `${options.name} south stone wall`,
+          HARTHMERE_UNDERWAYS_SHELL_DISTRICT,
+          y
+        ),
+        P(
+          "arch_wall_stone",
+          x,
+          maxZ,
+          0,
+          tile,
+          `${options.name} north stone wall`,
+          HARTHMERE_UNDERWAYS_SHELL_DISTRICT,
+          y
+        )
+      );
+    }
+    for (let z = minZ + tile / 2; z < maxZ; z += tile) {
+      placements.push(
+        P(
+          "arch_wall_stone",
+          minX,
+          z,
+          0,
+          tile,
+          `${options.name} west stone wall`,
+          HARTHMERE_UNDERWAYS_SHELL_DISTRICT,
+          y
+        ),
+        P(
+          "arch_wall_stone",
+          maxX,
+          z,
+          0,
+          tile,
+          `${options.name} east stone wall`,
+          HARTHMERE_UNDERWAYS_SHELL_DISTRICT,
+          y
+        )
+      );
+    }
+  }
+
+  return placements;
+}
+
+function createHarthmereBellwardHallsShellPlacements(): RuntimePlacement[] {
+  const floorY = 80;
+  const shell = createHarthmereUnderwaysRoomShellPlacements({
+    name: "Bellward Halls",
+    centerX: 356,
+    centerZ: -314,
+    halfX: 24,
+    halfZ: 24,
+    floorY,
+  });
+  const practicalLights: RuntimePlacement[] = [
+    [342, -334, 0],
+    [370, -334, 0],
+    [336, -306, Math.PI / 2],
+    [376, -306, -Math.PI / 2],
+  ].map(([x, z, rot], index) => ({
+    ...P(
+      "torch_mounted",
+      x,
+      z,
+      rot,
+      0.5,
+      `Bellward Halls practical wall torch ${index + 1}`,
+      HARTHMERE_UNDERWAYS_SHELL_DISTRICT,
+      floorY + 2.15
+    ),
+    light: { intensity: 2.4, colour: "#ffb45c", distance: 18 },
+  }));
+  const encounterDressing = [
+    P(
+      "obj_church_bells",
+      352.8,
+      -314,
+      0,
+      0.22,
+      "Bellward Halls broken apprentice bell altar",
+      HARTHMERE_UNDERWAYS_SHELL_DISTRICT,
+      floorY + 0.08
+    ),
+    P(
+      "fountain_center",
+      356,
+      -318,
+      0,
+      0.42,
+      "Bellward Halls central bell-pattern floor sigil",
+      HARTHMERE_UNDERWAYS_SHELL_DISTRICT,
+      floorY + 0.05
+    ),
+  ];
+  return [...shell, ...practicalLights, ...encounterDressing];
+}
+
+function createHarthmereVeinsOfTheWyrmShellPlacements(): RuntimePlacement[] {
+  const floorY = 90;
+  const shell = createHarthmereUnderwaysRoomShellPlacements({
+    name: "Veins of the Wyrm",
+    centerX: 640,
+    centerZ: -326,
+    halfX: 40,
+    halfZ: 40,
+    floorY,
+  });
+  const practicalLights: RuntimePlacement[] = [
+    [608, -354, 0],
+    [672, -354, 0],
+    [608, -298, Math.PI],
+    [672, -298, Math.PI],
+  ].map(([x, z, rot], index) => ({
+    ...P(
+      "torch_mounted",
+      x,
+      z,
+      rot,
+      0.55,
+      `Veins of the Wyrm practical wall torch ${index + 1}`,
+      HARTHMERE_UNDERWAYS_SHELL_DISTRICT,
+      floorY + 2.15
+    ),
+    light: { intensity: 2.8, colour: "#78d8ff", distance: 22 },
+  }));
+  return [...shell, ...practicalLights];
+}
+
+function createHarthmereWyrmsBedShellPlacements(): RuntimePlacement[] {
+  const floorY = 110;
+  const shell = createHarthmereUnderwaysRoomShellPlacements({
+    name: "Wyrm's Bed",
+    centerX: 740,
+    centerZ: -240,
+    halfX: 48,
+    halfZ: 68,
+    floorY,
+    height: 32,
+    tileMeters: 16,
+  });
+  const practicalLights: RuntimePlacement[] = [
+    [700, -296, 0],
+    [780, -296, 0],
+    [700, -184, Math.PI],
+    [780, -184, Math.PI],
+  ].map(([x, z, rot], index) => ({
+    ...P(
+      "torch_mounted",
+      x,
+      z,
+      rot,
+      0.8,
+      `Wyrm's Bed practical wall torch ${index + 1}`,
+      HARTHMERE_UNDERWAYS_SHELL_DISTRICT,
+      floorY + 6
+    ),
+    light: { intensity: 4.2, colour: "#ff9d55", distance: 42 },
+  }));
+  return [...shell, ...practicalLights];
+}
 
 const A = (
   asset: string,
@@ -4849,6 +5013,9 @@ function shouldCullUnsupportedFloatingBlock(
   placement: RuntimePlacement,
   candidates: readonly RuntimePlacement[]
 ): boolean {
+  if (shouldPreserveHarthmereUnderwaysRuntimeScenery(placement.district)) {
+    return false;
+  }
   if (!isHarthmereArchitecturalBlockCandidate(placement)) return false;
   const stats = harthmerePlacementSupportStats(placement, candidates);
   // The self-edit rule is simple: elevated architectural blocks cannot be singletons.
@@ -4895,6 +5062,9 @@ function shouldKeepHarthmerePlacementForPerformance(
     animated: number;
   }
 ): boolean {
+  if (shouldPreserveHarthmereUnderwaysRuntimeScenery(placement.district)) {
+    return true;
+  }
   if (harthmereRuntimePerformanceProfile() === "full") return true;
   const [x, _y, z] = placement.at;
   const distanceFromTownCore = Math.hypot(
@@ -5010,7 +5180,10 @@ const HARTHMERE_REMOVE_ARCH_WALL_STONE_RUNTIME_VERSION =
 function shouldRemoveHarthmereRuntimePlacement(
   placement: RuntimePlacement
 ): boolean {
-  return placement.asset === "arch_wall_stone";
+  return (
+    placement.asset === "arch_wall_stone" &&
+    !shouldPreserveHarthmereUnderwaysRuntimeScenery(placement.district)
+  );
 }
 
 // HARTHMERE_SERVER_VOXEL_STRUCTURAL_FILTER
@@ -18294,6 +18467,11 @@ const PLACEMENTS: RuntimePlacement[] = [
   ),
 
   // Bellward Halls: first solo dungeon ring with six prayer chambers.
+  // The retained snapshot does not contain this underground voxel shell, so
+  // runtime modules own the room instead of exposing the surface sky/trees.
+  ...createHarthmereBellwardHallsShellPlacements(),
+  ...createHarthmereVeinsOfTheWyrmShellPlacements(),
+  ...createHarthmereWyrmsBedShellPlacements(),
   P(
     "road",
     356.0,
@@ -28340,7 +28518,6 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
 
   readonly name = "harthmereRuntimeAssets";
   private readonly gltfLoader = createGltfLoader();
-  private readonly fbxLoader = new FBXLoader();
   private readonly prototypes = new Map<string, RuntimePrototype>();
   private readonly failed = new Set<string>();
   private readonly root = new THREE.Group();
@@ -28990,6 +29167,9 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     this.harthmerePlacementLodUpdateIn = 0.5;
 
     const origin = this.harthmereLodOrigin(camera);
+    const suppressRuntimeLife =
+      typeof window !== "undefined" &&
+      isBossPromoCaptureSearch(window.location.search);
     let visible = 0;
     let hidden = 0;
     const byTier: Record<string, { visible: number; hidden: number }> = {};
@@ -29051,13 +29231,16 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       const lodZ = isRuntimeLife
         ? instance.object.position.z
         : instance.placement.at[2];
-      const show = !origin
-        ? true
-        : (groupedShow ??
-          shouldShowHarthmerePlacementAtDistanceSq(
-            visibilityTier,
-            distanceSq2d(origin[0], origin[1], lodX, lodZ)
-          ));
+      const show =
+        suppressRuntimeLife && isRuntimeLife
+          ? false
+          : !origin
+            ? true
+            : (groupedShow ??
+              shouldShowHarthmerePlacementAtDistanceSq(
+                visibilityTier,
+                distanceSq2d(origin[0], origin[1], lodX, lodZ)
+              ));
       instance.object.visible = show;
       if (show) {
         visible += 1;
@@ -31113,6 +31296,17 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
           family: harthmereRuntimeCombatFamily(actor),
           nonNpcLiveEntityVisualActor: true,
         })),
+      nativeCutsceneActors: () =>
+        [...this.nativeCutsceneActors].map(([id, actor]) => ({
+          id,
+          name: actor.object.name,
+          position: actor.object.position.toArray(),
+          scale: actor.object.scale.toArray(),
+          visible: actor.object.visible,
+          childCount: actor.object.children.length,
+          animationRootPosition:
+            actor.object.children[0]?.position.toArray() ?? undefined,
+        })),
       forcePulseByPattern: (
         pattern = "wolf|muck|hex",
         kind: CombatPulseKind = "attack"
@@ -32254,7 +32448,9 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       ).find(Boolean);
       void legacySwordEntryProbe;
       const entry = resolved.entry;
-      const gltf = await this.gltfLoader.loadAsync(entry.assetUrl);
+      const gltf = await this.gltfLoader.loadAsync(
+        resolveHarthmereAssetUrl(entry.assetUrl)
+      );
       if (loadToken !== this.harthmerePlayerWeaponGltfLoadToken) {
         return;
       }
@@ -35630,38 +35826,12 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     }
 
     try {
-      let object: THREE.Object3D;
-      let clips: THREE.AnimationClip[] = [];
-      if (asset.format === "gltf") {
-        const gltfAsset = await this.gltfLoader.loadAsync(assetUrl(asset.path));
-        object = gltfAsset.scene ?? gltfAsset.scenes[0] ?? new THREE.Group();
-        clips = gltfAsset.animations ?? [];
-      } else if (asset.format === "fbx") {
-        object = await this.fbxLoader.loadAsync(assetUrl(asset.path));
-        clips =
-          (object as THREE.Object3D & { animations?: THREE.AnimationClip[] })
-            .animations ?? [];
-      } else {
-        const mtlLoader = new MTLLoader();
-        const objLoader = new OBJLoader();
-        const basePath = asset.path.replace(/\/[^/]+$/, "");
-        const materials = await mtlLoader.loadAsync(
-          assetUrl(`${asset.path}.mtl`)
-        );
-        const materialResourcePath = assetUrl(`${basePath}/`);
-        const materialCreator = materials as typeof materials & {
-          setResourcePath?: (path: string) => void;
-          resourcePath?: string;
-        };
-        if (typeof materialCreator.setResourcePath === "function") {
-          materialCreator.setResourcePath(materialResourcePath);
-        } else {
-          materialCreator.resourcePath = materialResourcePath;
-        }
-        materials.preload();
-        objLoader.setMaterials(materials);
-        object = await objLoader.loadAsync(assetUrl(`${asset.path}.obj`));
-      }
+      const gltfAsset = await this.gltfLoader.loadAsync(
+        resolveHarthmereAssetUrl(asset.path)
+      );
+      const object =
+        gltfAsset.scene ?? gltfAsset.scenes[0] ?? new THREE.Group();
+      const clips = gltfAsset.animations ?? [];
       this.prototypes.set(key, {
         object: prepareLoadedObject(object),
         clips,

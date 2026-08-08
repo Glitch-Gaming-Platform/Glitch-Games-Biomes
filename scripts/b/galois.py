@@ -138,6 +138,25 @@ def publish(args):
     )
 
 
+@assets.command(
+    "publish-harthmere-local",
+    context_settings=dict(
+        ignore_unknown_options=True,
+        help_option_names=["--bhelp"],
+    ),
+)
+@click.argument("args", nargs=-1)
+def publish_harthmere_local(args):
+    """Build used Harthmere assets into the checked-in local static bucket."""
+    ensure_native_gltfpack()
+    b.wait_or_die(
+        b.run_node(
+            "src/galois/js/assets/scripts/publish_harthmere_local.ts",
+            args=list(args),
+        )
+    )
+
+
 @assets.command()
 def check_assets_published():
     """Checks that all assets exist in GCS."""

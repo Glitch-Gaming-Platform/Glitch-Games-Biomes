@@ -14,6 +14,7 @@ import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import type { ClientResources } from "@/client/game/resources/types";
 import { createGltfLoader } from "@/client/game/util/gltf_helpers";
+import { resolveHarthmereAssetUrl } from "@/shared/harthmere/galois_asset_paths";
 import { harthmereGroundedFeetYWithMemory } from "@/client/game/util/harthmere_entity_grounding";
 import {
   activeLiveEntityHelperQuestMarkerId,
@@ -1126,7 +1127,7 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
       return;
     }
     this.repairCartAssetLoading = this.repairCartAssetLoader
-      .loadAsync(HARTHMERE_LUIS_REPAIR_CART_ASSET_URL)
+      .loadAsync(resolveHarthmereAssetUrl(HARTHMERE_LUIS_REPAIR_CART_ASSET_URL))
       .then((gltf) => {
         const prototype = gltf.scene ?? gltf.scenes?.[0];
         if (!prototype) {
@@ -1185,7 +1186,7 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
         continue;
       }
       const loading = this.repairCartAssetLoader
-        .loadAsync(assetUrl)
+        .loadAsync(resolveHarthmereAssetUrl(assetUrl))
         .then((gltf) => {
           const prototype = gltf.scene ?? gltf.scenes?.[0];
           if (!prototype) {

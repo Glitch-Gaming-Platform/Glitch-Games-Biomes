@@ -48,6 +48,9 @@ const HEADED_CAPTURE = process.env.PROMO_CAPTURE_HEADED === "1";
 const DEFAULT_TIMEOUT_MS = Number(
   process.env.PROMO_CAPTURE_TIMEOUT_MS || 240_000
 );
+const CAPTURE_BUILD_ID = process.env.PROMO_CAPTURE_BUILD_ID;
+const CAPTURE_HOTFIX_VERSION = process.env.PROMO_CAPTURE_HOTFIX_VERSION;
+const CAPTURE_HOTFIX_HASH = process.env.PROMO_CAPTURE_HOTFIX_HASH;
 const AUTH_STORAGE_KEY = "harthmere.biomesAuth";
 
 function isForbiddenLegacyHost(hostname) {
@@ -83,6 +86,7 @@ function parseArgs(argv) {
     cameraPreset: undefined,
     outputDir: undefined,
     printUrl: false,
+    observerRoute: false,
     authUser: process.env.PROMO_CAPTURE_AUTH_USER || "Chapter1Marketing",
   };
   for (let i = 0; i < argv.length; i++) {
@@ -93,6 +97,7 @@ function parseArgs(argv) {
     else if (a === "--camera-preset") out.cameraPreset = argv[++i];
     else if (a === "--output-dir") out.outputDir = argv[++i];
     else if (a === "--auth-user") out.authUser = argv[++i];
+    else if (a === "--observer-route") out.observerRoute = true;
     else if (a === "--print-url") out.printUrl = true;
     else if (!a.startsWith("-") && !out.id) out.id = a;
   }
@@ -129,6 +134,65 @@ async function writeFailureDiagnostics(page, sceneId, outputDir) {
     console.log(`diagnostic screenshot ${path.relative(ROOT, diagnostic)}`);
   } catch (error) {
     console.log(`diagnostic screenshot unavailable: ${String(error)}`);
+  }
+}
+
+async function readRuntimeDiagnostics(page) {
+  return page.evaluate(() => {
+    const win = window;
+    const safeCall = (fn) => {
+      try {
+        return typeof fn === "function" ? fn() : undefined;
+      } catch (error) {
+        return {
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    };
+    return {
+      href: window.location.href,
+      promoCapture: win.__biomesPromoCapture,
+      livePlayerDebug: win.__harthmereLivePlayerDebug
+        ? {
+            version: win.__harthmereLivePlayerDebug.version,
+            position: safeCall(win.__harthmereLivePlayerDebug.getPosition),
+          }
+        : undefined,
+      dungeonTeleportLastResult: win.__harthmereDungeonTeleportLastResult,
+      observerStreamingDebug: win.__biomesObserverStreamingDebug
+        ? {
+            position: safeCall(win.__biomesObserverStreamingDebug.getPosition),
+          }
+        : undefined,
+      mobileRuntimeStreaming: win.__harthmereMobileRuntimeStreaming,
+      floatingBlockIntegrityReport: win.__harthmereFloatingBlockIntegrityReport,
+      rendererDebugKeys: win.__harthmereRendererDebug
+        ? Object.keys(win.__harthmereRendererDebug).sort()
+        : undefined,
+      rendererActors: safeCall(win.__harthmereRendererDebug?.actors),
+      nativeCutsceneActors: safeCall(
+        win.__harthmereRendererDebug?.nativeCutsceneActors
+      ),
+      nativeCutsceneActorReadiness:
+        win.__harthmereNativeCutsceneActorReadiness,
+      cutscenePuppets: win.__harthmereCutscenePuppets,
+      forwardArcRuntime: win.__harthmereForwardArcRuntime,
+    };
+  });
+}
+
+async function writeRuntimeDiagnostics(page, sceneId, outputDir) {
+  fs.mkdirSync(outputDir, { recursive: true });
+  const diagnostic = path.join(
+    outputDir,
+    `promo-capture-runtime-${sceneId}.json`
+  );
+  try {
+    const state = await readRuntimeDiagnostics(page);
+    fs.writeFileSync(diagnostic, `${JSON.stringify(state, null, 2)}\n`);
+    console.log(`runtime diagnostics ${path.relative(ROOT, diagnostic)}`);
+  } catch (error) {
+    console.log(`runtime diagnostics unavailable: ${String(error)}`);
   }
 }
 
@@ -187,7 +251,7 @@ async function main() {
     extra.glitch_auto_play = "1";
   }
   let captureUrl = registry.promoCaptureUrl(scene, ORIGIN, extra);
-  if (scene.runtimeScenery) {
+  if (scene.runtimeScenery && !args.observerRoute) {
     // Authenticated coordinate `/at/x/y/z` is a position-observer route. Its
     // Sync-target swap can delete the entity the client table still considers
     // local, which hard-fails before authored Underways scenery streams. Enter
@@ -277,6 +341,14 @@ async function main() {
       );
     }
     const auth = await authResponse.json();
+    if (scene.runtimeScenery && !args.observerRoute) {
+      const playerRoute = new URL(captureUrl);
+      playerRoute.pathname = `/at/${encodeURIComponent(
+        String(auth.username ?? auth.userId)
+      )}`;
+      captureUrl = playerRoute.toString();
+      console.log(`player  ${captureUrl}`);
+    }
     const authSession = {
       userId: String(auth.userId),
       sessionId: String(auth.sessionId),
@@ -364,6 +436,17 @@ async function main() {
       waitUntil: "domcontentloaded",
       timeout: 120_000,
     });
+    if (scene.runtimeScenery && !args.observerRoute) {
+      await page.waitForFunction(() => window.__biomesCaptureReady === true, {
+        timeout: 120_000,
+      });
+      await page.bringToFront();
+      await page.mouse.click(960, 540);
+      await page.keyboard.down("KeyW");
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      await page.keyboard.up("KeyW");
+      console.log("runtime player focus and move hook primed...");
+    }
     console.log("page loaded; waiting for capture (software WebGL is slow)...");
 
     const deadline = Date.now() + DEFAULT_TIMEOUT_MS;
@@ -444,6 +527,7 @@ async function main() {
       }
       console.log(`network har ${path.relative(ROOT, harPath)}`);
       await writeFailureDiagnostics(page, scene.id, outputDir);
+      await writeRuntimeDiagnostics(page, scene.id, outputDir);
       throw new Error(
         "no capture output was published. The promo hook never ran — check " +
           "that the URL kept ?cutscenePromo= and that the client mounted."
@@ -451,12 +535,14 @@ async function main() {
     }
     if (state.status === "pending") {
       await writeFailureDiagnostics(page, scene.id, outputDir);
+      await writeRuntimeDiagnostics(page, scene.id, outputDir);
       throw new Error(
         `capture did not reach a terminal state within ${DEFAULT_TIMEOUT_MS}ms` +
           (state.current ? ` (waiting on ${state.current})` : "")
       );
     }
     if (state.status === "error") {
+      await writeRuntimeDiagnostics(page, scene.id, outputDir);
       throw new Error(`capture failed in page: ${state.error}`);
     }
 
@@ -476,6 +562,7 @@ async function main() {
       shot?.camera.kind === "dolly"
         ? shot.camera.waypoints.map((waypoint) => waypoint.position)
         : undefined;
+    const runtimeDiagnostics = await readRuntimeDiagnostics(page);
     const metadata = path.join(outputDir, "capture-metadata.json");
     fs.writeFileSync(
       metadata,
@@ -494,8 +581,25 @@ async function main() {
             undefined,
           sampledCameraPosition: state.cameraPosition,
           sampledCameraOrientation: state.cameraOrientation,
+          runtimeDiagnostics,
           origin: ORIGIN,
           syncBaseUrl: SYNC_BASE_URL,
+          candidate:
+            CAPTURE_HOTFIX_VERSION || CAPTURE_HOTFIX_HASH
+              ? "mounted build + injected hotfix"
+              : "mounted build",
+          mountedBuildId: CAPTURE_BUILD_ID,
+          injectedHotfix: CAPTURE_HOTFIX_VERSION
+            ? {
+                version: CAPTURE_HOTFIX_VERSION,
+                manifestHash: CAPTURE_HOTFIX_HASH,
+              }
+            : undefined,
+          routeAuthority: args.observerRoute
+            ? "position observer"
+            : scene.runtimeScenery
+              ? "live player"
+              : "position observer",
           files: {
             branded: path.basename(branded),
             raw: path.basename(raw),

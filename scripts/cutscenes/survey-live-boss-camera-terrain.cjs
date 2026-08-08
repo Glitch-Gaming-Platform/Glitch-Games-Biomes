@@ -44,6 +44,9 @@ const REDIS_HOST = process.env.REDIS_HOST || "127.0.0.1";
 const REDIS_PORT = Number(process.env.REDIS_PORT || 6493);
 const SCAN_COUNT = Number(process.env.SCAN_COUNT || 3000);
 const SURVEY_RADIUS = Number(process.env.BOSS_CAMERA_SURVEY_RADIUS || 72);
+const STAGE_SURVEY_RADIUS = Number(
+  process.env.BOSS_STAGE_SURVEY_RADIUS || 24
+);
 
 function parseArgs(argv) {
   const out = { bosses: [], output: undefined, limit: 20, json: false };
@@ -320,13 +323,20 @@ function framedNpcClutter(ambient, camera, stage, verticalFov, bodyRadius) {
 
 function surveyBoss(spec, visual, solid, ambient, limit) {
   const rows = [];
-  const maxStageOffset = spec.id === "hex_wraith" ? 20 : 16;
+  const maxStageOffset = Math.max(
+    spec.id === "hex_wraith" ? 20 : 16,
+    STAGE_SURVEY_RADIUS
+  );
   const stageStep = 4;
   for (let dx = -maxStageOffset; dx <= maxStageOffset; dx += stageStep) {
     for (let dz = -maxStageOffset; dz <= maxStageOffset; dz += stageStep) {
       const x = spec.stage[0] + dx;
       const z = spec.stage[2] + dz;
-      if (distance2d([x, spec.stage[1], z], spec.stage) > 24) continue;
+      if (
+        distance2d([x, spec.stage[1], z], spec.stage) > STAGE_SURVEY_RADIUS
+      ) {
+        continue;
+      }
       const support = stageFootprint(solid, spec, visual, x, z);
       if (!support) continue;
       const stage = [x, support.feetY + 0.05, z];

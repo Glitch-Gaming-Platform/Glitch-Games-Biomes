@@ -75,6 +75,7 @@ import {
 } from "@/shared/harthmere/premium_weapon_catalog";
 import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
+import { resolveHarthmereAssetUrl } from "@/shared/harthmere/galois_asset_paths";
 import { safeGetTerrainName } from "@/shared/asset_defs/terrain";
 import { harthmereGeneratedInventoryIconUrl } from "@/shared/harthmere/generated/harthmere_inventory_icon_manifest";
 import { nativeVoxelBlockInventoryIcon } from "@/client/components/biomes_ui/adapters/inventoryItemPresentation";
@@ -3084,7 +3085,12 @@ function dynamicBiomesItemIcon(
       );
     }
     if (item.galoisIcon) {
-      const url = resolveAssetUrlUntyped(`icons/${item.galoisIcon}`);
+      const url = /^(?:https?:\/\/|data:image\/|blob:|\/)/i.test(
+        item.galoisIcon
+      )
+        ? resolveHarthmereAssetUrl(item.galoisIcon)
+        : (resolveAssetUrlUntyped(item.galoisIcon) ??
+          resolveAssetUrlUntyped(`icons/${item.galoisIcon}`));
       if (url) return url;
     }
     if (item.galoisPath) {
@@ -3169,14 +3175,15 @@ function dynamicBiomesItemDefinition(
         : equipmentSlot
           ? "armor"
           : "trade_good";
-  const icon =
+  const icon = resolveHarthmereAssetUrl(
     premiumWeapon?.inventoryIconUrl ??
-    dynamicBiomesItemIcon(item, canonicalItemId) ??
-    semanticDefinition?.icon ??
-    (authoritative
-      ? authoritativeHarthmereItemGlyph(authoritative)
-      : undefined) ??
-    fallbackInventoryGlyph(name);
+      dynamicBiomesItemIcon(item, canonicalItemId) ??
+      semanticDefinition?.icon ??
+      (authoritative
+        ? authoritativeHarthmereItemGlyph(authoritative)
+        : undefined) ??
+      fallbackInventoryGlyph(name)
+  );
   return {
     id: canonicalItemId,
     name,
@@ -3308,14 +3315,15 @@ export function getHarthmereItemDisplay(
     return undefined;
   }
   const wearable = harthmereLocalItemBikkieWearable(def.id);
+  const icon =
+    nativeVoxelBlockInventoryIcon(def.id) ??
+    harthmereOriginalInventoryIconUrl(def.id) ??
+    harthmereGeneratedInventoryIconUrl(def.id) ??
+    def.icon;
   return {
     id: def.id,
     name: def.name,
-    icon:
-      nativeVoxelBlockInventoryIcon(def.id) ??
-      harthmereOriginalInventoryIconUrl(def.id) ??
-      harthmereGeneratedInventoryIconUrl(def.id) ??
-      def.icon,
+    icon: resolveHarthmereAssetUrl(icon),
     category: def.category,
     quality: def.quality,
     description: def.description,
@@ -6388,7 +6396,7 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
                         }}
                       >
                         <BiomesUIShopItemIcon
-                          icon={def.icon}
+                          icon={resolveHarthmereAssetUrl(def.icon)}
                           label={def.name}
                         />
                         <div className="biomes-ui-vendor-card__content">
@@ -6503,7 +6511,7 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
                         }}
                       >
                         <BiomesUIShopItemIcon
-                          icon={def.icon}
+                          icon={resolveHarthmereAssetUrl(def.icon)}
                           label={itemName(item)}
                         />
                         <div className="biomes-ui-vendor-card__content">

@@ -338,8 +338,12 @@ def materialize_Literal(node: t.LiteralNode):
 
 def materialize_LoadGLTF_GLTFFile(node: t.DerivedNode):
     path: str = node.deps[0]
-    content = gltf.load_gltf(path)
+    if path.lower().endswith(".glb"):
+        content = gltf.load_glb(path)
+    else:
+        content = gltf.load_gltf(path)
     content.convert_buffers(pygltflib.BufferFormat.DATAURI)
+    gltf.embed_external_images(content, path)
     return t.GLTF(content)
 
 

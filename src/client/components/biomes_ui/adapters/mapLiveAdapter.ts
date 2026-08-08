@@ -12,6 +12,7 @@ import {
 } from "@/shared/harthmere/building_system";
 import {
   activeBiomesUIMapPinFromMarkerForTest,
+  type BiomesUIMapPinWriteOptions,
   readActiveBiomesUIMapPin,
   shouldClearStaleActiveMapPin,
   writeActiveBiomesUIMapPin,
@@ -1025,7 +1026,7 @@ export function buildBiomesUIMapAdapter(
       // nowhere". Reconcile against the full (pre-visibility-filter) landmark
       // set so a merely-hidden objective marker is not treated as stale.
       const visibleMarkerIds = MapLandmarks().map((landmark: any) =>
-        String(landmark?.id ?? "")
+        MarkerId(landmark)
       );
       visibleMarkerIds.push(
         ...nativeQuestMapMarkers(
@@ -1039,11 +1040,22 @@ export function buildBiomesUIMapAdapter(
       }
       return pin;
     },
-    setActiveMapPin: (marker: any) => {
+    setActiveMapPin: (
+      marker: any,
+      options: BiomesUIMapPinWriteOptions = {}
+    ) => {
       const pin = activeBiomesUIMapPinFromMarkerForTest(marker);
-      if (pin) writeActiveBiomesUIMapPin(pin);
+      if (!pin) {
+        return {
+          ok: false as const,
+          reason: "invalid_destination" as const,
+          message: "This destination does not have a valid map location yet.",
+        };
+      }
+      return writeActiveBiomesUIMapPin(pin, options);
     },
-    clearActiveMapPin: () => writeActiveBiomesUIMapPin(undefined),
+    clearActiveMapPin: (options: BiomesUIMapPinWriteOptions = {}) =>
+      writeActiveBiomesUIMapPin(undefined, options),
   };
 }
 

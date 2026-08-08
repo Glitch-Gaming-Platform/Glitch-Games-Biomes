@@ -5,10 +5,7 @@ export const HARTHMERE_BIKKIE_VISUAL_RESOLVER_VERSION =
   "harthmere-bikkie-visual-resolver" as const;
 
 export type HarthmereResolvedBikkieVisualSource =
-  | "galois_icon"
-  | "drive_asset"
-  | "procedural_voxel"
-  | "metadata";
+  "galois_icon" | "drive_asset" | "procedural_voxel" | "metadata";
 
 export type HarthmereResolvedBikkieVisualShape =
   | "block"
@@ -117,14 +114,14 @@ function hslToHex(h: number, s: number, l: number) {
     h < 60
       ? [c, x, 0]
       : h < 120
-      ? [x, c, 0]
-      : h < 180
-      ? [0, c, x]
-      : h < 240
-      ? [0, x, c]
-      : h < 300
-      ? [x, 0, c]
-      : [c, 0, x];
+        ? [x, c, 0]
+        : h < 180
+          ? [0, c, x]
+          : h < 240
+            ? [0, x, c]
+            : h < 300
+              ? [x, 0, c]
+              : [c, 0, x];
   return `#${[r1, g1, b1]
     .map((v) =>
       Math.round((v + m) * 255)
@@ -178,6 +175,13 @@ export function harthmereInitialsGlyph(
 
 function assetPathFromVisualPath(path: string | undefined) {
   if (!path || path.startsWith("drive://")) return undefined;
+  if (path.startsWith("/assets/harthmere/")) {
+    return `harthmere/${path.slice("/assets/harthmere/".length)}`;
+  }
+  if (path.startsWith("/models/harthmere/")) {
+    return `harthmere/models/${path.slice("/models/harthmere/".length)}`;
+  }
+  if (path.startsWith("harthmere/")) return path;
   if (path.startsWith("icons/")) return path;
   return `icons/${path}`;
 }
@@ -357,10 +361,10 @@ export function harthmereResolveBikkieVisual(
   const source: HarthmereResolvedBikkieVisualSource = iconAssetPath
     ? "galois_icon"
     : hasDriveAsset
-    ? "drive_asset"
-    : canGenerateWithVoxels
-    ? "procedural_voxel"
-    : "metadata";
+      ? "drive_asset"
+      : canGenerateWithVoxels
+        ? "procedural_voxel"
+        : "metadata";
   const visualId =
     input.visualId ??
     input.id ??

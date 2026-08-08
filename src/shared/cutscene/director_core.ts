@@ -629,8 +629,10 @@ class CutsceneRuntimeImpl implements CutsceneRuntime {
           });
           puppet.yaw = faceYaw(puppet.position, target);
           puppet.position =
-            providers.groundPosition?.(actor, target) ??
-            ([...target] as CutsceneVec3);
+            actor.kind === "ghost"
+              ? ([...target] as CutsceneVec3)
+              : providers.groundPosition?.(actor, target) ??
+                ([...target] as CutsceneVec3);
           effects.push({ kind: "fade", direction: "in", duration: 0.15 });
         }
         continue;
@@ -638,7 +640,10 @@ class CutsceneRuntimeImpl implements CutsceneRuntime {
       const step = Math.min(move.action.speed * dt, remaining);
       const dir = v3lerp(puppet.position, target, step / remaining);
       puppet.yaw = faceYaw(puppet.position, target);
-      puppet.position = providers.groundPosition?.(actor, dir) ?? dir;
+      puppet.position =
+        actor.kind === "ghost"
+          ? dir
+          : providers.groundPosition?.(actor, dir) ?? dir;
       puppet.moving = true;
     }
   }
@@ -662,7 +667,7 @@ class CutsceneRuntimeImpl implements CutsceneRuntime {
         if (puppet && target) {
           const actor = this.actors.get(action.role);
           puppet.position =
-            actor && actor.kind !== "unbound"
+            actor && actor.kind !== "unbound" && actor.kind !== "ghost"
               ? providers.groundPosition?.(actor, target) ??
                 ([...target] as CutsceneVec3)
               : ([...target] as CutsceneVec3);
